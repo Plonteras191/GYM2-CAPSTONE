@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary Accents */
+  --color-brand-red: #A60303;
+  --color-brand-crimson: #A61F2B;
+  --color-brand-gold: #F2B705;
+  --color-brand-orange: #D97A07;
+  
+  /* Dark Mode Backgrounds & Surfaces */
+  --color-brand-dark: #0D0D0D;
+  --color-brand-navy: #031226;
+  --color-brand-surface: #212226;
+  --color-brand-slate: #3F454D;
+  
+  /* Light Mode Backgrounds */
+  --color-brand-light: #F2F2F2;
+  --color-brand-white: #FCFCFC;
+}
+
+/* Enable manual class-based dark mode switching */
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  body {
+    @apply bg-brand-light text-brand-dark transition-colors duration-300;
+  }
+  
+  .dark body {
+    @apply bg-brand-dark text-brand-light;
+  }
+}
+
+/* React Calendar Dark Mode Overrides (Updated for Brand Colors) */
+.dark .react-calendar {
+  background: transparent;
+  border: none;
+}
+.dark .react-calendar__navigation button:enabled:hover,
+.dark .react-calendar__navigation button:enabled:focus {
+  background-color: var(--color-brand-surface);
+}
+.dark .react-calendar__month-view__days__day:hover {
+  background-color: var(--color-brand-surface);
+}
+.dark .react-calendar__tile--active {
+  background: var(--color-brand-red) !important; 
+  color: white;
+}
