@@ -8,12 +8,25 @@ import warnings
 # Suppress warnings for cleaner output
 warnings.filterwarnings('ignore')
 
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(SCRIPT_DIR)
+
+DATASET_PATH = os.path.join(BASE_DIR, 'datasets', 'custom_workout_dataset.csv')
+if not os.path.exists(DATASET_PATH):
+    DATASET_PATH = os.path.join(BASE_DIR, 'custom_workout_dataset.csv')
+
+MODEL_OUTPUT_DIR = os.path.join(BASE_DIR, 'models')
+os.makedirs(MODEL_OUTPUT_DIR, exist_ok=True)
+MODEL_OUTPUT_PATH = os.path.join(MODEL_OUTPUT_DIR, 'workout_model.pkl')
+
 print("🧠 [PHASE 2] INITIALIZING AI TRAINING PROTOCOL...")
 
 try:
     # 1. Load the dataset you just collected
-    print("Loading custom_workout_dataset.csv...")
-    df = pd.read_csv('custom_workout_dataset.csv')
+    print(f"Loading dataset from '{DATASET_PATH}'...")
+    df = pd.read_csv(DATASET_PATH)
     
     # 2. Separate the coordinates (Features) from the exercise names (Labels)
     X = df.drop('class_label', axis=1) # The 33 joint coordinates
@@ -37,14 +50,14 @@ try:
     print(f"🎯 AI Accuracy Score: {accuracy * 100:.2f}%")
 
     # 6. Save the trained brain to a .pkl file!
-    with open('workout_model.pkl', 'wb') as f:
+    with open(MODEL_OUTPUT_PATH, 'wb') as f:
         pickle.dump(model, f)
         
-    print("💾 Model successfully saved as 'workout_model.pkl'")
+    print(f"💾 Model successfully saved to '{MODEL_OUTPUT_PATH}'")
     print("You are now ready to plug this brain into gesture_engine.py!")
 
 except FileNotFoundError:
-    print("❌ ERROR: Could not find 'custom_workout_dataset.csv'. Did you run collect_data.py first?")
+    print(f"❌ ERROR: Could not find dataset at '{DATASET_PATH}'. Did you run collect_data.py first?")
 except Exception as e:
     print(f"❌ ERROR: {e}")
     print("Did you make sure to record at least TWO different exercises so the AI can learn the difference?")

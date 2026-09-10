@@ -38,11 +38,22 @@ workout_buffer = [] # Used to smooth out flickering AI guesses
 ml_model = None
 
 # Load the AI Brain!
-try:
-    with open('workout_model.pkl', 'rb') as f:
-        ml_model = pickle.load(f)
-    print("🧠 [SUCCESS] Machine Learning Workout Brain Loaded!")
-except FileNotFoundError:
+model_paths = [
+    os.path.join(BASE_DIR, 'models', 'workout_model.pkl'),
+    os.path.join(BASE_DIR, 'workout_model.pkl')
+]
+
+for m_path in model_paths:
+    if os.path.exists(m_path):
+        try:
+            with open(m_path, 'rb') as f:
+                ml_model = pickle.load(f)
+            print(f"🧠 [SUCCESS] Machine Learning Workout Brain Loaded from '{m_path}'!")
+            break
+        except Exception as e:
+            print(f"⚠️ Could not load model from '{m_path}': {e}")
+
+if ml_model is None:
     print("❌ [WARNING] 'workout_model.pkl' not found. Ensure you ran train_model.py.")
 
 mp_pose = mp.solutions.pose

@@ -86,12 +86,18 @@ if frames_collected > 0:
     # Save the recorded data to a CSV file!
     df = pd.DataFrame(dataset, columns=landmarks_columns)
 
-    # If the file already exists, append to it. If not, create a new one.
-    if os.path.exists('custom_workout_dataset.csv'):
-        df.to_csv('custom_workout_dataset.csv', mode='a', header=False, index=False)
-    else:
-        df.to_csv('custom_workout_dataset.csv', index=False)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.dirname(script_dir)
+    datasets_dir = os.path.join(base_dir, 'datasets')
+    os.makedirs(datasets_dir, exist_ok=True)
+    dataset_csv_path = os.path.join(datasets_dir, 'custom_workout_dataset.csv')
 
-    print(f"\n✅ SUCCESS! {frames_collected} frames of {EXERCISE_NAME} have been successfully injected into custom_workout_dataset.csv!")
+    # If the file already exists, append to it. If not, create a new one.
+    if os.path.exists(dataset_csv_path):
+        df.to_csv(dataset_csv_path, mode='a', header=False, index=False)
+    else:
+        df.to_csv(dataset_csv_path, index=False)
+
+    print(f"\n✅ SUCCESS! {frames_collected} frames of {EXERCISE_NAME} have been successfully injected into '{dataset_csv_path}'!")
 else:
     print("\n❌ FAILED to collect any frames. Make sure you are visible to the camera.")
