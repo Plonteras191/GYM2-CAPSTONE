@@ -16,13 +16,14 @@ function App() {
 
   return (
     <Routes>
-      {/* If logged in, don't show login page; go straight to Overview */}
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/Overview" replace /> : <Login />} />
+      {/* If logged in, don't show login page; go straight to overview */}
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/overview" replace /> : <Login />} />
       
       {/* Protect the entire Layout. If NOT authenticated, force them back to /login */}
       <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" replace />}>
-        <Route index element={<Navigate to="/Overview" replace />} />
-        <Route path="Overview" element={<Dashboard />} />
+        <Route index element={<Navigate to="/overview" replace />} />
+        <Route path="overview" element={<Dashboard />} />
+        <Route path="Overview" element={<Navigate to="/overview" replace />} />
         <Route path="members" element={<Members />} />
         <Route path="subscriptions" element={<Subscriptions />} />
         <Route path="transactions" element={<Transactions />} />

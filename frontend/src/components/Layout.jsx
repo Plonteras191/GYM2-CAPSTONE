@@ -10,8 +10,8 @@ import logo from '../assets/logo.png';
 import api from '../api'; 
 
 const getPageTitle = (path) => {
-    switch (path) {
-      case '/Overview': return 'Overview';
+    switch (path.toLowerCase()) {
+      case '/overview': return 'Overview';
       case '/members': return 'Member Directory';
       case '/subscriptions': return 'Subscriptions';
       case '/transactions': return 'Transactions';
@@ -72,7 +72,7 @@ export default function Layout() {
     {
       title: 'Main',
       items: [
-        { name: 'Overview', path: '/Overview', icon: <FiHome /> },
+        { name: 'Overview', path: '/overview', icon: <FiHome /> },
         { name: 'Member Directory', path: '/members', icon: <FiUsers /> },
         { name: 'Subscriptions', path: '/subscriptions', icon: <FiCheckSquare /> },
         { name: 'Transactions', path: '/transactions', icon: <FiCreditCard /> },

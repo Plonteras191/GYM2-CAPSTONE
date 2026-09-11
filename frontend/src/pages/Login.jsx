@@ -35,7 +35,7 @@ export default function Login() {
             localStorage.setItem('admin_token', data.token);
             localStorage.setItem('admin_name', data.admin.name); 
             // Force reload to update App.jsx authentication state properly
-            window.location.href = '/Overview'; 
+            window.location.href = '/overview'; 
         } else {
             if (data.errors && data.errors.email) {
                 throw new Error(data.errors.email[0]);

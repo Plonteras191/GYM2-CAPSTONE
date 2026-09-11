@@ -14,8 +14,13 @@ backend/storage/logs/*
 backend/bootstrap/cache/*
 
 # Python & AI Engine
-gesture-engine/venv/
-gesture-engine/__pycache__/
+venv/
+*/venv/
+.venv/
+__pycache__/
+*/__pycache__/
+Gesture Engine/venv/
+Gesture Engine/__pycache__/
 *.pyc
 *.pyo
 *.pyd

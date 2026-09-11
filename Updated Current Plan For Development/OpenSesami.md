@@ -16,14 +16,14 @@ Backend
 
 
 Camera
-    cd gesture-engine
+    cd "Gesture Engine"
     .\venv\Scripts\python.exe gesture_engine.py
 
 Other Part Of Camera
-    cd gesture-engine
+    cd "Gesture Engine"
     .\venv\Scripts\activate
     python collect_data.py
-
+    
 FrontEnd
     cd frontend
     npm run dev / npm run dev --host (For Mobile)
