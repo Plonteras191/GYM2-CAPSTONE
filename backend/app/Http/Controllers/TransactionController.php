@@ -9,7 +9,15 @@ class TransactionController extends Controller
 {
     public function index()
     {
-        $transactions = Transaction::with('member:id,first_name,last_name')->orderBy('transaction_date', 'desc')->orderBy('id', 'desc')->get();
+        $transactions = Transaction::select(
+                'id', 'transaction_id', 'transaction_date', 'member_id',
+                'type', 'description', 'payment_method', 'amount', 'status',
+                'reference_number', 'created_at'
+            )
+            ->with('member:id,first_name,last_name')
+            ->orderBy('transaction_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get();
         return response()->json($transactions);
     }
 
