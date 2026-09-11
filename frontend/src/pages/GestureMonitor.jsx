@@ -1,18 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiVideo, FiMaximize, FiWifi, FiWifiOff, FiLoader, FiActivity, FiRefreshCw } from 'react-icons/fi';
+import { FiVideo, FiMaximize, FiWifi, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import api from '../api';
 
 export default function GestureMonitor() {
-  const [connectionState, setConnectionState] = useState('CONNECTING'); // 'CONNECTING', 'LIVE', 'DISCONNECTED'
+  const [connectionState, setConnectionState] = useState('CONNECTING'); 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeStreamUrl, setActiveStreamUrl] = useState(`http://127.0.0.1:5000/gesture_feed?t=${new Date().getTime()}`);
   
   const [latency, setLatency] = useState(0);
   const [recentLogs, setRecentLogs] = useState([]);
+  
+  // --- NEW: Custom Alert Modal ---
+  const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   const containerRef = useRef(null);
 
-  // 1. Clock & Latency Simulator
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     const latencyInterval = setInterval(() => {
@@ -26,7 +28,6 @@ export default function GestureMonitor() {
     };
   }, [connectionState]);
 
-  // 2. LIVE GESTURE LOGS POLLING
   useEffect(() => {
     const fetchLogs = async () => {
       try {
@@ -37,24 +38,29 @@ export default function GestureMonitor() {
       }
     };
     
-    fetchLogs(); // Initial fetch
-    const logInterval = setInterval(fetchLogs, 3000); // Check for new AI reps every 3 seconds
+    fetchLogs(); 
+    const logInterval = setInterval(fetchLogs, 3000); 
     return () => clearInterval(logInterval);
   }, []);
 
   const handleSyncAI = async () => {
     try {
       const res = await fetch('http://127.0.0.1:5000/refresh_ai', { method: 'POST' });
-      if (res.ok) alert("✅ AI Memory successfully synced with the Database!");
-      else alert("❌ AI Sync failed.");
+      if (res.ok) {
+        setAlertDialog({ isOpen: true, title: 'Sync Complete', message: 'AI Memory successfully synced with the Database!', type: 'success' });
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Sync Failed', message: 'AI Sync failed to respond correctly.', type: 'error' });
+      }
     } catch (error) {
-      alert("❌ Could not connect to the Python AI Engine.");
+      setAlertDialog({ isOpen: true, title: 'Engine Offline', message: 'Could not connect to the Python AI Engine.', type: 'error' });
     }
   };
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(err => alert(`Error: ${err.message}`));
+      containerRef.current.requestFullscreen().catch(err => {
+        setAlertDialog({ isOpen: true, title: 'Fullscreen Error', message: err.message, type: 'error' });
+      });
     } else {
       document.exitFullscreen();
     }
@@ -64,7 +70,6 @@ export default function GestureMonitor() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex flex-col lg:flex-row gap-6 flex-1 h-full min-h-0">
         
-        {/* --- LEFT: MAIN CAMERA FEED --- */}
         <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-slate-700/50 shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
           
           <div className="absolute top-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-b from-black/40 to-transparent flex justify-end items-start z-10 pointer-events-none">
@@ -92,14 +97,12 @@ export default function GestureMonitor() {
           </div>
 
           <div className="flex-1 flex items-center justify-center relative bg-[#0a0a0c] overflow-hidden w-full h-full">
-            {/* The Invisible Image Tag that drives the connection state */}
             <img 
               src={activeStreamUrl} 
               alt="Live AI Gesture Feed"
               onLoad={() => setConnectionState('LIVE')}
               onError={() => {
                 setConnectionState('DISCONNECTED');
-                // Auto-Reconnect Logic: Try again every 5 seconds if unplugged/slow net
                 setTimeout(() => {
                   setConnectionState('CONNECTING');
                   setActiveStreamUrl(`http://127.0.0.1:5000/gesture_feed?t=${new Date().getTime()}`);
@@ -136,7 +139,6 @@ export default function GestureMonitor() {
           </div>
         </div>
 
-        {/* --- RIGHT: GESTURE LOGS PANEL --- */}
         <div className="w-full lg:w-1/4 flex flex-col gap-6 h-[400px] lg:h-full flex-shrink-0">
           <div className="bg-white dark:bg-[#252830] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col overflow-hidden h-full">
             <div className="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex items-center justify-between flex-shrink-0">
@@ -176,6 +178,27 @@ export default function GestureMonitor() {
         </div>
 
       </div>
+
+      {/* --- CUSTOM ALERT MODAL --- */}
+      {alertDialog.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
+            <div className="p-6 text-center space-y-4">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
+                {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
+              </div>
+              <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
+              <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
+            </div>
+            <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center">
+              <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

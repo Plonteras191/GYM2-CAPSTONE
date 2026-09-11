@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { 
   FiUser, FiMail, FiLock, FiSave, FiShield, 
   FiEye, FiEyeOff, FiUpload, FiImage, FiLayout,
-  FiZoomIn, FiZoomOut, FiCheck, FiX, FiCamera, FiLoader
+  FiZoomIn, FiZoomOut, FiCheck, FiX, FiCamera, FiLoader, FiCheckCircle, FiAlertCircle
 } from 'react-icons/fi';
 
 import logo from '../assets/logo.png'; 
 
 export default function AdminProfile() {
-  // --- 1. STATE MANAGEMENT ---
   const [adminData, setAdminData] = useState({
     name: 'Fustino Padera Anasco Jr.',
     email: 'admin@doublealpha.fit',
@@ -23,12 +22,13 @@ export default function AdminProfile() {
     cover: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1920&auto=format&fit=crop' 
   });
 
-  // BACKEND INTEGRATION: Loading States to prevent spam-clicking
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingSecurity, setIsSavingSecurity] = useState(false);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
-  // --- 2. INPUT HANDLERS ---
+  // --- NEW: Custom Alert Modal ---
+  const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'success' });
+
   const handleNameChange = (e) => {
     const lettersOnly = e.target.value.replace(/[0-9]/g, '');
     setAdminData({ ...adminData, name: lettersOnly });
@@ -38,12 +38,11 @@ export default function AdminProfile() {
     setShowPass((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  // --- 3. IMAGE CUSTOMIZATION & DRAG STATE ---
   const [imageModal, setImageModal] = useState({
     isOpen: false,
     type: null, 
     tempUrl: null,
-    rawFile: null // BACKEND INTEGRATION: Stores the actual file object for the database
+    rawFile: null 
   });
   
   const [zoomLevel, setZoomLevel] = useState(100);
@@ -63,12 +62,6 @@ export default function AdminProfile() {
   };
 
   const handleApplyImage = async () => {
-    // BACKEND TODO: Handle Image Upload here
-    // Example: 
-    // const formData = new FormData(); 
-    // formData.append('image', imageModal.rawFile);
-    // await axios.post('/api/upload', formData);
-    
     setImages((prev) => ({ ...prev, [imageModal.type]: imageModal.tempUrl }));
     setImageModal({ isOpen: false, type: null, tempUrl: null, rawFile: null });
   };
@@ -77,50 +70,37 @@ export default function AdminProfile() {
     setImageModal({ isOpen: false, type: null, tempUrl: null, rawFile: null });
   };
 
-  // Drag Handlers
   const handleMouseDown = (e) => { setIsDragging(true); setDragStart({ x: e.clientX - imagePos.x, y: e.clientY - imagePos.y }); };
   const handleMouseMove = (e) => { if (isDragging) setImagePos({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); };
   const handleMouseUp = () => { setIsDragging(false); };
-
-  // --- 4. BACKEND-READY SUBMIT HANDLERS ---
   
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    setIsSavingProfile(true); // Triggers loading spinner
-    
+    setIsSavingProfile(true); 
     try {
-      // BACKEND TODO: Replace setTimeout with your actual API endpoint
-      // const response = await axios.put('/api/admin/profile', adminData);
-      
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulated network delay
-      alert(`Profile updated successfully for ${adminData.name}!`);
+      await new Promise(resolve => setTimeout(resolve, 1500)); 
+      setAlertDialog({ isOpen: true, title: 'Profile Updated', message: `Profile updated successfully for ${adminData.name}!`, type: 'success' });
     } catch (error) {
-      console.error("Error saving profile:", error);
-      alert("Failed to update profile. Please try again.");
+      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to update profile. Please try again.', type: 'error' });
     } finally {
-      setIsSavingProfile(false); // Turns off loading spinner
+      setIsSavingProfile(false); 
     }
   };
 
   const handleSavePassword = async (e) => {
     e.preventDefault();
     if (passwords.new !== passwords.confirm) {
-      alert("Error: New passwords do not match!");
+      setAlertDialog({ isOpen: true, title: 'Error', message: 'New passwords do not match!', type: 'error' });
       return;
     }
     
     setIsSavingSecurity(true);
-    
     try {
-      // BACKEND TODO: Replace setTimeout with your actual API endpoint
-      // await axios.put('/api/admin/security', { current: passwords.current, new: passwords.new });
-      
       await new Promise(resolve => setTimeout(resolve, 1500));
-      alert("Security update: Password changed successfully!");
-      setPasswords({ current: '', new: '', confirm: '' }); // Clear fields on success
+      setAlertDialog({ isOpen: true, title: 'Security Updated', message: 'Password changed successfully!', type: 'success' });
+      setPasswords({ current: '', new: '', confirm: '' }); 
     } catch (error) {
-      console.error("Error saving password:", error);
-      alert("Failed to update password.");
+      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to update password.', type: 'error' });
     } finally {
       setIsSavingSecurity(false);
     }
@@ -129,32 +109,25 @@ export default function AdminProfile() {
   const handleSaveBranding = async (e) => {
     e.preventDefault();
     setIsSavingBranding(true);
-    
     try {
-      // BACKEND TODO: Send 'images' data via API
       await new Promise(resolve => setTimeout(resolve, 1500));
-      alert("System Branding updated successfully!");
+      setAlertDialog({ isOpen: true, title: 'Branding Saved', message: 'System Branding updated successfully!', type: 'success' });
     } catch (error) {
-      console.error("Error saving branding:", error);
+      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to save branding.', type: 'error' });
     } finally {
       setIsSavingBranding(false);
     }
   };
 
-  // --- 5. REUSABLE TAILWIND CLASSES (Fully Light/Dark Compatible) ---
   const inputClass = "w-full p-2.5 bg-slate-50 dark:bg-[#1e1e1e] border border-slate-300 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-gray-300 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors shadow-sm";
   const labelClass = "text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-2";
-  
-  // UNIFIED BRAND BUTTON: Gradient Yellow-to-Amber
   const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       
-      {/* --- HEADER --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* --- LEFT COLUMN: Profile Picture --- */}
         <div className="lg:col-span-1 bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col items-center text-center h-fit">
           <div className="relative mb-4 group">
             <img 
@@ -173,10 +146,8 @@ export default function AdminProfile() {
           <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">System Administrator</p>
         </div>
 
-        {/* --- RIGHT COLUMN: Forms --- */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* 1. Account Details Form */}
           <div className="bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
             
             <div className="flex items-center gap-2 mb-4 border-b border-slate-200 dark:border-slate-700/50 pb-3">
@@ -209,7 +180,6 @@ export default function AdminProfile() {
             </form>
           </div>
 
-          {/* 2. Security Form */}
           <div className="bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
             
             <div className="flex items-center gap-2 mb-4 border-b border-slate-200 dark:border-slate-700/50 pb-3">
@@ -264,7 +234,6 @@ export default function AdminProfile() {
         </div>
       </div>
 
-      {/* --- BOTTOM SECTION: System Branding --- */}
       <div className="bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm mt-6">
         
         <div className="flex items-center gap-2 mb-6 border-b border-slate-200 dark:border-slate-700/50 pb-3">
@@ -316,11 +285,8 @@ export default function AdminProfile() {
         </form>
       </div>
 
-      {/* =========================================
-          IMAGE CUSTOMIZATION MODAL (Backend Ready)
-          ========================================= */}
       {imageModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700/50 flex flex-col">
             
             <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-[#1e1e1e]">
@@ -346,7 +312,7 @@ export default function AdminProfile() {
                 <img 
                   src={imageModal.tempUrl} 
                   alt="Preview" 
-                  className="relative pointer-events-none" 
+                  className="relative pointer-events-none min-w-full min-h-full object-cover" 
                   style={{ 
                     transform: `translate(${imagePos.x}px, ${imagePos.y}px) scale(${zoomLevel / 100})`,
                     userSelect: 'none'
@@ -382,6 +348,26 @@ export default function AdminProfile() {
               </button>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {/* --- CUSTOM ALERT MODAL --- */}
+      {alertDialog.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
+            <div className="p-6 text-center space-y-4">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
+                {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
+              </div>
+              <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
+              <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
+            </div>
+            <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center">
+              <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
+                Okay
+              </button>
+            </div>
           </div>
         </div>
       )}

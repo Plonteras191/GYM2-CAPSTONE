@@ -63,7 +63,7 @@ def load_registered_faces():
     known_face_names.clear()
     
     print("\n" + "="*50)
-    print("🚀 [CAPSTONE READY] LONG-RANGE AI ENGINE...")
+    print("🚀 [CAPSTONE READY] HIGH-ACCURACY AI ENGINE...")
     print("[SYNC] Fetching registered members from Laravel...")
     try:
         response = requests.get(f"{LARAVEL_API}/ai/members-faces")

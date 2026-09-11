@@ -81,13 +81,19 @@ class DashboardController extends Controller
         $alerts = collect();
 
         // Alert 1: Missing Subscriptions
+        // The System will only alert the coach if the user has been registered for more than 30 days.
+        $oneMonthAgo = Carbon::now()->subDays(30);
+
         foreach ($activeMembers as $member) {
             if (!in_array($member->id, $activeSubsMemberIds)) {
-                $alerts->push([
-                    'id' => 'sub_' . $member->id,
-                    'member_name' => $member->first_name . ' ' . $member->last_name,
-                    'message' => 'Status is Active, but has no valid subscription plan.'
-                ]);
+                // Check if they are past the 1-month grace period
+                if ($member->created_at < $oneMonthAgo) {
+                    $alerts->push([
+                        'id' => 'sub_' . $member->id,
+                        'member_name' => $member->first_name . ' ' . $member->last_name,
+                        'message' => 'Active for >1 month but has no valid subscription plan.'
+                    ]);
+                }
             }
         }
 

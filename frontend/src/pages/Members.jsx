@@ -27,7 +27,6 @@ const getBmiInfo = (height, weight) => {
   return { value: bmi, label: 'Obese Class III', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
 };
 
-// Strictly evaluates if an unverified task is past 9:30 PM on the assigned day
 const getTaskStatus = (log) => {
   const isAssigned = log.exercise.startsWith('ASSIGNED: ');
   if (!isAssigned) return 'VERIFIED';
@@ -71,7 +70,6 @@ export default function Members() {
   const [workoutPage, setWorkoutPage] = useState(1);
   const [expandedDate, setExpandedDate] = useState(null);
 
-  // --- COACH MULTI-SELECT STATE ---
   const [exercisesLib, setExercisesLib] = useState([]);
   const [exSearch, setExSearch] = useState('');
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -453,19 +451,11 @@ export default function Members() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-sm border-2 border-gray-300 dark:border-gray-600 overflow-hidden">
+      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-sm border-2 border-gray-300 dark:border-gray-600 overflow-hidden flex flex-col">
         <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b-2 border-gray-300 dark:border-gray-600 gap-4 bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center gap-2 text-slate-800 dark:text-gray-300 font-bold text-sm tracking-wide">
             <FiUsers size={18} />
             <span>{filteredMembers.length} TOTAL MEMBERS</span>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-4 text-sm text-slate-500 dark:text-gray-400">
-            <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
-              <button onClick={goToPrevPage} disabled={currentPage === 1 || totalPages === 0} className="p-1 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><FiChevronLeft size={18} /></button>
-              {generatePageNumbers()}
-              <button onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0} className="p-1 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><FiChevronRight size={18} /></button>
-            </div>
           </div>
         </div>
 
@@ -485,9 +475,14 @@ export default function Members() {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
               {isLoadingData ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-amber-500">
-                    <FiLoader className="animate-spin text-2xl mx-auto" />
-                    <p className="mt-2 text-sm font-bold text-slate-500 dark:text-gray-400">Loading Database...</p>
+                  <td colSpan="7" className="px-6 py-24 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="relative w-16 h-16">
+                        <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                      <p className="text-sm font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest animate-pulse">Loading Database...</p>
+                    </div>
                   </td>
                 </tr>
               ) : currentMembers.length === 0 ? (
@@ -566,6 +561,21 @@ export default function Members() {
             </tbody>
           </table>
         </div>
+
+        {/* --- ADDED BOTTOM PAGINATION HERE --- */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t-2 border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
+              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredMembers.length)} of {filteredMembers.length} Entries
+            </span>
+            <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
+              <button onClick={goToPrevPage} disabled={currentPage === 1} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><FiChevronLeft size={18} /></button>
+              {generatePageNumbers()}
+              <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><FiChevronRight size={18} /></button>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* --- ADD / EDIT MEMBER MODAL --- */}
@@ -709,7 +719,6 @@ export default function Members() {
       {/* --- COMPREHENSIVE PROFILE LIBRARY MODAL --- */}
       {isProfileModalOpen && selectedProfile && (() => {
         const profileBmiData = getBmiInfo(selectedProfile.height, selectedProfile.weight);
-        const hasCoach = (selectedProfile.plan || '').toLowerCase().includes('coach');
         
         // Maps the attendance data so FullCalendar can render it
         const attendanceEvents = profileAttendance.map(log => ({
@@ -843,12 +852,10 @@ export default function Members() {
                     Attendance Calendar
                     {activeProfileTab === 'attendance' && <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500 rounded-t-full"></div>}
                   </button>
-                  {hasCoach && (
-                      <button onClick={() => setActiveProfileTab('plan')} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeProfileTab === 'plan' ? 'text-amber-500' : 'text-gray-500 hover:text-slate-800 dark:hover:text-white'}`}>
-                        Coach's Training Plan
-                        {activeProfileTab === 'plan' && <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500 rounded-t-full"></div>}
-                      </button>
-                  )}
+                  <button onClick={() => setActiveProfileTab('plan')} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeProfileTab === 'plan' ? 'text-amber-500' : 'text-gray-500 hover:text-slate-800 dark:hover:text-white'}`}>
+                    Coach's Training Plan
+                    {activeProfileTab === 'plan' && <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500 rounded-t-full"></div>}
+                  </button>
                 </div>
 
                 {/* Tab Content Area */}
@@ -863,7 +870,7 @@ export default function Members() {
                             .dark .fc { --fc-border-color: #4b5563; --fc-neutral-text-color: #d1d5db; --fc-today-bg-color: rgba(245, 158, 11, 0.1); color: #d1d5db; }
                             
                             /* Amber-Gradient Buttons exactly matching the Dashboard */
-                            .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000000 !important; text-transform: capitalize !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; transition: all 0.2s ease; margin: 0 4px !important; }
+                            .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000000 !important; text-transform: capitalize !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; transition: all 0.2s ease !important; margin: 0 4px !important; }
                             .dark .fc .fc-button-primary { background-color: #1e293b !important; border-color: #374151 !important; color: #d1d5db !important; }
                             .fc .fc-button-primary:hover { background-color: #e2e8f0 !important; color: #000000 !important; }
                             .dark .fc .fc-button-primary:hover { background-color: #334155 !important; color: #ffffff !important; }
@@ -888,7 +895,7 @@ export default function Members() {
                             .fc-daygrid-event-dot { display: none !important; } 
                             .fc-event-main { color: #ffffff !important; font-weight: 800 !important; font-size: 0.65rem !important; letter-spacing: 0.03em; text-shadow: 0px 1px 2px rgba(0,0,0,0.8) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2 !important; }
 
-                            /* 🔴 NEW: Completely nuke all internal scrollbars to force a clean fit */
+                            /* Ã°Å¸â€ Â´ NEW: Completely nuke all internal scrollbars to force a clean fit */
                             .fc-scroller::-webkit-scrollbar { display: none !important; }
                             .fc-scroller { -ms-overflow-style: none; scrollbar-width: none; overflow: hidden !important; }
                           `}</style>
@@ -1041,13 +1048,15 @@ export default function Members() {
 
                   {/* 2. THE MULTI-SELECT WEEKLY SCHEDULE ASSIGNER */}
                   {activeProfileTab === 'plan' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-0">
-                      <div className="border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row overflow-hidden flex-1 min-h-0">
+                    <div className="animate-in fade-in slide-in-from-bottom-2 h-full relative min-h-0">
+                      
+                      {/* --- ABSOLUTE INSET WRAPPER PREVENTS HEIGHT BLOWOUT --- */}
+                      <div className="absolute inset-0 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row overflow-hidden">
                          
                          {/* Left: Exercise Library */}
-                         <div className="w-full sm:w-1/2 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 min-h-0">
+                         <div className="w-full sm:w-1/2 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 h-full">
                             <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                               <input type="text" placeholder="Search Exercise Library..." value={exSearch} onChange={e=>setExSearch(e.target.value)} className="w-full p-2 text-xs bg-white dark:bg-[#252830] border border-gray-200 dark:border-gray-700 rounded outline-none text-slate-800 dark:text-gray-300 font-medium" />
+                               <input type="text" placeholder="Search Exercise Library..." value={exSearch} onChange={e=>setExSearch(e.target.value)} className="w-full p-2 text-xs bg-white dark:bg-[#252830] border border-gray-200 dark:border-gray-700 rounded outline-none text-slate-800 dark:text-gray-300 font-medium shadow-sm" />
                             </div>
                             <div className="p-3 flex-1 overflow-y-auto hidden-scrollbar space-y-2">
                                {exercisesLib.filter(ex => ex.name.toLowerCase().includes(exSearch.toLowerCase())).slice(0, 50).map(ex => {
@@ -1061,7 +1070,6 @@ export default function Members() {
                                           loading="lazy"
                                           onError={(e) => {
                                             e.target.onerror = null; 
-                                            // Modern placeholder if GIF is missing
                                             e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="%23f1f5f9" rx="4"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="8" fill="%2394a3b8" font-weight="bold">NO PREVIEW</text></svg>';
                                           }} 
                                         />
@@ -1078,7 +1086,7 @@ export default function Members() {
                          </div>
 
                          {/* Right: Selected Routine */}
-                         <div className="w-full sm:w-1/2 flex flex-col bg-white dark:bg-[#252830] min-h-0">
+                         <div className="w-full sm:w-1/2 flex flex-col bg-white dark:bg-[#252830] h-full">
                             <div className="flex w-full overflow-x-auto hidden-scrollbar border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-gray-50 dark:bg-[#1a1c23]/50">
                                {daysOfWeek.map(day => (
                                   <button key={day} onClick={() => setActiveDay(day)} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${activeDay === day ? 'border-amber-500 text-amber-600 dark:text-amber-500 bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
@@ -1116,7 +1124,6 @@ export default function Members() {
                                </button>
                             </div>
                          </div>
-
                       </div>
                     </div>
                   )}

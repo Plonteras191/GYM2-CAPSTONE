@@ -401,7 +401,6 @@ export default function Subscriptions() {
           </div>
 
           <div className="bg-white dark:bg-[#252830] rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm overflow-hidden">
-            {/* Table Header with Pagination */}
             <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b-2 border-gray-300 dark:border-gray-600 gap-4 bg-gray-50 dark:bg-gray-800/50">
               <div className="flex items-center gap-2 text-slate-800 dark:text-gray-300 font-bold text-sm tracking-wide">
                 <FiList size={18} />
@@ -429,7 +428,17 @@ export default function Subscriptions() {
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
                   {isLoading ? (
-                    <tr><td colSpan="7" className="px-6 py-12 text-center text-amber-500"><FiLoader className="animate-spin text-2xl mx-auto" /><p className="mt-2 text-sm font-bold text-slate-500 dark:text-gray-400">Loading Database...</p></td></tr>
+                    <tr>
+                      <td colSpan="7" className="px-6 py-24 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                          <div className="relative w-16 h-16">
+                            <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full"></div>
+                            <div className="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                          <p className="text-sm font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest animate-pulse">Loading Database...</p>
+                        </div>
+                      </td>
+                    </tr>
                   ) : currentSubs.length === 0 ? (
                     <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">No subscriptions found.</td></tr>
                   ) : (
@@ -722,7 +731,6 @@ export default function Subscriptions() {
                     <span className={labelClass}>Plan</span>
                     <select required value={formData.plan_type} onChange={(e) => setFormData({...formData, plan_type: e.target.value})} className={inputClass}>
                       <option value="">-- Select a Plan --</option>
-                      {/* ONLY SHOWS SUBSCRIPTION PLANS, NOT DAILY/WALK-IN */}
                       {filteredDropdownPlans.map(p => <option key={p.id} value={p.name}>{p.name} (&#8369;{p.price})</option>)}
                     </select>
                   </label>

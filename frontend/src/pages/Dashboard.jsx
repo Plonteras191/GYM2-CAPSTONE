@@ -11,8 +11,6 @@ import {
   FiAlertCircle, FiLoader 
 } from 'react-icons/fi';
 
-import cover from '../assets/cover.jpg';
-
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
@@ -155,14 +153,6 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       
-      <div 
-        className="w-full h-40 rounded-2xl bg-cover bg-center relative overflow-hidden flex items-end p-6 shadow-md border-2 border-gray-300 dark:border-gray-600"
-        style={{ backgroundImage: `url(${cover})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent"></div>
-        <h2 className="relative text-3xl font-bold text-white z-10 drop-shadow-xl tracking-wide">Welcome back, Coach!</h2>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Link to="/transactions"><StatCard title="Total Revenue" value={`₱ ${stats.revenue.toLocaleString()}`} icon={<FiDollarSign size={28} strokeWidth={2.5} />} colorClass="bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none" /></Link>
         <Link to="/members"><StatCard title="Total Members" value={stats.members} icon={<FiUsers size={28} strokeWidth={2.5} />} colorClass="bg-blue-800 text-white shadow-lg shadow-blue-700/40 dark:shadow-none" /></Link>

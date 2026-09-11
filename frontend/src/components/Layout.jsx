@@ -32,6 +32,9 @@ export default function Layout() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // --- NEW: Custom Confirm Dialog for Logout ---
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
   const adminName = localStorage.getItem('admin_name') || 'Admin Profile';
 
   useEffect(() => {
@@ -46,22 +49,23 @@ export default function Layout() {
       fetchNotifications();
   }, [location.pathname]);
 
-  const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      try {
-        // 1. Tell Laravel to destroy the Sanctum token securely
-        await api.post('/auth/logout');
-      } catch (error) {
-        console.error("Server logout failed, forcing local logout", error);
-      } finally {
-        // 2. Wipe the credentials from the browser
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_name');
-        
-        // 3. Force a hard page reload to clear React's memory and trigger the route guard
-        window.location.href = '/login';
+  const handleLogout = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to securely end your session and log out of the system?',
+      onConfirm: async () => {
+        try {
+          await api.post('/auth/logout');
+        } catch (error) {
+          console.error("Server logout failed, forcing local logout", error);
+        } finally {
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_name');
+          window.location.href = '/login';
+        }
       }
-    }
+    });
   };
 
   const navGroups = [
@@ -251,8 +255,29 @@ export default function Layout() {
         <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-[#050505] w-full relative hidden-scrollbar">
           <Outlet />
         </main>
-      </div>
 
+        {/* GLOBAL LAYOUT CONFIRM LOGOUT MODAL */}
+        {confirmDialog.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 border-red-500/30">
+              <div className="p-6 text-center space-y-4">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-200 dark:border-red-500/30">
+                  <FiLogOut size={32} />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{confirmDialog.title}</h3>
+                <p className="text-slate-500 dark:text-gray-400 font-medium">{confirmDialog.message}</p>
+              </div>
+              <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center gap-3">
+                <button onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} className="flex-1 px-4 py-2.5 rounded-xl font-bold text-slate-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors uppercase tracking-wide text-xs">Cancel</button>
+                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ ...confirmDialog, isOpen: false }); }} className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-red-900/20 transition-all active:scale-95 uppercase tracking-wide text-xs">
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
