@@ -1,13 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../../api';
+import { useDataCache } from '../../../context/DataCacheContext';
 
 export function useSubscriptions() {
+  const { getCache, setCache, invalidateCache } = useDataCache();
+
+  const cachedData = getCache('subscriptions_data');
   const [activeView, setActiveView] = useState('calendar');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!cachedData);
   
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [membersList, setMembersList] = useState([]);
-  const [plans, setPlans] = useState([]); 
+  const [subscriptions, setSubscriptions] = useState(cachedData?.subscriptions || []);
+  const [membersList, setMembersList] = useState(cachedData?.membersList || []);
+  const [plans, setPlans] = useState(cachedData?.plans || []); 
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
@@ -71,27 +75,32 @@ export function useSubscriptions() {
   const [formData, setFormData] = useState(defaultForm);
   const [newPlan, setNewPlan] = useState({ name: '', price: '', duration_days: 30 });
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
     try {
       const [subsResponse, membersResponse, plansResponse] = await Promise.all([
         api.get('/memberships'),
         api.get('/members'),
         api.get('/plans') 
       ]);
-      setSubscriptions(Array.isArray(subsResponse.data) ? subsResponse.data : []);
-      setMembersList(Array.isArray(membersResponse.data) ? membersResponse.data : []);
-      setPlans(Array.isArray(plansResponse.data) ? plansResponse.data : []);
+      const newSubs = Array.isArray(subsResponse.data) ? subsResponse.data : [];
+      const newMembers = Array.isArray(membersResponse.data) ? membersResponse.data : [];
+      const newPlans = Array.isArray(plansResponse.data) ? plansResponse.data : [];
+      setSubscriptions(newSubs);
+      setMembersList(newMembers);
+      setPlans(newPlans);
+      setCache('subscriptions_data', { subscriptions: newSubs, membersList: newMembers, plans: newPlans });
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [setCache]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const hasCached = !!getCache('subscriptions_data');
+    fetchData(!hasCached);
+  }, [fetchData, getCache]);
 
   // Auto calculate end_date
   useEffect(() => {
@@ -186,7 +195,11 @@ export function useSubscriptions() {
         await api.post(`/members/${formData.member_id}`, memberData).catch(() => {});
       }
       saveRecentColor(formData.color);
-      await fetchData(); 
+      // Invalidate related caches so other pages get fresh data
+      invalidateCache('subscriptions_data');
+      invalidateCache('members');
+      invalidateCache('dashboard');
+      await fetchData(false); 
       setIsModalOpen(false);
       setAlertDialog({ isOpen: true, title: 'Success', message: 'Subscription saved successfully!', type: 'success' });
     } catch (error) { 

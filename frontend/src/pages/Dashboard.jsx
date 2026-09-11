@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import api from '../api'; 
+import { useDataCache } from '../context/DataCacheContext';
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
@@ -12,14 +13,16 @@ import {
 } from 'react-icons/fi';
 
 export default function Dashboard() {
-  const [isLoading, setIsLoading] = useState(true);
+  const { getCache, setCache } = useDataCache();
 
-  const [salesData, setSalesData] = useState([]);
-  const [stats, setStats] = useState({ revenue: 0, members: 0, activeSubs: 0, reports: 0 });
-  const [recentMembers, setRecentMembers] = useState([]);
-  const [recentTxns, setRecentTxns] = useState([]);
-  const [expiringSoon, setExpiringSoon] = useState([]);
-  const [rawCalendarEvents, setRawCalendarEvents] = useState([]);
+  const cachedDash = getCache('dashboard');
+  const [isLoading, setIsLoading] = useState(!cachedDash);
+  const [salesData, setSalesData] = useState(cachedDash?.salesData || []);
+  const [stats, setStats] = useState(cachedDash?.stats || { revenue: 0, members: 0, activeSubs: 0, reports: 0 });
+  const [recentMembers, setRecentMembers] = useState(cachedDash?.recentMembers || []);
+  const [recentTxns, setRecentTxns] = useState(cachedDash?.recentTxns || []);
+  const [expiringSoon, setExpiringSoon] = useState(cachedDash?.expiringSoon || []);
+  const [rawCalendarEvents, setRawCalendarEvents] = useState(cachedDash?.rawCalendarEvents || []);
 
   // Fetch coach events stored in local storage from Subscriptions page
   const [coachEvents, setCoachEvents] = useState(() => {
@@ -27,45 +30,57 @@ export default function Dashboard() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const fetchDashboardData = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
+    try {
+      const response = await api.get('/dashboard');
+      const data = response.data;
+
+      const newStats = data.stats;
+      const newSalesData = data.salesData;
+      const newRecentMembers = data.recentMembers.map(m => `${m.first_name} ${m.last_name}`);
+      const newRecentTxns = data.recentTxns.map(t => ({
+        type: t.type,
+        amount: t.amount,
+        method: t.payment_method,
+        memberName: t.member ? `${t.member.first_name} ${t.member.last_name}` : 'Walk-in Guest'
+      }));
+      const newExpiringSoon = data.expiringSoon.map(sub => {
+        const daysLeft = Math.ceil((new Date(sub.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+        return {
+          name: sub.member ? `${sub.member.first_name} ${sub.member.last_name}` : 'Unknown Member',
+          days: daysLeft
+        };
+      });
+      const newRawCalendarEvents = data.calendarEvents || [];
+
+      setStats(newStats);
+      setSalesData(newSalesData);
+      setRecentMembers(newRecentMembers);
+      setRecentTxns(newRecentTxns);
+      setExpiringSoon(newExpiringSoon);
+      setRawCalendarEvents(newRawCalendarEvents);
+
+      setCache('dashboard', {
+        stats: newStats,
+        salesData: newSalesData,
+        recentMembers: newRecentMembers,
+        recentTxns: newRecentTxns,
+        expiringSoon: newExpiringSoon,
+        rawCalendarEvents: newRawCalendarEvents,
+      });
+
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setCache]);
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        const response = await api.get('/dashboard');
-        const data = response.data;
-
-        setStats(data.stats);
-        setSalesData(data.salesData);
-        setRecentMembers(data.recentMembers.map(m => `${m.first_name} ${m.last_name}`));
-        
-        // --- ADDED MEMBER NAME EXTRACTION ---
-        setRecentTxns(data.recentTxns.map(t => ({
-          type: t.type,
-          amount: t.amount,
-          method: t.payment_method,
-          memberName: t.member ? `${t.member.first_name} ${t.member.last_name}` : 'Walk-in Guest'
-        })));
-
-        setExpiringSoon(data.expiringSoon.map(sub => {
-          const daysLeft = Math.ceil((new Date(sub.end_date) - new Date()) / (1000 * 60 * 60 * 24));
-          return {
-            name: sub.member ? `${sub.member.first_name} ${sub.member.last_name}` : 'Unknown Member',
-            days: daysLeft
-          };
-        }));
-        
-        // Save the raw subscriptions for smart mapping later
-        setRawCalendarEvents(data.calendarEvents || []);
-
-      } catch (error) {
-        console.error("Failed to load dashboard data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
+    const hasCached = !!getCache('dashboard');
+    fetchDashboardData(!hasCached);
+  }, [fetchDashboardData, getCache]);
 
   // --- SMART CALENDAR MAPPING ENGINE ---
   let allCalendarEvents = [];

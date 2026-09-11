@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import logo from '../assets/logo.png';
 import api from '../api'; 
+import { usePrefetch } from '../hooks/usePrefetch'; 
 
 const getPageTitle = (path) => {
     switch (path.toLowerCase()) {
@@ -28,6 +29,9 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Pre-fetch all pages' data in parallel on first load
+  usePrefetch();
   
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);

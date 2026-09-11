@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../../api';
 import logo from '../../../assets/logo.png';
+import { useDataCache } from '../../../context/DataCacheContext';
 
 export function useTransactions() {
-  const [transactions, setTransactions] = useState([]);
-  const [membersList, setMembersList] = useState([]);
-  const [plansList, setPlansList] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { getCache, setCache, invalidateCache } = useDataCache();
+
+  const cachedData = getCache('transactions_data');
+  const [transactions, setTransactions] = useState(cachedData?.transactions || []);
+  const [membersList, setMembersList] = useState(cachedData?.membersList || []);
+  const [plansList, setPlansList] = useState(cachedData?.plansList || []);
+  const [isLoading, setIsLoading] = useState(!cachedData);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
@@ -28,27 +32,32 @@ export function useTransactions() {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
     try {
       const [txnRes, memRes, plansRes] = await Promise.all([
         api.get('/transactions'),
         api.get('/members'),
         api.get('/plans') 
       ]);
-      setTransactions(Array.isArray(txnRes.data) ? txnRes.data : (txnRes.data?.data || []));
-      setMembersList(Array.isArray(memRes.data) ? memRes.data : []);
-      setPlansList(Array.isArray(plansRes.data) ? plansRes.data : []);
+      const newTxns = Array.isArray(txnRes.data) ? txnRes.data : (txnRes.data?.data || []);
+      const newMembers = Array.isArray(memRes.data) ? memRes.data : [];
+      const newPlans = Array.isArray(plansRes.data) ? plansRes.data : [];
+      setTransactions(newTxns);
+      setMembersList(newMembers);
+      setPlansList(newPlans);
+      setCache('transactions_data', { transactions: newTxns, membersList: newMembers, plansList: newPlans });
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [setCache]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const hasCached = !!getCache('transactions_data');
+    fetchData(!hasCached);
+  }, [fetchData, getCache]);
 
   const handlePlanSelection = (planName) => {
     const selectedPlan = plansList.find(p => p.name === planName);
@@ -92,6 +101,8 @@ export function useTransactions() {
         setDeletingId(id);
         try {
           await api.delete(`/transactions/${id}`);
+          invalidateCache('transactions_data');
+          invalidateCache('dashboard');
           setTransactions(prev => prev.filter(t => t.id !== id));
         } catch (error) {
           console.error("Failed to delete transaction:", error);
@@ -114,7 +125,9 @@ export function useTransactions() {
       } else {
         await api.post('/transactions', payload);
       }
-      await fetchData();
+      invalidateCache('transactions_data');
+      invalidateCache('dashboard');
+      await fetchData(false);
       setIsModalOpen(false);
       setAlertDialog({ isOpen: true, title: 'Success', message: 'Transaction recorded successfully!', type: 'success' });
     } catch (error) {

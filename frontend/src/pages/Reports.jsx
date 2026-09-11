@@ -5,8 +5,10 @@ import {
 } from 'react-icons/fi';
 import api from '../api';
 import { useLocation } from 'react-router-dom';
+import { useDataCache } from '../context/DataCacheContext';
 
 export default function Reports() {
+  const { getCache, setCache } = useDataCache();
   const location = useLocation();
   const [reportType, setReportType] = useState(location.state?.defaultTab || 'Payments');
   
@@ -18,25 +20,35 @@ export default function Reports() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const [isExporting, setIsExporting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const [reportData, setReportData] = useState(null);
+  // Cache key includes date range so changing dates correctly re-fetches
+  const cacheKey = `reports_${startDate}_${endDate}`;
+  const [isLoading, setIsLoading] = useState(!getCache(cacheKey));
+  const [reportData, setReportData] = useState(() => getCache(cacheKey));
 
   const fetchReports = useCallback(async () => {
-    if (!reportData) setIsLoading(true);
+    const cached = getCache(cacheKey);
+    if (!cached) setIsLoading(true);
     try {
       const res = await api.get(`/reports?start=${startDate}&end=${endDate}`);
       setReportData(res.data);
+      setCache(cacheKey, res.data);
     } catch (error) {
       console.error("Failed to load reports:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, cacheKey, getCache, setCache]);
 
   useEffect(() => {
+    // Check if the cached version for this date range exists
+    const cached = getCache(cacheKey);
+    if (cached) {
+      setReportData(cached);
+      setIsLoading(false);
+    }
     fetchReports();
-  }, [fetchReports]);
+  }, [fetchReports, cacheKey, getCache]);
 
   const handleExportCSV = async () => {
     if (!reportData) return;
