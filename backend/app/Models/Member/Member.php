@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Member;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,4 +23,14 @@ class Member extends Model
         'weight', 
         'address'
     ];
+
+    public function memberships()
+    {
+        return $this->hasMany(Membership::class);
+    }
+
+    public function activeMembership()
+    {
+        return $this->hasOne(Membership::class)->where('status', 'Active')->latestOfMany();
+    }
 }

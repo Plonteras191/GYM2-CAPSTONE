@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
-use App\Models\Member;
-use App\Models\Membership;
-use App\Models\Transaction;
+use App\Http\Controllers\Controller;
+use App\Models\Member\Member;
+use App\Models\Member\Membership;
+use App\Models\Member\Transaction;
+use App\Models\Tracking\WorkoutLog;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -70,6 +72,7 @@ class DashboardController extends Controller
             'calendarEvents' => $calendarEvents
         ]);
     }
+
     public function notifications()
     {
         $activeMembers = Member::where('status', 'Active')->get();
@@ -98,7 +101,7 @@ class DashboardController extends Controller
         }
 
         // Alert 2: Unverified CCTV Tasks (The Snitch!)
-        $uncompletedTasks = \App\Models\WorkoutLog::with('member:id,first_name,last_name')
+        $uncompletedTasks = WorkoutLog::with('member:id,first_name,last_name')
             ->where('date', Carbon::today())
             ->where('exercise', 'LIKE', 'ASSIGNED: %')
             ->get();

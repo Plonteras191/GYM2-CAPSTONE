@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Member;
 
-use App\Models\Transaction;
+use App\Http\Controllers\Controller;
+use App\Models\Member\Transaction;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller

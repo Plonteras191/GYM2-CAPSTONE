@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Member;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Gym\Plan;
 
 class Membership extends Model
 {
@@ -11,6 +12,7 @@ class Membership extends Model
 
     protected $fillable = [
         'member_id',
+        'plan_id',
         'plan_type',
         'start_date',
         'end_date',
@@ -21,9 +23,13 @@ class Membership extends Model
         'notes'
     ];
 
-    // Tells Laravel that every membership belongs to a specific member
     public function member()
     {
         return $this->belongsTo(Member::class);
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
     }
 }

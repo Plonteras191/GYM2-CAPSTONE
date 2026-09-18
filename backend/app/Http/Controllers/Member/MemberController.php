@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Member;
 
-use App\Models\Member;
-use App\Models\Attendance;
+use App\Http\Controllers\Controller;
+use App\Models\Member\Member;
+use App\Models\Tracking\Attendance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;

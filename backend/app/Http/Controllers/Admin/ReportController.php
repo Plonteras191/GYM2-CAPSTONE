@@ -1,11 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
-use App\Models\Transaction;
-use App\Models\Membership;
-use App\Models\Member;
-use App\Models\Attendance;
+use App\Http\Controllers\Controller;
+use App\Models\Member\Transaction;
+use App\Models\Member\Membership;
+use App\Models\Member\Member;
+use App\Models\Tracking\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -20,13 +21,6 @@ class ReportController extends Controller
 
         $startDateTime = $start . ' 00:00:00';
         $endDateTime   = $end   . ' 23:59:59';
-
-        // ══════════════════════════════════════════════════════════════════
-        // Run all queries — each selects ONLY the columns it needs.
-        // The member join uses :id,first_name,last_name to prevent loading
-        // enrolled_face_id (a base64 longText field — very expensive).
-        // DB-level COUNT aggregation replaces PHP-level collection filtering.
-        // ══════════════════════════════════════════════════════════════════
 
         // 1. Transactions in date range (only needed columns)
         $txns = Transaction::select(
@@ -48,11 +42,10 @@ class ReportController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 3. New member signups count (DB aggregate — no row loading)
+        // 3. New member signups count
         $newSignups = Member::whereBetween('created_at', [$startDateTime, $endDateTime])->count();
 
-        // 4. Active / Expired membership counts — single GROUP BY query
-        //    instead of loading all rows and counting in PHP
+        // 4. Active / Expired membership counts
         $statusCounts = Membership::select('status', DB::raw('COUNT(*) as total'))
             ->whereIn('status', ['Active', 'Expired'])
             ->groupBy('status')
@@ -60,7 +53,7 @@ class ReportController extends Controller
         $activeCount  = $statusCounts['Active']  ?? 0;
         $expiredCount = $statusCounts['Expired'] ?? 0;
 
-        // 5. Attendance records in date range (only needed columns)
+        // 5. Attendance records in date range
         $attendances = Attendance::select('id', 'member_id', 'date', 'time_in')
             ->with('member:id,first_name,last_name,plan')
             ->whereBetween('date', [$start, $end])
@@ -68,14 +61,14 @@ class ReportController extends Controller
             ->orderBy('time_in', 'desc')
             ->get();
 
-        // ── Build KPIs from in-memory collections (no extra DB hits) ─────────
+        // Build KPIs
         $totalIncome   = $txns->where('status', 'Complete')->where('amount', '>', 0)->sum('amount');
         $refunds       = $txns->where('type', 'Refund')->sum('amount');
         $netRevenue    = $totalIncome - abs($refunds);
         $pendingAmount = $txns->where('status', 'Pending')->sum('amount');
         $totalCheckIns = $attendances->count();
 
-        // ── Map rows ─────────────────────────────────────────────────────────
+        // Map rows
         $paymentRows = $txns->map(fn($t) => [
             $t->transaction_id,
             $t->transaction_date,

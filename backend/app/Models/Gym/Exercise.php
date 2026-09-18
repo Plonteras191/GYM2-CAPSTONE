@@ -1,18 +1,20 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Gym;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Plan extends Model
+class Exercise extends Model
 {
     use HasFactory;
 
-    // THIS IS THE VIP LIST! If this is missing, Laravel crashes with a 500 error.
     protected $fillable = [
+        'exercise_id', 
         'name', 
-        'price', 
-        'duration_days'
+        'category', 
+        'body_part', 
+        'equipment', 
+        'gif_path'
     ];
 }
