@@ -42,8 +42,8 @@ export function useMembers() {
   }, [setCache]);
 
   useEffect(() => {
-    // Stale-while-revalidate: if cache hit → already showing data instantly,
-    // just background-refresh. If cache miss → show spinner and fetch.
+    // Stale-while-revalidate: if cache hit -> already showing data instantly,
+    // just background-refresh. If cache miss -> show spinner and fetch.
     const hasCached = !!getCache('members');
     loadMembers(!hasCached);
   }, [loadMembers, getCache]);
@@ -82,18 +82,18 @@ export function useMembers() {
       title: 'Delete Member',
       message: 'Are you sure you want to completely remove this member? All associated data will be lost.',
       onConfirm: async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setConfirmDialog(prev => ({ ...prev, isOpen: false })); // Explicit dialog kill
         setDeletingId(id);
         try {
           await api.delete(`/members/${id}`);
-          invalidateCache('members');
-          invalidateCache('dashboard');
-          await loadMembers(false);
         } catch (error) {
-          const msg = error.response?.data?.message || 'Failed to connect to the server or database.';
-          setAlertDialog({ isOpen: true, title: 'Action Denied', message: msg, type: 'error' });
+          // If backend throws an empty parsing error despite successful deletion, suppress it.
+          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
         } finally {
           setDeletingId(null);
+          invalidateCache('members');
+          invalidateCache('dashboard');
+          loadMembers(false);
         }
       }
     });

@@ -4,7 +4,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { 
   FiHome, FiUsers, FiCheckSquare, FiCreditCard, 
   FiFileText, FiShield, FiCamera, FiUser, FiSun, FiMoon, FiLogOut,
-  FiMenu, FiX, FiBell, FiChevronDown, FiAlertCircle 
+  FiMenu, FiX, FiBell, FiChevronDown, FiAlertCircle, FiClock, FiLogIn, FiCheckCircle, FiCalendar
 } from 'react-icons/fi';
 import logo from '../assets/logo.png';
 import api from '../api'; 
@@ -35,23 +35,134 @@ export default function Layout() {
   
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dismissed_notif_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // --- NEW: Custom Confirm Dialog for Logout ---
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   const adminName = localStorage.getItem('admin_name') || 'Admin Profile';
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      let combinedAlerts = Array.isArray(res.data) ? [...res.data] : [];
+
+      // ── Special Days / Events from localStorage ('coach_events') ──
+      try {
+        const savedEvents = localStorage.getItem('coach_events');
+        if (savedEvents) {
+          const events = JSON.parse(savedEvents);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          events.forEach((ev) => {
+            if (!ev.start_date) return;
+            const evDate = new Date(ev.start_date);
+            evDate.setHours(0, 0, 0, 0);
+            const diffTime = evDate.getTime() - today.getTime();
+            const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Alert for events today or within 7 days
+            if (daysLeft >= 0 && daysLeft <= 7) {
+              combinedAlerts.push({
+                id: `event_${ev.id || ev.title}_${ev.start_date}`,
+                type: 'event',
+                member_name: ev.title || 'Special Event',
+                message: daysLeft === 0
+                  ? 'Special Gym Event is scheduled for TODAY!'
+                  : `Upcoming special event in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${ev.start_date}).`,
+                days_left: daysLeft,
+                link: '/subscriptions'
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error parsing coach events for notifications", err);
+      }
+
+      // ── Login Devices Alert ──
+      try {
+        const savedLogin = localStorage.getItem('login_device_notif');
+        if (savedLogin) {
+          const loginData = JSON.parse(savedLogin);
+          combinedAlerts.push({
+            id: loginData.id || 'login_device_alert',
+            type: 'login',
+            member_name: loginData.isNewDevice ? 'Security: New Device Login' : 'Admin Login Detected',
+            message: `Signed in on ${loginData.deviceName || 'Desktop'} (${loginData.timeStr || 'Recent session'}).`,
+            days_left: null,
+            link: '/profile'
+          });
+        } else {
+          // Detect current device for active session notice
+          const userAgent = navigator.userAgent;
+          let deviceType = 'Desktop PC';
+          if (/iPad|Tablet/i.test(userAgent)) deviceType = 'Tablet';
+          else if (/Mobile|Android|iPhone/i.test(userAgent)) deviceType = 'Mobile Device';
+          else if (/Macintosh|Mac OS/i.test(userAgent)) deviceType = 'Mac Device';
+          else if (/Windows/i.test(userAgent)) deviceType = 'Windows PC';
+
+          combinedAlerts.push({
+            id: 'login_current_session',
+            type: 'login',
+            member_name: 'Admin Active Session',
+            message: `Current session authenticated on ${deviceType}.`,
+            days_left: null,
+            link: '/profile'
+          });
+        }
+      } catch (err) {
+        console.error("Error processing login device notification", err);
+      }
+
+      setNotifications(combinedAlerts);
+    } catch (error) {
+      console.error("Failed to fetch notifications", error);
+    }
+  };
+
   useEffect(() => {
-      const fetchNotifications = async () => {
-          try {
-              const res = await api.get('/notifications');
-              setNotifications(res.data);
-          } catch (error) {
-              console.error("Failed to fetch notifications", error);
-          }
-      };
-      fetchNotifications();
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [location.pathname]);
+
+  const visibleNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
+
+  const dismissAll = () => {
+    const allIds = notifications.map(n => n.id);
+    const updated = Array.from(new Set([...dismissedIds, ...allIds]));
+    setDismissedIds(updated);
+    localStorage.setItem('dismissed_notif_ids', JSON.stringify(updated));
+  };
+
+  const dismissOne = (id, e) => {
+    if (e) e.stopPropagation();
+    const updated = [...dismissedIds, id];
+    setDismissedIds(updated);
+    localStorage.setItem('dismissed_notif_ids', JSON.stringify(updated));
+  };
+
+  const handleNotificationClick = (alert) => {
+    setShowNotifications(false);
+    if (alert.link) {
+      navigate(alert.link);
+    } else if (alert.type === 'expiring' || alert.type === 'no_sub') {
+      navigate('/subscriptions');
+    } else if (alert.type === 'task') {
+      navigate('/gesture');
+    } else if (alert.type === 'login') {
+      navigate('/profile');
+    }
+  };
 
   const handleLogout = () => {
     setConfirmDialog({
@@ -195,34 +306,125 @@ export default function Layout() {
                 className="relative p-2.5 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors hidden md:block border border-slate-500 dark:border-white/10"
               >
                 <FiBell size={20} />
-                {notifications.length > 0 && (
+                {visibleNotifications.length > 0 && (
                   <span className="absolute top-1 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-100 dark:border-[#161616] animate-pulse"></span>
                 )}
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-[#161616] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                    <div className="p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#121212] flex justify-between items-center">
-                      <h4 className="font-bold text-black dark:text-gray-300 text-sm">Action Required</h4>
-                      <span className="text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 px-2 py-0.5 rounded-full">{notifications.length} Alerts</span>
-                    </div>
-                    <div className="max-h-[300px] overflow-y-auto hidden-scrollbar">
-                      {notifications.length === 0 ? (
-                          <div className="p-6 text-center text-sm font-medium text-slate-500 dark:text-gray-400">All members have active subscriptions and no pending tasks!</div>
-                      ) : (
-                          notifications.map((alert, index) => (
-                            <div key={alert.id || index} onClick={() => { setShowNotifications(false); }} className="p-4 border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group">
-                                <div className="flex gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"><FiAlertCircle size={16}/></div>
-                                  <div>
-                                      <p className="text-sm font-bold text-black dark:text-gray-300 leading-tight">{alert.member_name}</p>
-                                      <p className="text-xs font-medium text-slate-500 dark:text-gray-400 mt-1">{alert.message}</p>
-                                  </div>
-                                </div>
-                            </div>
-                          ))
+                <div className="absolute right-0 mt-3 w-96 bg-white dark:bg-[#161616] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  {/* Panel Header */}
+                  <div className="p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#121212] flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <FiBell size={16} className="text-amber-500" />
+                      <h4 className="font-bold text-black dark:text-gray-300 text-sm">Notifications</h4>
+                      {visibleNotifications.length > 0 && (
+                        <span className="text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 px-2 py-0.5 rounded-full">{visibleNotifications.length}</span>
                       )}
                     </div>
+                    {visibleNotifications.length > 0 && (
+                      <button onClick={dismissAll} className="text-[10px] font-bold text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors uppercase tracking-wide">Clear All</button>
+                    )}
+                  </div>
+
+                  {/* Notification List */}
+                  <div className="max-h-[360px] overflow-y-auto hidden-scrollbar divide-y divide-slate-100 dark:divide-white/5">
+                    {visibleNotifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <FiCheckCircle size={32} className="mx-auto text-green-500 mb-3" />
+                        <p className="text-sm font-bold text-slate-700 dark:text-gray-300">All Clear!</p>
+                        <p className="text-xs text-slate-400 dark:text-gray-500 mt-1">No pending alerts at the moment.</p>
+                      </div>
+                    ) : (
+                      visibleNotifications.map((alert, index) => {
+                        // Determine visual style per type
+                        let icon, iconBg, iconColor, badge, badgeColor;
+                        if (alert.type === 'expiring') {
+                          icon = <FiClock size={15}/>;
+                          iconBg = 'bg-amber-100 dark:bg-amber-500/20';
+                          iconColor = 'text-amber-600 dark:text-amber-400';
+                          badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d left`;
+                          badgeColor = alert.days_left === 0 ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400';
+                        } else if (alert.type === 'event') {
+                          icon = <FiCalendar size={15}/>;
+                          iconBg = 'bg-emerald-100 dark:bg-emerald-500/20';
+                          iconColor = 'text-emerald-600 dark:text-emerald-400';
+                          badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d event`;
+                          badgeColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400';
+                        } else if (alert.type === 'no_sub') {
+                          icon = <FiAlertCircle size={15}/>;
+                          iconBg = 'bg-red-100 dark:bg-red-500/20';
+                          iconColor = 'text-red-600 dark:text-red-400';
+                          badge = 'No Sub';
+                          badgeColor = 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400';
+                        } else if (alert.type === 'login') {
+                          icon = <FiLogIn size={15}/>;
+                          iconBg = 'bg-blue-100 dark:bg-blue-500/20';
+                          iconColor = 'text-blue-600 dark:text-blue-400';
+                          badge = 'Login';
+                          badgeColor = 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400';
+                        } else {
+                          // task
+                          icon = <FiCheckSquare size={15}/>;
+                          iconBg = 'bg-purple-100 dark:bg-purple-500/20';
+                          iconColor = 'text-purple-600 dark:text-purple-400';
+                          badge = 'Task';
+                          badgeColor = 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400';
+                        }
+
+                        return (
+                          <div
+                            key={alert.id || index}
+                            onClick={() => handleNotificationClick(alert)}
+                            className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group relative"
+                          >
+                            <div className="flex gap-3 items-start">
+                              <div className={`w-8 h-8 rounded-full ${iconBg} ${iconColor} flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform`}>
+                                {icon}
+                              </div>
+                              <div className="flex-1 min-w-0 pr-4">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-bold text-black dark:text-gray-300 leading-tight">{alert.member_name}</p>
+                                  <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${badgeColor}`}>{badge}</span>
+                                </div>
+                                <p className="text-xs font-medium text-slate-500 dark:text-gray-400 mt-0.5 leading-snug">{alert.message}</p>
+                              </div>
+                              <button
+                                onClick={(e) => dismissOne(alert.id, e)}
+                                title="Dismiss notification"
+                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity p-1 -mr-2 -mt-1 rounded"
+                              >
+                                <FiX size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Panel Footer */}
+                  {visibleNotifications.length > 0 && (
+                    <div className="p-3 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#121212] text-center">
+                      <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium flex items-center justify-center gap-2 flex-wrap">
+                        {visibleNotifications.filter(n => n.type === 'expiring').length > 0 && (
+                          <span>{visibleNotifications.filter(n => n.type === 'expiring').length} expiring</span>
+                        )}
+                        {visibleNotifications.filter(n => n.type === 'event').length > 0 && (
+                          <span>• {visibleNotifications.filter(n => n.type === 'event').length} event(s)</span>
+                        )}
+                        {visibleNotifications.filter(n => n.type === 'no_sub').length > 0 && (
+                          <span>• {visibleNotifications.filter(n => n.type === 'no_sub').length} no sub</span>
+                        )}
+                        {visibleNotifications.filter(n => n.type === 'login').length > 0 && (
+                          <span>• {visibleNotifications.filter(n => n.type === 'login').length} security</span>
+                        )}
+                        {visibleNotifications.filter(n => n.type === 'task').length > 0 && (
+                          <span>• {visibleNotifications.filter(n => n.type === 'task').length} task(s)</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

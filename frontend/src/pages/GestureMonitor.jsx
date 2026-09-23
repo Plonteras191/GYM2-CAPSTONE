@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiVideo, FiMaximize, FiWifi, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiVideo, FiMaximize, FiWifi, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiCamera } from 'react-icons/fi';
 import api from '../api';
 
 export default function GestureMonitor() {
   const [connectionState, setConnectionState] = useState('CONNECTING'); 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [activeStreamUrl, setActiveStreamUrl] = useState(`http://127.0.0.1:5000/gesture_feed?t=${new Date().getTime()}`);
+  const AI_BASE = `http://${window.location.hostname || '127.0.0.1'}:5000`;
+  const [activeStreamUrl, setActiveStreamUrl] = useState(`${AI_BASE}/gesture_feed?t=${new Date().getTime()}`);
+  const [cameraSource, setCameraSource] = useState('cctv');
   
   const [latency, setLatency] = useState(0);
   const [recentLogs, setRecentLogs] = useState([]);
@@ -45,7 +47,7 @@ export default function GestureMonitor() {
 
   const handleSyncAI = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:5000/refresh_ai', { method: 'POST' });
+      const res = await fetch(`${AI_BASE}/refresh_ai`, { method: 'POST' });
       if (res.ok) {
         setAlertDialog({ isOpen: true, title: 'Sync Complete', message: 'AI Memory successfully synced with the Database!', type: 'success' });
       } else {
@@ -55,6 +57,31 @@ export default function GestureMonitor() {
       setAlertDialog({ isOpen: true, title: 'Engine Offline', message: 'Could not connect to the Python AI Engine.', type: 'error' });
     }
   };
+
+  const handleToggleCamera = async () => {
+    const nextSource = cameraSource === 'cctv' ? 'webcam' : 'cctv';
+    try {
+      const res = await fetch(`${AI_BASE}/switch_camera`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: nextSource })
+      });
+      if (res.ok) {
+        setCameraSource(nextSource);
+        setActiveStreamUrl(`${AI_BASE}/gesture_feed?t=${new Date().getTime()}`);
+        setAlertDialog({ isOpen: true, title: 'Camera Switched', message: `Switched video source to: ${nextSource.toUpperCase()}`, type: 'success' });
+      }
+    } catch (err) {
+      setAlertDialog({ isOpen: true, title: 'Switch Failed', message: 'Could not reach Python engine to switch camera.', type: 'error' });
+    }
+  };
+
+  useEffect(() => {
+    fetch(`${AI_BASE}/camera_status`)
+      .then(r => r.json())
+      .then(d => { if (d.source) setCameraSource(d.source); })
+      .catch(() => {});
+  }, [AI_BASE]);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -105,7 +132,7 @@ export default function GestureMonitor() {
                 setConnectionState('DISCONNECTED');
                 setTimeout(() => {
                   setConnectionState('CONNECTING');
-                  setActiveStreamUrl(`http://127.0.0.1:5000/gesture_feed?t=${new Date().getTime()}`);
+                  setActiveStreamUrl(`${AI_BASE}/gesture_feed?t=${new Date().getTime()}`);
                 }, 5000);
               }}
               className={`w-full h-full absolute inset-0 z-0 object-cover transition-opacity duration-500 ${connectionState === 'LIVE' ? 'opacity-100' : 'opacity-0'}`}
@@ -130,7 +157,15 @@ export default function GestureMonitor() {
               <span className="hidden sm:block">{currentTime.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
               <span className="text-lg md:text-2xl font-bold text-white tracking-widest">{currentTime.toLocaleTimeString('en-US', { hour12: false })}</span>
             </div>
-            <div className="flex gap-2 md:gap-3">
+            <div className="flex gap-2 md:gap-3 items-center">
+              <button 
+                onClick={handleToggleCamera} 
+                className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" 
+                title={`Switch video source (Currently: ${cameraSource.toUpperCase()})`}
+              >
+                <FiCamera className="size-4 md:size-5 text-amber-400" />
+                <span>{cameraSource.toUpperCase()}</span>
+              </button>
               <button onClick={handleSyncAI} className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-colors border border-white/10 active:scale-95" title="Force AI Memory Sync">
                 <FiRefreshCw className="size-4 md:size-5" />
               </button>

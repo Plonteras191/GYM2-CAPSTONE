@@ -71,7 +71,7 @@ export default function PricingCatalogModal({
                 </label>
                 <div className="flex gap-4">
                   <label className="block w-1/2">
-                    <span className={labelClass}>Duration (Days)</span>
+                    <span className={labelClass}>Duration (Day/s)</span>
                     <input 
                       type="number" 
                       value={newPlan.duration_days} 
@@ -122,7 +122,7 @@ export default function PricingCatalogModal({
               <div key={plan.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 group transition-all hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-sm">
                 <div className="flex flex-col">
                   <span className="font-bold text-black dark:text-gray-300">{plan.name}</span>
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-0.5">{plan.duration_days} Days</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-0.5">{plan.duration_days} Day/s</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-black dark:text-gray-300 font-bold text-lg px-2">&#8369;</span>

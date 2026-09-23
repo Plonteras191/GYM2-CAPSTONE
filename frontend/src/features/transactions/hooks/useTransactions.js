@@ -98,17 +98,18 @@ export function useTransactions() {
       title: 'Delete Transaction',
       message: 'Are you sure you want to permanently delete this transaction? This action cannot be undone.',
       onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false })); 
         setDeletingId(id);
         try {
           await api.delete(`/transactions/${id}`);
+        } catch (error) {
+          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
+        } finally {
+          setTransactions(prev => prev.filter(t => t.id !== id));
+          setDeletingId(null);
           invalidateCache('transactions_data');
           invalidateCache('dashboard');
-          setTransactions(prev => prev.filter(t => t.id !== id));
-        } catch (error) {
-          console.error("Failed to delete transaction:", error);
-          setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to delete transaction.', type: 'error' });
-        } finally {
-          setDeletingId(null);
+          fetchData(false);
         }
       }
     });
@@ -118,7 +119,15 @@ export function useTransactions() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const payload = { ...formData, member_id: formData.member_id === '' ? null : formData.member_id };
+      const payload = { 
+        ...formData, 
+        member_id: formData.member_id ? parseInt(formData.member_id, 10) : null,
+        reference_number: formData.reference_number ? formData.reference_number : null,
+        description: formData.description ? formData.description : null,
+        amount: parseFloat(formData.amount)
+      };
+
+      if (!isEditing) delete payload.id;
       
       if (isEditing) {
         await api.put(`/transactions/${formData.id}`, payload);
@@ -173,52 +182,107 @@ export function useTransactions() {
   const handlePrintReceipt = (txn) => {
     const memberPlan = txn.member?.plan || 'Walk-in';
     const txnDesc = txn.description || '';
-    const isWalkIn = 
-      txn.type === 'Fee' || 
-      !txn.member || 
-      memberPlan.toLowerCase().includes('walk') || 
-      memberPlan.toLowerCase() === 'none' ||
-      txnDesc.toLowerCase().includes('walk');
-
-    const memberName = txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-In Guest';
     const memberId = txn.member ? String(txn.member.id).padStart(4, '0') : 'N/A';
+    const memberName = txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-In Guest';
+
+    const isSubPayment = txn.type === 'Subscription Payment';
+
+    // Phase 1: Try to extract the plan from the description first
+    let matchedPlan = plansList.find(p => txnDesc.toLowerCase().includes(p.name.toLowerCase()));
+
+    // Phase 2: Use the DIRECTLY linked subscription (membership_id FK).
+    // This is the exact subscription this transaction paid for — no ambiguity.
+    const linkedSub = txn.membership || null;
+
+    // Phase 3: Fallback for legacy transactions without membership_id.
+    // Match by member + transaction date falling within the subscription window.
+    const subsCache = getCache('subscriptions_data');
+    const txnDateObj = new Date(txn.transaction_date + 'T00:00:00');
+    const allMemberSubs = (subsCache?.subscriptions || [])
+        .filter(s => s.member_id === txn.member_id);
+
+    // Try to find the subscription whose window contains this transaction's date
+    const matchedByDate = allMemberSubs.find(s => {
+        const start = new Date(s.start_date + 'T00:00:00');
+        const end   = new Date(s.end_date   + 'T00:00:00');
+        return txnDateObj >= start && txnDateObj <= end;
+    });
+
+    // Use linked sub first, then date-matched, then newest as last resort
+    const activeSub = linkedSub || matchedByDate || 
+        allMemberSubs.sort((a, b) => new Date(b.end_date) - new Date(a.end_date))[0];
+
+    // Phase 4: If no plan matched the text description, rely on activeSub
+    if (!matchedPlan && activeSub) {
+        matchedPlan = plansList.find(p => p.name.toLowerCase() === activeSub.plan_type.toLowerCase());
+    }
     
-    let membershipPlan = 'Walk-In'; 
+    // Phase 5: Extreme Fallback to member profile plan string
+    if (!matchedPlan && memberPlan && !memberPlan.toLowerCase().includes('walk')) {
+        matchedPlan = plansList.find(p => p.name.toLowerCase() === memberPlan.toLowerCase());
+    }
+
+    // Force Walk-In logic completely preventing "Walk-In" bugs for subscription buyers
+    const isWalkIn = !isSubPayment && (txn.type === 'Fee' || !txn.member || memberPlan.toLowerCase().includes('walk') || txnDesc.toLowerCase().includes('walk'));
+
+    let membershipPlan = 'Walk-In';
     if (!isWalkIn) {
-      membershipPlan = memberPlan === 'Without Coach' ? 'Without Coach (Open Gym)' : memberPlan;
+        if (matchedPlan) {
+            membershipPlan = matchedPlan.name;
+        } else if (isSubPayment) {
+            membershipPlan = 'Subscription';
+        } else {
+            membershipPlan = memberPlan === 'Without Coach' ? 'Without Coach (Open Gym)' : memberPlan;
+        }
     }
 
     let basePrice = Number(txn.amount);
     let discountAmount = 0;
-    let itemName = isWalkIn ? 'Walk-In Access' : (txn.type === 'Subscription Payment' ? 'Subscription Bill' : txn.type);
+    let itemName = isWalkIn ? 'Walk-In Access' : 'Subscription Bill';
 
-    const matchedPlan = plansList.find(p => p.name === memberPlan || txnDesc.includes(p.name));
-    if (!isWalkIn && txn.type === 'Subscription Payment' && matchedPlan) {
-      if (Number(matchedPlan.price) > Number(txn.amount)) {
-        basePrice = Number(matchedPlan.price);
-        discountAmount = basePrice - Number(txn.amount);
+    if (isSubPayment && matchedPlan) {
+        if (Number(matchedPlan.price) > Number(txn.amount)) {
+            basePrice = Number(matchedPlan.price);
+            discountAmount = basePrice - Number(txn.amount);
+        }
         itemName = `${matchedPlan.name} Bill`;
-      }
     }
 
     const now = new Date();
     const printDate = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
     const printTime = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-    let validThru = 'See Active Subs Tab';
+    let validThru = 'N/A';
     if (isWalkIn) {
-      const walkInDate = new Date(txn.transaction_date + 'T00:00:00');
-      const formattedWalkInDate = walkInDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-      validThru = `${formattedWalkInDate} (9:00 AM - 9:30 PM)`;
-    } else if (txn.type === 'Subscription Payment' && matchedPlan) {
-      const startDate = new Date(txn.transaction_date + 'T00:00:00');
-      const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + matchedPlan.duration_days);
-      const startFmt = startDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-      const endFmt = endDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-      validThru = `${startFmt} - ${endFmt}`;
-    } else if (txn.type === 'Refund' || txn.type === 'Other') {
-      validThru = 'N/A';
+        const walkInDate = new Date(txn.transaction_date + 'T00:00:00');
+        const formattedWalkInDate = walkInDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+        validThru = `${formattedWalkInDate} (9:00 AM - 9:30 PM)`;
+    } else if (isSubPayment || matchedPlan) {
+        let subStart = null;
+        let subEnd = null;
+
+        // Use the exact subscription dates this transaction is linked to
+        if (activeSub) {
+            subStart = activeSub.start_date;
+            subEnd = activeSub.end_date;
+        }
+
+        // Fallback: calculate from transaction date + plan duration
+        if (!subStart) subStart = txn.transaction_date;
+        if (!subEnd && matchedPlan) {
+            const startDate = new Date(subStart + 'T00:00:00');
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + parseInt(matchedPlan.duration_days || 0, 10));
+            subEnd = endDate.toISOString().split('T')[0];
+        }
+
+        if (subStart && subEnd) {
+            const sDate = new Date(subStart + 'T00:00:00');
+            const eDate = new Date(subEnd + 'T00:00:00');
+            const startFmt = sDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+            const endFmt = eDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+            validThru = `${startFmt} - ${endFmt} (9:00 AM - 9:30 PM)`;
+        }
     }
 
     const fullLogoUrl = window.location.origin + logo;

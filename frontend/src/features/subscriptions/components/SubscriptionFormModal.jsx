@@ -42,7 +42,7 @@ export default function SubscriptionFormModal({
                   onChange={(e) => setFormData({ ...formData, member_id: e.target.value })} 
                   className={inputClass}
                 >
-                  <option value="">-- Choose Member --</option>
+                  <option value="">Choose Member</option>
                   {membersList.map(m => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
                 </select>
               </label>
@@ -78,7 +78,7 @@ export default function SubscriptionFormModal({
                   onChange={(e) => setFormData({ ...formData, plan_type: e.target.value })} 
                   className={inputClass}
                 >
-                  <option value="">-- Select a Plan --</option>
+                  <option value="">Select a Plan</option>
                   {filteredDropdownPlans.map(p => <option key={p.id} value={p.name}>{p.name} (&#8369;{p.price})</option>)}
                 </select>
               </label>
@@ -135,36 +135,6 @@ export default function SubscriptionFormModal({
                 />
               </label>
             </div>
-            <div className="flex flex-col sm:flex-row gap-6 mt-4 p-5 border-2 border-gray-200 dark:border-gray-700/50 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input 
-                  type="checkbox" 
-                  checked={formData.status === 'Active'} 
-                  onChange={(e) => setFormData({ ...formData, status: e.target.checked ? 'Active' : 'Expired' })} 
-                  className="w-5 h-5 accent-amber-500 text-amber-500 bg-white border-gray-300 rounded focus:ring-amber-500" 
-                />
-                <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Set as Active</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input 
-                  type="checkbox" 
-                  checked={formData.auto_renew} 
-                  onChange={(e) => setFormData({ ...formData, auto_renew: e.target.checked })} 
-                  className="w-5 h-5 accent-amber-500 text-amber-500 bg-white border-gray-300 rounded focus:ring-amber-500" 
-                />
-                <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Enable Auto-Renew</span>
-              </label>
-            </div>
-            <label className="block">
-              <span className={labelClass}>Notes (Optional)</span>
-              <textarea 
-                rows="2" 
-                value={formData.notes} 
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
-                placeholder="Add any specific conditions..." 
-                className={inputClass}
-              />
-            </label>
           </form>
         </div>
         <div className="p-5 border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3">

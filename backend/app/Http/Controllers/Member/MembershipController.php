@@ -77,10 +77,11 @@ class MembershipController extends Controller
         
         Transaction::create([
             'transaction_id' => 'TXN-' . str_pad($nextId, 3, '0', STR_PAD_LEFT),
-            'transaction_date' => now()->toDateString(),
+            'transaction_date' => $validatedData['start_date'],
             'member_id' => $request->member_id,
+            'membership_id' => $membership->id,  // Link to exact subscription period
             'type' => 'Subscription Payment',
-            'description' => $validatedData['plan_type'] . ' Auto-Billed',
+            'description' => $validatedData['plan_type'] . ' Plan Payment',
             'payment_method' => $request->payment_method,
             'amount' => $request->amount ?? ($plan ? $plan->price : 0),
             'status' => 'Complete',

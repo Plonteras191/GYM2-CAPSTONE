@@ -34,6 +34,29 @@ export default function Login() {
         if (response.ok) {
             localStorage.setItem('admin_token', data.token);
             localStorage.setItem('admin_name', data.admin.name); 
+
+            // Record login device info for notification bell security alert
+            const userAgent = navigator.userAgent;
+            let deviceType = 'Desktop PC';
+            if (/iPad|Tablet/i.test(userAgent)) deviceType = 'Tablet';
+            else if (/Mobile|Android|iPhone/i.test(userAgent)) deviceType = 'Mobile Device';
+            else if (/Macintosh|Mac OS/i.test(userAgent)) deviceType = 'Mac Device';
+            else if (/Windows/i.test(userAgent)) deviceType = 'Windows PC';
+
+            const now = new Date();
+            const timeStr = now.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const prevDevice = localStorage.getItem('last_active_device');
+            const isNewDevice = prevDevice && prevDevice !== deviceType;
+
+            localStorage.setItem('login_device_notif', JSON.stringify({
+              id: 'login_' + Date.now(),
+              deviceName: deviceType,
+              timeStr: timeStr,
+              isNewDevice: !!isNewDevice,
+              timestamp: Date.now()
+            }));
+            localStorage.setItem('last_active_device', deviceType);
+
             // Force reload to update App.jsx authentication state properly
             window.location.href = '/overview'; 
         } else {

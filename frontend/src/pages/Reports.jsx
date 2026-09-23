@@ -116,75 +116,102 @@ export default function Reports() {
     <>
       <style type="text/css" media="print">
         {`
-          @page { size: A4 portrait; margin: 15mm; }
-          html, body { background-color: white !important; -webkit-print-color-adjust: exact; }
+          @page { size: A4 portrait; margin: 12mm 14mm; }
+          html, body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           body * { visibility: hidden; }
           #printable-report, #printable-report * { visibility: visible; }
-          #printable-report { position: absolute; left: 0; top: 0; width: 100%; margin: 0; background: white; color: black; }
+          #printable-report { position: fixed; inset: 0; width: 100%; padding: 0; margin: 0; background: white; color: #000; font-family: 'Arial', sans-serif; }
         `}
       </style>
 
-      <div className="p-6 max-w-7xl mx-auto space-y-6 print:p-0 print:m-0 animate-in fade-in duration-300">
-        
-        <div id="printable-report" className="hidden print:block bg-white text-black font-sans w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-black uppercase tracking-widest mb-1">Double Alpha Fitness {reportType} Records</h1>
-            <p className="text-sm font-bold text-gray-600">Reporting Period: {startDate} to {endDate}</p>
-          </div>
-          
-          <table className="w-full border-collapse border-2 border-black mb-8 text-center">
-            <thead>
-              <tr className="bg-gray-100 border-b-2 border-black">
-                {currentData.kpis.map((kpi, idx) => (
-                  <th key={idx} className={`py-2 text-sm font-bold uppercase tracking-widest ${idx !== currentData.kpis.length - 1 ? 'border-r-2 border-black' : ''}`}>
-                    {kpi.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {currentData.kpis.map((kpi, idx) => (
-                  <td key={idx} className={`py-4 text-2xl font-black ${idx !== currentData.kpis.length - 1 ? 'border-r-2 border-black' : ''}`}>
-                    {kpi.value}
-                  </td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
+      {/* ── PRINTABLE REPORT (only visible during window.print()) ── */}
+      <div id="printable-report" className="hidden print:block bg-white text-black w-full text-sm">
 
-          <table className="w-full border-collapse border-2 border-black text-center text-sm">
-            <thead>
-              <tr className="bg-gray-100 border-b-2 border-black">
-                {currentData.columns.map((col, idx) => (
-                  <th key={idx} className={`py-2 font-bold uppercase tracking-widest ${idx !== currentData.columns.length - 1 ? 'border-r-2 border-black' : ''}`}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b border-black last:border-0">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className={`py-3 font-medium ${cellIndex !== row.length - 1 ? 'border-r-2 border-black' : ''}`}>
-                      {String(cell).toUpperCase()}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {filteredRows.length === 0 && (
-                <tr>
-                  <td colSpan={currentData.columns.length} className="py-8 font-medium">No matching records found in the database.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <div className="text-right mt-4 text-xs font-bold text-gray-500">
-            Generated on: {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+        {/* Header / Letterhead */}
+        <div style={{ borderBottom: '2px solid #000', paddingBottom: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                Double Alpha Fitness Gym
+              </div>
+              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+                Tagoloan, Misamis Oriental &nbsp;|&nbsp; 0991 448 9942
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#555' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#000', textTransform: 'uppercase' }}>
+                {reportType} Report
+              </div>
+              <div>Period: {startDate} &mdash; {endDate}</div>
+              <div>Printed: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+            </div>
           </div>
         </div>
 
+        {/* KPI Summary Row */}
+        <div style={{ display: 'flex', gap: '0', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '14px', overflow: 'hidden' }}>
+          {currentData.kpis.map((kpi, idx) => (
+            <div
+              key={idx}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRight: idx !== currentData.kpis.length - 1 ? '1px solid #ccc' : 'none',
+                backgroundColor: idx % 2 === 0 ? '#f9f9f9' : '#fff'
+              }}
+            >
+              <div style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>
+                {kpi.label}
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: '800', marginTop: '2px', color: '#000' }}>
+                {kpi.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Data Table */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+          <thead>
+            <tr style={{ borderTop: '2px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f3f3f3' }}>
+              {currentData.columns.map((col, idx) => (
+                <th key={idx} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.5px', color: '#333' }}>
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRows.map((row, rowIndex) => (
+              <tr key={rowIndex} style={{ borderBottom: '1px solid #e0e0e0', backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#fafafa' }}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex} style={{ padding: '5px 10px', color: '#111' }}>
+                    {String(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {filteredRows.length === 0 && (
+              <tr>
+                <td colSpan={currentData.columns.length} style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
+                  No records found for this period.
+                </td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={currentData.columns.length} style={{ borderTop: '2px solid #000', paddingTop: '6px', fontSize: '9px', color: '#888', textAlign: 'right' }}>
+                Total records: {filteredRows.length} &nbsp;&nbsp; Generated by Double Alpha Fitness Gym Management System
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
+      </div>
+
+      {/* Regular UI (hidden during print) */}
+      <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
         <div className="print:hidden space-y-6">
           <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4">
             <div className="flex gap-3 w-full md:w-auto ml-auto">
@@ -310,7 +337,6 @@ export default function Reports() {
             </div>
           </div>
         </div>
-
       </div>
     </>
   );

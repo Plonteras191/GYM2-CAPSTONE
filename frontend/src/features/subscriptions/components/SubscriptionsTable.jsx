@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiList, FiChevronLeft, FiChevronRight, FiLoader } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiList, FiChevronLeft, FiChevronRight, FiLoader } from 'react-icons/fi';
 
 export default function SubscriptionsTable({
   subscriptions,
@@ -123,14 +123,13 @@ export default function SubscriptionsTable({
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Plan</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Duration</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-center">Auto-Renew</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-24 text-center">
+                  <td colSpan="6" className="px-6 py-24 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="relative w-16 h-16">
                         <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full"></div>
@@ -141,7 +140,7 @@ export default function SubscriptionsTable({
                   </td>
                 </tr>
               ) : currentSubs.length === 0 ? (
-                <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">No subscriptions found.</td></tr>
+                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">No subscriptions found.</td></tr>
               ) : (
                 currentSubs.map((sub) => (
                   <tr key={sub.id} className="hover:bg-gray-50 dark:hover:bg-[#1e1e1e] transition-colors group">
@@ -157,9 +156,6 @@ export default function SubscriptionsTable({
                       <div className="text-xs font-normal text-slate-500 dark:text-gray-400 mt-0.5">to {sub.end_date}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(sub.status)}</td>
-                    <td className="px-6 py-4 text-center whitespace-nowrap">
-                      {sub.auto_renew ? <FiRefreshCw size={16} className="inline text-green-500" /> : <span className="text-slate-400 font-bold">-</span>}
-                    </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap space-x-3">
                       <button 
                         onClick={() => onEditSubscription(sub)} 

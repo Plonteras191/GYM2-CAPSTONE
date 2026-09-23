@@ -11,11 +11,14 @@ class TransactionController extends Controller
     public function index()
     {
         $transactions = Transaction::select(
-                'id', 'transaction_id', 'transaction_date', 'member_id',
+                'id', 'transaction_id', 'transaction_date', 'member_id', 'membership_id',
                 'type', 'description', 'payment_method', 'amount', 'status',
                 'reference_number', 'created_at'
             )
-            ->with('member:id,first_name,last_name')
+            ->with([
+                'member:id,first_name,last_name',
+                'membership:id,plan_type,start_date,end_date'
+            ])
             ->orderBy('transaction_date', 'desc')
             ->orderBy('id', 'desc')
             ->get();
@@ -27,6 +30,7 @@ class TransactionController extends Controller
         $validatedData = $request->validate([
             'transaction_date' => 'required|date',
             'member_id' => 'nullable|exists:members,id',
+            'membership_id' => 'nullable|exists:memberships,id',
             'type' => 'required|string',
             'description' => 'nullable|string',
             'payment_method' => 'required|string',
@@ -50,6 +54,7 @@ class TransactionController extends Controller
         $validatedData = $request->validate([
             'transaction_date' => 'required|date',
             'member_id' => 'nullable|exists:members,id',
+            'membership_id' => 'nullable|exists:memberships,id',
             'type' => 'required|string',
             'description' => 'nullable|string',
             'payment_method' => 'required|string',

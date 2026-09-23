@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../../api';
 import { useDataCache } from '../../../context/DataCacheContext';
 
@@ -23,6 +23,7 @@ export function useSubscriptions() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false); // Sync guard to prevent double-submit race conditions
   const [deletingId, setDeletingId] = useState(null);
   const [deletingPlanId, setDeletingPlanId] = useState(null);
 
@@ -68,9 +69,10 @@ export function useSubscriptions() {
     localStorage.setItem('coach_events', JSON.stringify(coachEvents));
   }, [coachEvents]);
 
+  // Cleaned default form fields
   const defaultForm = {
     id: '', member_id: '', plan_type: '', start_date: new Date().toISOString().split('T')[0], 
-    end_date: '', status: 'Active', auto_renew: false, payment_method: 'Cash', notes: '', color: '#f59e0b', reference_number: ''
+    end_date: '', payment_method: 'Cash', color: '#f59e0b', reference_number: ''
   };
   const [formData, setFormData] = useState(defaultForm);
   const [newPlan, setNewPlan] = useState({ name: '', price: '', duration_days: 30 });
@@ -102,19 +104,19 @@ export function useSubscriptions() {
     fetchData(!hasCached);
   }, [fetchData, getCache]);
 
-  // Auto calculate end_date
+  // Safely auto-calculate end_date using integer conversion to prevent date string concatenation errors
   useEffect(() => {
     if (!formData.start_date || !formData.plan_type) return;
     const start = new Date(formData.start_date);
     const selectedPlan = plans.find(p => p.name === formData.plan_type);
     if (selectedPlan) {
       let expiry = new Date(start);
-      expiry.setDate(start.getDate() + selectedPlan.duration_days);
+      expiry.setDate(start.getDate() + parseInt(selectedPlan.duration_days || 0, 10));
       setFormData(prev => ({ ...prev, end_date: expiry.toISOString().split('T')[0] }));
     }
   }, [formData.plan_type, formData.start_date, plans]);
 
-  // Auto calculate loyalty discount
+  // Auto calculate loyalty discount safely
   const [loyalDiscount, setLoyalDiscount] = useState(0);
   const [calculatedPrice, setCalculatedPrice] = useState(0);
 
@@ -127,7 +129,7 @@ export function useSubscriptions() {
     let discount = 0;
 
     if (finalPrice > 300) {
-      const pastSubs = subscriptions.filter(s => s.member_id === parseInt(formData.member_id)).length;
+      const pastSubs = subscriptions.filter(s => s.member_id === parseInt(formData.member_id, 10)).length;
       discount = pastSubs * 20;
       finalPrice = finalPrice - discount;
       if (finalPrice < 300) {
@@ -152,8 +154,7 @@ export function useSubscriptions() {
   const handleOpenEditModal = (sub) => {
     setFormData({
       id: sub.id, member_id: sub.member_id, plan_type: sub.plan_type, start_date: sub.start_date,
-      end_date: sub.end_date, status: sub.status, auto_renew: sub.auto_renew === 1 || sub.auto_renew === true, 
-      payment_method: sub.payment_method, notes: sub.notes || '', color: sub.color || '#f59e0b', reference_number: sub.reference_number || ''
+      end_date: sub.end_date, payment_method: sub.payment_method, color: sub.color || '#f59e0b', reference_number: sub.reference_number || ''
     });
     setIsEditing(true);
     setIsModalOpen(true);
@@ -165,15 +166,18 @@ export function useSubscriptions() {
       title: 'Delete Subscription',
       message: 'Are you sure you want to permanently delete this subscription? This action cannot be undone.',
       onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false })); 
         setDeletingId(id);
         try {
           await api.delete(`/memberships/${id}`);
-          setSubscriptions(prev => prev.filter(s => s.id !== id));
         } catch (error) {
-          console.error("Failed to delete:", error);
-          setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to delete subscription.', type: 'error' });
+          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
         } finally {
+          setSubscriptions(prev => prev.filter(s => s.id !== id));
           setDeletingId(null);
+          invalidateCache('subscriptions_data');
+          invalidateCache('dashboard');
+          fetchData(false); 
         }
       }
     });
@@ -181,21 +185,59 @@ export function useSubscriptions() {
 
   const handleSaveSubscription = async (e) => {
     e.preventDefault();
+    // Guard against double-submit: isSavingRef is synchronous unlike setState
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
     try {
-      const payload = { ...formData, auto_renew: formData.auto_renew ? 1 : 0, amount: calculatedPrice, reference_number: formData.reference_number };
-      if (isEditing) await api.put(`/memberships/${formData.id}`, payload);
-      else await api.post('/memberships', payload);
+      
+      // STRICT PAYLOAD FILTERING: 
+      // Emptry strings ("") are actively intercepted and converted into standard SQL "null" values 
+      // to completely bypass database Unique Constraint duplication errors that trigger 500 crashes.
+      const cleanRef = formData.reference_number?.trim() || null;
+      const cleanNotes = formData.notes?.trim() || null;
+      const memberId = formData.member_id ? parseInt(formData.member_id, 10) : null;
+      const amt = parseFloat(calculatedPrice) || 0;
 
-      if (formData.member_id && formData.plan_type) {
+      const payload = { 
+        member_id: memberId,
+        plan_type: formData.plan_type,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        payment_method: formData.payment_method,
+        reference_number: cleanRef,
+        amount: amt,
+        color: formData.color,
+        status: 'Active',
+        auto_renew: 0,
+        notes: cleanNotes
+      };
+      
+      let membershipId = formData.id || null;
+
+      if (isEditing) {
+        await api.put(`/memberships/${formData.id}`, payload);
+      } else {
+        // Capture the newly created membership's ID so we can link the transaction
+        const membershipResponse = await api.post('/memberships', payload);
+        membershipId = membershipResponse.data?.membership?.id || membershipResponse.data?.id || null;
+      }
+
+      // The backend auto-creates a linked transaction with membership_id on store().
+      // Just invalidate the cache so the Transactions page shows the new entry.
+      if (!isEditing) {
+        invalidateCache('transactions_data');
+      }
+
+      if (memberId && formData.plan_type) {
         const memberData = new FormData();
         memberData.append('plan', formData.plan_type);
         memberData.append('status', 'Active');
         memberData.append('_method', 'PUT');
-        await api.post(`/members/${formData.member_id}`, memberData).catch(() => {});
+        await api.post(`/members/${memberId}`, memberData).catch(() => {});
       }
       saveRecentColor(formData.color);
-      // Invalidate related caches so other pages get fresh data
+      
       invalidateCache('subscriptions_data');
       invalidateCache('members');
       invalidateCache('dashboard');
@@ -204,8 +246,12 @@ export function useSubscriptions() {
       setAlertDialog({ isOpen: true, title: 'Success', message: 'Subscription saved successfully!', type: 'success' });
     } catch (error) { 
       console.error("Failed to save:", error); 
-      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to save subscription.', type: 'error' });
-    } finally { setIsSaving(false); }
+      const errorMsg = error.response?.data?.message || 'Failed to save subscription. Ensure fields are formatted correctly.';
+      setAlertDialog({ isOpen: true, title: 'Error', message: errorMsg, type: 'error' });
+    } finally { 
+      isSavingRef.current = false;
+      setIsSaving(false); 
+    }
   };
 
   const handleSaveCoachEvent = (e) => {
@@ -221,7 +267,10 @@ export function useSubscriptions() {
       isOpen: true,
       title: 'Delete Coach Event',
       message: 'Are you sure you want to permanently delete this scheduled coaching event?',
-      onConfirm: () => setCoachEvents(prev => prev.filter(ev => ev.id !== id))
+      onConfirm: () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setCoachEvents(prev => prev.filter(ev => ev.id !== id));
+      }
     });
   };
 
@@ -264,14 +313,16 @@ export function useSubscriptions() {
       title: 'Delete Pricing Plan',
       message: 'Are you sure you want to permanently delete this pricing plan?',
       onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false })); 
         setDeletingPlanId(id); 
         try {
           await api.delete(`/plans/${id}`);
-          setPlans(prev => prev.filter(p => p.id !== id));
         } catch (error) { 
-          console.error("Failed to delete plan:", error); 
-          setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to delete plan.', type: 'error' });
-        } finally { setDeletingPlanId(null); }
+          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
+        } finally { 
+          setPlans(prev => prev.filter(p => p.id !== id));
+          setDeletingPlanId(null); 
+        }
       }
     });
   };

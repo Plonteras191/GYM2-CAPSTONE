@@ -94,6 +94,9 @@ export default function SubscriptionsCalendarView({
   }).sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
   const sortedCoachEvents = [...coachEvents].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  
+  // Filter out events that have already passed (based on end_date, or start_date if single day)
+  const upcomingCoachEvents = sortedCoachEvents.filter(ev => (ev.end_date || ev.start_date) >= todayStr);
 
   return (
     <div className="flex flex-col xl:flex-row gap-6 items-start animate-in fade-in duration-300">
@@ -108,6 +111,42 @@ export default function SubscriptionsCalendarView({
           .dark .fc .fc-button-primary:hover { background-color: #334155 !important; color: #ffffff !important; }
           .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { background: linear-gradient(to right, #fbbf24, #f59e0b) !important; border: none !important; color: #000 !important; font-weight: 800 !important; box-shadow: 0 4px 10px -2px rgba(245, 158, 11, 0.3) !important; }
           
+          /* EXACT MATCH TO "ADD MEMBER" BUTTON - HIGHEST SPECIFICITY */
+          .fc .fc-button.fc-button-primary.fc-today-button,
+          .dark .fc .fc-button.fc-button-primary.fc-today-button,
+          .fc .fc-button.fc-button-primary.fc-today-button:disabled,
+          .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
+            background: linear-gradient(to right, #facc15, #f59e0b) !important;
+            border: none !important;
+            color: #000000 !important; 
+            font-weight: 700 !important;
+            font-size: 0.875rem !important;
+            border-radius: 0.75rem !important;
+            padding: 0.625rem 1.5rem !important;
+            box-shadow: 0 10px 15px -3px rgba(120, 53, 15, 0.2) !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.025em !important;
+            opacity: 1 !important;
+            text-shadow: none !important;
+            margin: 0 4px !important;
+          }
+          
+          .fc .fc-button.fc-button-primary.fc-today-button:hover,
+          .dark .fc .fc-button.fc-button-primary.fc-today-button:hover {
+            color: #000000 !important; 
+          }
+          
+          .fc .fc-button.fc-button-primary.fc-today-button:not(:disabled):hover,
+          .dark .fc .fc-button.fc-button-primary.fc-today-button:not(:disabled):hover {
+            background: linear-gradient(to right, #fde047, #fbbf24) !important;
+          }
+
+          .fc .fc-button.fc-button-primary.fc-today-button:disabled,
+          .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
+            opacity: 0.7 !important;
+            cursor: not-allowed !important;
+          }
+
           .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 800 !important; text-transform: uppercase; color: #000000; }
           .dark .fc-toolbar-title { color: #d1d5db !important; }
           .fc-scrollgrid { border: none !important; }
@@ -213,7 +252,7 @@ export default function SubscriptionsCalendarView({
 
         <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col flex-1 max-h-[350px]">
           <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex-shrink-0">
-            <h3 className="text-base font-bold text-black dark:text-gray-300">Today's Event Plan</h3>
+            <h3 className="text-base font-bold text-black dark:text-gray-300">Event Plans</h3>
             <button 
               onClick={onOpenEventModal} 
               className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-3 py-1.5 rounded-lg font-bold shadow-md shadow-amber-900/20 transition-all active:scale-95 uppercase tracking-wider text-[10px]"
@@ -223,10 +262,10 @@ export default function SubscriptionsCalendarView({
           </div>
           
           <div className="overflow-y-auto hidden-scrollbar space-y-3 flex-1 pr-1">
-            {sortedCoachEvents.length === 0 ? (
-              <p className="text-xs text-slate-500 italic text-center py-8">No coaching sessions scheduled.</p>
+            {upcomingCoachEvents.length === 0 ? (
+              <p className="text-xs text-slate-500 italic text-center py-8">No scheduled events.</p>
             ) : (
-              sortedCoachEvents.map((ev) => (
+              upcomingCoachEvents.map((ev) => (
                 <div 
                   key={ev.id} 
                   className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative group p-3.5 flex justify-between items-center transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600" 

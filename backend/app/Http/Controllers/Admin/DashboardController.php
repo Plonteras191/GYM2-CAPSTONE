@@ -75,46 +75,68 @@ class DashboardController extends Controller
 
     public function notifications()
     {
+        $alerts = collect();
+        $today = Carbon::today();
+
+        // ── ALERT TYPE 1: Subscriptions Expiring Within 7 Days ──────────────
+        $expiringSoon = Membership::with('member:id,first_name,last_name')
+            ->where('status', 'Active')
+            ->whereBetween('end_date', [$today->toDateString(), $today->copy()->addDays(7)->toDateString()])
+            ->orderBy('end_date', 'asc')
+            ->get();
+
+        foreach ($expiringSoon as $sub) {
+            if (!$sub->member) continue;
+            $daysLeft = $today->diffInDays(Carbon::parse($sub->end_date), false);
+            $alerts->push([
+                'id'          => 'exp_' . $sub->id,
+                'type'        => 'expiring',
+                'member_name' => $sub->member->first_name . ' ' . $sub->member->last_name,
+                'message'     => $daysLeft === 0
+                    ? "Subscription expires TODAY — {$sub->plan_type} plan."
+                    : "Subscription expires in {$daysLeft} day(s) — {$sub->plan_type} plan.",
+                'days_left'   => $daysLeft,
+            ]);
+        }
+
+        // ── ALERT TYPE 2: Active Members With No Valid Subscription ──────────
         $activeMembers = Member::where('status', 'Active')->get();
-        $activeSubsMemberIds = Membership::where('status', 'Active')
-            ->where('end_date', '>=', Carbon::now()->toDateString())
+        $activeSubMemberIds = Membership::where('status', 'Active')
+            ->where('end_date', '>=', $today->toDateString())
             ->pluck('member_id')
             ->toArray();
 
-        $alerts = collect();
-
-        // Alert 1: Missing Subscriptions
-        // The System will only alert the coach if the user has been registered for more than 30 days.
         $oneMonthAgo = Carbon::now()->subDays(30);
-
         foreach ($activeMembers as $member) {
-            if (!in_array($member->id, $activeSubsMemberIds)) {
-                // Check if they are past the 1-month grace period
+            if (!in_array($member->id, $activeSubMemberIds)) {
                 if ($member->created_at < $oneMonthAgo) {
                     $alerts->push([
-                        'id' => 'sub_' . $member->id,
+                        'id'          => 'nosub_' . $member->id,
+                        'type'        => 'no_sub',
                         'member_name' => $member->first_name . ' ' . $member->last_name,
-                        'message' => 'Active for >1 month but has no valid subscription plan.'
+                        'message'     => 'No active subscription. Registered over 30 days ago.',
+                        'days_left'   => null,
                     ]);
                 }
             }
         }
 
-        // Alert 2: Unverified CCTV Tasks (The Snitch!)
+        // ── ALERT TYPE 3: Unverified CCTV Workout Tasks (Today) ─────────────
         $uncompletedTasks = WorkoutLog::with('member:id,first_name,last_name')
             ->where('date', Carbon::today())
             ->where('exercise', 'LIKE', 'ASSIGNED: %')
             ->get();
 
         foreach ($uncompletedTasks as $task) {
-            if ($task->member) {
-                $exerciseName = str_replace('ASSIGNED: ', '', $task->exercise);
-                $alerts->push([
-                    'id' => 'task_' . $task->id,
-                    'member_name' => $task->member->first_name . ' ' . $task->member->last_name,
-                    'message' => "Assigned to do {$exerciseName} today, but the CCTV AI has not verified it yet."
-                ]);
-            }
+            if (!$task->member) continue;
+            $exerciseName = str_replace('ASSIGNED: ', '', $task->exercise);
+            $alerts->push([
+                'id'          => 'task_' . $task->id,
+                'type'        => 'task',
+                'member_name' => $task->member->first_name . ' ' . $task->member->last_name,
+                'message'     => "Assigned: {$exerciseName} — not yet verified by CCTV AI.",
+                'days_left'   => null,
+            ]);
         }
 
         return response()->json($alerts);

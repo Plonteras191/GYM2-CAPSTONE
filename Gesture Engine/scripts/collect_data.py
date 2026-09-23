@@ -23,9 +23,12 @@ dataset = []
 print(f"⚠️ GET READY! Starting data collection for {EXERCISE_NAME} in 5 seconds...")
 time.sleep(5)
 
-# Open the CCTV Camera!
-print("Connecting to CCTV...")
+# Open the Camera (Try CCTV Sub-stream first, fallback to Webcam)
+print(f"Connecting to CCTV ({CCTV_URL})...")
 cap = cv2.VideoCapture(CCTV_URL, cv2.CAP_FFMPEG)
+if not cap.isOpened():
+    print("⚠️ CCTV not accessible. Falling back to local Webcam (Index 0)...")
+    cap = cv2.VideoCapture(0)
 
 with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
     frames_collected = 0
@@ -33,7 +36,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
     while cap.isOpened() and frames_collected < FRAMES_TO_COLLECT:
         ret, frame = cap.read()
         if not ret:
-            print("Failed to grab frame. Make sure CCTV is online.")
+            print("Failed to grab frame. Make sure camera is online.")
             break
             
         # Recolor image to RGB for MediaPipe
@@ -54,8 +57,9 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             # Grab the coordinates of all 33 joints
             landmarks = results.pose_landmarks.landmark
             
-            # Flatten the X, Y, Z, and Visibility data into a single row
-            pose_row = list(np.array([[landmark.x, landmark.y, landmark.z, landmark.visibility] for landmark in landmarks]).flatten())
+            # 🚨 TRANSLATION INVARIANCE: Subtract nose (landmark 0) to match model and live engine
+            origin_x, origin_y, origin_z = landmarks[0].x, landmarks[0].y, landmarks[0].z
+            pose_row = list(np.array([[lm.x - origin_x, lm.y - origin_y, lm.z - origin_z, lm.visibility] for lm in landmarks]).flatten())
             
             # Append the name of the exercise to the end of the row as the "Label"
             pose_row.append(EXERCISE_NAME)

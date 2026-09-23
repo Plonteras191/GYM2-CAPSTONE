@@ -15,8 +15,11 @@ DATASETS_DIR = os.path.join(BASE_DIR, 'datasets')
 WORKOUT_MODEL_PATH = os.path.join(MODELS_DIR, 'workout_model.pkl')
 DATASET_CSV_PATH = os.path.join(DATASETS_DIR, 'custom_workout_dataset.csv')
 
-# Camera Stream Configuration
-DEFAULT_CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/101')
+# Camera Stream Configuration (Channels/102 is low-latency sub-stream for real-time AI)
+DEFAULT_CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102')
+CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', 'CCTV') # 'CCTV' or 'WEBCAM'
+WEBCAM_INDEX = int(os.getenv('WEBCAM_INDEX', '0'))
 
-# OpenCV Environment Flags
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay"
+# OpenCV Environment Flags for Real-Time Zero-Buffer Streaming
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay|max_delay;500000|reorder_queue_size;0"
+

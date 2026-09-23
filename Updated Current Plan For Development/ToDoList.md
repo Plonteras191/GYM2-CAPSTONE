@@ -7,23 +7,24 @@
     7. Gesture Monitor
     8. Admin profile
 
+    3. Subscription [COMPLETED]
+        > Adding a certain member duplicates it which resulted having 2 duplicated subscriptions
 
+    4. Transaction [COMPLETED]
+        > Duration of the susbcription plans arent separated. They merge the old receipt with the new one
+            which created confusion, this must be base on the subscription on the duration of the susbcription/plan6
 
-
-    3. Subcriptions
-        > On the Today's Event Plan rename it into --> Event Plans
-            Then additionally make a rule that if the event is done. it will be 
-            removed in the EVENT PLANS section automatically but not in the calendar, 
-            to give room for future events
-
-
+    5. Reports [COMPLETED]
+        > In the reports in PRINT PDF, can we make the output simple yet formal? becaus ebase on what i've seen the result is quite messy to be honest. it has huge margins
 
     9. Login
         > This must be the first thing that appears whenever we enter the system
         > Improve the Pallet design. Because they said it was to darkmode
 
 
-    13. Notification Bell 
+
+
+    13. Notification Bell [COMPLETED]
         > It will notify the coach about almost everything.
             > Subscription about to end (7days)
             > Special Days like events
@@ -44,30 +45,22 @@
         > Add 
     
 
-    18. Webcam
-        > Use webcam for demo in our Adviser and Proctor
+    18. Webcam [COMPLETED]
+        > Use webcam for demo in our Adviser and Proctor (One-click toggle added on Security & Gesture Monitor)
 
 
     19. Interactive
         > Must look good in both web cp, web desktop, web tablet
 
-
-
-        Core Sections of a PRD
-            1. Metadata and Overview: Lists the document title, owner, core team members, status, and target release date.
-            
-            2. Background and Problem Statement: Explains the user or business context, detailing the exact problem you are solving and who faces it.
-            
-            3. Goals and Objectives: Outlines the strategic purpose and specific targets the feature aims to hit.
-            
-            4. Scope (In-Scope and Out-of-Scope): Clarifies what features are included now and what is intentionally left out for future updates.
-            
-            5. Target Audience and User Stories: Defines user personas, critical user journeys, and specific user stories with acceptance criteria.
-            
-            6. Functional and Non-Functional Requirements: Details what the system must do functionally, alongside performance, security, and scalability standards.
-            
-            7. Design and User Experience (UX): Links wireframes, mockups, or user flow diagrams to show interface expectations.
-            
-            8. Assumptions, Constraints, and Dependencies: Identifies outside technical limits, third-party API dependencies, or budget limits.
-            
-            9. Success Metrics: Defines the Key Performance Indicators (KPIs) used to measure if the release succeeds.
+    20. DarkMode (Good design which base on search engine of transaction)
+            Use this color combiantion for darkmode especially since some parts of the pages arent actually visible
+                #191b22 – The inner search input field background (the dark slate-blue inside the text area).
+                #252833 – The outer card container background surrounding the search bar.
+                #0b0c0e – The deep background at the top edge of the image.
+                #393e4f – The thin border outline detailing the input box.
+                #6d758d – The muted grey-blue color of the placeholder text and magnifying glass icon.
+            Specifications on where to apply it
+                a. 
+    
+    21. Add functions
+            > Each of the pages informaion must be filled before entering, otherwise the it will notify "Please enter information"

@@ -155,7 +155,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   };
 
   const handleNameChange = (e, field) => {
-    setFormData({ ...formData, [field]: e.target.value.replace(/[^a-zA-Z\s\-ñÑ]/g, '') });
+    setFormData({ ...formData, [field]: e.target.value.replace(/[^a-zA-Z\s\-Ã±Ã‘]/g, '') });
   };
   const handlePhoneChange = (e) => {
     setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 11) });
@@ -171,6 +171,19 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border-2 border-gray-300 dark:border-gray-600">
+        
+        {/* ADDED: Style block to completely hide the number input spinner arrows */}
+        <style>{`
+          input[type='number']::-webkit-inner-spin-button,
+          input[type='number']::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          input[type='number'] {
+            -moz-appearance: textfield;
+          }
+        `}</style>
+
         {/* Header */}
         <div className="p-6 border-b-2 border-gray-300 dark:border-gray-600 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
           <h3 className="text-xl font-bold text-slate-800 dark:text-gray-300">{isEditing ? 'Edit Member Profile' : 'Add New Member'}</h3>
@@ -235,7 +248,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                 <label className="block lg:col-span-2"><span className={labelClass}>Address</span><input type="text" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} className={inputClass} placeholder="123 Gym Street, Tagoloan" /></label>
                 <label className="block">
                   <span className={labelClass}>Phone Number</span>
-                  <input type="text" required value={formData.phone || ''} onChange={handlePhoneChange} className={inputClass} placeholder="09171234567" />
+                  <input type="text" required value={formData.phone || ''} onChange={handlePhoneChange} className={inputClass} placeholder="09123456789" />
                   <span className="text-[10px] text-gray-400 font-medium float-right mt-1">{(formData.phone || '').length}/11</span>
                 </label>
                 <label className="block"><span className={labelClass}>Date of Birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>

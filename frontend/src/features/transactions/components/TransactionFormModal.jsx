@@ -43,7 +43,7 @@ export default function TransactionFormModal({
                 onChange={(e) => setFormData({ ...formData, member_id: e.target.value })} 
                 className={inputClass}
               >
-                <option value="">-- Select Member (Walk-in) --</option>
+                <option value="">-- Select A Member --</option>
                 {membersList.map(m => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
               </select>
             </div>
@@ -81,7 +81,7 @@ export default function TransactionFormModal({
                   className={`${inputClass} border-amber-300 focus:ring-amber-600`}
                   onChange={(e) => onPlanSelection(e.target.value)}
                 >
-                  <option value="">-- Select a Database Plan --</option>
+                  <option value="">-- Select A Subscription --</option>
                   {plansList.map(p => <option key={p.id} value={p.name}>{p.name} (&#8369;{p.price})</option>)}
                 </select>
               </div>

@@ -7,7 +7,9 @@ export default function SecurityMonitor() {
   const navigate = useNavigate();
   const [connectionState, setConnectionState] = useState('RECONNECTING'); 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const AI_BASE = `http://${window.location.hostname || '127.0.0.1'}:5000`;
   const [activeStreamUrl, setActiveStreamUrl] = useState("");
+  const [cameraSource, setCameraSource] = useState('cctv');
   
   const [liveLogs, setLiveLogs] = useState([]); 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -18,7 +20,7 @@ export default function SecurityMonitor() {
   const handleSyncAI = async () => {
     setIsSyncing(true);
     try {
-      const res = await fetch('http://127.0.0.1:5000/refresh_ai', { method: 'POST' });
+      const res = await fetch(`${AI_BASE}/refresh_ai`, { method: 'POST' });
       if (res.ok) {
         setAlertDialog({ isOpen: true, title: 'Sync Complete', message: 'AI Memory successfully synced with the Database!', type: 'success' });
       } else {
@@ -29,13 +31,38 @@ export default function SecurityMonitor() {
     }
     setIsSyncing(false);
   };
+
+  const handleToggleCamera = async () => {
+    const nextSource = cameraSource === 'cctv' ? 'webcam' : 'cctv';
+    try {
+      const res = await fetch(`${AI_BASE}/switch_camera`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: nextSource })
+      });
+      if (res.ok) {
+        setCameraSource(nextSource);
+        setActiveStreamUrl(`${AI_BASE}/security_feed?t=${new Date().getTime()}`);
+        setAlertDialog({ isOpen: true, title: 'Camera Switched', message: `Switched video source to: ${nextSource.toUpperCase()}`, type: 'success' });
+      }
+    } catch (err) {
+      setAlertDialog({ isOpen: true, title: 'Switch Failed', message: 'Could not reach Python engine to switch camera.', type: 'error' });
+    }
+  };
   
   const containerRef = useRef(null);
-  const [cameraConfig] = useState({ name: 'Main Gym Floor', model: 'HIKVISION DS-2CD', streamUrl: `http://127.0.0.1:5000/security_feed` });
+  const [cameraConfig] = useState({ name: 'Main Gym Floor', model: 'HIKVISION DS-2CD' });
 
   useEffect(() => {
-    setActiveStreamUrl(`${cameraConfig.streamUrl}?t=${new Date().getTime()}`);
+    setActiveStreamUrl(`${AI_BASE}/security_feed?t=${new Date().getTime()}`);
     setConnectionState('RECONNECTING');
+    
+    // Check initial camera status
+    fetch(`${AI_BASE}/camera_status`)
+      .then(r => r.json())
+      .then(d => { if (d.source) setCameraSource(d.source); })
+      .catch(() => {});
+
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     const logInterval = setInterval(async () => {
       try {
@@ -125,12 +152,21 @@ export default function SecurityMonitor() {
               <span className="hidden sm:block">{currentTime.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
               <span className="text-lg md:text-2xl font-bold text-white tracking-widest">{currentTime.toLocaleTimeString('en-US', { hour12: false })}</span>
             </div>
-            <div className="flex gap-2 md:gap-3">
+            <div className="flex gap-2 md:gap-3 items-center">
+              <button 
+                onClick={handleToggleCamera} 
+                className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" 
+                title={`Switch video source (Currently: ${cameraSource.toUpperCase()})`}
+              >
+                <FiCamera className="size-4 md:size-5 text-amber-400" />
+                <span>{cameraSource.toUpperCase()}</span>
+              </button>
               <button onClick={handleSyncAI} disabled={isSyncing} className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-colors border border-white/10 active:scale-95" title="Force AI Memory Sync">
                 <FiRefreshCw className={`size-4 md:size-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
               <button onClick={toggleFullScreen} className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-colors border border-white/10 active:scale-95"><FiMaximize className="size-4 md:size-5" /></button>
             </div>
+
           </div>
         </div>
 
