@@ -21,44 +21,40 @@ To keep the diagram visually clear and easy to read during presentations, relate
 
 ```mermaid
 flowchart TD
-    %% Styling
-    classDef entityStyle fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#ffffff,font-weight:bold;
-    classDef systemStyle fill:#0f172a,stroke:#10b981,stroke-width:3px,color:#ffffff,font-weight:bold;
-
     %% External Entities
-    Admin["🧑‍💼 GYM OWNER / ADMIN<br>(Primary System Operator)"]:::entityStyle
-    Camera["📷 CAMERA / WEBCAM<br>(IoT Vision Hardware)"]:::entityStyle
-    Member["🏃 GYM MEMBER<br>(Physical Participant)"]:::entityStyle
+    Admin["Gym Owner or Admin - Primary Operator"]
+    Camera["Camera or Webcam - IoT Vision Hardware"]
+    Member["Gym Member - Physical Participant"]
 
     %% Central Process 0
-    System(["<b>PROCESS 0</b><br><br><b>AN IoT-BASED GYM MANAGEMENT SYSTEM WITH<br>FACIAL RECOGNITION ATTENDANCE AND GESTURE-BASED<br>PROGRAM MONITORING FOR DOUBLE ALPHA FITNESS GYM</b>"]):::systemStyle
+    System(["Process 0: IoT-Based Gym Management System for Double Alpha Fitness Gym"])
 
     %% Admin Inflows (Inputs)
     Admin -->|1. Admin login credentials| System
-    Admin -->|2. Member profile, anthropometrics & facial photo command| System
-    Admin -->|3. Membership plan, workout assignment & payment details| System
-    Admin -->|4. Report generation requests & filter parameters| System
+    Admin -->|2. Member profile, anthropometrics and photo command| System
+    Admin -->|3. Plans, workout assignments and payment details| System
+    Admin -->|4. Report generation requests and filter parameters| System
 
     %% Admin Outflows (Outputs)
-    System -->|5. Login status & dashboard summary statistics| Admin
-    System -->|6. Member records & biometric enrollment confirmation| Admin
-    System -->|7. Real-time attendance logs & recognition alerts<br>(Recognized / Unrecognized Member)| Admin
-    System -->|8. Membership status, expiration alerts & payment records| Admin
-    System -->|9. Program monitoring results & repetition counts| Admin
-    System -->|10. Generated system reports (PDF / CSV)| Admin
+    System -->|5. Login status and dashboard summary statistics| Admin
+    System -->|6. Member records and enrollment confirmation| Admin
+    System -->|7. Attendance logs and recognition alerts - Recognized or Unrecognized| Admin
+    System -->|8. Membership status, expiration alerts and payment records| Admin
+    System -->|9. Program monitoring results and repetition counts| Admin
+    System -->|10. Generated system reports - PDF or CSV| Admin
 
     %% Camera Inflows (Inputs)
-    Camera -->|11. Live facial video stream (entrance recognition)| System
-    Camera -->|12. Live exercise movement video stream (pose tracking)| System
+    Camera -->|11. Live facial video stream for entrance recognition| System
+    Camera -->|12. Live exercise movement video stream for pose tracking| System
 
     %% Member Inflows (Inputs)
-    Member -->|13. Registration info, measurements & facial photo posing| System
-    Member -->|14. Payment remittance (Cash / GCash / Maya)| System
+    Member -->|13. Registration info, measurements and photo posing| System
+    Member -->|14. Payment remittance via Cash, GCash or Maya| System
 
     %% Member Outflows (Outputs)
-    System -->|15. Attendance check-in greeting & recognition status| Member
-    System -->|16. Real-time exercise repetition & workout feedback| Member
-    System -->|17. Membership validity notice & official payment receipt| Member
+    System -->|15. Attendance check-in greeting and recognition status| Member
+    System -->|16. Real-time exercise repetition and workout feedback| Member
+    System -->|17. Membership validity notice and official payment receipt| Member
 ```
 
 **Figure 4.2.** Simplified Context Level Diagram (DFD Level 0) for Double Alpha Fitness Gym.
