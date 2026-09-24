@@ -216,7 +216,36 @@ flowchart LR
     Admin --> A_UpdPhoto
 ```
 
-### 3.2 Admin Use Case Summary
+### 3.2 Use Case Relationships and Scope Boundaries
+
+#### A. Narrative Explanation of Relationships
+The use case diagram illustrates the administrative capabilities of the Gym Owner / Coach, distinguishing between primary functions directly initiated by the admin and specialized sub-functions governed by UML relationship stereotypes (`<<include>>` and `<<extend>>`), as well as clearly defined system exclusions:
+
+1. **Include Relationships (`<<include>>`) — Mandatory Sub-Processes:**
+   An `<<include>>` relationship represents an essential, mandatory behavior that is automatically and unconditionally executed as part of the base use case. In this module:
+   * **`UC-01: Login / Authentication` includes `Validate Credentials`:** Whenever the administrator attempts to log into the web system, the system must execute the validation routine against the database-stored bcrypt password hash. Login cannot proceed without successful credential verification.
+   * **`Forgot Password` includes `Reset Password`:** Initiating account recovery mandates resetting the security password once the temporary recovery token is verified.
+   * **`UC-01b: Logout` includes `Invalidate Session Token`:** Logging out always revokes the active Laravel Sanctum bearer token and purges the session from local storage, preventing unauthorized back-navigation.
+   * **`UC-10a: Generate & Filter System Reports` includes `UC-10b: Export CSV / Print PDF Report`:** Report compilation includes formatting the aggregated operational data into a downloadable CSV or printable PDF document.
+   * **`UC-03a: Add Member` includes `Biometric Enrollment`:** Creating a new member profile mandatorily incorporates capturing the member's facial reference photo and extracting 128-dimensional facial encodings to prepare them for automated attendance tracking.
+   * **`UC-05a: Record Payment Transaction` includes `Activate / Update Subscription`:** Confirming a payment transaction automatically updates the linked member's subscription status and extends their validity period in the centralized database.
+
+2. **Extend Relationships (`<<extend>>`) — Conditional / Optional Behaviors:**
+   An `<<extend>>` relationship represents an optional or conditional behavior that only executes at specific extension points under certain circumstances:
+   * **`Forgot Password` extends `UC-01: Login / Authentication`:** This workflow is optional and only triggered when the administrator fails to remember their password and explicitly clicks the "Recovery?" link on the login interface.
+   * **`UC-05b: Print Payment Receipt` extends `UC-05a: Record Payment Transaction`:** Printing a formal payment receipt is an optional extension executed only when the member requests a physical copy or when the admin chooses to print proof of payment.
+   * **`UC-07b: Manually Verify Workout Log` extends `UC-07a: Assign Exercise Task to Member`:** Manual log verification is an optional branch utilized only when camera visibility issues or AI classification discrepancies necessitate direct coach confirmation of completed exercises.
+
+3. **System Exclusions — Features Explicitly Out of Scope:**
+   To maintain alignment with the approved study boundaries documented in `manus.md` (Scope and Limitations), the following features are explicitly **excluded** from the administrator module:
+   * **Excluded: Full Payment Gateway Integration:** The system does not integrate automated payment gateways (e.g., direct Stripe or PayPal card processing APIs). It is strictly limited to manually recording payments received through Cash, GCash, or Maya.
+   * **Excluded: Native Mobile Application:** There is no standalone mobile application for iOS or Android; administrative access is provided exclusively via responsive web browsers.
+   * **Excluded: Automated Medical Diagnosis:** The system records anthropometric data (height, weight, body type) purely as reference metrics for coach-guided program assignment; automated nutritional or medical diagnoses are excluded.
+   * **Excluded: Multi-Factor Authentication (MFA):** Access security is restricted to single-factor email and bcrypt-hashed password authentication; SMS or hardware token MFA is excluded due to project constraints.
+
+---
+
+### 3.3 Admin Use Case Summary
 
 | Use Case ID | Use Case Name | Description |
 |:---:|---|---|
@@ -231,7 +260,7 @@ flowchart LR
 | **UC-10** | System Reports & Analytics Generation | Filters and exports attendance, program monitoring, membership, and payment reports. |
 | **UC-11** | Admin Profile & Security Settings | Updates profile details, password, and profile picture. |
 
-### 3.3 Admin Formal Use Case Specifications
+### 3.4 Admin Formal Use Case Specifications
 
 ---
 
@@ -431,7 +460,27 @@ flowchart LR
     Camera --> C_DetectPose
 ```
 
-### 4.2 AI Vision Engine Use Case Summary
+### 4.2 Use Case Relationships and Scope Boundaries
+
+#### A. Narrative Explanation of Relationships
+The use case diagram for the Security Camera / AI Vision Engine depicts the automated computer vision pipeline operating in the background, governed by chained mandatory relationships and explicit scope limitations:
+
+1. **Include Relationships (`<<include>>`) — Automated Processing Pipeline:**
+   Every major vision pipeline consists of strict, mandatory sequential steps where each subsequent action is automatically included:
+   * **Facial Recognition Attendance Pipeline:** `UC-06a: Detect Facial Bounding Box` includes `UC-06b: Extract 128-d Face Embeddings`, which includes `UC-06c: Match Encoding Against Enrolled Database`, which in turn includes `UC-06d: Send Attendance Record to Laravel API`. None of these steps can be bypassed; facial detection without feature extraction or matching cannot log an attendance event.
+   * **Gesture Monitoring Pipeline:** `UC-08a: Detect 33-Point Skeletal Landmarks` includes `UC-08b: Calculate Joint Angles`, which includes `UC-08c: Classify Exercise Type`, which includes `UC-08d: Count Completed Repetitions`, and culminates in `UC-08e: Send Workout Record to Laravel API`. Landmark estimation directly drives angle evaluation, repetition counting, and workout logging.
+
+2. **Extend Relationships (`<<extend>>`):**
+   * There are no optional `<<extend>>` branches initiated autonomously by the AI Engine. The vision algorithms follow deterministic mathematical thresholds (e.g., Euclidean distance < 0.6 for face match; joint angle inflection triggers for repetition counting).
+
+3. **System Exclusions — Vision Features Explicitly Out of Scope:**
+   * **Excluded: Full Posture Correction and Biomechanical Form Evaluation:** As explicitly bounded in `manus.md` (Scope and Limitations), the computer vision engine is restricted to detecting movement patterns and counting completed repetitions for selected exercises in the approved scope. It does not provide professional posture correction, clinical safety evaluations, or injury risk assessments.
+   * **Excluded: Wearable or Equipment Sensor Tracking:** The system relies strictly on optical camera input; wearable sensors, smartwatches, and equipment-attached accelerometers are excluded.
+   * **Excluded: Continuous All-Day Video Recording / NVR Storage:** The AI microservice streams live frames for real-time monitoring and processing; continuous 24/7 video archiving is excluded.
+
+---
+
+### 4.3 AI Vision Engine Use Case Summary
 
 | Use Case ID | Use Case Name | Description |
 |:---:|---|---|
@@ -439,7 +488,7 @@ flowchart LR
 | **UC-08** | Gesture-Based Movement & Repetition Monitoring | Detects pose landmarks, calculates joint angles, classifies exercises, counts reps, and logs workout results. |
 | **UC-09** | Camera Stream & Live Feed Provision | Provides the MJPEG stream to the web UI and switches camera sources on admin request. |
 
-### 4.3 AI Vision Engine Formal Use Case Specifications
+### 4.4 AI Vision Engine Formal Use Case Specifications
 
 ---
 
@@ -521,7 +570,27 @@ flowchart LR
     Member --> M_PerformEx
 ```
 
-### 5.2 Gym Member Use Case Summary
+### 5.2 Use Case Relationships and Scope Boundaries
+
+#### A. Narrative Explanation of Relationships
+The use case diagram for the Gym Member depicts physical, participant-level interactions with the system, highlighting automated inclusion pipelines and fundamental system exclusions:
+
+1. **Include Relationships (`<<include>>`) — Automated Participation Chains:**
+   Because gym members do not manually operate software buttons, their physical presence initiates automatic downstream operations modeled as include relationships:
+   * **Attendance Check-In:** `UC-06m: Face the Entrance Camera for Attendance Scan` includes `UC-06r: Be Identified by Facial Recognition Engine`, which automatically includes `UC-06l: Attendance Entry is Auto-Logged`. Stepping in front of the camera leads directly to automatic biometric identification and timestamp logging.
+   * **Workout Monitoring:** `UC-08m: Perform Assigned Exercise in Camera View` includes `UC-08p: Pose Landmarks Detected by AI Engine`, which automatically includes `UC-08r: Repetition Count Auto-Recorded`. Performing an exercise in camera view triggers automated skeletal tracking and repetition logging.
+
+2. **Extend Relationships (`<<extend>>`):**
+   * There are no `<<extend>>` relationships for the Gym Member. Their participation is direct and uniform across registration, attendance check-in, payment handover, and exercise performance.
+
+3. **System Exclusions — Features Explicitly Out of Scope for Members:**
+   * **Excluded: Direct Web Portal / Account Login:** Members do not have login accounts, passwords, or direct web interface access. All member interactions are conducted either touchlessly via camera sensors or through admin assistance.
+   * **Excluded: Self-Service Mobile Application:** Members do not download a mobile app to check in, track reps, or pay; the system is deployed purely as a web-based administrative console and IoT camera terminal.
+   * **Excluded: In-App Digital Payment Gateways:** Members cannot enter credit/debit card numbers directly into an online checkout; payments are presented directly to the gym owner or admin via Cash, GCash QR, or Maya reference confirmation.
+
+---
+
+### 5.3 Gym Member Use Case Summary
 
 | Use Case ID | Use Case Name | Member Role |
 |:---:|---|---|
@@ -530,7 +599,7 @@ flowchart LR
 | **UC-06** | Facial Recognition Attendance Tracking | Faces the entrance camera; the AI Engine identifies them and auto-logs their attendance. |
 | **UC-08** | Gesture-Based Movement & Repetition Monitoring | Performs assigned exercises in front of the gesture camera; reps are automatically tracked and recorded. |
 
-### 5.3 Gym Member Formal Use Case Specifications
+### 5.4 Gym Member Formal Use Case Specifications
 
 > **Note:** Gym Members do not have a web system login account. All member interactions are physical — occurring via camera terminals and admin-assisted processes. The system records their actions automatically.
 
