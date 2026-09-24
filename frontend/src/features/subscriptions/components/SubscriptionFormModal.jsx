@@ -131,7 +131,7 @@ export default function SubscriptionFormModal({
                   type="date" 
                   value={formData.end_date} 
                   disabled 
-                  className="mt-1 w-full p-2.5 bg-gray-100 dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700/50 rounded-xl text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium" 
+                  className="mt-1 w-full p-2.5 bg-gray-100 dark:bg-gray-800/50 border-2 border-gray-300 dark:border-gray-700/50 rounded-xl text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium" 
                 />
               </label>
             </div>

@@ -12,7 +12,7 @@ export default function DataTable({
   className = ""
 }) {
   return (
-    <div className={`overflow-x-auto ${className}`}>
+    <div className={`overflow-x-auto overscroll-x-contain touch-pan-x ${className}`}>
       <table className="w-full text-left border-collapse min-w-[800px]">
         <thead>
           <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">

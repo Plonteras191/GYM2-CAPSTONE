@@ -209,7 +209,7 @@ export default function TransactionTable({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-4 border-t-2 border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="p-4 border-t-2 border-gray-300 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
             <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
               Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, transactions.length)} of {transactions.length} Entries
             </span>

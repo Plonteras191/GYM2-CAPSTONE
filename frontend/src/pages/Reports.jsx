@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  FiCalendar, FiDownload, FiPrinter, FiFileText, 
-  FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock, FiActivity, FiLoader
+import {
+  FiCalendar, FiDownload, FiPrinter, FiFileText,
+  FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock, FiActivity, FiLoader,
+  FiChevronLeft, FiChevronRight
 } from 'react-icons/fi';
 import api from '../api';
 import { useLocation } from 'react-router-dom';
@@ -11,14 +12,16 @@ export default function Reports() {
   const { getCache, setCache } = useDataCache();
   const location = useLocation();
   const [reportType, setReportType] = useState(location.state?.defaultTab || 'Payments');
-  
+
   const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
   const today = new Date().toISOString().split('T')[0];
-  
-  const [startDate, setStartDate] = useState(currentMonthStart); 
-  const [endDate, setEndDate] = useState(today); 
+
+  const [startDate, setStartDate] = useState(currentMonthStart);
+  const [endDate, setEndDate] = useState(today);
   const [searchTerm, setSearchTerm] = useState('');
-  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const [isExporting, setIsExporting] = useState(false);
 
   // Cache key includes date range so changing dates correctly re-fetches
@@ -58,7 +61,7 @@ export default function Reports() {
       const headers = currentData.columns.join(',');
       const rows = currentData.rows.map(row => row.join(',')).join('\n');
       const csvContent = `${headers}\n${rows}`;
-      
+
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -77,6 +80,41 @@ export default function Reports() {
 
   const handlePrint = () => window.print();
 
+  const currentData = reportData?.[reportType];
+  const filteredRows = currentData?.rows.filter(row =>
+    row.some(cell => String(cell).toLowerCase().includes(searchTerm.toLowerCase()))
+  ) || [];
+  const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+  const pageRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
+  const indexOfLastItem = currentPage * itemsPerPage;
+
+  const generatePageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => setCurrentPage(i)}
+          className={`px-3 py-1 rounded-md font-bold shadow-sm transition-colors ${currentPage === i ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black' : 'hover:text-slate-900 dark:hover:text-white font-medium text-slate-500 dark:text-gray-400'}`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [reportType, searchTerm, startDate, endDate]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   if (isLoading || !reportData) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] gap-4 animate-in fade-in">
@@ -89,20 +127,15 @@ export default function Reports() {
     );
   }
 
-  const currentData = reportData[reportType];
-  const filteredRows = currentData.rows.filter(row => 
-    row.some(cell => String(cell).toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
   const renderCellContent = (cell) => {
     const val = String(cell);
     const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
-    
+
     if (val === 'Active' || val === 'Checked In' || val === 'Complete' || val === 'Cash') return <span className={`${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`}>{val}</span>;
     if (val === 'Expired' || val === 'Failed') return <span className={`${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`}>{val}</span>;
     if (val === 'Gcash' || val === 'Pending') return <span className={`${base} bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50`}>{val}</span>;
     if (val === 'Card' || val === 'Other') return <span className={`${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`}>{val}</span>;
-    
+
     return val;
   };
 
@@ -249,13 +282,13 @@ export default function Reports() {
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => {
                 setStartDate(currentMonthStart);
                 setEndDate(today);
-              }} 
-              className={primaryButtonClass} 
+              }}
+              className={primaryButtonClass}
               style={{ minWidth: '160px' }}
             >
               <FiClock size={18} />
@@ -266,11 +299,11 @@ export default function Reports() {
           {/* DYNAMIC GRID: Switches between 3 and 4 columns automatically */}
           <div className={`grid grid-cols-1 gap-6 ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
             {currentData.kpis.map((kpi, index) => {
-              
+
               let IconComponent = FiTrendingUp;
               let colorClass = "bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none";
               const labelLower = kpi.label.toLowerCase();
-              
+
               if (labelLower.includes('refund') || labelLower.includes('expire')) {
                 IconComponent = FiTrendingDown;
                 colorClass = "bg-red-800 text-white shadow-lg shadow-red-800/40 dark:shadow-none";
@@ -289,7 +322,7 @@ export default function Reports() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{kpi.label}</p>
-                    <h3 className="text-3xl font-normal text-slate-900 dark:text-gray-300 mt-1">{kpi.value}</h3>
+                    <h3 className="text-2xl font-normal text-slate-900 dark:text-gray-300 mt-1">{kpi.value}</h3>
                   </div>
                 </div>
               );
@@ -303,7 +336,7 @@ export default function Reports() {
               </div>
               <input type="text" placeholder={`Search ${reportType}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 transition-all shadow-sm" />
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -316,7 +349,7 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
-                  {filteredRows.map((row, rowIndex) => (
+                  {pageRows.map((row, rowIndex) => (
                     <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#1e1e1e] transition-colors group">
                       {row.map((cell, cellIndex) => (
                         <td key={cellIndex} className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
@@ -335,6 +368,22 @@ export default function Reports() {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="p-4 border-t-2 border-gray-300 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
+                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredRows.length)} of {filteredRows.length} Entries
+                </span>
+                <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
+                  <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <FiChevronLeft size={18} />
+                  </button>
+                  {generatePageNumbers()}
+                  <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage === totalPages} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <FiChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

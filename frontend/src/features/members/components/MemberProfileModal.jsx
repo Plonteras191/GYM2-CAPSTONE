@@ -195,18 +195,18 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
             <p className="text-amber-600 dark:text-amber-500 font-black uppercase tracking-widest text-xs mt-1 mb-6">{member.plan}</p>
 
             <div className="w-full space-y-3 mb-6">
-              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
                 <FiMapPin className="text-amber-500 flex-shrink-0" size={16} />
                 <span className="truncate">{member.address || 'No Address Provided'}</span>
               </div>
-              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
                 <FiPhone className="text-amber-500 flex-shrink-0" size={16} />
                 <span>{member.phone}</span>
               </div>
             </div>
 
             {/* Body Metrics */}
-            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm mb-6">
+            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-6">
               <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Body Metrics</h4>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
@@ -230,7 +230,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
             </div>
 
             {/* Coach Notes */}
-            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mt-4 mb-4">
+            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-5 shadow-sm mt-4 mb-4">
               <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Coach Notes</h4>
               <textarea
                 className="w-full bg-gray-50 dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-slate-800 dark:text-gray-300 transition-colors min-h-[100px]"
@@ -244,7 +244,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
           {/* RIGHT CONTENT */}
           <div className="w-full lg:w-[68%] flex flex-col h-full bg-white dark:bg-[#1e1e1e]">
             {/* Tabs */}
-            <div className="flex items-center gap-6 px-8 pt-6 border-b-2 border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-x-auto">
+            <div className="flex items-center gap-6 px-8 pt-6 border-b-2 border-gray-300 dark:border-gray-700 flex-shrink-0 overflow-x-auto">
               {[['workouts', 'Workout Logs'], ['attendance', 'Attendance Calendar'], ['plan', "Coach's Training Plan"]].map(([key, label]) => (
                 <button key={key} onClick={() => setActiveTab(key)} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeTab === key ? 'text-amber-500' : 'text-gray-500 hover:text-slate-800 dark:hover:text-white'}`}>
                   {label}
@@ -259,7 +259,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               {/* ATTENDANCE CALENDAR */}
               {activeTab === 'attendance' && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-0">
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-[#252830] shadow-sm relative flex-1 overflow-hidden flex flex-col min-h-0">
+                  <div className="border border-gray-300 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-[#252830] shadow-sm relative flex-1 overflow-hidden flex flex-col min-h-0">
                     <style>{`
                       .fc { --fc-border-color: #e2e8f0; --fc-page-bg-color: transparent; color: #4b5563; }
                       .dark .fc { --fc-border-color: #4b5563; --fc-today-bg-color: rgba(245, 158, 11, 0.1); color: #d1d5db; }
@@ -348,16 +348,16 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col gap-4 min-h-0">
                   {totalWorkoutPages > 1 && (
                     <div className="flex justify-end flex-shrink-0">
-                      <div className="flex items-center gap-2 bg-white dark:bg-[#1a1c23] border border-gray-200 dark:border-gray-700 rounded-lg p-1 shadow-sm">
+                      <div className="flex items-center gap-2 bg-white dark:bg-[#1a1c23] border border-gray-300 dark:border-gray-700 rounded-lg p-1 shadow-sm">
                         <button onClick={() => setWorkoutPage(p => Math.max(1, p - 1))} disabled={workoutPage === 1} className="p-1 text-slate-500 hover:text-amber-500 disabled:opacity-30"><FiChevronLeft size={16} /></button>
                         <span className="text-[10px] font-bold text-slate-600 dark:text-gray-300">Page {workoutPage} of {totalWorkoutPages}</span>
                         <button onClick={() => setWorkoutPage(p => Math.min(totalWorkoutPages, p + 1))} disabled={workoutPage === totalWorkoutPages} className="p-1 text-slate-500 hover:text-amber-500 disabled:opacity-30"><FiChevronRight size={16} /></button>
                       </div>
                     </div>
                   )}
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-y-auto shadow-sm flex-1 bg-white dark:bg-[#252830]">
+                  <div className="border border-gray-300 dark:border-gray-700 rounded-xl overflow-y-auto shadow-sm flex-1 bg-white dark:bg-[#252830]">
                     <table className="w-full text-left border-collapse">
-                      <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-[#1a1c23] border-b border-gray-200 dark:border-gray-700">
+                      <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-[#1a1c23] border-b border-gray-300 dark:border-gray-700">
                         <tr>
                           <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-1/4 text-center">Date</th>
                           <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 text-center">Exercises Logged</th>
@@ -441,18 +441,18 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               {/* COACH PLAN */}
               {activeTab === 'plan' && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full relative min-h-0">
-                  <div className="absolute inset-0 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row overflow-hidden">
+                  <div className="absolute inset-0 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row overflow-hidden">
                     
                     {/* Exercise Library */}
-                    <div className="w-full sm:w-1/2 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 h-full">
-                      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                        <input type="text" placeholder="Search Exercise Library..." value={exSearch} onChange={e => setExSearch(e.target.value)} className="w-full p-2 text-xs bg-white dark:bg-[#252830] border border-gray-200 dark:border-gray-700 rounded outline-none text-slate-800 dark:text-gray-300 font-medium shadow-sm" />
+                    <div className="w-full sm:w-1/2 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 h-full">
+                      <div className="p-3 border-b border-gray-300 dark:border-gray-700 flex-shrink-0">
+                        <input type="text" placeholder="Search Exercise Library..." value={exSearch} onChange={e => setExSearch(e.target.value)} className="w-full p-2 text-xs bg-white dark:bg-[#252830] border border-gray-300 dark:border-gray-700 rounded outline-none text-slate-800 dark:text-gray-300 font-medium shadow-sm" />
                       </div>
                       <div className="p-3 flex-1 overflow-y-auto space-y-2">
                         {exercisesLib.filter(ex => ex.name.toLowerCase().includes(exSearch.toLowerCase())).slice(0, 50).map(ex => {
                           const exId = String(ex.id).padStart(4, '0');
                           return (
-                            <div key={ex.id} className="flex items-center bg-white dark:bg-[#1a1c23] p-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm group">
+                            <div key={ex.id} className="flex items-center bg-white dark:bg-[#1a1c23] p-2 rounded-lg border border-gray-300 dark:border-gray-700 shadow-sm group">
                               <img src={`/dataset/videos/${exId}.gif`} alt={ex.name} className="w-12 h-12 rounded object-cover flex-shrink-0 bg-gray-100 dark:bg-black" loading="lazy" onError={e => { e.target.onerror = null; e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="%23f1f5f9" rx="4"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="8" fill="%2394a3b8" font-weight="bold">NO PREVIEW</text></svg>'; }} />
                               <div className="flex-1 min-w-0 px-3">
                                 <span className="font-bold text-[11px] text-slate-800 dark:text-gray-200 truncate block">{ex.name.toUpperCase()}</span>
@@ -466,7 +466,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
                     {/* Selected Routine */}
                     <div className="w-full sm:w-1/2 flex flex-col bg-white dark:bg-[#252830] h-full">
-                      <div className="flex w-full overflow-x-auto border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-gray-50 dark:bg-[#1a1c23]/50">
+                      <div className="flex w-full overflow-x-auto border-b border-gray-300 dark:border-gray-700 flex-shrink-0 bg-gray-50 dark:bg-[#1a1c23]/50">
                         {daysOfWeek.map(day => (
                           <button key={day} onClick={() => setActiveDay(day)} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${activeDay === day ? 'border-amber-500 text-amber-600 dark:text-amber-500 bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
                             {day.substring(0, 3)}
@@ -515,7 +515,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         }
                       </div>
 
-                      <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a1c23]/50 flex-shrink-0">
+                      <div className="p-3 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#1a1c23]/50 flex-shrink-0">
                         <button onClick={handleAssignWeeklyPlan} className="w-full py-2.5 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black font-bold uppercase tracking-widest text-[10px] rounded-lg shadow-md active:scale-95 transition-all">
                           Save Weekly Plan
                         </button>

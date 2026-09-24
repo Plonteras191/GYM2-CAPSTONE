@@ -119,7 +119,7 @@ export default function CoachEventModal({
             </label>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-700 mt-6">
+          <div className="pt-4 flex justify-end gap-3 border-t border-gray-300 dark:border-gray-700 mt-6">
             <button 
               type="button" 
               onClick={onClose} 

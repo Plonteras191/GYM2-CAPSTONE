@@ -124,7 +124,7 @@ export default function MemberTable({
                 </tr>
               ) : (
                 currentMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group border-b border-gray-200 dark:border-gray-700/50">
+                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group border-b border-gray-300 dark:border-gray-700/50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-4">
                         {member.profilePicUrl ? (
@@ -165,7 +165,7 @@ export default function MemberTable({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-4 border-t-2 border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="p-4 border-t-2 border-gray-300 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
             <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
               Showing {indexOfFirst + 1} to {Math.min(indexOfFirst + itemsPerPage, members.length)} of {members.length} Entries
             </span>

@@ -222,7 +222,7 @@ export default function SubscriptionsCalendarView({
         </div>
         
         <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col max-h-[300px]">
-          <h3 className="text-base font-bold text-black dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Active Subscriptions</h3>
+          <h3 className="text-base font-bold text-black dark:text-gray-300 mb-4 border-b border-gray-300 dark:border-gray-700 pb-2">Active Subscriptions</h3>
           
           <div className="overflow-y-auto hidden-scrollbar space-y-4 flex-1 pr-2">
             {activeSubsLegend.length === 0 ? (
@@ -251,7 +251,7 @@ export default function SubscriptionsCalendarView({
         </div>
 
         <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col flex-1 max-h-[350px]">
-          <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex-shrink-0">
+          <div className="flex justify-between items-center mb-4 border-b border-gray-300 dark:border-gray-700 pb-2 flex-shrink-0">
             <h3 className="text-base font-bold text-black dark:text-gray-300">Event Plans</h3>
             <button 
               onClick={onOpenEventModal} 
@@ -268,7 +268,7 @@ export default function SubscriptionsCalendarView({
               upcomingCoachEvents.map((ev) => (
                 <div 
                   key={ev.id} 
-                  className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative group p-3.5 flex justify-between items-center transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600" 
+                  className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm relative group p-3.5 flex justify-between items-center transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600" 
                   style={{ borderLeft: `5px solid ${ev.color || '#eab308'}` }}
                 >
                   <button 
@@ -288,7 +288,7 @@ export default function SubscriptionsCalendarView({
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center justify-center border-l-2 border-dashed border-gray-200 dark:border-gray-700 pl-4 w-[75px] flex-shrink-0">
+                  <div className="flex flex-col items-center justify-center border-l-2 border-dashed border-gray-300 dark:border-gray-700 pl-4 w-[75px] flex-shrink-0">
                     <span className="text-[24px] font-black leading-none mb-0.5 tracking-tighter text-black dark:text-gray-300">
                       {new Date(ev.start_date + 'T00:00:00').getDate()}
                     </span>

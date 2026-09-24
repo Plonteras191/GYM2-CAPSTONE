@@ -49,7 +49,7 @@ export default function PricingCatalogModal({
             <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border-2 border-dashed border-amber-400 dark:border-amber-500/50 flex flex-col gap-5 mb-2 animate-in fade-in slide-in-from-top-2 relative shadow-inner">
               <button 
                 onClick={() => setIsAddingPlan(false)} 
-                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full p-1.5 shadow-sm" 
+                className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full p-1.5 shadow-sm" 
                 title="Cancel New Plan"
               >
                 <FiX size={16} strokeWidth={3} />
@@ -98,7 +98,7 @@ export default function PricingCatalogModal({
               </button>
             </div>
           ) : (
-            <div className="flex justify-between items-center mb-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center mb-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border-2 border-gray-300 dark:border-gray-700">
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-relaxed max-w-[65%]">
                 Update current prices below, or create a brand new custom plan.
               </p>
@@ -119,7 +119,7 @@ export default function PricingCatalogModal({
           
           <div className="space-y-3">
             {plans.map(plan => (
-              <div key={plan.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 group transition-all hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-sm">
+              <div key={plan.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-300 dark:border-gray-700 group transition-all hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-sm">
                 <div className="flex flex-col">
                   <span className="font-bold text-black dark:text-gray-300">{plan.name}</span>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-0.5">{plan.duration_days} Day/s</span>

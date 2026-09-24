@@ -196,7 +196,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         <div className="p-6 overflow-y-auto space-y-8 flex-1 bg-white dark:bg-[#252830]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Profile Pic */}
-            <div className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700/50 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-3">
+            <div className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700/50 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-3">
               <h4 className="font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wide text-sm">Display Picture</h4>
               {profilePic ? (
                 <div className="flex flex-col items-center gap-4 w-full">
@@ -240,7 +240,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
           {/* Personal Details Form */}
           <form id="memberForm" className="space-y-6" onSubmit={handleSave}>
             <div>
-              <h4 className="text-lg font-bold border-b-2 border-gray-200 dark:border-gray-700/50 pb-2 mb-4 text-slate-800 dark:text-gray-300">Personal Details</h4>
+              <h4 className="text-lg font-bold border-b-2 border-gray-300 dark:border-gray-700/50 pb-2 mb-4 text-slate-800 dark:text-gray-300">Personal Details</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <label className="block"><span className={labelClass}>First Name</span><input type="text" required value={formData.firstName} onChange={e => handleNameChange(e, 'firstName')} className={inputClass} placeholder="Juan" /></label>
                 <label className="block"><span className={labelClass}>Last Name</span><input type="text" required value={formData.lastName} onChange={e => handleNameChange(e, 'lastName')} className={inputClass} placeholder="Dela Cruz" /></label>

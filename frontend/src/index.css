@@ -22,12 +22,50 @@
 @custom-variant dark (&:is(.dark *));
 
 @layer base {
+  html {
+    min-width: 320px;
+  }
+
   body {
     @apply bg-brand-light text-brand-dark transition-colors duration-300;
   }
   
   .dark body {
     @apply bg-brand-dark text-brand-light;
+  }
+}
+
+@media (max-width: 639px) {
+  main > div {
+    padding: 1rem !important;
+  }
+
+  main > div > .overflow-x-auto,
+  main > div > div.overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  main > div {
+    padding: 1.25rem !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .fc .fc-toolbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1rem !important;
+  }
+
+  .fc .fc-button-primary {
+    margin: 0 2px !important;
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.75rem !important;
   }
 }
 

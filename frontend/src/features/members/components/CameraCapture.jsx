@@ -3,7 +3,7 @@ import { FiCamera, FiCheckCircle, FiVideoOff } from 'react-icons/fi';
 
 export default function CameraCapture({ isCameraActive, faceImage, videoRef, canvasRef, onStart, onCapture, onStop, onRetake }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700/50 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-3">
+    <div className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700/50 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-3">
       <h4 className="font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wide text-sm">Facial Recognition</h4>
 
       <div className={`mt-2 w-32 h-32 rounded-2xl border-2 flex items-center justify-center overflow-hidden transition-all ${
