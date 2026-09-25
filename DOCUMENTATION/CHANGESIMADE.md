@@ -58,6 +58,16 @@
 
 ---
 
+## 6. Physical & Logical Entity-Relationship Diagrams
+📁 `DOCUMENTATION/Physical Entity-Relationship Diagram/` & `DOCUMENTATION/Logical Entity-Relationship Diagram/`
+> Files updated: `Physical Entity-Relationship Diagram.md`, `Physical Entity-Relationship Diagram docs.md`, `Logical Entity-Relationship Diagram.md`, and `Logical Entity-Relationship Diagram docs.md`
+
+| # | What Changed | Why |
+|---|---|---|
+| 1 | **Removed `auto_renew` from `memberships` entity and Data Dictionary** in both Physical and Logical ERDs | Double Alpha Fitness Gym does not support automated recurring credit card billing; renewals are purely manual at the desk via Cash/GCash/Maya. Removing prevents defense panel questions on unimplemented payment gateways. |
+
+---
+
 ## Summary
 
 | Diagram | No. of Fixes |
@@ -67,4 +77,6 @@
 | Manual Process Flow | 2 |
 | System Process Flow | 3 |
 | Use Case Diagram | 4 |
-| **Total** | **13** |
+| Entity-Relationship Diagrams (Physical & Logical) | 1 |
+| **Total** | **14** |
+

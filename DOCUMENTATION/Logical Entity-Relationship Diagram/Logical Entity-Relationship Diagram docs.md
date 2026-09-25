@@ -30,7 +30,7 @@ The logical architecture consists of **nine primary entities** that govern gym m
 1. **ADMIN:** Represents the authenticated system operator (Gym Owner or Coach). It holds logical attributes such as `name`, `email`, and `password`. The Admin possesses a **1 : N** relationship with **MEMBER** (*"Manages"*), reflecting the administrator's authority to register, update, and monitor member accounts, as well as a **1 : N** relationship with **PLAN** (*"Configures"*).
 2. **MEMBER:** Represents the gym patron and serves as the central hub of the relational model. It stores demographic details (`first_name`, `last_name`, `phone`, `email`, `address`), intake metrics (`dob`), anthropometric measurements (`height`, `weight`), and system `status`. Each member can enroll in multiple gym activities over time.
 3. **PLAN:** Represents the catalog of available gym pricing tiers. It defines the plan's `name` (Daily, Monthly, Annual, With Coach), `price`, and `duration_days`. A single plan defines multiple individual member passes (**1 : N** with `MEMBERSHIP`).
-4. **MEMBERSHIP:** Represents the actual subscription purchased by a member. It records the `plan_type`, `start_date`, `end_date`, subscription `status` (Active or Expired), `payment_method`, and `auto_renew` flag. It maintains an **N : 1** relationship with both **MEMBER** and **PLAN**.
+4. **MEMBERSHIP:** Represents the actual subscription purchased by a member. It records the `plan_type`, `start_date`, `end_date`, subscription `status` (Active or Expired), and `payment_method`. It maintains an **N : 1** relationship with both **MEMBER** and **PLAN**.
 
 ---
 

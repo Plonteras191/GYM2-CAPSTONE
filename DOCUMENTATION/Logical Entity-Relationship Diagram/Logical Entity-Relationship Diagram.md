@@ -17,7 +17,7 @@ flowchart TD
     
     Plan["PLAN\n- name\n- price\n- duration_days"]
     
-    Membership["MEMBERSHIP\n- plan_type\n- start_date\n- end_date\n- status\n- payment_method\n- auto_renew"]
+    Membership["MEMBERSHIP\n- plan_type\n- start_date\n- end_date\n- status\n- payment_method"]
     
     Transaction["TRANSACTION\n- transaction_id\n- transaction_date\n- amount\n- payment_method\n- reference_number\n- status"]
     
@@ -87,7 +87,7 @@ The table below summarizes the logical business entities, their key attributes, 
 | **MEMBER** | Gym patron registered in the fitness center. | `first_name`, `last_name`, `email`, `phone`, `address`, `dob`, `height`, `weight`, `status` | **1 : 1** with `FACE_ENCODING` (Enrolls)<br>**1 : N** with `MEMBERSHIP` (Avails)<br>**1 : N** with `TRANSACTION` (Remits)<br>**1 : N** with `ATTENDANCE` (Records)<br>**1 : N** with `WORKOUT_LOG` (Logs) |
 | **FACE_ENCODING** | 128-dimensional biometric facial embedding vectors. | `encoding_blob`, `enrolled_at` | **1 : 1** with `MEMBER` (Owned by) |
 | **PLAN** | Gym pricing catalog defining plan duration and rates. | `name`, `price`, `duration_days` | **1 : N** with `MEMBERSHIP` (Classifies) |
-| **MEMBERSHIP** | Subscription periods assigned to or renewed by a member. | `plan_type`, `start_date`, `end_date`, `status`, `payment_method`, `auto_renew` | **N : 1** with `MEMBER`<br>**N : 1** with `PLAN`<br>**1 : N** with `TRANSACTION` (Generates) |
+| **MEMBERSHIP** | Subscription periods assigned to or renewed by a member. | `plan_type`, `start_date`, `end_date`, `status`, `payment_method` | **N : 1** with `MEMBER`<br>**N : 1** with `PLAN`<br>**1 : N** with `TRANSACTION` (Generates) |
 | **TRANSACTION** | Financial transaction ledger for cash and e-wallet payments. | `transaction_id`, `transaction_date`, `amount`, `payment_method`, `reference_number`, `status` | **N : 1** with `MEMBER`<br>**N : 1** with `MEMBERSHIP` (Bound to subscription period) |
 | **ATTENDANCE** | Touchless facial recognition check-in logs. | `date`, `time_in` | **N : 1** with `MEMBER` |
 | **WORKOUT_LOG** | AI gesture-detected and coach-verified workout entries. | `exercise_name`, `date` | **N : 1** with `MEMBER`<br>**N : 1** with `EXERCISE` |

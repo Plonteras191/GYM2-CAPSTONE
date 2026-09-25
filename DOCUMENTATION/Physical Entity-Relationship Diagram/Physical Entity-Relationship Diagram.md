@@ -63,7 +63,6 @@ erDiagram
         date start_date
         date end_date
         varchar status
-        tinyint auto_renew
         varchar payment_method
         varchar color
         text notes
@@ -210,7 +209,6 @@ Tracks member subscription validity periods and renewal statuses.
 | `start_date` | `DATE` | None | No | Subscription start date |
 | `end_date` | `DATE` | Indexed | No | Expiration date |
 | `status` | `VARCHAR(255)` | Default: 'Active', Indexed | No | Status (Active / Expired) |
-| `auto_renew` | `TINYINT(1)` | Default: 0 | No | Auto-renewal preference flag |
 | `payment_method` | `VARCHAR(255)` | Default: 'Cash' | No | Payment method used (Cash, GCash, Maya) |
 | `color` | `VARCHAR(255)` | Default: '#f59e0b' | No | Calendar visual color badge |
 | `notes` | `TEXT` | None | Yes | Administrative or coaching notes |

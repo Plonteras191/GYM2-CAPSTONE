@@ -30,7 +30,7 @@ The physical database structure is organized into **nine interconnected relation
 1. **`admins`:** Stores system administrator credentials (`id`, `name`, `email`, `password`, `created_at`, `updated_at`). The `email` column enforces unique indexing, while the password stores 60-character bcrypt cryptographic hashes for secure session authentication.
 2. **`members`:** Serves as the central entity table. In addition to contact demographics (`first_name`, `last_name`, `phone`, `email`, `address`), it incorporates anthropometric columns (`height` and `weight` as `DECIMAL(5,2)` and `dob` as `DATE`) to support the coach's fitness program assignments. The `enrolled_face_id` column stores a reference link to the member's biometric photo.
 3. **`plans`:** Contains the gym's pricing packages (`id`, `name`, `price`, `duration_days`). It is populated with standard tiers (Daily, Monthly, Annual, With Coach), establishing clear duration standards for membership expirations.
-4. **`memberships`:** Manages subscription validity windows. It links a member to a plan via foreign keys (`member_id` referencing `members.id` with `ON DELETE CASCADE`, and `plan_id` referencing `plans.id` with `ON DELETE SET NULL`). It records `start_date`, `end_date`, `status` (Active or Expired), `payment_method`, and `auto_renew`.
+4. **`memberships`:** Manages subscription validity windows. It links a member to a plan via foreign keys (`member_id` referencing `members.id` with `ON DELETE CASCADE`, and `plan_id` referencing `plans.id` with `ON DELETE SET NULL`). It records `start_date`, `end_date`, `status` (Active or Expired), and `payment_method`.
 
 ---
 
