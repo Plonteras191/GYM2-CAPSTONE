@@ -185,12 +185,17 @@ flowchart LR
         A_UpdateProf(["UC-11a: Update Admin Profile Details"])
         A_ChangePass(["UC-11b: Change Security Password"])
         A_UpdPhoto(["UC-11c: Update Profile Picture"])
+        A_ViewAtt(["UC-06: View Attendance Monitor (Security Monitor)"])
+        A_EnrollBio(["Enroll Facial Biometric Data"])
+        A_ActivateSub(["Activate / Update Member Subscription"])
 
         A_Login -.->|"<<include>>"| A_ValCred
         A_Login -.->|"<<extend>>"| A_Forgot
         A_Forgot -.->|"<<include>>"| A_ResetPass
         A_Logout -.->|"<<include>>"| A_InvSess
         A_GenRep -.->|"<<include>>"| A_ExportRep
+        A_AddMem -.->|"<<include>>"| A_EnrollBio
+        A_RecordPay -.->|"<<include>>"| A_ActivateSub
     end
 
     Admin --> A_Login
@@ -214,6 +219,7 @@ flowchart LR
     Admin --> A_UpdateProf
     Admin --> A_ChangePass
     Admin --> A_UpdPhoto
+    Admin --> A_ViewAtt
 ```
 
 ### 3.2 Use Case Relationships and Scope Boundaries
@@ -500,7 +506,7 @@ The use case diagram for the Security Camera / AI Vision Engine depicts the auto
   1. Gym Member approaches the entrance camera terminal.
   2. AI Engine captures live frames from the RTSP/Webcam stream using OpenCV.
   3. `face_recognition` library detects facial bounding boxes and extracts 128-dimensional embeddings.
-  4. Engine computes Euclidean distance against enrolled encodings: Distance ≤ 0.50 = Match Verified.
+  4. Engine computes Euclidean distance against enrolled encodings: Distance ≤ 0.52 = Match Verified.
   5. A confidence margin check of ≥ 0.035 gap between the top-2 candidates is required before confirming identity.
   6. Matched `member_id` and timestamp are sent to `POST /api/ai/log-attendance`.
   7. Backend logs the record in the `attendances` table; Security Monitor UI displays a recognition card.

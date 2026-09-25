@@ -26,19 +26,20 @@ flowchart TD
     %% Stage 2: Attendance & Membership Verification
     subgraph S2 ["Stage 2: Attendance & Membership Verification"]
         ConfirmMem --> VisitGym["Member visits the gym\n(checks in)"]
-        VisitGym --> RecordAtt["Admin records attendance in the logbook"]
-        RecordAtt --> CheckActive{"Is the\nmembership\nactive?"}
+        VisitGym --> CheckActive{"Is the\nmembership\nactive?"}
         
         CheckActive -- "No" --> RenewMem["Member renews membership"]
         RenewMem --> ProcessRenewal["Admin processes renewal\nand updates membership status"]
-        ProcessRenewal --> ProceedGym["Member proceeds with gym activities"]
+        ProcessRenewal --> RecordAtt["Admin records attendance in the logbook"]
         
-        CheckActive -- "Yes" --> ProceedGym
+        CheckActive -- "Yes" --> RecordAtt
+        RecordAtt --> ProceedGym["Member proceeds with gym activities"]
     end
 
     %% Stage 3: Fitness Program Monitoring
     subgraph S3 ["Stage 3: Fitness Program Monitoring"]
-        ProceedGym --> AssignProg["Admin assigns fitness program to member\n(new member or new program)"]
+        ProceedGym --> AssessMem["Admin assesses member body type\n(Ectomorph / Mesomorph / Endomorph)"]
+        AssessMem --> AssignProg["Admin assigns fitness program to member\n(new member or new program)"]
         AssignProg --> ExplainEx["Admin explains exercises and proper techniques"]
         ExplainEx --> ObserveMem["Admin manually observes and monitors the member"]
         ObserveMem --> RecordProg["Admin records progress manually\n(paper progress notes / logbook)"]

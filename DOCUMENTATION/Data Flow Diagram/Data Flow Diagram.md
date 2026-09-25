@@ -58,6 +58,7 @@ flowchart LR
     D2 -->|Active member counts| P2
     D4 -->|Daily attendance count| P2
     D7 -->|Expiring subscription alerts| P2
+    D8 -->|Revenue and transaction summary| P2
     P2 -->|Summary KPIs and statistics| Admin
 
     %% Process 3.0: Manage Members
@@ -75,7 +76,7 @@ flowchart LR
     P4 -->|Live attendance logs and recognition alerts| Admin
 
     %% Process 5.0: Program Monitoring
-    Admin -->|Exercise assignment and manual verification| P5
+    Admin -->|Exercise assignment and AI-verified repetition result| P5
     D2 -->|Retrieve assigned member info| P5
     P5 -->|Record exercise type and repetition count| D5
     D5 -->|Retrieve workout logs and progress| P5

@@ -28,9 +28,10 @@ flowchart TD
     SelectFunc --> M5["5. Payment Transaction"]
     SelectFunc --> M6["6. Reports"]
     
-    %% Module 1: Member Registration (Fix 1 Applied)
-    M1 --> M1_1["Enter Member Information\n(Personal info, contact details,\nheight, weight, body type)"]
-    M1_1 --> M1_2["Capture / Register Facial Data"]
+    %% Module 1: Member Registration
+    M1 --> M1_1["Enter Member Information\n(Personal info, contact details,\nheight and weight)"]
+    M1_1 --> M1_1b["Select Member Body Type\n(Ectomorph / Mesomorph / Endomorph)"]
+    M1_1b --> M1_2["Capture / Register Facial Data"]
     M1_2 --> M1_3["Save Member Information"]
     
     %% Module 2: Attendance Monitoring
@@ -48,6 +49,7 @@ flowchart TD
     M3_3 --> M3_4["Pose Landmark & Movement Recognition"]
     M3_4 --> M3_Check{"Exercise\nDetected?"}
     M3_Check -- "No" --> M3_Fail["Display 'Adjust Position in Camera View'"]
+    M3_Fail --> M3_3
     M3_Check -- "Yes" --> M3_5["Monitor Exercise Execution"]
     M3_5 --> M3_6["Count Repetitions / Track Form"]
     M3_6 --> M3_7["Save Monitoring Results"]
@@ -58,7 +60,8 @@ flowchart TD
     M4_2 --> M4_Check{"Active or\nExpired?"}
     M4_Check -- "Active" --> M4_Active["Display Membership Status"]
     M4_Check -- "Expired" --> M4_Renew["Process Membership Renewal"]
-    M4_Renew --> M4_Update["Update Membership Record"]
+    M4_Renew --> M4_Pay["Record Renewal Payment\n(Cash / GCash / Maya)"]
+    M4_Pay --> M4_Update["Update Membership Record"]
     
     %% Module 5: Payment Transaction (Fix 4 & Fix 5 Applied)
     M5 --> M5_1["Select Member"]
@@ -79,7 +82,6 @@ flowchart TD
     M2_4 --> LogoutCheck
     M2_Fail --> LogoutCheck
     M3_7 --> LogoutCheck
-    M3_Fail --> LogoutCheck
     M4_Active --> LogoutCheck
     M4_Update --> LogoutCheck
     M5_7 --> LogoutCheck

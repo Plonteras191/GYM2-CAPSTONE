@@ -53,7 +53,7 @@ flowchart TD
 
     %% Member Outflows (Outputs)
     System -->|15. Attendance check-in greeting and recognition status| Member
-    System -->|16. Real-time exercise repetition and workout feedback| Member
+    System -->|16. Real-time exercise repetition count and monitoring result| Member
     System -->|17. Membership validity notice and official payment receipt| Member
 ```
 
@@ -102,7 +102,7 @@ Members interact physically within the gym facility; they do not need to log int
 
 * **What the Member receives BACK:**
   15. **Attendance check-in greeting & recognition status:** An on-screen visual confirmation showing their name and welcoming them as they enter (or alerting them if unrecognized).
-  16. **Real-time exercise repetition & workout feedback:** A large, clear on-screen counter showing their completed repetitions (1, 2, 3...) while they exercise.
+  16. **Real-time exercise repetition count & monitoring result:** A large, clear on-screen counter showing their completed repetitions (1, 2, 3...) while they perform the assigned exercise. The system records the monitoring result upon completion. The system does not provide posture correction or professional form assessment.
   17. **Membership validity notice & official payment receipt:** Clear notification of plan expiration and a printed or digital receipt for membership dues.
 
 ---
