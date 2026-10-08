@@ -117,6 +117,179 @@ export default function Button({
   );
 }
 
+=== frontend\src\components\ui\CalendarHoverPopover.jsx ===
+import React, { useEffect, useState, useRef } from 'react';
+import { 
+  FiCalendar, FiClock, FiMapPin, FiExternalLink, 
+  FiUser, FiAward, FiCheckCircle 
+} from 'react-icons/fi';
+
+export default function CalendarHoverPopover({ data, onClose, onClick, onMouseEnter, onMouseLeave }) {
+  const popoverRef = useRef(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, placement: 'bottom' });
+
+  useEffect(() => {
+    if (!data?.rect) return;
+    const rect = data.rect;
+    const popoverWidth = 310; // w-[310px]
+    const estimatedHeight = 220;
+
+    let left = rect.left + rect.width / 2 - popoverWidth / 2;
+    if (left < 12) left = 12;
+    if (left + popoverWidth > window.innerWidth - 12) {
+      left = window.innerWidth - popoverWidth - 12;
+    }
+
+    let top = rect.bottom + 8;
+    let placement = 'bottom';
+    if (top + estimatedHeight > window.innerHeight - 12) {
+      top = Math.max(12, rect.top - estimatedHeight - 8);
+      placement = 'top';
+    }
+
+    setCoords({ top, left, placement });
+  }, [data?.rect, data?.date]);
+
+  if (!data || !data.events || data.events.length === 0) return null;
+
+  const dateObj = new Date(`${data.date}T12:00:00`);
+  const monthShort = dateObj.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const dayNum = dateObj.getDate();
+  const weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+  const fullDateFormatted = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const getEventBadge = (event) => {
+    const type = event.type || (event.detail?.toLowerCase().includes('attendance') ? 'attendance' : event.detail?.toLowerCase().includes('coach') ? 'coach' : 'sub');
+    if (type === 'attendance') {
+      return {
+        label: 'Attendance',
+        icon: <FiCheckCircle size={10} />,
+        classes: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+      };
+    }
+    if (type === 'coach') {
+      return {
+        label: 'Coach Event',
+        icon: <FiAward size={10} />,
+        classes: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+      };
+    }
+    return {
+      label: 'Membership',
+      icon: <FiUser size={10} />,
+      classes: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+    };
+  };
+
+  return (
+    <div
+      ref={popoverRef}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={{
+        position: 'fixed',
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        zIndex: 9999
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onClick) onClick(data.date);
+      }}
+      className="w-[310px] rounded-2xl bg-white/95 dark:bg-[#191b22]/95 backdrop-blur-xl p-4 shadow-2xl border border-slate-200/80 dark:border-[#393e4f] text-slate-900 dark:text-gray-100 animate-in fade-in zoom-in-95 duration-150 cursor-pointer pointer-events-auto transition-all hover:border-amber-500/60"
+    >
+      {/* Header with Mini Date Block */}
+      <div className="flex items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-100 dark:border-[#252833]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-slate-50 dark:bg-[#252833] border border-amber-500/40 text-center shrink-0">
+            <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 leading-none">
+              {monthShort}
+            </span>
+            <span className="text-sm font-black text-slate-900 dark:text-white leading-none mt-0.5">
+              {dayNum}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+              {weekdayName}, {fullDateFormatted}
+            </h4>
+            <p className="text-[10px] text-slate-500 dark:text-[#6d758d] font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+              <span>{data.events.length} {data.events.length === 1 ? 'Scheduled Event' : 'Scheduled Events'}</span>
+            </p>
+          </div>
+        </div>
+
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-500/30 shrink-0">
+          View
+        </span>
+      </div>
+
+      {/* Events List */}
+      <div className="space-y-2 max-h-48 overflow-y-auto hidden-scrollbar pr-0.5">
+        {data.events.map((ev, idx) => {
+          const badge = getEventBadge(ev);
+          const accentColor = ev.color || '#f59e0b';
+
+          return (
+            <div
+              key={ev.id || idx}
+              className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#252833]/70 border border-slate-200/60 dark:border-[#393e4f]/60 flex flex-col gap-1 transition-all hover:border-amber-500/40 hover:bg-slate-100/80 dark:hover:bg-[#252833]"
+            >
+              <div className="flex items-center justify-between gap-1.5">
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${badge.classes}`}>
+                  {badge.icon}
+                  {badge.label}
+                </span>
+                <span 
+                  className="w-2 h-2 rounded-full shrink-0" 
+                  style={{ backgroundColor: accentColor }} 
+                />
+              </div>
+
+              <span className="text-xs font-extrabold text-slate-900 dark:text-gray-100 truncate mt-0.5">
+                {ev.title}
+              </span>
+
+              {ev.detail && (
+                <p className="text-[10px] text-slate-500 dark:text-[#6d758d] font-medium truncate">
+                  {ev.detail}
+                </p>
+              )}
+
+              {(ev.time || ev.location) && (
+                <div className="flex items-center gap-2 text-[10px] text-slate-600 dark:text-gray-300 pt-0.5">
+                  {ev.time && (
+                    <span className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
+                      <FiClock size={10} />
+                      {ev.time}
+                    </span>
+                  )}
+                  {ev.location && (
+                    <span className="flex items-center gap-1 truncate text-slate-400 dark:text-gray-400">
+                      <FiMapPin size={10} />
+                      {ev.location}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer hint */}
+      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-[#252833] flex items-center justify-between text-[10px] font-medium text-slate-400 dark:text-[#6d758d]">
+        <span>Click day to open full sheet</span>
+        <div className="flex items-center gap-1 text-amber-500 font-bold">
+          <span>Details</span>
+          <FiExternalLink size={11} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 === frontend\src\components\ui\ConfirmDialog.jsx ===
 import React from 'react';
 import { FiAlertCircle } from 'react-icons/fi';
@@ -175,7 +348,7 @@ export default function DataTable({
   className = ""
 }) {
   return (
-    <div className={`overflow-x-auto ${className}`}>
+    <div className={`overflow-x-auto overscroll-x-contain touch-pan-x ${className}`}>
       <table className="w-full text-left border-collapse min-w-[800px]">
         <thead>
           <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
@@ -225,6 +398,306 @@ export default function DataTable({
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+=== frontend\src\components\ui\MobileCalendarDaySheet.jsx ===
+import React from 'react';
+import { 
+  FiX, FiCalendar, FiMapPin, FiClock, FiUser, 
+  FiAward, FiCheckCircle, FiActivity, FiLayers 
+} from 'react-icons/fi';
+
+export default function MobileCalendarDaySheet({ 
+  date, 
+  events = [], 
+  onClose, 
+  emptyMessage = 'No activities recorded for this date.' 
+}) {
+  if (!date) return null;
+
+  const dateObj = new Date(`${date}T12:00:00`);
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+
+  const isToday = dateObj.toDateString() === today.toDateString();
+  const isPast = dateObj < today && !isToday;
+  const isFuture = dateObj > today;
+
+  const monthShort = dateObj.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const dayNum = dateObj.getDate();
+  const weekdayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+  const fullDateFormatted = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  const getEventBadge = (event) => {
+    const type = event.type || (event.detail?.toLowerCase().includes('attendance') ? 'attendance' : event.detail?.toLowerCase().includes('coach') ? 'coach' : 'sub');
+    if (type === 'attendance') {
+      return {
+        label: 'Attendance Check-in',
+        icon: <FiCheckCircle size={12} />,
+        classes: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+      };
+    }
+    if (type === 'coach') {
+      return {
+        label: 'Coach Session',
+        icon: <FiAward size={12} />,
+        classes: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+      };
+    }
+    return {
+      label: 'Membership Pass',
+      icon: <FiUser size={12} />,
+      classes: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+    };
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      {/* Backdrop */}
+      <button 
+        type="button"
+        onClick={onClose} 
+        aria-label="Close day details" 
+        className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" 
+      />
+
+      {/* Modal Dialog Card */}
+      <section 
+        role="dialog" 
+        aria-modal="true" 
+        aria-label={`Activities for ${weekdayName}, ${fullDateFormatted}`} 
+        className="relative flex w-full max-h-[88svh] sm:max-w-xl flex-col rounded-t-[2rem] sm:rounded-3xl border border-slate-200/80 bg-white/95 shadow-2xl backdrop-blur-xl dark:border-[#393e4f] dark:bg-[#191b22]/95 text-slate-900 dark:text-gray-100 overflow-hidden animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200"
+      >
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-[#393e4f]" />
+        </div>
+
+        {/* Hero Header */}
+        <div className="relative border-b border-slate-200/80 dark:border-[#252833] p-5 sm:p-6 bg-gradient-to-b from-slate-50/80 via-white to-transparent dark:from-[#252833]/50 dark:via-[#191b22] dark:to-transparent">
+          <div className="flex items-start justify-between gap-4">
+            
+            {/* Calendar Day Block */}
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white dark:bg-[#252833] border-2 border-amber-500/40 dark:border-amber-500/40 shadow-md shadow-amber-500/10 shrink-0">
+                <span className="text-[10px] sm:text-[11px] font-black tracking-widest text-amber-600 dark:text-amber-400 uppercase">
+                  {monthShort}
+                </span>
+                <span className="text-xl sm:text-2xl font-black leading-none text-slate-900 dark:text-white mt-0.5">
+                  {dayNum}
+                </span>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                    {weekdayName}
+                  </span>
+                  {isToday && (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Today
+                    </span>
+                  )}
+                  {isFuture && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      Upcoming
+                    </span>
+                  )}
+                  {isPast && !isToday && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 dark:bg-[#252833] dark:text-[#6d758d] border border-slate-200 dark:border-[#393e4f]">
+                      Past
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-[#6d758d] font-medium flex items-center gap-1.5">
+                  <FiCalendar size={13} className="text-amber-500 shrink-0" />
+                  <span>{fullDateFormatted}</span>
+                  <span className="mx-1">â€¢</span>
+                  <span className="font-bold text-slate-700 dark:text-gray-300">
+                    {events.length} {events.length === 1 ? 'Activity' : 'Activities'}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Circular Close Button */}
+            <button 
+              type="button"
+              onClick={onClose} 
+              aria-label="Close dialog" 
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-[#252833] dark:hover:bg-[#2e3240] text-slate-500 dark:text-gray-300 transition-all border border-slate-200/80 dark:border-[#393e4f] shadow-sm active:scale-95"
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content Body */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 custom-scrollbar">
+          {events.length === 0 ? (
+            /* Modern Empty State */
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#393e4f] bg-slate-50/50 dark:bg-[#191b22]/50">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-3 shadow-inner">
+                <FiLayers size={24} />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-gray-200 mb-1">
+                No Activities Scheduled
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-[#6d758d] max-w-xs leading-relaxed">
+                {emptyMessage}
+              </p>
+            </div>
+          ) : (
+            /* Activity Cards */
+            <div className="space-y-3">
+              {events.map((event, index) => {
+                const badge = getEventBadge(event);
+                const accentColor = event.color || '#f59e0b';
+
+                return (
+                  <article 
+                    key={event.id ?? index} 
+                    className="group relative flex flex-col gap-2.5 rounded-2xl border border-slate-200/80 dark:border-[#2d3240] bg-white dark:bg-[#1f222b] p-4 shadow-sm hover:shadow-md transition-all duration-200 hover:border-amber-500/40"
+                  >
+                    {/* Top Row: Category Badge & Glow Pill */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${badge.classes}`}>
+                        {badge.icon}
+                        {badge.label}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full shadow-sm" 
+                          style={{ backgroundColor: accentColor }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-snug break-words">
+                      {event.title}
+                    </h3>
+
+                    {/* Detail Description */}
+                    {event.detail && (
+                      <p className="text-xs text-slate-600 dark:text-gray-300 font-medium leading-relaxed">
+                        {event.detail}
+                      </p>
+                    )}
+
+                    {/* Metadata Chips (Time & Location) */}
+                    {(event.time || event.location) && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-[#252833] mt-1">
+                        {event.time && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-50 dark:bg-[#191b22] text-slate-700 dark:text-gray-200 border border-slate-200/60 dark:border-[#393e4f]/80 shadow-xs">
+                            <FiClock className="text-amber-500 shrink-0" size={13} />
+                            <span>{event.time}</span>
+                          </span>
+                        )}
+                        {event.location && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 dark:bg-[#191b22] text-slate-600 dark:text-gray-300 border border-slate-200/60 dark:border-[#393e4f]/80 shadow-xs">
+                            <FiMapPin className="text-amber-500 shrink-0" size={13} />
+                            <span className="truncate max-w-[200px]">{event.location}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer Bar */}
+        <div className="border-t border-slate-200/80 dark:border-[#252833] bg-slate-50/90 dark:bg-[#16181f]/90 px-5 py-3.5 sm:px-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-[#6d758d] font-medium">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span>Double Alpha Gym Schedule</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-[#252833] text-slate-800 dark:text-gray-200 border border-slate-200 dark:border-[#393e4f] shadow-xs hover:border-amber-500 dark:hover:border-amber-500 active:scale-95 transition-all"
+          >
+            Done
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+=== frontend\src\components\ui\MobileCalendarToolbar.jsx ===
+import React from 'react';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+
+export default function MobileCalendarToolbar({
+  title,
+  onPrevious,
+  onNext,
+  actionLabel = 'Today',
+  actionActive = false,
+  onAction,
+  actionIcon,
+  views = [],
+  activeView,
+  onViewChange
+}) {
+  return (
+    <div className="mb-3 sm:hidden space-y-2.5">
+      {/* Top Row: Title on Left, Controls on Right */}
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="min-w-0 flex-1 truncate text-left text-sm font-black uppercase tracking-wide text-slate-900 dark:text-gray-100">
+          {title}
+        </h3>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button 
+            onClick={onPrevious} 
+            aria-label="Previous month" 
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-800 shadow-sm transition-colors active:scale-95 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-100 hover:border-amber-500"
+          >
+            <FiChevronLeft size={16} />
+          </button>
+          <button 
+            onClick={onNext} 
+            aria-label="Next month" 
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-800 shadow-sm transition-colors active:scale-95 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-100 hover:border-amber-500"
+          >
+            <FiChevronRight size={16} />
+          </button>
+          {onAction && (
+            <button 
+              onClick={onAction} 
+              aria-label={actionLabel} 
+              title={actionLabel} 
+              className={actionIcon
+                ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-800 shadow-sm transition-colors active:scale-95 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-100 hover:border-amber-500 dark:hover:border-amber-500'
+                : `flex h-8 shrink-0 items-center justify-center rounded-lg px-2.5 text-xs font-bold shadow-sm transition-all active:scale-95 ${actionActive ? 'border border-amber-500 bg-amber-500/10 text-amber-600 dark:border-amber-500 dark:bg-amber-500/20 dark:text-amber-400' : 'border border-slate-200 bg-slate-50 text-slate-800 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-100 hover:border-amber-500'}`}
+            >
+              {actionIcon || actionLabel}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Segmented View Switcher */}
+      {views.length > 1 && (
+        <div className="grid w-full grid-cols-2 rounded-xl bg-slate-100 p-1 dark:bg-[#191b22] border border-slate-200 dark:border-[#393e4f]">
+          {views.map(view => (
+            <button 
+              key={view.id} 
+              onClick={() => onViewChange(view.id)} 
+              className={`rounded-lg py-1.5 text-xs font-bold transition-all ${activeView === view.id ? 'bg-white text-black shadow-sm dark:bg-[#252833] dark:text-amber-400 dark:border dark:border-amber-500/30' : 'text-slate-500 dark:text-[#6d758d] hover:text-slate-900 dark:hover:text-white'}`}
+            >
+              {view.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -316,19 +789,20 @@ export default function SearchInput({
 }) {
   return (
     <div className={containerClassName}>
-      <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none" />
+      <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
       <input
         type="text"
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm ${className}`}
+        className={`w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm ${className}`}
       />
       {value && onClear && (
         <button
           type="button"
           onClick={onClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+          aria-label="Clear search"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
         >
           <FiX size={14} />
         </button>
@@ -544,7 +1018,7 @@ export default function Layout() {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-100 dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-dvh bg-slate-100 dark:bg-[#050505] overflow-hidden font-sans">
       
       <style>{`
         .hidden-scrollbar::-webkit-scrollbar { display: none; }
@@ -621,15 +1095,15 @@ export default function Layout() {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
         
-        <header className="h-24 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-md border-b border-slate-500 dark:border-white/10 flex justify-between items-center px-4 md:px-8 transition-colors duration-300 z-10 w-full flex-shrink-0">
+        <header className="h-16 sm:h-20 lg:h-24 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-md border-b border-slate-500 dark:border-white/10 flex justify-between items-center px-3 sm:px-5 lg:px-8 transition-colors duration-300 z-10 w-full flex-shrink-0">
           
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors border border-slate-200 dark:border-white/5">
-              <FiMenu size={24} />
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <button onClick={() => setIsSidebarOpen(true)} aria-label="Open navigation menu" className="lg:hidden p-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors border border-slate-200 dark:border-white/5 flex-shrink-0">
+              <FiMenu size={22} />
             </button>
             
             <div className="flex flex-col min-w-0">
-              <h2 className="text-lg sm:text-xl md:text-3xl font-black text-black dark:text-gray-300 tracking-wide leading-tight truncate max-w-[140px] sm:max-w-xs md:max-w-none">
+              <h2 className="text-base sm:text-xl md:text-3xl font-black text-black dark:text-gray-300 tracking-wide leading-tight truncate max-w-[170px] sm:max-w-xs md:max-w-none">
                 {getPageTitle(location.pathname)}
               </h2>
               <span className="hidden sm:block text-[9px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mt-0.5 truncate">
@@ -638,12 +1112,13 @@ export default function Layout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5 flex-shrink-0">
             
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2.5 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors hidden md:block border border-slate-500 dark:border-white/10"
+                aria-label="Open notifications"
+                className="relative p-2 sm:p-2.5 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors border border-slate-500 dark:border-white/10"
               >
                 <FiBell size={20} />
                 {visibleNotifications.length > 0 && (
@@ -652,7 +1127,7 @@ export default function Layout() {
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-96 bg-white dark:bg-[#161616] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-[4.5rem] sm:top-auto sm:mt-3 w-auto sm:w-96 bg-white dark:bg-[#161616] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                   {/* Panel Header */}
                   <div className="p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#121212] flex justify-between items-center">
                     <div className="flex items-center gap-2">
@@ -771,8 +1246,8 @@ export default function Layout() {
 
             <div className="w-px h-8 bg-slate-300 dark:bg-white/10 mx-1 hidden md:block"></div>
 
-            <NavLink to="/profile" className="flex items-center gap-3 p-1.5 md:py-1.5 md:px-2 md:pr-4 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-colors border border-transparent dark:hover:border-white/5 group">
-              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-black dark:bg-amber-500/20 border border-transparent dark:border-amber-500/50 text-white dark:text-amber-500 flex items-center justify-center font-bold shadow-sm text-base transition-transform group-hover:scale-105">
+            <NavLink to="/profile" aria-label="Open admin profile" className="flex items-center gap-3 p-1.5 md:py-1.5 md:px-2 md:pr-4 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-colors border border-transparent dark:hover:border-white/5 group">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-black dark:bg-amber-500/20 border border-transparent dark:border-amber-500/50 text-white dark:text-amber-500 flex items-center justify-center font-bold shadow-sm text-base transition-transform group-hover:scale-105">
                 <FiUser />
               </div>
               <div className="hidden md:flex flex-col items-start">
@@ -790,7 +1265,8 @@ export default function Layout() {
 
             <button 
               onClick={toggleTheme} 
-              className="p-3 md:p-3.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-transform hover:scale-110 active:scale-95 shadow-sm border border-slate-500 dark:border-white/10 flex-shrink-0"
+              aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="p-2.5 sm:p-3 md:p-3.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-transform hover:scale-110 active:scale-95 shadow-sm border border-slate-500 dark:border-white/10 flex-shrink-0"
               title="Toggle Dark Mode"
             >
               {isDarkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
@@ -798,7 +1274,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-[#050505] w-full relative hidden-scrollbar">
+        <main className="flex-1 min-w-0 overflow-y-auto bg-slate-100 dark:bg-[#050505] w-full relative hidden-scrollbar overscroll-y-contain">
           <Outlet />
         </main>
 
@@ -1089,7 +1565,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         dob: initialData.dob || '',
         height: initialData.height || '',
         weight: initialData.weight || '',
-        profilePicUrl: initialData.profilePicUrl || (initialData.profile_pic ? `http://127.0.0.1:8000${initialData.profile_pic}` : null),
+        profilePicUrl: initialData.profilePicUrl || initialData.profile_pic || null,
         enrolledFaceId: initialData.enrolledFaceId || initialData.enrolled_face_id || null
       } : defaultForm;
       setFormData(initial);
@@ -1325,13 +1801,17 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
 === frontend\src\features\members\components\MemberProfileModal.jsx ===
 import React, { useState } from 'react';
 import {
-  FiX, FiMapPin, FiPhone, FiChevronLeft, FiChevronRight, 
+  FiX, FiMapPin, FiPhone, FiActivity, FiChevronLeft, FiChevronRight,
   FiChevronDown, FiChevronUp, FiLock
 } from 'react-icons/fi';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import api from '../../../api';
+import MobileCalendarToolbar from '../../../components/ui/MobileCalendarToolbar';
+import MobileCalendarDaySheet from '../../../components/ui/MobileCalendarDaySheet';
+import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 
 const getBmiInfo = (height, weight) => {
   if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500' };
@@ -1349,9 +1829,10 @@ const getBmiInfo = (height, weight) => {
 
 const getTaskStatus = (log) => {
   if (!log.exercise.startsWith('ASSIGNED: ')) return 'VERIFIED';
-  const logDay = new Date(new Date(log.created_at).toDateString());
+  const logDay = log.date ? new Date(`${log.date}T00:00:00`) : new Date(new Date(log.created_at).toDateString());
   const today = new Date(new Date().toDateString());
   if (logDay < today) return 'MISSED';
+  if (logDay > today) return 'SCHEDULED';
   if (logDay.getTime() === today.getTime()) {
     const now = new Date();
     if (now.getHours() > 21 || (now.getHours() === 21 && now.getMinutes() >= 30)) return 'MISSED';
@@ -1369,6 +1850,32 @@ const calculateAge = (dob) => {
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const defaultRoutine = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] };
+const createEmptyRoutine = () => Object.fromEntries(daysOfWeek.map(day => [day, []]));
+const formatExerciseName = (name) => name.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+const getExerciseMediaUrl = (exercise, field = 'gif_url') => {
+  const mediaPath = exercise?.[field] || exercise?.image;
+  return mediaPath ? `/dataset/${mediaPath.replace(/^\//, '')}` : null;
+};
+const getGestureClass = (exercise) => {
+  const name = exercise.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const movementPatterns = [
+    ['BURPEE', /\bburpee\b/],
+    ['CRUNCH', /\bcrunch\b/],
+    ['DEADLIFT', /\bdeadlift\b/],
+    ['HIGH KNEE', /\bhigh knee\b/],
+    ['LUNGE', /\blunge\b/],
+    ['MOUNTAIN CLIMBER', /\bmountain climber\b/],
+    ['PLANK', /\bplank\b/],
+    ['PUSH UP', /\bpush up\b/],
+    ['RUSSIAN TWIST', /\brussian twist\b/],
+    ['SIT UP', /\bsit up\b/],
+    ['SQUAT', /\bsquat\b/]
+  ];
+  const matchedMovement = movementPatterns.find(([, pattern]) => pattern.test(name));
+  if (matchedMovement) return matchedMovement[0];
+  if (name.includes('curl') && exercise.body_part === 'upper arms' && exercise.target?.toLowerCase().includes('biceps')) return 'CURL';
+  return null;
+};
 
 export default function MemberProfileModal({ isOpen, member, onClose, onShowAlert }) {
   const [activeTab, setActiveTab] = useState('workouts');
@@ -1378,9 +1885,20 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const [workoutPage, setWorkoutPage] = useState(1);
   const [expandedDate, setExpandedDate] = useState(null);
   const [weeklyRoutine, setWeeklyRoutine] = useState(defaultRoutine);
+  const [planLogs, setPlanLogs] = useState(null);
   const [activeDay, setActiveDay] = useState('Monday');
   const [exercisesLib, setExercisesLib] = useState([]);
   const [exSearch, setExSearch] = useState('');
+  const [selectedBodyPart, setSelectedBodyPart] = useState('all');
+  const [exercisePage, setExercisePage] = useState(1);
+  const attendanceCalendarRef = React.useRef(null);
+  const [attendanceCalendarTitle, setAttendanceCalendarTitle] = useState('');
+  const [attendanceCalendarView, setAttendanceCalendarView] = useState('dayGridMonth');
+  const [isAttendanceCalendarCurrentMonth, setIsAttendanceCalendarCurrentMonth] = useState(false);
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState(null);
+  const [selectedAttendanceEntries, setSelectedAttendanceEntries] = useState([]);
+  const [mobileCoachView, setMobileCoachView] = useState('routine');
+  const [isSidebarOpenMobile, setIsSidebarOpenMobile] = useState(false);
   
   const [isCurrentMonth, setIsCurrentMonth] = useState(true);
 
@@ -1392,16 +1910,19 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     setCoachNotes(localStorage.getItem(`notes_${member.id}`) || '');
     const saved = localStorage.getItem(`routine_${member.id}`);
     setWeeklyRoutine(saved ? JSON.parse(saved) : defaultRoutine);
+    setPlanLogs(null);
     setActiveDay('Monday');
 
     (async () => {
       try {
-        const [attRes, workRes] = await Promise.all([
+        const [attRes, workRes, planRes] = await Promise.all([
           api.get(`/members/${member.id}/attendance`),
-          api.get(`/members/${member.id}/workouts`)
+          api.get(`/members/${member.id}/workouts`),
+          api.get(`/members/${member.id}/workout-plan`)
         ]);
         setAttendance(attRes.data);
         setWorkouts(workRes.data);
+        setPlanLogs(planRes.data);
       } catch (err) { console.error('Failed to load profile logs', err); }
     })();
 
@@ -1410,6 +1931,24 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
       .then(d => setExercisesLib(d.data || d))
       .catch(() => {});
   }, [isOpen, member]);
+
+  React.useEffect(() => {
+    if (planLogs === null) return;
+    const routine = createEmptyRoutine();
+    planLogs.forEach(log => {
+      const date = String(log.date || '').slice(0, 10);
+      const day = new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
+      if (!routine[day]) return;
+      const exerciseName = log.exercise.replace(/^ASSIGNED:\s*/i, '');
+      const catalogExercise = exercisesLib.find(ex => ex.name.toUpperCase() === exerciseName.toUpperCase());
+      routine[day].push({
+        ...(catalogExercise || { id: `planned-${log.id}`, name: exerciseName }),
+        sets: log.sets || 3,
+        reps: log.reps || 10
+      });
+    });
+    setWeeklyRoutine(routine);
+  }, [planLogs, exercisesLib]);
 
   const handleManualVerify = async (logId) => {
     try {
@@ -1421,20 +1960,28 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
   const handleAssignWeeklyPlan = async () => {
     localStorage.setItem(`routine_${member.id}`, JSON.stringify(weeklyRoutine));
-    const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todayExercises = weeklyRoutine[dayName] || [];
+    const today = new Date();
+    const todayIndex = (today.getDay() + 6) % 7;
+    const tasks = daysOfWeek.flatMap((day, index) => {
+      const daysUntil = (index - todayIndex + 7) % 7;
+      const scheduledDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntil);
+      const date = [scheduledDate.getFullYear(), String(scheduledDate.getMonth() + 1).padStart(2, '0'), String(scheduledDate.getDate()).padStart(2, '0')].join('-');
+      return weeklyRoutine[day].map(ex => ({
+        exercise: ex.name.toUpperCase(),
+        sets: Number(ex.sets),
+        reps: Number(ex.reps),
+        date,
+        gesture_class: getGestureClass(ex)
+      }));
+    });
     try {
-      for (const ex of todayExercises) {
-        await api.post(`/members/${member.id}/assign-task`, { 
-          exercise: ex.name.toUpperCase(),
-          sets: ex.sets,
-          reps: ex.reps 
-        }).catch(() => {});
-      }
-      onShowAlert('Plan Saved', `âœ… Weekly routine saved! Today's tasks (${dayName}) have been dispatched to the AI for monitoring.`, 'success');
+      await api.post(`/members/${member.id}/workout-plan`, { tasks });
+      onShowAlert('Plan Saved', `${tasks.length} workout task${tasks.length === 1 ? '' : 's'} synchronized for the next seven days. AI-supported movements will be verified by the Gesture Engine; other tasks remain available for manual verification.`, 'success');
       const res = await api.get(`/members/${member.id}/workouts`);
       setWorkouts(res.data);
-    } catch { onShowAlert('Error', 'Failed to assign workout plan.', 'error'); }
+    } catch (err) {
+      onShowAlert('Error', err.response?.data?.message || 'Failed to assign workout plan.', 'error');
+    }
   };
 
   const handleAddExercise = (ex) => {
@@ -1460,7 +2007,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   };
 
   const groupedWorkouts = Object.values(workouts.reduce((acc, log) => {
-    const dateStr = new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const dateValue = log.date ? new Date(`${log.date}T12:00:00`) : new Date(log.created_at);
+    const dateStr = dateValue.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     if (!acc[dateStr]) acc[dateStr] = { date: dateStr, exercises: [] };
     acc[dateStr].exercises.push(log);
     return acc;
@@ -1469,6 +2017,15 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const workoutsPerPage = 5;
   const totalWorkoutPages = Math.ceil(groupedWorkouts.length / workoutsPerPage);
   const currentGroupedWorkouts = groupedWorkouts.slice((workoutPage - 1) * workoutsPerPage, workoutPage * workoutsPerPage);
+  const bodyPartOptions = [...new Set(exercisesLib.map(ex => ex.body_part).filter(Boolean))].sort();
+  const matchingExercises = exercisesLib.filter(ex =>
+    (selectedBodyPart === 'all' || ex.body_part === selectedBodyPart) &&
+    [ex.name, ex.target, ex.body_part, ex.equipment]
+      .some(value => value?.toLowerCase().includes(exSearch.trim().toLowerCase()))
+  );
+  const exercisesPerPage = 50;
+  const totalExercisePages = Math.ceil(matchingExercises.length / exercisesPerPage);
+  const currentExercises = matchingExercises.slice((exercisePage - 1) * exercisesPerPage, exercisePage * exercisesPerPage);
 
   const formatTime12h = (time24) => {
     if (!time24) return '';
@@ -1488,6 +2045,70 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     extendedProps: { logId: log.id, timeIn: formatTime12h(log.time_in) }
   }));
 
+  const [hoveredAttendanceDay, setHoveredAttendanceDay] = useState(null);
+  const attendanceHoverTimeoutRef = React.useRef(null);
+
+  const handleAttendanceMouseMove = (e) => {
+    if (selectedAttendanceDate) return;
+    const dayCell = e.target.closest('.fc-daygrid-day');
+    if (!dayCell) {
+      if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+      attendanceHoverTimeoutRef.current = setTimeout(() => setHoveredAttendanceDay(null), 120);
+      return;
+    }
+    const dateStr = dayCell.getAttribute('data-date');
+    if (!dateStr) return;
+    if (hoveredAttendanceDay?.date === dateStr) return;
+
+    const entries = attendance.filter(log => log.date === dateStr);
+    if (!entries.length) {
+      if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+      setHoveredAttendanceDay(null);
+      return;
+    }
+
+    if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+    const rect = dayCell.getBoundingClientRect();
+    attendanceHoverTimeoutRef.current = setTimeout(() => {
+      setHoveredAttendanceDay({
+        date: dateStr,
+        events: entries.map(log => ({
+          id: log.id,
+          title: 'Gym Attendance Confirmed',
+          color: '#10b981',
+          type: 'attendance',
+          time: `Time in: ${formatTime12h(log.time_in)}`,
+          detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
+        })),
+        rect
+      });
+    }, 80);
+  };
+
+  const handleAttendanceMouseLeave = () => {
+    if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+    attendanceHoverTimeoutRef.current = setTimeout(() => setHoveredAttendanceDay(null), 150);
+  };
+
+  const showAttendanceDay = (date) => {
+    if (!date) return;
+    setHoveredAttendanceDay(null);
+    setSelectedAttendanceDate(date);
+    const entries = attendance.filter(log => log.date === date);
+    if (!entries.length) {
+      setSelectedAttendanceEntries([]);
+      return;
+    }
+    setSelectedAttendanceEntries(entries.map(log => ({
+      id: log.id,
+      title: 'Gym Attendance Confirmed',
+      color: '#10b981',
+      type: 'attendance',
+      time: `Time in: ${formatTime12h(log.time_in)}`,
+      detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
+    })));
+  };
+
   if (!isOpen || !member) return null;
 
   const profileBmi = getBmiInfo(member.height, member.weight);
@@ -1505,64 +2126,79 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
         <div className="flex flex-col lg:flex-row h-full overflow-y-auto lg:overflow-hidden">
 
           {/* LEFT SIDEBAR */}
-          <div className="w-full lg:w-[32%] bg-gray-50 dark:bg-[#1a1c23] border-r-2 border-gray-300 dark:border-gray-700 p-8 flex flex-col items-center flex-shrink-0 overflow-y-auto">
-            <div className="relative mb-4 group mt-2">
-              {member.profilePicUrl ? (
-                <img src={member.profilePicUrl} alt="Avatar" className="w-36 h-36 rounded-full object-cover border-4 border-white dark:border-gray-600 shadow-lg" />
-              ) : (
-                <div className="w-36 h-36 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-4xl border-4 border-white dark:border-gray-600 shadow-lg">
-                  {getInitials(member.firstName, member.lastName)}
+          <div className="w-full lg:w-[32%] bg-gray-50 dark:bg-[#1a1c23] border-r-2 border-gray-300 dark:border-gray-700 p-4 sm:p-6 lg:p-8 flex flex-col items-center flex-shrink-0 lg:overflow-y-auto">
+            <div className="flex items-center gap-4 lg:flex-col lg:gap-0 w-full justify-between lg:justify-center">
+              <div className="flex items-center gap-3 lg:flex-col">
+                <div className="relative group mt-0 lg:mt-2 shrink-0">
+                  {member.profilePicUrl ? (
+                    <img src={member.profilePicUrl} alt="Avatar" className="w-16 h-16 lg:w-36 lg:h-36 rounded-full object-cover border-2 lg:border-4 border-white dark:border-gray-600 shadow-md lg:shadow-lg" />
+                  ) : (
+                    <div className="w-16 h-16 lg:w-36 lg:h-36 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-lg lg:text-4xl border-2 lg:border-4 border-white dark:border-gray-600 shadow-md lg:shadow-lg">
+                      {getInitials(member.firstName, member.lastName)}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-
-            <h2 className="text-2xl font-black text-slate-900 dark:text-gray-300 text-center tracking-tight">{member.firstName} {member.lastName}</h2>
-            <p className="text-amber-600 dark:text-amber-500 font-black uppercase tracking-widest text-xs mt-1 mb-6">{member.plan}</p>
-
-            <div className="w-full space-y-3 mb-6">
-              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                <FiMapPin className="text-amber-500 flex-shrink-0" size={16} />
-                <span className="truncate">{member.address || 'No Address Provided'}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                <FiPhone className="text-amber-500 flex-shrink-0" size={16} />
-                <span>{member.phone}</span>
-              </div>
-            </div>
-
-            {/* Body Metrics */}
-            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-6">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Body Metrics</h4>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">Age</p>
-                  <p className="text-lg font-bold text-slate-800 dark:text-gray-300">{calculateAge(member.dob)}</p>
-                </div>
-                <div className="flex flex-col items-center justify-center">
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">BMI</p>
-                  <p className="text-[17px] font-bold leading-none my-1.5 text-slate-900 dark:text-gray-300 tracking-tighter">{profileBmi.value}</p>
-                  <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border border-solid shadow-sm ${profileBmi.color}`}>{profileBmi.label}</span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">Height</p>
-                  <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.height || '-'} cm</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">Weight</p>
-                  <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.weight || '-'} kg</p>
+                <div className="text-left lg:text-center">
+                  <h2 className="text-lg lg:text-2xl font-black text-slate-900 dark:text-gray-300 tracking-tight">{member.firstName} {member.lastName}</h2>
+                  <p className="text-amber-600 dark:text-amber-500 font-black uppercase tracking-widest text-[10px] lg:text-xs mt-0.5 lg:mt-1">{member.plan}</p>
                 </div>
               </div>
+              <button
+                onClick={() => setIsSidebarOpenMobile(prev => !prev)}
+                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#252833] border border-gray-300 dark:border-[#393e4f] rounded-xl text-xs font-bold text-slate-700 dark:text-gray-200 shadow-sm"
+              >
+                <span>{isSidebarOpenMobile ? 'Hide Info' : 'Details'}</span>
+                {isSidebarOpenMobile ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+              </button>
             </div>
 
-            {/* Coach Notes */}
-            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-5 shadow-sm mt-4 mb-4">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Coach Notes</h4>
-              <textarea
-                className="w-full bg-gray-50 dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-slate-800 dark:text-gray-300 transition-colors min-h-[100px]"
-                placeholder="Add Additional Notes here..."
-                value={coachNotes}
-                onChange={(e) => { setCoachNotes(e.target.value); localStorage.setItem(`notes_${member.id}`, e.target.value); }}
-              />
+            {/* Collapsible Info on Mobile, always visible on Desktop */}
+            <div className={`${isSidebarOpenMobile ? 'block' : 'hidden'} lg:block w-full mt-4 lg:mt-6 animate-in fade-in`}>
+              <div className="w-full space-y-3 mb-6">
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+                  <FiMapPin className="text-amber-500 flex-shrink-0" size={16} />
+                  <span className="truncate">{member.address || 'No Address Provided'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+                  <FiPhone className="text-amber-500 flex-shrink-0" size={16} />
+                  <span>{member.phone}</span>
+                </div>
+              </div>
+
+              {/* Body Metrics */}
+              <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-6">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Body Metrics</h4>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">Age</p>
+                    <p className="text-lg font-bold text-slate-800 dark:text-gray-300">{calculateAge(member.dob)}</p>
+                  </div>
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">BMI</p>
+                    <p className="text-[17px] font-bold leading-none my-1.5 text-slate-900 dark:text-gray-300 tracking-tighter">{profileBmi.value}</p>
+                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border border-solid shadow-sm ${profileBmi.color}`}>{profileBmi.label}</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">Height</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.height || '-'} cm</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">Weight</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.weight || '-'} kg</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coach Notes */}
+              <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-2">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Coach Notes</h4>
+                <textarea
+                  className="w-full bg-gray-50 dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-slate-800 dark:text-gray-300 transition-colors min-h-[90px]"
+                  placeholder="Add Additional Notes here..."
+                  value={coachNotes}
+                  onChange={(e) => { setCoachNotes(e.target.value); localStorage.setItem(`notes_${member.id}`, e.target.value); }}
+                />
+              </div>
             </div>
           </div>
 
@@ -1597,7 +2233,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .dark .fc .fc-button.fc-button-primary.fc-today-button,
                       .fc .fc-button.fc-button-primary.fc-today-button:disabled,
                       .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
-                        background: linear-gradient(to right, #facc15, #f59e0b) !important;
+                        background: linear-gradient(to right, #FACC15, #F59E0B) !important;
                         color: #000000 !important; 
                         border: none !important;
                         border-radius: 0.75rem !important;
@@ -1633,37 +2269,74 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       
                       .fc-event-main { 
                         width: 100%; 
-                        white-space: normal !important; 
-                        overflow: visible !important;   
+                        white-space: nowrap !important; 
+                        overflow: hidden !important;   
+                        text-overflow: ellipsis !important;
                       }
                       /* Hide the calendar scrollbar */
                       .fc-scroller { overflow: hidden !important; }
                     `}</style>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <MobileCalendarToolbar
+                      title={attendanceCalendarTitle}
+                      onPrevious={() => attendanceCalendarRef.current?.getApi().prev()}
+                      onNext={() => attendanceCalendarRef.current?.getApi().next()}
+                      onAction={() => attendanceCalendarRef.current?.getApi().today()}
+                      actionActive={isAttendanceCalendarCurrentMonth}
+                      views={[{ id: 'dayGridMonth', label: 'Month' }, { id: 'listWeek', label: 'List' }]}
+                      activeView={attendanceCalendarView}
+                      onViewChange={view => attendanceCalendarRef.current?.getApi().changeView(view)}
+                    />
+                    <div 
+                      onMouseMove={handleAttendanceMouseMove}
+                      onMouseLeave={handleAttendanceMouseLeave}
+                      className="mobile-calendar-grid min-w-0"
+                    >
                       <FullCalendar
-                        plugins={[dayGridPlugin, interactionPlugin]}
+                        ref={attendanceCalendarRef}
+                        plugins={[dayGridPlugin, listPlugin, interactionPlugin]}
                         initialView="dayGridMonth"
                         events={attendanceEvents}
-                        height="auto" 
+                        height="auto"
+                        datesSet={(dateInfo) => {
+                          setAttendanceCalendarTitle(dateInfo.view.title);
+                          setAttendanceCalendarView(dateInfo.view.type);
+                          const now = new Date();
+                          const currentStart = dateInfo.view.currentStart;
+                          setIsAttendanceCalendarCurrentMonth(currentStart.getMonth() === now.getMonth() && currentStart.getFullYear() === now.getFullYear());
+                        }}
+                        dayHeaderContent={(headerInfo) => window.innerWidth < 640 ? headerInfo.text.charAt(0) : headerInfo.text}
                         headerToolbar={{ left: 'prev,next', center: 'title', right: 'today' }}
-                        dateClick={(info) => {
-                          console.log('Clicked to add manual attendance on:', info.dateStr);
-                        }}
-                        eventClick={(info) => {
-                          console.log('Clicked to edit/delete log ID:', info.event.extendedProps.logId);
-                        }}
+                        dateClick={info => showAttendanceDay(info.dateStr)}
+                        eventClick={info => showAttendanceDay(info.event.startStr.slice(0, 10))}
                         eventContent={(eventInfo) => (
-                          <div className="flex items-center gap-1 w-full px-1">
-                            <svg className="w-3.5 h-3.5 text-[#11a839] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-slate-600 dark:text-slate-300 font-bold text-[11px] leading-tight flex-1">
-                              Time In <span className="font-medium opacity-80 whitespace-nowrap">({eventInfo.event.extendedProps.timeIn})</span>
+                          <div className="flex items-center justify-center sm:justify-start gap-1 w-full px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-500/30 overflow-hidden shadow-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="text-[10px] font-bold truncate">
+                              <span className="hidden sm:inline">Time In: </span>
+                              {eventInfo.event.extendedProps.timeIn}
                             </span>
                           </div>
                         )}
                       />
                     </div>
+                    <MobileCalendarDaySheet
+                      date={selectedAttendanceDate}
+                      events={selectedAttendanceEntries}
+                      onClose={() => setSelectedAttendanceDate(null)}
+                      emptyMessage="No attendance logs recorded for this day."
+                    />
+                    <CalendarHoverPopover
+                      data={selectedAttendanceDate ? null : hoveredAttendanceDay}
+                      onClose={() => setHoveredAttendanceDay(null)}
+                      onClick={(date) => {
+                        setHoveredAttendanceDay(null);
+                        showAttendanceDay(date);
+                      }}
+                      onMouseEnter={() => {
+                        if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+                      }}
+                      onMouseLeave={handleAttendanceMouseLeave}
+                    />
                   </div>
                 </div>
               )}
@@ -1706,9 +2379,12 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">INCOMPLETE</span>;
                           } else {
                             const hasPending = group.exercises.some(log => getTaskStatus(log) === 'PENDING');
+                            const hasScheduled = group.exercises.some(log => getTaskStatus(log) === 'SCHEDULED');
                             groupBadge = hasPending
                               ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">PENDING</span>
-                              : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-red-50 text-red-700 border border-red-500/30 dark:bg-red-500/10 dark:text-red-400">MISSED</span>;
+                              : hasScheduled
+                                ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">SCHEDULED</span>
+                                : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-red-50 text-red-700 border border-red-500/30 dark:bg-red-500/10 dark:text-red-400">MISSED</span>;
                           }
 
                           return (
@@ -1730,23 +2406,39 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                       {group.exercises.map(log => {
                                         const taskStatus = getTaskStatus(log);
                                         const exName = log.exercise.replace('ASSIGNED: ', '');
-                                        const timeFormatted = new Date(log.created_at).toLocaleTimeString('en-US', { timeStyle: 'short' });
+                                        const exercise = exercisesLib.find(item => item.name.toUpperCase() === exName.toUpperCase());
+                                        const timeFormatted = taskStatus === 'SCHEDULED'
+                                          ? new Date(`${log.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                          : new Date(log.created_at).toLocaleTimeString('en-US', { timeStyle: 'short' });
                                         const badgeClass = taskStatus === 'VERIFIED'
-                                          ? 'bg-white border-green-200 text-green-700 dark:bg-[#252830] dark:border-green-500/50 dark:text-green-400'
+                                          ? 'bg-white border-emerald-200 text-emerald-800 dark:bg-[#252830] dark:border-emerald-500/40 dark:text-emerald-300'
                                           : taskStatus === 'PENDING'
                                             ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400'
-                                            : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400';
+                                            : taskStatus === 'SCHEDULED'
+                                              ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400'
+                                              : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400';
                                         return (
-                                          <div key={log.id} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border shadow-sm ${badgeClass}`}>
-                                            <span>{exName}</span>
-                                            <span className="opacity-60 font-medium ml-0.5 border-l pl-1.5 border-current">({timeFormatted})</span>
-                                            {taskStatus === 'PENDING' && (
-                                              hasFaceIdToday
-                                                ? <button onClick={() => handleManualVerify(log.id)} className="ml-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-0.5 rounded text-[9px] transition-colors active:scale-95 shadow-sm">VERIFY</button>
-                                                : <span className="ml-1 opacity-50 cursor-not-allowed" title="Locked: No Face ID Today"><FiLock size={12} /></span>
-                                            )}
-                                            {taskStatus === 'MISSED' && <span className="ml-1.5 px-1.5 py-0.5 bg-red-100 dark:bg-red-500/20 rounded text-[9px]">MISSED</span>}
-                                            {taskStatus === 'VERIFIED' && <span className="ml-1.5 px-1.5 py-0.5 bg-green-100 dark:bg-green-500/20 rounded text-[9px]">VERIFIED</span>}
+                                          <div key={log.id} className={`flex items-center gap-3 w-full sm:w-[calc(50%-0.5rem)] xl:w-[calc(33.333%-0.55rem)] min-w-0 rounded-xl border p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${badgeClass}`}>
+                                            <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-[#1a1c23] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                              <FiActivity className="text-slate-400 dark:text-slate-500" size={19} />
+                                              {getExerciseMediaUrl(exercise) && <img src={getExerciseMediaUrl(exercise)} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
+                                                if (exercise?.image && event.currentTarget.dataset.fallback !== 'true') {
+                                                  event.currentTarget.dataset.fallback = 'true';
+                                                  event.currentTarget.src = getExerciseMediaUrl(exercise, 'image');
+                                                } else event.currentTarget.style.display = 'none';
+                                              }} />}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="font-bold text-xs truncate">{formatExerciseName(exName)}</p>
+                                              <p className="text-[10px] opacity-70 mt-0.5">{timeFormatted}</p>
+                                              {log.sets && log.reps && <p className="text-[10px] font-bold mt-1">{log.sets} sets x {log.reps} reps</p>}
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                              {taskStatus === 'PENDING' && (hasFaceIdToday
+                                                ? <button onClick={() => handleManualVerify(log.id)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded-md text-[9px] font-bold transition-colors active:scale-95 shadow-sm">VERIFY</button>
+                                                : <span className="opacity-50" title="Locked: No Face ID Today"><FiLock size={12} /></span>)}
+                                              {taskStatus !== 'PENDING' && <span className="text-[8px] font-bold uppercase tracking-wide">{taskStatus}</span>}
+                                            </div>
                                           </div>
                                         );
                                       })}
@@ -1765,24 +2457,82 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
               {/* COACH PLAN */}
               {activeTab === 'plan' && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 h-full relative min-h-0">
-                  <div className="absolute inset-0 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row overflow-hidden">
+                <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-[580px] lg:min-h-0 relative">
+                  {/* Mobile Sub-Navigation Switcher */}
+                  <div className="sm:hidden flex bg-gray-100 dark:bg-[#191b22] border border-gray-300 dark:border-[#393e4f] rounded-xl p-1 mb-2">
+                    <button
+                      onClick={() => setMobileCoachView('library')}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${mobileCoachView === 'library' ? 'bg-white dark:bg-[#252833] text-black dark:text-amber-400 shadow-sm border border-amber-500/30' : 'text-gray-500 dark:text-[#6d758d]'}`}
+                    >
+                      Browse Exercises
+                    </button>
+                    <button
+                      onClick={() => setMobileCoachView('routine')}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${mobileCoachView === 'routine' ? 'bg-white dark:bg-[#252833] text-black dark:text-amber-400 shadow-sm border border-amber-500/30' : 'text-gray-500 dark:text-[#6d758d]'}`}
+                    >
+                      Weekly Routine ({activeDay.slice(0, 3)})
+                    </button>
+                  </div>
+
+                  <div className="lg:absolute lg:inset-0 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row flex-1 overflow-y-auto sm:overflow-hidden min-h-[520px] lg:min-h-0">
                     
                     {/* Exercise Library */}
-                    <div className="w-full sm:w-1/2 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 h-full">
-                      <div className="p-3 border-b border-gray-300 dark:border-gray-700 flex-shrink-0">
-                        <input type="text" placeholder="Search Exercise Library..." value={exSearch} onChange={e => setExSearch(e.target.value)} className="w-full p-2 text-xs bg-white dark:bg-[#252830] border border-gray-300 dark:border-gray-700 rounded outline-none text-slate-800 dark:text-gray-300 font-medium shadow-sm" />
+                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 sm:min-h-0 ${mobileCoachView === 'library' ? 'flex flex-1' : 'hidden sm:flex'}`}>
+                      <div className="p-3 border-b border-gray-300 dark:border-[#393e4f] flex-shrink-0 bg-white dark:bg-[#252833]">
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            placeholder="Search name, muscle, or equipment..." 
+                            value={exSearch} 
+                            onChange={e => { setExSearch(e.target.value); setExercisePage(1); }} 
+                            className="w-full pl-3 pr-8 py-2 text-xs bg-gray-50 dark:bg-[#191b22] border border-gray-300 dark:border-[#393e4f] rounded-lg outline-none text-slate-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium shadow-sm focus:ring-1 focus:ring-amber-500" 
+                          />
+                          {exSearch && (
+                            <button onClick={() => { setExSearch(''); setExercisePage(1); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white">
+                              <FiX size={12} />
+                            </button>
+                          )}
+                        </div>
+                        <label className="block mt-2">
+                          <span className="sr-only">Filter exercises by body part</span>
+                          <select 
+                            value={selectedBodyPart} 
+                            onChange={e => { setSelectedBodyPart(e.target.value); setExercisePage(1); }} 
+                            className="w-full p-2 text-xs bg-gray-50 dark:bg-[#191b22] border border-gray-300 dark:border-[#393e4f] rounded-lg outline-none text-slate-800 dark:text-gray-100 font-medium shadow-sm focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                          >
+                            <option value="all">All body parts</option>
+                            {bodyPartOptions.map(bodyPart => <option key={bodyPart} value={bodyPart}>{formatExerciseName(bodyPart)}</option>)}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 flex-shrink-0">
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-gray-400">
+                          {matchingExercises.length === 0 ? 'No matching exercises' : `Showing ${(exercisePage - 1) * exercisesPerPage + 1}-${Math.min(exercisePage * exercisesPerPage, matchingExercises.length)} of ${matchingExercises.length}`}
+                        </span>
+                        {totalExercisePages > 1 && <div className="flex items-center gap-1">
+                          <button onClick={() => setExercisePage(page => Math.max(1, page - 1))} disabled={exercisePage === 1} aria-label="Previous exercise page" className="p-1 rounded text-slate-500 hover:text-amber-600 disabled:opacity-30"><FiChevronLeft size={15} /></button>
+                          <span className="text-[10px] font-bold text-slate-600 dark:text-gray-300 tabular-nums">{exercisePage}/{totalExercisePages}</span>
+                          <button onClick={() => setExercisePage(page => Math.min(totalExercisePages, page + 1))} disabled={exercisePage === totalExercisePages} aria-label="Next exercise page" className="p-1 rounded text-slate-500 hover:text-amber-600 disabled:opacity-30"><FiChevronRight size={15} /></button>
+                        </div>}
                       </div>
                       <div className="p-3 flex-1 overflow-y-auto space-y-2">
-                        {exercisesLib.filter(ex => ex.name.toLowerCase().includes(exSearch.toLowerCase())).slice(0, 50).map(ex => {
-                          const exId = String(ex.id).padStart(4, '0');
+                        {currentExercises.map(ex => {
                           return (
-                            <div key={ex.id} className="flex items-center bg-white dark:bg-[#1a1c23] p-2 rounded-lg border border-gray-300 dark:border-gray-700 shadow-sm group">
-                              <img src={`/dataset/videos/${exId}.gif`} alt={ex.name} className="w-12 h-12 rounded object-cover flex-shrink-0 bg-gray-100 dark:bg-black" loading="lazy" onError={e => { e.target.onerror = null; e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="%23f1f5f9" rx="4"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="8" fill="%2394a3b8" font-weight="bold">NO PREVIEW</text></svg>'; }} />
-                              <div className="flex-1 min-w-0 px-3">
-                                <span className="font-bold text-[11px] text-slate-800 dark:text-gray-200 truncate block">{ex.name.toUpperCase()}</span>
+                            <div key={ex.id} className="flex items-center bg-white dark:bg-[#252830] p-2 rounded-lg border border-slate-200 dark:border-gray-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md group">
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-[#1a1c23] flex items-center justify-center">
+                                <FiActivity className="text-slate-400 dark:text-slate-500" size={19} />
+                                {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
+                                  if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
+                                    event.currentTarget.dataset.fallback = 'true';
+                                    event.currentTarget.src = getExerciseMediaUrl(ex, 'image');
+                                  } else event.currentTarget.style.display = 'none';
+                                }} />}
                               </div>
-                              <button onClick={() => handleAddExercise(ex)} className="w-8 h-8 flex items-center justify-center bg-amber-100 text-amber-700 hover:bg-amber-500 hover:text-white rounded-lg font-black transition-colors flex-shrink-0">+</button>
+                              <div className="flex-1 min-w-0 px-3">
+                                <span className="font-bold text-xs text-slate-800 dark:text-gray-100 truncate block">{formatExerciseName(ex.name)}</span>
+                                <span className="text-[10px] text-slate-500 dark:text-gray-400 capitalize truncate block mt-0.5">{ex.target || ex.body_part} Â· {ex.equipment}</span>
+                              </div>
+                              <button onClick={() => handleAddExercise(ex)} aria-label={`Add ${ex.name} to ${activeDay}`} className="w-8 h-8 flex items-center justify-center bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500 hover:text-white rounded-lg font-black transition-colors flex-shrink-0">+</button>
                             </div>
                           );
                         })}
@@ -1790,7 +2540,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     </div>
 
                     {/* Selected Routine */}
-                    <div className="w-full sm:w-1/2 flex flex-col bg-white dark:bg-[#252830] h-full">
+                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col bg-white dark:bg-[#252830] sm:min-h-0 ${mobileCoachView === 'routine' ? 'flex flex-1' : 'hidden sm:flex'}`}>
                       <div className="flex w-full overflow-x-auto border-b border-gray-300 dark:border-gray-700 flex-shrink-0 bg-gray-50 dark:bg-[#1a1c23]/50">
                         {daysOfWeek.map(day => (
                           <button key={day} onClick={() => setActiveDay(day)} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${activeDay === day ? 'border-amber-500 text-amber-600 dark:text-amber-500 bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
@@ -1803,35 +2553,49 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         {weeklyRoutine[activeDay].length === 0
                           ? <p className="text-xs text-center text-gray-400 mt-6 font-medium">No exercises assigned for {activeDay}</p>
                           : weeklyRoutine[activeDay].map((ex, i) => (
-                            <div key={i} className="flex flex-col bg-amber-50 dark:bg-amber-500/10 p-3 rounded-lg border border-amber-100 dark:border-amber-500/30 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                            <div key={i} className="flex flex-col bg-white dark:bg-[#252830] p-3 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md animate-in fade-in zoom-in-95 duration-200">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <img src={`/dataset/videos/${String(ex.id).padStart(4, '0')}.gif`} className="w-10 h-10 rounded border border-amber-200 dark:border-amber-500/30 object-cover flex-shrink-0" onError={e => { e.target.onerror = null; e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="%23fcd34d" rx="4"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="8" fill="%2378350f" font-weight="bold">NA</text></svg>'; }} alt={ex.name} />
-                                  <span className="font-bold text-xs text-amber-900 dark:text-amber-400 truncate block">{ex.name.toUpperCase()}</span>
+                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-[#1a1c23] flex items-center justify-center">
+                                    <FiActivity className="text-slate-400 dark:text-slate-500" size={16} />
+                                    {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
+                                      if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
+                                        event.currentTarget.dataset.fallback = 'true';
+                                        event.currentTarget.src = getExerciseMediaUrl(ex, 'image');
+                                      } else event.currentTarget.style.display = 'none';
+                                    }} />}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-xs text-slate-800 dark:text-gray-100 truncate block">{formatExerciseName(ex.name)}</span>
+                                    <span className="text-[10px] text-slate-500 dark:text-gray-400">{ex.sets} sets x {ex.reps} reps</span>
+                                    <span className={`text-[9px] font-semibold block mt-0.5 ${getGestureClass(ex) ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                                      {getGestureClass(ex) ? `AI tracks ${getGestureClass(ex)}` : 'Manual verification'}
+                                    </span>
+                                  </div>
                                 </div>
-                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} className="text-[10px] text-red-500 hover:text-red-700 font-black px-2 py-1 bg-red-100/50 dark:bg-red-500/10 hover:bg-red-200 dark:hover:bg-red-500/30 rounded transition-colors flex-shrink-0">X</button>
+                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="text-[10px] text-red-600 dark:text-red-400 hover:text-white font-black px-2 py-1 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 rounded-md transition-colors flex-shrink-0">X</button>
                               </div>
                               
                               {/* --- REPS & SETS INPUTS --- */}
                               <div className="flex items-center gap-4 mt-3 pl-[3.25rem]">
-                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-500">
+                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-gray-300">
                                   Sets: 
                                   <input 
                                     type="number" 
                                     min="1" 
                                     value={ex.sets || ''} 
                                     onChange={(e) => updateExerciseDetail(i, 'sets', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded bg-white dark:bg-[#1a1c23] border border-amber-200 dark:border-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-black dark:text-gray-200 shadow-sm text-center" 
+                                    className="w-14 px-2 py-1 rounded-md bg-slate-50 dark:bg-[#1a1c23] border border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-900 dark:text-gray-100 shadow-sm text-center"
                                   />
                                 </label>
-                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-500">
+                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-gray-300">
                                   Reps: 
                                   <input 
                                     type="number" 
                                     min="1" 
                                     value={ex.reps || ''} 
                                     onChange={(e) => updateExerciseDetail(i, 'reps', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded bg-white dark:bg-[#1a1c23] border border-amber-200 dark:border-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-black dark:text-gray-200 shadow-sm text-center" 
+                                    className="w-14 px-2 py-1 rounded-md bg-slate-50 dark:bg-[#1a1c23] border border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-900 dark:text-gray-100 shadow-sm text-center"
                                   />
                                 </label>
                               </div>
@@ -1861,7 +2625,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 import React from 'react';
 import {
   FiSearch, FiPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiUsers,
-  FiChevronLeft, FiChevronRight
+  FiChevronLeft, FiChevronRight, FiX
 } from 'react-icons/fi';
 
 const getStatusBadge = (status) => {
@@ -1912,30 +2676,40 @@ export default function MemberTable({
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
         <div />
-        <button onClick={onAddMember} className={primaryBtn}>
+        <button onClick={onAddMember} className={`${primaryBtn} w-full sm:w-auto`}>
           <FiPlus size={18} strokeWidth={3} /> Add Member
         </button>
       </div>
 
       {/* Search & Filter */}
-      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm items-center">
+      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#252833] p-4 sm:p-5 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm items-stretch md:items-center">
         <div className="relative flex-1 w-full">
-          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none" />
+          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
           <input
             type="text"
             placeholder="Search by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm"
+            className="w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
+            >
+              <FiX size={15} />
+            </button>
+          )}
         </div>
         <div className="flex gap-4 w-full md:w-auto">
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full md:w-auto px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm"
+            className="w-full md:w-auto px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
           >
             <option value="All">All Status</option>
             <option value="Active">Active</option>
@@ -1946,24 +2720,24 @@ export default function MemberTable({
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-sm border-2 border-gray-300 dark:border-gray-600 overflow-hidden flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b-2 border-gray-300 dark:border-gray-600 gap-4 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-300 font-bold text-sm tracking-wide">
-            <FiUsers size={18} />
+      <div className="bg-white dark:bg-[#252833] rounded-2xl shadow-sm border-2 border-gray-300 dark:border-[#393e4f] overflow-hidden flex flex-col">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b-2 border-gray-300 dark:border-[#393e4f] gap-4 bg-gray-50 dark:bg-[#191b22]/50">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-200 font-bold text-sm tracking-wide">
+            <FiUsers size={18} className="text-amber-500" />
             <span>{members.length} TOTAL MEMBERS</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-[700px] lg:min-w-full">
             <thead>
-              <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
+              <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
                 {['Member Details', 'Phone Number', 'Address', 'Membership Plan', 'Customer Since', 'Status', 'Actions'].map((h, i) => (
-                  <th key={h} className={`px-6 py-5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest${i === 6 ? ' text-right' : ''}`}>{h}</th>
+                  <th key={h} className={`px-3.5 sm:px-4 lg:px-6 py-3.5 sm:py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest${i === 6 ? ' text-right' : ''}`}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
+            <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
               {isLoading ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-24 text-center">
@@ -1984,13 +2758,13 @@ export default function MemberTable({
                 </tr>
               ) : (
                 currentMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group border-b border-gray-300 dark:border-gray-700/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-4">
+                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group border-b border-gray-200 dark:border-[#393e4f]">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         {member.profilePicUrl ? (
-                          <img src={member.profilePicUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600 flex-shrink-0 shadow-sm" />
+                          <img src={member.profilePicUrl} alt="Avatar" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-gray-300 dark:border-[#393e4f] flex-shrink-0 shadow-sm" />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm border-2 border-gray-300 dark:border-gray-600 flex-shrink-0 shadow-sm">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-200 dark:bg-[#191b22] flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm border-2 border-gray-300 dark:border-[#393e4f] flex-shrink-0 shadow-sm">
                             {getInitials(member.firstName, member.lastName)}
                           </div>
                         )}
@@ -2000,19 +2774,19 @@ export default function MemberTable({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 font-normal whitespace-nowrap">{member.phone}</td>
-                    <td className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 font-normal truncate max-w-[150px]">{member.address || '-'}</td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-gray-400 whitespace-nowrap">{member.plan}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-gray-400 font-normal whitespace-nowrap">{member.customerSince}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(member.status)}</td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap space-x-3">
-                      <button onClick={() => onViewProfile(member)} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-blue-600 dark:text-blue-400 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-sm text-slate-700 dark:text-gray-300 font-normal whitespace-nowrap">{member.phone}</td>
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-sm text-slate-700 dark:text-gray-300 font-normal truncate max-w-[150px]">{member.address || '-'}</td>
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-sm font-bold text-slate-900 dark:text-gray-400 whitespace-nowrap">{member.plan}</td>
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-sm text-slate-500 dark:text-gray-400 font-normal whitespace-nowrap">{member.customerSince}</td>
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">{getStatusBadge(member.status)}</td>
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-right whitespace-nowrap space-x-2 sm:space-x-3">
+                      <button onClick={() => onViewProfile(member)} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-blue-600 dark:text-blue-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm">
                         <FiEye size={16} strokeWidth={2.5} />
                       </button>
-                      <button onClick={() => onEditMember(member)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-gray-600 hover:border-amber-50 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
+                      <button onClick={() => onEditMember(member)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-amber-50 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
                         <FiEdit2 size={16} strokeWidth={2.5} />
                       </button>
-                      <button onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-gray-600 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
+                      <button onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
                         {deletingId === member.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} strokeWidth={2.5} />}
                       </button>
                     </td>
@@ -2025,7 +2799,7 @@ export default function MemberTable({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-4 border-t-2 border-gray-300 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="p-4 border-t-2 border-gray-300 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex flex-col sm:flex-row justify-between items-center gap-4">
             <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
               Showing {indexOfFirst + 1} to {Math.min(indexOfFirst + itemsPerPage, members.length)} of {members.length} Entries
             </span>
@@ -2184,7 +2958,7 @@ export default useMembers;
 
 === frontend\src\features\subscriptions\components\CoachEventModal.jsx ===
 import React from 'react';
-import { FiX, FiSave } from 'react-icons/fi';
+import { FiX, FiSave, FiCalendar, FiClock, FiMapPin, FiTag } from 'react-icons/fi';
 
 export default function CoachEventModal({
   isOpen,
@@ -2196,36 +2970,73 @@ export default function CoachEventModal({
 }) {
   if (!isOpen) return null;
 
-  const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm";
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-2";
-  const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const inputClass = "w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#191b22] border border-slate-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-[#6d758d] text-sm font-semibold transition-all shadow-xs";
+  const labelClass = "flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-gray-300 mb-1.5";
+  const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-xs";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex flex-col">
-        <div className="p-5 border-b-2 border-gray-300 dark:border-gray-600 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-lg font-bold text-black dark:text-gray-300">Add Coach Event</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-colors">
-            <FiX size={24} />
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      <button 
+        type="button"
+        onClick={onClose} 
+        aria-label="Close modal" 
+        className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" 
+      />
+
+      <div className="relative flex w-full max-h-[90svh] sm:max-w-lg flex-col rounded-t-[2rem] sm:rounded-3xl border border-slate-200/80 bg-white/95 shadow-2xl backdrop-blur-xl dark:border-[#393e4f] dark:bg-[#1f222b] text-slate-900 dark:text-gray-100 overflow-hidden animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200">
+        
+        {/* Mobile Drag Indicator */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-[#393e4f]" />
+        </div>
+
+        {/* Header */}
+        <div className="p-5 sm:p-6 border-b border-slate-200/80 dark:border-[#252833] flex justify-between items-center bg-gradient-to-b from-slate-50/80 via-white to-transparent dark:from-[#252833]/50 dark:via-[#1f222b] dark:to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-xs">
+              <FiCalendar size={20} />
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                Schedule Coach Event
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-[#6d758d] font-medium">
+                Add an activity to the gym's master calendar
+              </p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-[#252833] dark:hover:bg-[#2e3240] text-slate-500 dark:text-gray-300 transition-all border border-slate-200/80 dark:border-[#393e4f] shadow-sm active:scale-95"
+          >
+            <FiX size={18} />
           </button>
         </div>
         
-        <form onSubmit={onSave} className="p-6 space-y-4">
+        {/* Form */}
+        <form onSubmit={onSave} className="p-5 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(90svh-140px)] custom-scrollbar">
           <label className="block">
-            <span className={labelClass}>Event Title</span>
+            <span className={labelClass}>
+              <FiTag size={12} className="text-amber-500" />
+              Event Title
+            </span>
             <input 
               type="text" 
               required 
               value={eventForm.title} 
               onChange={e => setEventForm({ ...eventForm, title: e.target.value })} 
-              placeholder="e.g. CrossFit WOD" 
+              placeholder="e.g. CrossFit WOD, Conditioning Session" 
               className={inputClass} 
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <label className="block">
-              <span className={labelClass}>Start Date</span>
+              <span className={labelClass}>
+                <FiCalendar size={12} className="text-amber-500" />
+                Start Date
+              </span>
               <input 
                 type="date" 
                 required 
@@ -2235,7 +3046,10 @@ export default function CoachEventModal({
               />
             </label>
             <label className="block">
-              <span className={labelClass}>End Date</span>
+              <span className={labelClass}>
+                <FiCalendar size={12} className="text-amber-500" />
+                End Date
+              </span>
               <input 
                 type="date" 
                 required 
@@ -2246,9 +3060,12 @@ export default function CoachEventModal({
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <label className="block">
-              <span className={labelClass}>Start Time</span>
+              <span className={labelClass}>
+                <FiClock size={12} className="text-amber-500" />
+                Start Time
+              </span>
               <input 
                 type="time" 
                 required 
@@ -2258,7 +3075,10 @@ export default function CoachEventModal({
               />
             </label>
             <label className="block">
-              <span className={labelClass}>End Time</span>
+              <span className={labelClass}>
+                <FiClock size={12} className="text-amber-500" />
+                End Time
+              </span>
               <input 
                 type="time" 
                 required 
@@ -2269,33 +3089,41 @@ export default function CoachEventModal({
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
             <label className="block">
-              <span className={labelClass}>Location</span>
+              <span className={labelClass}>
+                <FiMapPin size={12} className="text-amber-500" />
+                Location / Area
+              </span>
               <input 
                 type="text" 
                 required 
                 value={eventForm.location} 
                 onChange={e => setEventForm({ ...eventForm, location: e.target.value })} 
+                placeholder="e.g. Boxing Ring, Turf Area"
                 className={inputClass} 
               />
             </label>
+            
             <label className="block">
-              <span className={labelClass}>Banner Color</span>
-              <div className="flex gap-2 mt-1 items-center">
+              <span className={labelClass}>
+                <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: eventForm.color || '#f59e0b' }} />
+                Banner Color
+              </span>
+              <div className="flex gap-2 items-center h-[42px] px-2 bg-slate-50 dark:bg-[#191b22] border border-slate-300 dark:border-[#393e4f] rounded-xl">
                 <input 
                   type="color" 
                   value={eventForm.color} 
                   onChange={e => setEventForm({ ...eventForm, color: e.target.value })} 
-                  className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-300 dark:border-gray-600 bg-transparent p-1" 
+                  className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0" 
                 />
-                <div className="flex flex-wrap gap-1.5 ml-2 border-l border-gray-300 dark:border-gray-600 pl-3">
+                <div className="flex flex-wrap gap-1.5 ml-1 border-l border-slate-200 dark:border-[#393e4f] pl-2">
                   {recentColors.map(c => (
                     <button 
                       type="button" 
                       key={c} 
                       onClick={() => setEventForm({ ...eventForm, color: c })} 
-                      className="w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 shadow-sm transition-transform hover:scale-110" 
+                      className={`w-5 h-5 rounded-full border transition-transform hover:scale-125 ${eventForm.color === c ? 'ring-2 ring-amber-500 ring-offset-1 ring-offset-slate-900 border-white' : 'border-black/20'}`} 
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -2304,16 +3132,17 @@ export default function CoachEventModal({
             </label>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-gray-300 dark:border-gray-700 mt-6">
+          {/* Action Buttons */}
+          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-200/80 dark:border-[#252833] mt-5">
             <button 
               type="button" 
               onClick={onClose} 
-              className="px-5 py-2.5 rounded-xl font-bold text-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors uppercase tracking-wide text-xs"
+              className="px-4 py-2 rounded-xl font-bold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-[#252833] transition-colors uppercase tracking-wider text-xs"
             >
               Cancel
             </button>
-            <button type="submit" className={primaryButtonClass + " !text-xs !px-5"}>
-              <FiSave size={16} /> Save Event
+            <button type="submit" className={primaryButtonClass}>
+              <FiSave size={15} /> Save Event
             </button>
           </div>
         </form>
@@ -2655,6 +3484,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
+import MobileCalendarToolbar from '../../../components/ui/MobileCalendarToolbar';
+import MobileCalendarDaySheet from '../../../components/ui/MobileCalendarDaySheet';
+import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 
 export default function SubscriptionsCalendarView({
   subscriptions,
@@ -2667,25 +3499,20 @@ export default function SubscriptionsCalendarView({
   onDeleteCoachEvent,
   onDateClick
 }) {
-  const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    const [hours, minutes] = timeStr.split(':');
-    const h = parseInt(hours, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const formattedH = h % 12 || 12;
-    return `${formattedH}:${minutes} ${ampm}`;
-  };
-
+  const calendarRef = React.useRef(null);
+  const [calendarTitle, setCalendarTitle] = React.useState('');
+  const [calendarView, setCalendarView] = React.useState('dayGridMonth');
+  const [selectedDay, setSelectedDay] = React.useState(null);
+  const [selectedDayEvents, setSelectedDayEvents] = React.useState([]);
   const todayStr = new Date().toISOString().split('T')[0];
-  let allCalendarEvents = [];
+  const allCalendarEvents = [];
 
   const activeSubsMap = new Map();
   subscriptions.forEach(sub => {
-    if (sub.status === 'Active' && sub.member) {
-      const existing = activeSubsMap.get(sub.member_id);
-      if (!existing || new Date(sub.end_date) > new Date(existing.end_date)) {
-        activeSubsMap.set(sub.member_id, sub);
-      }
+    if (sub.status !== 'Active' || !sub.member) return;
+    const existing = activeSubsMap.get(sub.member_id);
+    if (!existing || new Date(sub.end_date) > new Date(existing.end_date)) {
+      activeSubsMap.set(sub.member_id, sub);
     }
   });
   const uniqueLatestActiveSubs = Array.from(activeSubsMap.values());
@@ -2694,274 +3521,298 @@ export default function SubscriptionsCalendarView({
     uniqueLatestActiveSubs.forEach(sub => {
       const planName = (sub.plan_type || '').toLowerCase();
       if (planName.includes('walk') || planName.includes('daily') || planName === 'none') return;
-      const firstName = sub.member.first_name;
-      allCalendarEvents.push({ 
-        id: `start-${sub.id}`, 
-        title: `Start of ${firstName}'s ${sub.plan_type}`, 
-        date: sub.start_date, 
-        backgroundColor: sub.color || '#f59e0b', 
-        borderColor: sub.color || '#f59e0b', 
-        allDay: true, 
-        extendedProps: { type: 'sub', ...sub } 
+      const color = sub.color || '#f59e0b';
+      allCalendarEvents.push({
+        id: `start-${sub.id}`,
+        title: `Start of ${sub.member.first_name}'s ${sub.plan_type}`,
+        date: sub.start_date,
+        backgroundColor: color,
+        borderColor: color,
+        allDay: true,
+        extendedProps: { type: 'sub', ...sub }
       });
       if (sub.end_date && sub.end_date !== sub.start_date) {
-        allCalendarEvents.push({ 
-          id: `end-${sub.id}`, 
-          title: `End of ${firstName}'s ${sub.plan_type}`, 
-          date: sub.end_date, 
-          backgroundColor: sub.color || '#f59e0b', 
-          borderColor: sub.color || '#f59e0b', 
-          allDay: true, 
-          extendedProps: { type: 'sub', ...sub } 
+        allCalendarEvents.push({
+          id: `end-${sub.id}`,
+          title: `End of ${sub.member.first_name}'s ${sub.plan_type}`,
+          date: sub.end_date,
+          backgroundColor: color,
+          borderColor: color,
+          allDay: true,
+          extendedProps: { type: 'sub', ...sub }
         });
       }
     });
   }
 
   if (showCoachEvents) {
-    coachEvents.forEach(ev => {
-      let endObj = new Date(ev.end_date || ev.start_date);
-      endObj.setDate(endObj.getDate() + 1); 
-      let exclusiveEndDate = endObj.toISOString().split('T')[0];
-      allCalendarEvents.push({ 
-        id: `coach-${ev.id}`, 
-        title: ev.title, 
-        start: ev.start_date, 
-        end: ev.start_date !== ev.end_date ? exclusiveEndDate : undefined, 
-        date: ev.start_date === ev.end_date ? ev.start_date : undefined, 
-        allDay: true, 
-        backgroundColor: ev.color || '#3b82f6', 
-        borderColor: ev.color || '#3b82f6', 
-        extendedProps: { type: 'coach', ...ev } 
+    coachEvents.forEach(event => {
+      const endDate = new Date(event.end_date || event.start_date);
+      endDate.setDate(endDate.getDate() + 1);
+      const color = event.color || '#3b82f6';
+      allCalendarEvents.push({
+        id: `coach-${event.id}`,
+        title: event.title,
+        start: event.start_date,
+        end: event.start_date !== event.end_date ? endDate.toISOString().split('T')[0] : undefined,
+        date: event.start_date === event.end_date ? event.start_date : undefined,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color,
+        extendedProps: { type: 'coach', ...event }
       });
     });
   }
 
-  const activeSubsLegend = uniqueLatestActiveSubs.filter(s => {
-    const planName = (s.plan_type || '').toLowerCase();
-    if (planName.includes('walk') || planName.includes('daily') || planName === 'none') return false;
-    return true;
+  const activeSubsLegend = uniqueLatestActiveSubs.filter(sub => {
+    const planName = (sub.plan_type || '').toLowerCase();
+    return !planName.includes('walk') && !planName.includes('daily') && planName !== 'none';
   }).sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  const upcomingCoachEvents = [...coachEvents]
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+    .filter(event => (event.end_date || event.start_date) >= todayStr);
 
-  const sortedCoachEvents = [...coachEvents].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-  
-  // Filter out events that have already passed (based on end_date, or start_date if single day)
-  const upcomingCoachEvents = sortedCoachEvents.filter(ev => (ev.end_date || ev.start_date) >= todayStr);
+  const formatTime = (time) => {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours, 10);
+    return `${hour % 12 || 12}:${minutes} ${hour >= 12 ? 'PM' : 'AM'}`;
+  };
+
+  const getEventsForDate = (date) => allCalendarEvents.filter(event => {
+    const start = event.start || event.date;
+    return start && start <= date && (!event.end || date < event.end);
+  });
+
+  const toDaySheetEvent = (event) => {
+    const details = event.extendedProps || {};
+    return {
+      id: event.id,
+      title: event.title,
+      color: event.backgroundColor,
+      time: formatTime(details.start_time),
+      location: details.location,
+      type: details.type,
+      detail: details.type === 'sub' ? `${details.plan_type} subscription` : details.type === 'coach' ? 'Coach event' : ''
+    };
+  };
+
+  const [hoveredDay, setHoveredDay] = React.useState(null);
+  const hoverTimeoutRef = React.useRef(null);
+
+  const handleCalendarMouseMove = (e) => {
+    if (selectedDay) return;
+    const dayCell = e.target.closest('.fc-daygrid-day');
+    if (!dayCell) {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = setTimeout(() => setHoveredDay(null), 120);
+      return;
+    }
+    const dateStr = dayCell.getAttribute('data-date');
+    if (!dateStr) return;
+    if (hoveredDay?.date === dateStr) return;
+
+    const dayEvents = getEventsForDate(dateStr);
+    if (!dayEvents || dayEvents.length === 0) {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      setHoveredDay(null);
+      return;
+    }
+
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    const rect = dayCell.getBoundingClientRect();
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredDay({
+        date: dateStr,
+        events: dayEvents.map(toDaySheetEvent),
+        rect
+      });
+    }, 80);
+  };
+
+  const handleCalendarMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => setHoveredDay(null), 150);
+  };
+
+  const openDayDetails = (date, events = getEventsForDate(date)) => {
+    setHoveredDay(null);
+    setSelectedDay(date);
+    setSelectedDayEvents(events.map(toDaySheetEvent));
+  };
+
+  const handleCalendarDateClick = (info) => {
+    setHoveredDay(null);
+    const dayEvents = getEventsForDate(info.dateStr);
+    if (dayEvents.length) {
+      openDayDetails(info.dateStr, dayEvents);
+      return;
+    }
+    onDateClick(info);
+  };
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 items-start animate-in fade-in duration-300">
-      <div className="flex-1 w-full bg-white dark:bg-[#252830] p-6 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm relative">
+    <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-6 animate-in fade-in duration-300 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div 
+        onMouseMove={handleCalendarMouseMove}
+        onMouseLeave={handleCalendarMouseLeave}
+        className="mobile-calendar-grid relative flex h-auto sm:min-h-[clamp(28rem,75svh,46rem)] min-w-0 flex-col bg-white dark:bg-[#252833] p-3 sm:p-6 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm xl:col-start-1 xl:row-start-1"
+      >
         <style>{`
           .fc { --fc-border-color: #e2e8f0; --fc-page-bg-color: transparent; --fc-list-event-hover-bg-color: rgba(0,0,0,0.05); color: #4b5563; }
           .dark .fc { --fc-border-color: #4b5563; --fc-neutral-text-color: #d1d5db; --fc-today-bg-color: rgba(245, 158, 11, 0.1); color: #d1d5db; }
-          
-          .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000000 !important; text-transform: capitalize !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; transition: all 0.2s ease; margin: 0 4px !important; }
+          .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000 !important; text-transform: capitalize !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; margin: 0 4px !important; }
           .dark .fc .fc-button-primary { background-color: #1e293b !important; border-color: #374151 !important; color: #d1d5db !important; }
-          .fc .fc-button-primary:hover { background-color: #e2e8f0 !important; color: #000000 !important; }
-          .dark .fc .fc-button-primary:hover { background-color: #334155 !important; color: #ffffff !important; }
-          .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { background: linear-gradient(to right, #fbbf24, #f59e0b) !important; border: none !important; color: #000 !important; font-weight: 800 !important; box-shadow: 0 4px 10px -2px rgba(245, 158, 11, 0.3) !important; }
-          
-          /* EXACT MATCH TO "ADD MEMBER" BUTTON - HIGHEST SPECIFICITY */
-          .fc .fc-button.fc-button-primary.fc-today-button,
-          .dark .fc .fc-button.fc-button-primary.fc-today-button,
-          .fc .fc-button.fc-button-primary.fc-today-button:disabled,
-          .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
-            background: linear-gradient(to right, #facc15, #f59e0b) !important;
-            border: none !important;
-            color: #000000 !important; 
-            font-weight: 700 !important;
-            font-size: 0.875rem !important;
-            border-radius: 0.75rem !important;
-            padding: 0.625rem 1.5rem !important;
-            box-shadow: 0 10px 15px -3px rgba(120, 53, 15, 0.2) !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.025em !important;
-            opacity: 1 !important;
-            text-shadow: none !important;
-            margin: 0 4px !important;
-          }
-          
-          .fc .fc-button.fc-button-primary.fc-today-button:hover,
-          .dark .fc .fc-button.fc-button-primary.fc-today-button:hover {
-            color: #000000 !important; 
-          }
-          
-          .fc .fc-button.fc-button-primary.fc-today-button:not(:disabled):hover,
-          .dark .fc .fc-button.fc-button-primary.fc-today-button:not(:disabled):hover {
-            background: linear-gradient(to right, #fde047, #fbbf24) !important;
-          }
-
-          .fc .fc-button.fc-button-primary.fc-today-button:disabled,
-          .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
-            opacity: 0.7 !important;
-            cursor: not-allowed !important;
-          }
-
-          .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 800 !important; text-transform: uppercase; color: #000000; }
+          .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { background: linear-gradient(to right, #FACC15, #F59E0B) !important; border: none !important; color: #000 !important; }
+          .fc .fc-button.fc-button-primary.fc-today-button { background: linear-gradient(to right, #FACC15, #F59E0B) !important; border: none !important; color: #000 !important; font-weight: 700 !important; border-radius: .75rem !important; text-transform: uppercase !important; letter-spacing: .025em !important; }
+          .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 800 !important; text-transform: uppercase; color: #000; }
           .dark .fc-toolbar-title { color: #d1d5db !important; }
           .fc-scrollgrid { border: none !important; }
-          .dark .fc-scrollgrid { border-color: #334155 !important; }
-          .fc-theme-standard th { border: none !important; border-bottom: 1px solid var(--fc-border-color) !important; padding: 12px 0 !important; }
-          .dark .fc-theme-standard th { border-color: #334155 !important; }
-          .fc-theme-standard td { border: none !important; border-bottom: 1px solid var(--fc-border-color) !important; border-right: 1px solid var(--fc-border-color) !important; }
-          .dark .fc-theme-standard td { border-color: #334155 !important; }
+          .fc-theme-standard th, .fc-theme-standard td { border-color: var(--fc-border-color) !important; }
+          .fc-theme-standard td { border-right: 1px solid var(--fc-border-color) !important; }
           .fc-theme-standard td:last-child { border-right: none !important; }
-          
-          .fc-col-header-cell-cushion { font-weight: 700 !important; font-size: 0.8rem !important; color: #0f172a !important; text-decoration: none !important; padding: 4px 0 !important;}
+          .fc-col-header-cell-cushion { font-weight: 700 !important; font-size: .8rem !important; color: #0f172a !important; text-decoration: none !important; }
           .dark .fc-col-header-cell-cushion { color: #f8fafc !important; }
-          .fc-daygrid-day-number { font-weight: 600; font-size: 0.8rem; padding: 8px !important; color: #475569 !important; text-decoration: none !important; }
+          .fc-daygrid-day-number { font-weight: 600; font-size: .8rem; padding: 8px !important; color: #475569 !important; text-decoration: none !important; }
           .dark .fc-daygrid-day-number { color: #cbd5e1 !important; }
-
-          .fc-daygrid-event {
-              border-radius: 6px !important; padding: 2px 4px !important; margin: 2px !important; border: 1px solid rgba(255,255,255,0.2) !important; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important; transition: transform 0.1s ease, box-shadow 0.1s ease;
-          }
-          .fc-daygrid-event:hover { transform: translateY(-1px) scale(1.02); box-shadow: 0 4px 8px rgba(0,0,0,0.25) !important; z-index: 5; }
-          .fc-daygrid-event-dot { display: none !important; } 
-          .fc-event-main { color: #ffffff !important; font-weight: 800 !important; font-size: 0.65rem !important; letter-spacing: 0.03em; text-shadow: 0px 1px 2px rgba(0,0,0,0.8) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2 !important; }
-
-          .fc-daygrid-more-link { color: #4b5563 !important; font-weight: 800 !important; font-size: 0.75rem !important; margin-top: 2px; display: block; text-align: left; padding-left: 6px; }
+          .fc-daygrid-event { border-radius: 6px !important; padding: 2px 4px !important; margin: 2px !important; border: 1px solid rgba(255,255,255,.2) !important; box-shadow: 0 1px 3px rgba(0,0,0,.15) !important; }
+          .fc-event-main { color: #fff !important; font-weight: 800 !important; font-size: .65rem !important; text-shadow: 0 1px 2px rgba(0,0,0,.8) !important; }
+          .fc-daygrid-more-link { color: #4b5563 !important; font-weight: 800 !important; font-size: .75rem !important; }
           .dark .fc-daygrid-more-link { color: #d1d5db !important; }
-          
-          .fc-popover { border: 1px solid var(--fc-border-color) !important; border-radius: 12px !important; background-color: #ffffff !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important; overflow: hidden; }
-          .dark .fc-popover { background-color: #1e293b !important; border-color: #334155 !important; }
-          .fc-popover-header { background: #f8fafc !important; padding: 12px !important; border-bottom: 1px solid var(--fc-border-color) !important;}
-          .dark .fc-popover-header { background: #0f172a !important; border-color: #334155 !important;}
-          .fc-popover-title { font-weight: 800 !important; font-size: 0.9rem !important; color: #000000 !important; }
+          .fc-popover { border: 1px solid var(--fc-border-color) !important; border-radius: 12px !important; background: #fff !important; box-shadow: 0 10px 25px -5px rgba(0,0,0,.15) !important; overflow: hidden; }
+          .dark .fc-popover { background: #1e293b !important; border-color: #334155 !important; }
+          .fc-popover-header { background: #f8fafc !important; padding: 12px !important; border-bottom: 1px solid var(--fc-border-color) !important; }
+          .dark .fc-popover-header { background: #0f172a !important; border-color: #334155 !important; }
+          .fc-popover-title { font-weight: 800 !important; font-size: .9rem !important; color: #000 !important; }
           .dark .fc-popover-title { color: #d1d5db !important; }
           .fc-popover-body { padding: 12px !important; }
         `}</style>
-        
+
+        <MobileCalendarToolbar
+          title={calendarTitle}
+          onPrevious={() => calendarRef.current?.getApi().prev()}
+          onNext={() => calendarRef.current?.getApi().next()}
+          actionLabel="Add event"
+          actionIcon={<FiPlus size={20} />}
+          onAction={onOpenEventModal}
+          views={[{ id: 'dayGridMonth', label: 'Month' }, { id: 'listWeek', label: 'List' }]}
+          activeView={calendarView}
+          onViewChange={view => calendarRef.current?.getApi().changeView(view)}
+        />
+
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"
-          dayMaxEvents={2} 
-          displayEventTime={false} 
-          moreLinkContent={(arg) => `+${arg.num} more`} 
+          dayMaxEvents={2}
+          displayEventTime={false}
+          moreLinkContent={arg => `+${arg.num} more`}
           headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' }}
           events={allCalendarEvents}
-          height="auto" 
-          dateClick={onDateClick}
+          height="auto"
+          datesSet={dateInfo => {
+            setCalendarTitle(dateInfo.view.title);
+            setCalendarView(dateInfo.view.type);
+          }}
+          dayHeaderContent={headerInfo => typeof window !== 'undefined' && window.innerWidth < 640 ? headerInfo.text.charAt(0) : headerInfo.text}
+          dateClick={handleCalendarDateClick}
+          eventClick={info => {
+            const date = info.event.startStr.slice(0, 10);
+            openDayDetails(date);
+          }}
         />
       </div>
 
-      <div className="w-full xl:w-[340px] flex flex-col gap-6 flex-shrink-0">
-        <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col">
+      <div className="grid min-w-0 grid-cols-1 grid-rows-[auto_auto_auto] items-stretch gap-6 md:grid-cols-2 md:grid-rows-[minmax(0,1fr)] xl:col-start-2 xl:row-start-1 xl:h-full xl:grid-cols-1 xl:grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="hidden w-full min-w-0 bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm xl:col-span-1 xl:flex xl:flex-col">
           <h3 className="text-base font-bold text-black dark:text-gray-300 flex items-center gap-2 mb-3">
             <FiFilter className="text-amber-500" /> View Filters
           </h3>
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 xl:grid-cols-1">
             <label className="flex items-center gap-3 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={showSubscriptions} 
-                onChange={e => setShowSubscriptions(e.target.checked)} 
-                className="w-4 h-4 accent-amber-500 cursor-pointer" 
-              />
+              <input type="checkbox" checked={showSubscriptions} onChange={e => setShowSubscriptions(e.target.checked)} className="w-4 h-4 accent-amber-500 cursor-pointer" />
               <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Client Subscriptions</span>
             </label>
             <label className="flex items-center gap-3 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={showCoachEvents} 
-                onChange={e => setShowCoachEvents(e.target.checked)} 
-                className="w-4 h-4 accent-amber-500 cursor-pointer" 
-              />
+              <input type="checkbox" checked={showCoachEvents} onChange={e => setShowCoachEvents(e.target.checked)} className="w-4 h-4 accent-amber-500 cursor-pointer" />
               <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Coach Events & Sessions</span>
             </label>
           </div>
         </div>
-        
-        <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col max-h-[300px]">
+
+        <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex h-[clamp(28rem,75svh,46rem)] min-h-0 min-w-0 flex-col md:h-full">
           <h3 className="text-base font-bold text-black dark:text-gray-300 mb-4 border-b border-gray-300 dark:border-gray-700 pb-2">Active Subscriptions</h3>
-          
-          <div className="overflow-y-auto hidden-scrollbar space-y-4 flex-1 pr-2">
+          <div className="min-h-0 flex-1 overflow-y-auto hidden-scrollbar space-y-4 pr-2">
             {activeSubsLegend.length === 0 ? (
               <p className="text-xs text-slate-500 italic text-center py-4">No active subscriptions detected.</p>
-            ) : (
-              activeSubsLegend.map((sub, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="w-4 h-4 rounded-md flex-shrink-0 shadow-sm mt-0.5" style={{ backgroundColor: sub.color || '#f59e0b' }}></div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-black dark:text-gray-300 truncate leading-tight">
-                      {sub.member ? `${sub.member.first_name}` : 'Unknown'}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <p className="text-[9px] text-slate-500 dark:text-gray-400 truncate uppercase tracking-widest font-bold">
-                        {sub.plan_type}
-                      </p>
-                      <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border border-solid shadow-sm ${sub.start_date > todayStr ? 'bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50' : 'bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50'}`}>
-                        {sub.start_date > todayStr ? 'Future' : 'Current'}
-                      </span>
-                    </div>
+            ) : activeSubsLegend.map((sub, index) => (
+              <div key={index} className="flex items-start gap-3">
+                <div className="w-4 h-4 rounded-md flex-shrink-0 shadow-sm mt-0.5" style={{ backgroundColor: sub.color || '#f59e0b' }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-black dark:text-gray-300 truncate leading-tight">{sub.member.first_name}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-[9px] text-slate-500 dark:text-gray-400 truncate uppercase tracking-widest font-bold">{sub.plan_type}</p>
+                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border shadow-sm ${sub.start_date > todayStr ? 'bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50' : 'bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50'}`}>
+                      {sub.start_date > todayStr ? 'Future' : 'Current'}
+                    </span>
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col flex-1 max-h-[350px]">
+        <div className="bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex h-[clamp(28rem,75svh,46rem)] min-h-0 min-w-0 flex-col md:h-full">
           <div className="flex justify-between items-center mb-4 border-b border-gray-300 dark:border-gray-700 pb-2 flex-shrink-0">
             <h3 className="text-base font-bold text-black dark:text-gray-300">Event Plans</h3>
-            <button 
-              onClick={onOpenEventModal} 
-              className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-3 py-1.5 rounded-lg font-bold shadow-md shadow-amber-900/20 transition-all active:scale-95 uppercase tracking-wider text-[10px]"
-            >
-              <FiPlus size={12} strokeWidth={3} /> Add New
+            <button onClick={onOpenEventModal} aria-label="Add new event" title="Add new event" className="flex h-9 w-9 items-center justify-center bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black rounded-lg font-bold shadow-md transition-all active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5">
+              <FiPlus size={16} strokeWidth={3} /> <span className="sr-only sm:not-sr-only">Add New</span>
             </button>
           </div>
-          
-          <div className="overflow-y-auto hidden-scrollbar space-y-3 flex-1 pr-1">
+          <div className="min-h-0 flex-1 overflow-y-auto hidden-scrollbar space-y-3 pr-1">
             {upcomingCoachEvents.length === 0 ? (
               <p className="text-xs text-slate-500 italic text-center py-8">No scheduled events.</p>
-            ) : (
-              upcomingCoachEvents.map((ev) => (
-                <div 
-                  key={ev.id} 
-                  className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm relative group p-3.5 flex justify-between items-center transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600" 
-                  style={{ borderLeft: `5px solid ${ev.color || '#eab308'}` }}
-                >
-                  <button 
-                    onClick={() => onDeleteCoachEvent(ev.id)} 
-                    className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-md hover:bg-red-600 hover:scale-110" 
-                    title="Delete Event"
-                  >
-                    <FiTrash2 size={12} />
-                  </button>
-
-                  <div className="flex flex-col flex-1 pr-4 min-w-0">
-                    <h4 className="font-bold text-sm text-black dark:text-gray-300 mb-1.5 leading-tight truncate">
-                      {ev.title}
-                    </h4>
-                    <div className="text-[10px] font-medium text-slate-500 dark:text-gray-400 truncate flex items-center gap-1.5 mt-1">
-                      <FiMapPin size={12} className="flex-shrink-0 text-slate-400 dark:text-gray-500"/> <span className="truncate">{ev.location}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center justify-center border-l-2 border-dashed border-gray-300 dark:border-gray-700 pl-4 w-[75px] flex-shrink-0">
-                    <span className="text-[24px] font-black leading-none mb-0.5 tracking-tighter text-black dark:text-gray-300">
-                      {new Date(ev.start_date + 'T00:00:00').getDate()}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-1.5">
-                      {new Date(ev.start_date + 'T00:00:00').toLocaleString('default', { month: 'short' })}
-                    </span>
-                    <span className="text-[8px] font-bold text-slate-500 dark:text-gray-400 uppercase bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                      {formatTime(ev.start_time)}
-                    </span>
+            ) : upcomingCoachEvents.map(event => (
+              <div key={event.id} className="bg-white dark:bg-[#1e1e1e] rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm relative group p-3.5 flex justify-between items-center transition-all hover:shadow-md" style={{ borderLeft: `5px solid ${event.color || '#eab308'}` }}>
+                <button onClick={() => onDeleteCoachEvent(event.id)} className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all z-20 shadow-md hover:bg-red-600 hover:scale-110" title="Delete Event">
+                  <FiTrash2 size={12} />
+                </button>
+                <div className="flex flex-col flex-1 pr-4 min-w-0">
+                  <h4 className="font-bold text-sm text-black dark:text-gray-300 mb-1.5 leading-tight truncate">{event.title}</h4>
+                  <div className="text-[10px] font-medium text-slate-500 dark:text-gray-400 truncate flex items-center gap-1.5 mt-1">
+                    <FiMapPin size={12} className="shrink-0 text-slate-400 dark:text-gray-500" /> <span className="truncate">{event.location}</span>
                   </div>
                 </div>
-              ))
-            )}
+                <div className="flex flex-col items-center justify-center border-l-2 border-dashed border-gray-300 dark:border-gray-700 pl-4 w-[75px] shrink-0">
+                  <span className="text-[24px] font-black leading-none mb-0.5 text-black dark:text-gray-300">{new Date(event.start_date + 'T00:00:00').getDate()}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-1.5">{new Date(event.start_date + 'T00:00:00').toLocaleString('default', { month: 'short' })}</span>
+                  <span className="text-[8px] font-bold text-slate-500 dark:text-gray-400 uppercase bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{formatTime(event.start_time)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+      <MobileCalendarDaySheet date={selectedDay} events={selectedDayEvents} onClose={() => setSelectedDay(null)} />
+      <CalendarHoverPopover
+        data={selectedDay ? null : hoveredDay}
+        onClose={() => setHoveredDay(null)}
+        onClick={(date) => {
+          setHoveredDay(null);
+          openDayDetails(date);
+        }}
+        onMouseEnter={() => {
+          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        }}
+        onMouseLeave={handleCalendarMouseLeave}
+      />
     </div>
   );
 }
 
 === frontend\src\features\subscriptions\components\SubscriptionsTable.jsx ===
 import React, { useState, useEffect } from 'react';
-import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiList, FiChevronLeft, FiChevronRight, FiLoader } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiList, FiChevronLeft, FiChevronRight, FiLoader, FiX } from 'react-icons/fi';
 
 export default function SubscriptionsTable({
   subscriptions,
@@ -3024,71 +3875,74 @@ export default function SubscriptionsTable({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white dark:bg-[#252830] p-5 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-          <div className="relative w-full sm:w-72">
-            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none" />
+      <div className="flex flex-col gap-3 bg-white dark:bg-[#252833] p-4 sm:p-5 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1 lg:flex-row lg:items-center">
+          <div className="relative w-full min-w-0 lg:max-w-72">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
             <input 
               type="text" 
               placeholder="Search by member name..." 
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm" 
+              className="w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm" 
             />
+            {searchTerm && (
+              <button 
+                type="button" 
+                onClick={() => setSearchTerm('')} 
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
+              >
+                <FiX size={15} />
+              </button>
+            )}
           </div>
-          <select 
-            value={filterStatus} 
-            onChange={(e) => setFilterStatus(e.target.value)} 
-            className="w-full sm:w-40 px-4 py-2.5 bg-gray-50 dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm"
-          >
-            <option value="All">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Expired">Expired</option>
-          </select>
-          <select 
-            value={filterPlan} 
-            onChange={(e) => setFilterPlan(e.target.value)} 
-            className="w-full sm:w-40 px-4 py-2.5 bg-gray-50 dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm"
-          >
-            <option value="All">All Plans</option>
-            {filteredDropdownPlans.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-          </select>
+          <div className="grid w-full grid-cols-2 gap-3 lg:flex lg:w-auto">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="w-full min-w-0 px-3 sm:px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm lg:w-40 cursor-pointer"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Expired">Expired</option>
+            </select>
+            <select
+              value={filterPlan}
+              onChange={(e) => setFilterPlan(e.target.value)}
+              className="w-full min-w-0 px-3 sm:px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm lg:w-40 cursor-pointer"
+            >
+              <option value="All">All Plans</option>
+              {filteredDropdownPlans.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </select>
+          </div>
         </div>
-        <button onClick={onAddSubscription} className={primaryButtonClass}>
+        <button onClick={onAddSubscription} className={`${primaryButtonClass} w-full sm:w-auto lg:self-auto`}>
           <FiPlus size={18} strokeWidth={3} /> Add Subscription
         </button>
       </div>
 
-      <div className="bg-white dark:bg-[#252830] rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b-2 border-gray-300 dark:border-gray-600 gap-4 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-300 font-bold text-sm tracking-wide">
-            <FiList size={18} />
+      <div className="bg-white dark:bg-[#252833] rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b-2 border-gray-300 dark:border-[#393e4f] gap-4 bg-gray-50 dark:bg-[#191b22]/50">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-200 font-bold text-sm tracking-wide">
+            <FiList size={18} className="text-amber-500" />
             <span>{filteredSubs.length} TOTAL SUBSCRIPTIONS</span>
-          </div>
-          <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
-            <button onClick={goToPrevPage} disabled={currentPage === 1 || totalPages === 0} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <FiChevronLeft size={18} />
-            </button>
-            {generatePageNumbers()}
-            <button onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <FiChevronRight size={18} />
-            </button>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-[650px] lg:min-w-full">
             <thead>
-              <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Color</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Plan</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Duration</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-right">Actions</th>
+              <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Color</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Plan</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Duration</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
+            <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
               {isLoading ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-24 text-center">
@@ -3105,31 +3959,31 @@ export default function SubscriptionsTable({
                 <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">No subscriptions found.</td></tr>
               ) : (
                 currentSubs.map((sub) => (
-                  <tr key={sub.id} className="hover:bg-gray-50 dark:hover:bg-[#1e1e1e] transition-colors group">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={sub.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className="w-4 h-4 rounded-full border border-black/20 dark:border-white/20 shadow-sm" style={{ backgroundColor: sub.color }}></div>
                     </td>
-                    <td className="px-6 py-4 font-medium text-black dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 font-medium text-black dark:text-gray-300 whitespace-nowrap">
                       {sub.member ? `${sub.member.first_name} ${sub.member.last_name}` : 'Unknown Member'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-black dark:text-gray-300 font-normal whitespace-nowrap">{sub.plan_type}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-sm text-black dark:text-gray-300 font-normal whitespace-nowrap">{sub.plan_type}</td>
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className="text-sm font-normal text-black dark:text-gray-300">{sub.start_date}</div>
                       <div className="text-xs font-normal text-slate-500 dark:text-gray-400 mt-0.5">to {sub.end_date}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(sub.status)}</td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap space-x-3">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">{getStatusBadge(sub.status)}</td>
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-right whitespace-nowrap space-x-2 sm:space-x-3">
                       <button 
                         onClick={() => onEditSubscription(sub)} 
                         disabled={deletingId === sub.id} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-gray-600 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50"
                       >
                         <FiEdit2 size={16} strokeWidth={2.5} />
                       </button>
                       <button 
                         onClick={() => onDeleteSubscription(sub.id)} 
                         disabled={deletingId === sub.id} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-gray-600 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50"
                       >
                         {deletingId === sub.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} strokeWidth={2.5} />}
                       </button>
@@ -3140,6 +3994,23 @@ export default function SubscriptionsTable({
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="p-4 border-t-2 border-gray-300 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
+              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredSubs.length)} of {filteredSubs.length} Entries
+            </span>
+            <div className="flex max-w-full flex-wrap items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
+              <button onClick={goToPrevPage} disabled={currentPage === 1} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <FiChevronLeft size={18} />
+              </button>
+              {generatePageNumbers()}
+              <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <FiChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3795,18 +4666,18 @@ import React from 'react';
 import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock } from 'react-icons/fi';
 
 const StatCard = ({ title, value, icon, colorClass }) => (
-  <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
-    <div className={`p-4 rounded-xl flex items-center justify-center ${colorClass}`}>{icon}</div>
-    <div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{title}</p>
-      <h3 className="text-3xl font-normal text-slate-900 dark:text-gray-300 mt-1">{value}</h3>
+  <div className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252830] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
+    <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>{icon}</div>
+    <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
+      <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{title}</p>
+      <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{value}</h3>
     </div>
   </div>
 );
 
 export default function TransactionStats({ totalIncome, totalRefunds, netRevenue, pendingAmount }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
       <StatCard 
         title="Total Income" 
         value={`\u20B1 ${totalIncome.toLocaleString()}`} 
@@ -3839,7 +4710,7 @@ export default function TransactionStats({ totalIncome, totalRefunds, netRevenue
 import React, { useState, useEffect } from 'react';
 import { 
   FiSearch, FiPlus, FiDownload, FiEdit2, FiTrash2, 
-  FiPrinter, FiUser, FiChevronLeft, FiChevronRight, FiList, FiLoader 
+  FiPrinter, FiUser, FiChevronLeft, FiChevronRight, FiList, FiLoader, FiX 
 } from 'react-icons/fi';
 
 export default function TransactionTable({
@@ -3906,34 +4777,43 @@ export default function TransactionTable({
     return `${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`;
   };
 
-  const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
-  const exportButtonClass = "flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-300 dark:hover:bg-white dark:text-slate-900 px-6 py-2.5 rounded-xl font-bold shadow-md transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const primaryButtonClass = "flex items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-1.5 sm:px-3 py-2 lg:px-6 lg:py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-[10px] sm:text-sm";
+  const exportButtonClass = "flex items-center justify-center gap-1 sm:gap-2 bg-black hover:bg-slate-900 text-gray-200 dark:bg-gray-300 dark:hover:bg-white dark:text-black px-1.5 sm:px-3 py-2 lg:px-6 lg:py-2.5 rounded-xl font-bold shadow-md transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-[10px] sm:text-sm";
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4">
-        <button onClick={onAddTransaction} className={primaryButtonClass}>
+      <div className="hidden flex-col md:flex md:flex-row justify-end items-end md:items-center gap-4">
+        <button onClick={onAddTransaction} className={`${primaryButtonClass} self-end md:self-auto`}>
           <FiPlus size={18} strokeWidth={3} /> Record Transaction
         </button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#252830] p-5 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm items-center">
-        <div className="relative flex-1 w-full">
-          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none" />
-          <input 
-            type="text" 
-            placeholder="Search by ID or Member Name..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm" 
-          />
-        </div>
-        
-        <div className="flex gap-4 w-full md:w-auto">
+      <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 bg-white dark:bg-[#252833] p-4 sm:p-5 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm items-stretch lg:items-center">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full min-w-0 lg:flex-1">
+          <div className="relative flex-1 min-w-0">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
+            <input 
+              type="text" 
+              placeholder="Search by ID or Member Name..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm" 
+            />
+            {searchTerm && (
+              <button 
+                type="button" 
+                onClick={() => setSearchTerm('')} 
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
+              >
+                <FiX size={15} />
+              </button>
+            )}
+          </div>
           <select 
             value={filterType} 
             onChange={(e) => setFilterType(e.target.value)} 
-            className="w-full md:w-auto px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm"
+            className="w-full sm:w-auto px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
           >
             <option value="All">All Types</option>
             <option value="Subscription Payment">Subscription Payment</option>
@@ -3941,40 +4821,45 @@ export default function TransactionTable({
             <option value="Refund">Refund</option>
             <option value="Other">Other</option>
           </select>
+        </div>
 
-          <button onClick={onExportCSV} disabled={isExporting} className={exportButtonClass} title="Download table data to a spreadsheet">
+        <div className="flex w-full justify-end gap-1 sm:gap-2 lg:w-auto">
+          <button onClick={onAddTransaction} className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap md:hidden`}>
+            <FiPlus size={16} strokeWidth={3} /> Record
+          </button>
+          <button onClick={onExportCSV} disabled={isExporting} className={`${exportButtonClass} min-w-0 flex-1 whitespace-nowrap sm:flex-none`} title="Download table data to a spreadsheet">
             {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
             {isExporting ? 'Exporting...' : 'Export CSV'}
           </button>
           
-          <button onClick={() => window.print()} className={primaryButtonClass}>
+          <button onClick={() => window.print()} className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap sm:flex-none`}>
             <FiPrinter size={18} /> Print All
           </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#252830] rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm overflow-hidden flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b-2 border-gray-300 dark:border-gray-600 gap-4 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-300 font-bold text-sm tracking-wide">
-            <FiList size={18} />
+      <div className="bg-white dark:bg-[#252833] rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm overflow-hidden flex flex-col">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b-2 border-gray-300 dark:border-[#393e4f] gap-4 bg-gray-50 dark:bg-[#191b22]/50">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-200 font-bold text-sm tracking-wide">
+            <FiList size={18} className="text-amber-500" />
             <span>{transactions.length} TOTAL TRANSACTIONS</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-[680px] lg:min-w-full">
             <thead>
-              <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Txn ID & Date</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Details</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Method</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Amount</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-right">Actions</th>
+              <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Txn ID & Date</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Details</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Method</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Amount</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
+            <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
               {isLoading ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-24 text-center">
@@ -3993,47 +4878,47 @@ export default function TransactionTable({
                 </tr>
               ) : (
                 currentTxns.map((txn) => (
-                  <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className="font-bold text-slate-900 dark:text-gray-300">{txn.transaction_id}</div>
                       <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">{txn.transaction_date}</div>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 font-semibold text-slate-800 dark:text-gray-300 whitespace-nowrap">
                       {txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : <span className="flex items-center gap-1 text-amber-600 dark:text-amber-500 italic"><FiUser size={14} /> Walk-in Guest</span>}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className="text-sm font-semibold text-slate-800 dark:text-gray-300">{txn.type}</div>
                       <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">{txn.description || '-'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <span className={getMethodBadge(txn.payment_method)}>{txn.payment_method}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className={`font-normal text-lg tracking-tight ${Number(txn.amount) > 0 ? 'text-slate-800 dark:text-gray-300' : 'text-red-500'}`}>
                         {Number(txn.amount) > 0 ? `\u20B1 ${Number(txn.amount).toLocaleString()}` : `-\u20B1 ${Math.abs(Number(txn.amount)).toLocaleString()}`}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <span className={getStatusBadge(txn.status)}>{txn.status}</span>
                     </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap space-x-3">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-right whitespace-nowrap space-x-2 sm:space-x-3">
                       <button 
                         onClick={() => onPrintReceipt(txn)} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-[#393e4f] hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-[#252833] rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm"
                       >
                         <FiPrinter size={16} strokeWidth={2.5} />
                       </button>
                       <button 
                         onClick={() => onEditTransaction(txn)} 
                         disabled={deletingId === txn.id} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-gray-600 hover:border-amber-50 dark:hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
                       >
                         <FiEdit2 size={16} strokeWidth={2.5} />
                       </button>
                       <button 
                         onClick={() => onDeleteTransaction(txn.id)} 
                         disabled={deletingId === txn.id} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-gray-600 hover:border-red-500 dark:hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
                       >
                         {deletingId === txn.id ? <FiLoader size={16} className="animate-spin" strokeWidth={2.5} /> : <FiTrash2 size={16} strokeWidth={2.5} />}
                       </button>
@@ -4979,11 +5864,14 @@ export default function AdminProfile() {
 }
 
 === frontend\src\pages\Dashboard.jsx ===
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
+import MobileCalendarToolbar from '../components/ui/MobileCalendarToolbar';
+import MobileCalendarDaySheet from '../components/ui/MobileCalendarDaySheet';
+import CalendarHoverPopover from '../components/ui/CalendarHoverPopover';
 import api from '../api'; 
 import { useDataCache } from '../context/DataCacheContext';
 
@@ -4995,6 +5883,12 @@ import {
 
 export default function Dashboard() {
   const { getCache, setCache } = useDataCache();
+  const dashboardCalendarRef = useRef(null);
+  const [dashboardCalendarTitle, setDashboardCalendarTitle] = useState('');
+  const [dashboardCalendarView, setDashboardCalendarView] = useState('dayGridMonth');
+  const [isDashboardCalendarCurrentMonth, setIsDashboardCalendarCurrentMonth] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [selectedCalendarEvents, setSelectedCalendarEvents] = useState([]);
 
   const cachedDash = getCache('dashboard');
   const [isLoading, setIsLoading] = useState(!cachedDash);
@@ -5125,6 +6019,81 @@ export default function Dashboard() {
     });
   });
 
+  const eventsForDate = (date) => allCalendarEvents.filter(event => {
+    const start = event.start || event.date;
+    return start && start <= date && (!event.end || date < event.end);
+  });
+
+  const [hoveredCalendarDay, setHoveredCalendarDay] = useState(null);
+  const calendarHoverTimeoutRef = useRef(null);
+
+  const handleDashboardCalendarMouseMove = (e) => {
+    if (selectedCalendarDate) return;
+    const dayCell = e.target.closest('.fc-daygrid-day');
+    if (!dayCell) {
+      if (calendarHoverTimeoutRef.current) clearTimeout(calendarHoverTimeoutRef.current);
+      calendarHoverTimeoutRef.current = setTimeout(() => setHoveredCalendarDay(null), 120);
+      return;
+    }
+    const dateStr = dayCell.getAttribute('data-date');
+    if (!dateStr) return;
+    if (hoveredCalendarDay?.date === dateStr) return;
+
+    const events = eventsForDate(dateStr);
+    if (!events || events.length === 0) {
+      if (calendarHoverTimeoutRef.current) clearTimeout(calendarHoverTimeoutRef.current);
+      setHoveredCalendarDay(null);
+      return;
+    }
+
+    if (calendarHoverTimeoutRef.current) clearTimeout(calendarHoverTimeoutRef.current);
+    const rect = dayCell.getBoundingClientRect();
+    calendarHoverTimeoutRef.current = setTimeout(() => {
+      setHoveredCalendarDay({
+        date: dateStr,
+        events: events.map(event => {
+          const details = event.extendedProps || {};
+          return {
+            id: event.id,
+            title: event.title,
+            color: event.backgroundColor,
+            location: details.location,
+            type: details.type,
+            detail: details.type === 'sub' ? `${details.plan_type} subscription` : details.type === 'coach' ? 'Coach event' : ''
+          };
+        }),
+        rect
+      });
+    }, 80);
+  };
+
+  const handleDashboardCalendarMouseLeave = () => {
+    if (calendarHoverTimeoutRef.current) clearTimeout(calendarHoverTimeoutRef.current);
+    calendarHoverTimeoutRef.current = setTimeout(() => setHoveredCalendarDay(null), 150);
+  };
+
+  const openCalendarDay = (date, events = eventsForDate(date)) => {
+    setHoveredCalendarDay(null);
+    setSelectedCalendarDate(date);
+    setSelectedCalendarEvents(events.map(event => {
+      const details = event.extendedProps || {};
+      return {
+        id: event.id,
+        title: event.title,
+        color: event.backgroundColor,
+        location: details.location,
+        type: details.type,
+        detail: details.type === 'sub' ? `${details.plan_type} subscription` : details.type === 'coach' ? 'Coach event' : ''
+      };
+    }));
+  };
+
+  const handleDashboardDateClick = (info) => {
+    setHoveredCalendarDay(null);
+    const events = eventsForDate(info.dateStr);
+    if (events.length) openCalendarDay(info.dateStr, events);
+  };
+
   const getMethodBadge = (method) => {
     const base = "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border border-solid shadow-sm";
     if (method.toLowerCase() === 'gcash') return `${base} bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50`;
@@ -5133,13 +6102,13 @@ export default function Dashboard() {
   };
 
   const StatCard = ({ title, value, icon, colorClass }) => (
-    <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
-      <div className={`p-4 rounded-xl flex items-center justify-center ${colorClass}`}>
+    <div className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252830] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
+      <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>
         {icon}
       </div>
-      <div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{title}</p>
-        <h3 className="text-3xl font-normal text-slate-900 dark:text-gray-300 mt-1">
+      <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
+        <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{title}</p>
+        <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">
           {isLoading ? <FiLoader className="animate-spin text-xl mt-2 text-amber-500" /> : value}
         </h3>
       </div>
@@ -5149,7 +6118,7 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <Link to="/transactions"><StatCard title="Total Revenue" value={`â‚± ${stats.revenue.toLocaleString()}`} icon={<FiDollarSign size={28} strokeWidth={2.5} />} colorClass="bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none" /></Link>
         <Link to="/members"><StatCard title="Total Members" value={stats.members} icon={<FiUsers size={28} strokeWidth={2.5} />} colorClass="bg-blue-800 text-white shadow-lg shadow-blue-700/40 dark:shadow-none" /></Link>
         <Link to="/subscriptions"><StatCard title="Active Subs" value={stats.activeSubs} icon={<FiCheckCircle size={28} strokeWidth={2.5} />} colorClass="bg-purple-800 text-white shadow-lg shadow-purple-700/40 dark:shadow-none" /></Link>
@@ -5262,7 +6231,11 @@ export default function Dashboard() {
               <FiLoader className="animate-spin text-amber-500 text-4xl" />
            </div>
         ) : (
-          <div className="min-w-[700px] text-slate-800 dark:text-gray-200">
+          <div 
+            onMouseMove={handleDashboardCalendarMouseMove}
+            onMouseLeave={handleDashboardCalendarMouseLeave}
+            className="mobile-calendar-grid min-w-0 text-slate-800 dark:text-gray-200"
+          >
             <style>{`
               .fc { --fc-border-color: #d1d5db; --fc-page-bg-color: transparent; --fc-list-event-hover-bg-color: rgba(0,0,0,0.05); }
               .dark .fc { --fc-border-color: #4b5563; --fc-neutral-text-color: #d1d5db; --fc-list-event-hover-bg-color: rgba(255,255,255,0.05); }
@@ -5297,8 +6270,20 @@ export default function Dashboard() {
               .dark .fc-popover-title { color: #f8fafc !important; }
               .fc-popover-body { padding: 12px !important; }
             `}</style>
+
+            <MobileCalendarToolbar
+              title={dashboardCalendarTitle}
+              onPrevious={() => dashboardCalendarRef.current?.getApi().prev()}
+              onNext={() => dashboardCalendarRef.current?.getApi().next()}
+              onAction={() => dashboardCalendarRef.current?.getApi().today()}
+              actionActive={isDashboardCalendarCurrentMonth}
+              views={[{ id: 'dayGridMonth', label: 'Month' }, { id: 'listWeek', label: 'List' }]}
+              activeView={dashboardCalendarView}
+              onViewChange={view => dashboardCalendarRef.current?.getApi().changeView(view)}
+            />
             
             <FullCalendar
+              ref={dashboardCalendarRef}
               plugins={[dayGridPlugin, listPlugin]} // Interaction plugin intentionally removed for strict view-only
               initialView="dayGridMonth"
               dayMaxEvents={2}
@@ -5313,6 +6298,32 @@ export default function Dashboard() {
               }}
               events={allCalendarEvents}
               height="auto"
+              datesSet={(dateInfo) => {
+                setDashboardCalendarTitle(dateInfo.view.title);
+                setDashboardCalendarView(dateInfo.view.type);
+                const now = new Date();
+                const currentStart = dateInfo.view.currentStart;
+                setIsDashboardCalendarCurrentMonth(currentStart.getMonth() === now.getMonth() && currentStart.getFullYear() === now.getFullYear());
+              }}
+              dayHeaderContent={(headerInfo) => window.innerWidth < 640 ? headerInfo.text.charAt(0) : headerInfo.text}
+              dateClick={handleDashboardDateClick}
+              eventClick={info => {
+                const date = info.event.startStr.slice(0, 10);
+                openCalendarDay(date);
+              }}
+            />
+            <MobileCalendarDaySheet date={selectedCalendarDate} events={selectedCalendarEvents} onClose={() => setSelectedCalendarDate(null)} />
+            <CalendarHoverPopover
+              data={selectedCalendarDate ? null : hoveredCalendarDay}
+              onClose={() => setHoveredCalendarDay(null)}
+              onClick={(date) => {
+                setHoveredCalendarDay(null);
+                openCalendarDay(date);
+              }}
+              onMouseEnter={() => {
+                if (calendarHoverTimeoutRef.current) clearTimeout(calendarHoverTimeoutRef.current);
+              }}
+              onMouseLeave={handleDashboardCalendarMouseLeave}
             />
           </div>
         )}
@@ -5419,10 +6430,10 @@ export default function GestureMonitor() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 h-full min-h-0">
+    <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-full h-auto lg:h-full flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">
         
-        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-slate-700/50 shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
+        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-[#393e4f] shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
           
           <div className="absolute top-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-b from-black/40 to-transparent flex justify-end items-start z-10 pointer-events-none">
             <div className="flex items-center gap-2 md:gap-4 bg-black/50 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10">
@@ -5499,23 +6510,23 @@ export default function GestureMonitor() {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/4 flex flex-col gap-6 h-[400px] lg:h-full flex-shrink-0">
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col overflow-hidden h-full">
-            <div className="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex items-center justify-between flex-shrink-0">
+        <div className="w-full lg:w-1/4 flex flex-col gap-6 min-h-[380px] lg:h-full flex-shrink-0">
+          <div className="bg-white dark:bg-[#252833] rounded-2xl border border-slate-200 dark:border-[#393e4f] shadow-sm flex flex-col overflow-hidden h-full">
+            <div className="p-4 md:p-5 border-b border-slate-200 dark:border-[#393e4f] bg-slate-50 dark:bg-[#191b22] flex items-center justify-between flex-shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-gray-300 flex items-center gap-2 text-sm md:text-base">
                 <FiActivity className="text-amber-500" size={18} />
-                Gesture Logs
+                Workout Queue & Gesture Logs
               </h3>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 hidden-scrollbar">
               {recentLogs.length === 0 ? (
                 <div className="text-center mt-10 opacity-60">
-                   <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400">Waiting for AI detections...</p>
+                   <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400">No scheduled workouts or AI detections yet.</p>
                 </div>
               ) : (
                 recentLogs.map((log) => (
-                  <div key={log.id} className="flex gap-4 items-start relative pb-4 border-b border-slate-100 dark:border-slate-700/50 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
+                  <div key={log.id} className="flex gap-4 items-start relative pb-4 border-b border-slate-100 dark:border-[#393e4f] last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
                     <div className="text-[10px] md:text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5 w-[65px] md:w-[72px] flex-shrink-0">{log.time}</div>
                     <div>
                       <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-gray-200 leading-tight">{log.name}</p>
@@ -5528,7 +6539,7 @@ export default function GestureMonitor() {
               )}
             </div>
             
-            <div className="p-3 md:p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex-shrink-0">
+            <div className="p-3 md:p-4 border-t border-slate-200 dark:border-[#393e4f] bg-slate-50 dark:bg-[#191b22] flex-shrink-0">
               <div className="flex justify-between items-center text-[10px] md:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-2">Latency: <span className={`${connectionState === 'LIVE' ? 'text-slate-800 dark:text-gray-300' : 'text-slate-400'}`}>{connectionState === 'LIVE' ? `${latency}ms` : '--'}</span></span>
                 <span className={`${connectionState === 'LIVE' ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'} flex items-center gap-1.5`}>API Status: {connectionState === 'LIVE' ? 'OK' : 'OFFLINE'}</span>
@@ -5542,7 +6553,7 @@ export default function GestureMonitor() {
       {/* --- CUSTOM ALERT MODAL --- */}
       {alertDialog.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
+          <div className={`bg-white dark:bg-[#252833] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
             <div className="p-6 text-center space-y-4">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
                 {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
@@ -5550,7 +6561,7 @@ export default function GestureMonitor() {
               <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
               <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
             </div>
-            <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center">
+            <div className="p-4 border-t-2 border-gray-100 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex justify-center">
               <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
                 Okay
               </button>
@@ -5568,15 +6579,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn, FiLoader, FiAlertCircle } from 'react-icons/fi';
 
-import loginBg from '../assets/Login.jpg'; 
-import logo from '../assets/logo.png'; 
+import loginBg from '../assets/Login.jpg';
+import logo from '../assets/logo.png';
 
 export default function Login() {
   const navigate = useNavigate();
-  
+
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -5586,56 +6597,56 @@ export default function Login() {
     setErrorMsg('');
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/api/auth/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(credentials)
-        });
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(credentials)
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (response.ok) {
-            localStorage.setItem('admin_token', data.token);
-            localStorage.setItem('admin_name', data.admin.name); 
+      if (response.ok) {
+        localStorage.setItem('admin_token', data.token);
+        localStorage.setItem('admin_name', data.admin.name);
 
-            // Record login device info for notification bell security alert
-            const userAgent = navigator.userAgent;
-            let deviceType = 'Desktop PC';
-            if (/iPad|Tablet/i.test(userAgent)) deviceType = 'Tablet';
-            else if (/Mobile|Android|iPhone/i.test(userAgent)) deviceType = 'Mobile Device';
-            else if (/Macintosh|Mac OS/i.test(userAgent)) deviceType = 'Mac Device';
-            else if (/Windows/i.test(userAgent)) deviceType = 'Windows PC';
+        // Record login device info for notification bell security alert
+        const userAgent = navigator.userAgent;
+        let deviceType = 'Desktop PC';
+        if (/iPad|Tablet/i.test(userAgent)) deviceType = 'Tablet';
+        else if (/Mobile|Android|iPhone/i.test(userAgent)) deviceType = 'Mobile Device';
+        else if (/Macintosh|Mac OS/i.test(userAgent)) deviceType = 'Mac Device';
+        else if (/Windows/i.test(userAgent)) deviceType = 'Windows PC';
 
-            const now = new Date();
-            const timeStr = now.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const prevDevice = localStorage.getItem('last_active_device');
-            const isNewDevice = prevDevice && prevDevice !== deviceType;
+        const now = new Date();
+        const timeStr = now.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const prevDevice = localStorage.getItem('last_active_device');
+        const isNewDevice = prevDevice && prevDevice !== deviceType;
 
-            localStorage.setItem('login_device_notif', JSON.stringify({
-              id: 'login_' + Date.now(),
-              deviceName: deviceType,
-              timeStr: timeStr,
-              isNewDevice: !!isNewDevice,
-              timestamp: Date.now()
-            }));
-            localStorage.setItem('last_active_device', deviceType);
+        localStorage.setItem('login_device_notif', JSON.stringify({
+          id: 'login_' + Date.now(),
+          deviceName: deviceType,
+          timeStr: timeStr,
+          isNewDevice: !!isNewDevice,
+          timestamp: Date.now()
+        }));
+        localStorage.setItem('last_active_device', deviceType);
 
-            // Force reload to update App.jsx authentication state properly
-            window.location.href = '/overview'; 
-        } else {
-            if (data.errors && data.errors.email) {
-                throw new Error(data.errors.email[0]);
-            }
-            throw new Error(data.message || 'Invalid credentials');
+        // Force reload to update App.jsx authentication state properly
+        window.location.href = '/overview';
+      } else {
+        if (data.errors && data.errors.email) {
+          throw new Error(data.errors.email[0]);
         }
+        throw new Error(data.message || 'Invalid credentials');
+      }
     } catch (error) {
-        console.error("Login failed:", error);
-        setErrorMsg(error.message || 'Network error. Cannot connect to the server.');
+      console.error("Login failed:", error);
+      setErrorMsg(error.message || 'Network error. Cannot connect to the server.');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -5644,52 +6655,61 @@ export default function Login() {
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2.5 ml-1";
 
   return (
-    // SOFTENED BACKGROUND: Changed from #030303 to slate-900
-    <div className="min-h-screen w-full relative bg-slate-900 text-gray-200 overflow-hidden font-sans">
-      
-      <div className="hidden lg:block absolute top-0 left-0 w-[65%] h-full z-0">
-        <div 
-          className="absolute inset-0 bg-cover bg-left-center mix-blend-lighten opacity-80"
-          style={{ backgroundImage: `url(${loginBg})` }}
+    <div className="min-h-dvh w-full relative bg-[#11100f] text-gray-200 overflow-x-hidden font-sans">
+
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_24%_55%,rgba(166,54,22,0.16),transparent_44%),radial-gradient(ellipse_at_78%_18%,rgba(245,158,11,0.07),transparent_36%)]"></div>
+
+      <div className="hidden lg:block absolute top-0 left-0 w-[68%] h-full z-0">
+        <div
+          className="absolute inset-0 bg-cover mix-blend-screen opacity-55"
+          style={{ backgroundImage: `url(${loginBg})`, backgroundPosition: 'calc(-40% + 5px) center' }}
         ></div>
-        {/* Softened Gradient to match slate-900 */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-900/40 via-50% to-slate-900 to-100%"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-[#11100f]/30 via-55% to-[#11100f] to-100%"></div>
       </div>
 
-      <div className="relative z-10 flex w-full h-screen">
-        
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 pointer-events-none">
+      <div className="lg:hidden absolute inset-0 z-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${loginBg})` }}>
+        <div className="absolute inset-0 bg-[#11100f]/80" />
+      </div>
+
+      <div className="relative z-10 flex min-h-dvh w-full">
+
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-14 pointer-events-none">
           <div className="flex items-center gap-4 pointer-events-auto">
-            <div className="p-1 bg-white/10 backdrop-blur-md rounded-full border-2 border-slate-400/30 shadow-[0_0_15px_rgba(0,0,0,0.2)]">
-              <img src={logo} alt="Double Alpha Logo" className="w-12 h-12 rounded-full object-cover" />
+            <div className="rounded-full border-2 border-gray-400">
+              <img src={logo} alt="Double Alpha Logo" className="w-14 h-14 rounded-full object-cover" />
             </div>
-            <span className="font-black italic text-transparent bg-clip-text bg-gradient-to-r from-brand-red to-brand-orange text-[1.1rem] leading-none uppercase tracking-tight">Double Alpha</span>
+            <div className="flex flex-col">
+              <span className="font-black italic text-transparent bg-clip-text bg-linear-to-r from-red-500 via-orange-500 to-amber-400 text-[25px] leading-none uppercase tracking-tight">Double Alpha</span>
+              <span className="mt-1.5 text-[15px] font-bold uppercase tracking-[0.28em] text-gray-100">Fitness</span>
+            </div>
           </div>
         </div>
 
-        <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 sm:p-12 relative z-10">
-          
-          <div className="max-w-[420px] w-full space-y-8 animate-in fade-in slide-in-from-right-8 duration-700 pointer-events-auto">
-            
-            <div className="flex flex-col items-center lg:hidden mb-10">
-              <img src={logo} alt="Logo" className="w-20 h-20 mb-4 rounded-full border-2 border-slate-500/50 bg-white/10 backdrop-blur-md shadow-lg p-1 object-cover" />
-              <h2 className="text-2xl font-black text-white text-center tracking-tight">Double Alpha</h2>
+        <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-5 py-8 sm:px-10 sm:py-12 lg:p-12 relative z-10">
+
+          <div className="max-w-105 w-full space-y-2 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700 pointer-events-auto">
+
+            <div className="flex flex-col items-center lg:hidden mb-8 sm:mb-10">
+              <div className="p-1 rounded-full border-2 border-amber-500/50 bg-slate-950/50 shadow-[0_0_28px_rgba(245,158,11,0.18)]">
+                <img src={logo} alt="Double Alpha Logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 backdrop-blur-md p-1 object-cover" />
+              </div>
+              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">Double Alpha Fitness</p>
             </div>
 
-            <div className="text-left mb-10 border-l-4 border-amber-500 pl-5 py-1">
-              <h2 className="text-3xl font-black uppercase tracking-tight text-white drop-shadow-md">
-                System <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-amber-500">Login</span>
+            <div className="text-left mb-8 sm:mb-10 border-l-4 border-amber-500 pl-4 sm:pl-5 py-1">
+              <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white drop-shadow-md">
+                System <span className="text-transparent bg-clip-text bg-linear-to-r from-yellow-500 to-amber-500">Login</span>
               </h2>
-              <p className="text-slate-400 mt-2.5 font-medium text-sm tracking-wide">
+              <p className="text-slate-400 mt-2.5 font-medium text-sm leading-relaxed tracking-wide">
                 Enter your administrator credentials to secure access to the hub.
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-6">
-              
+            <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
+
               {errorMsg && (
                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 animate-in fade-in">
-                  <FiAlertCircle className="text-red-400 mt-0.5 flex-shrink-0" size={18} />
+                  <FiAlertCircle className="text-red-400 mt-0.5 shrink-0" size={18} />
                   <p className="text-sm font-bold text-red-300">
                     {errorMsg}
                   </p>
@@ -5700,13 +6720,14 @@ export default function Login() {
                 <label className={labelClass}>Admin Email</label>
                 <div className="relative group">
                   <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-amber-500 transition-colors text-lg" />
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     required
                     placeholder="admin@example.com"
                     value={credentials.email}
-                    onChange={(e) => setCredentials({...credentials, email: e.target.value})}
-                    className={inputClass}
+                    onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
+                    autoComplete="username"
+                    className={`${inputClass} min-h-12 text-base`}
                   />
                 </div>
               </div>
@@ -5718,15 +6739,16 @@ export default function Login() {
                 </div>
                 <div className="relative group">
                   <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-amber-500 transition-colors text-lg" />
-                  <input 
+                  <input
                     type={showPassword ? "text" : "password"}
                     required
                     placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                     value={credentials.password}
-                    onChange={(e) => setCredentials({...credentials, password: e.target.value})}
-                    className={inputClass}
+                    onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                    autoComplete="current-password"
+                    className={`${inputClass} min-h-12 text-base`}
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-gray-300 transition-colors focus:outline-none"
@@ -5737,33 +6759,33 @@ export default function Login() {
               </div>
 
               <div className="flex items-center gap-3 pt-2 ml-1">
-                <input 
-                  type="checkbox" 
-                  id="remember" 
-                  className="w-4 h-4 text-amber-500 bg-slate-800 border-slate-600 rounded focus:ring-amber-500 focus:ring-offset-slate-900 cursor-pointer transition-all" 
+                <input
+                  type="checkbox"
+                  id="remember"
+                  className="w-4 h-4 text-amber-500 bg-slate-800 border-slate-600 rounded focus:ring-amber-500 focus:ring-offset-slate-900 cursor-pointer transition-all"
                 />
                 <label htmlFor="remember" className="text-sm font-bold text-slate-400 cursor-pointer select-none hover:text-gray-200 transition-colors">
                   Remember me
                 </label>
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-slate-900 py-4 rounded-xl font-black shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-widest mt-8 text-sm"
+                className="w-full min-h-12 flex items-center justify-center gap-3 bg-linear-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-slate-900 py-3.5 rounded-xl font-black shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-widest mt-6 sm:mt-8 text-sm"
               >
                 {isLoading ? <FiLoader className="animate-spin" size={20} /> : <FiLogIn size={20} />}
                 {isLoading ? 'Authenticating...' : 'Login'}
               </button>
-              
+
             </form>
-            
-            <div className="pt-12 text-center border-t border-slate-800 mt-8">
+
+            <div className="pt-8 sm:pt-12 text-center border-t border-slate-800 mt-6 sm:mt-8">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                Double Alpha Fitness v1.0 <br/> Tagoloan Community College Capstone
+                Double Alpha Fitness v1.0 <br /> Tagoloan Community College Capstone
               </p>
             </div>
-            
+
           </div>
         </div>
       </div>
@@ -5863,29 +6885,29 @@ export default function Members() {
 
 === frontend\src\pages\Reports.jsx ===
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  FiCalendar, FiDownload, FiPrinter, FiFileText, 
-  FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock, FiActivity, FiLoader
+import {
+  FiCalendar, FiDownload, FiPrinter, FiFileText,
+  FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock, FiActivity, FiLoader,
+  FiChevronLeft, FiChevronRight
 } from 'react-icons/fi';
 import api from '../api';
 import { useLocation } from 'react-router-dom';
 import { useDataCache } from '../context/DataCacheContext';
-import Pagination from '../components/ui/Pagination';
 
 export default function Reports() {
   const { getCache, setCache } = useDataCache();
   const location = useLocation();
   const [reportType, setReportType] = useState(location.state?.defaultTab || 'Payments');
-  
+
   const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
   const today = new Date().toISOString().split('T')[0];
-  
-  const [startDate, setStartDate] = useState(currentMonthStart); 
-  const [endDate, setEndDate] = useState(today); 
+
+  const [startDate, setStartDate] = useState(currentMonthStart);
+  const [endDate, setEndDate] = useState(today);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   const [isExporting, setIsExporting] = useState(false);
 
   // Cache key includes date range so changing dates correctly re-fetches
@@ -5925,7 +6947,7 @@ export default function Reports() {
       const headers = currentData.columns.join(',');
       const rows = currentData.rows.map(row => row.join(',')).join('\n');
       const csvContent = `${headers}\n${rows}`;
-      
+
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -5945,11 +6967,29 @@ export default function Reports() {
   const handlePrint = () => window.print();
 
   const currentData = reportData?.[reportType];
-  const filteredRows = currentData?.rows.filter(row => 
+  const filteredRows = currentData?.rows.filter(row =>
     row.some(cell => String(cell).toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
   const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
   const pageRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
+  const indexOfLastItem = currentPage * itemsPerPage;
+
+  const generatePageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => setCurrentPage(i)}
+          className={`px-3 py-1 rounded-md font-bold shadow-sm transition-colors ${currentPage === i ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black' : 'hover:text-slate-900 dark:hover:text-white font-medium text-slate-500 dark:text-gray-400'}`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -5976,20 +7016,20 @@ export default function Reports() {
   const renderCellContent = (cell) => {
     const val = String(cell);
     const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
-    
+
     if (val === 'Active' || val === 'Checked In' || val === 'Complete' || val === 'Cash') return <span className={`${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`}>{val}</span>;
     if (val === 'Expired' || val === 'Failed') return <span className={`${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`}>{val}</span>;
     if (val === 'Gcash' || val === 'Pending') return <span className={`${base} bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50`}>{val}</span>;
     if (val === 'Card' || val === 'Other') return <span className={`${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`}>{val}</span>;
-    
+
     return val;
   };
 
-  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#1e1e1e] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium shadow-sm transition-all outline-none";
+  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#191b22] border-2 border-slate-300 dark:border-[#393e4f] rounded-xl focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium shadow-sm transition-all outline-none";
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2";
   const iconClass = "absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-900 dark:text-gray-300 text-lg pointer-events-none";
-  const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
-  const secondaryButtonClass = "flex items-center justify-center gap-2 bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 text-slate-700 dark:text-gray-300 px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const primaryButtonClass = "flex items-center justify-center gap-1 sm:gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-2 sm:px-3 lg:px-6 py-2 lg:py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-xs sm:text-sm";
+  const exportButtonClass = "flex items-center justify-center gap-1 sm:gap-2 bg-black hover:bg-slate-900 text-gray-200 dark:bg-gray-300 dark:hover:bg-white dark:text-black px-2 sm:px-3 lg:px-6 py-2 lg:py-2.5 rounded-xl font-bold shadow-md transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-xs sm:text-sm";
 
   return (
     <>
@@ -6091,19 +7131,30 @@ export default function Reports() {
 
       {/* Regular UI (hidden during print) */}
       <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
-        <div className="print:hidden space-y-6">
-          <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4">
-            <div className="flex gap-3 w-full md:w-auto ml-auto">
-              <button onClick={handlePrint} className={secondaryButtonClass}><FiPrinter size={18} /> Print PDF</button>
-              <button onClick={handleExportCSV} disabled={isExporting} className={primaryButtonClass}>
+        <div className="print:hidden flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <FiFileText className="text-amber-500" />
+                Reports & Analytics
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 mt-0.5">
+                Generate financial summaries, membership statistics, and attendance logs.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3 self-stretch sm:self-auto justify-end">
+              <button onClick={handlePrint} className={`${primaryButtonClass} flex-1 sm:flex-initial whitespace-nowrap`}>
+                <FiPrinter size={18} /> Print PDF
+              </button>
+              <button onClick={handleExportCSV} disabled={isExporting} className={`${exportButtonClass} flex-1 sm:flex-initial whitespace-nowrap`}>
                 {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
                 {isExporting ? 'Exporting...' : 'Export CSV'}
               </button>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#252830] p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col md:flex-row gap-6 items-end">
-            <div className="flex-1 w-full relative">
+          <div className="order-3 bg-white dark:bg-[#252833] p-4 sm:p-6 rounded-2xl border-2 border-slate-200 dark:border-[#393e4f] shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-end lg:order-none">
+            <div className="w-full min-w-0 relative">
               <label className={labelClass}>Report Type</label>
               <div className="relative">
                 <FiFileText className={iconClass} />
@@ -6114,42 +7165,43 @@ export default function Reports() {
                 </select>
               </div>
             </div>
-            <div className="flex-1 w-full relative">
+            <div className="w-full min-w-0 relative">
               <label className={labelClass}>Start Date</label>
               <div className="relative">
                 <FiCalendar className={iconClass} />
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputClass} text-[13px] sm:text-sm`} />
               </div>
             </div>
-            <div className="flex-1 w-full relative">
+            <div className="w-full min-w-0 relative">
               <label className={labelClass}>End Date</label>
               <div className="relative">
                 <FiCalendar className={iconClass} />
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={`${inputClass} text-[13px] sm:text-sm`} />
               </div>
             </div>
-            
-            <button 
-              onClick={() => {
-                setStartDate(currentMonthStart);
-                setEndDate(today);
-              }} 
-              className={primaryButtonClass} 
-              style={{ minWidth: '160px' }}
-            >
-              <FiClock size={18} />
-              This Month
-            </button>
+            <div className="w-full min-w-0">
+              <label className="hidden lg:block text-[11px] font-bold uppercase tracking-widest text-transparent mb-2 select-none">Quick Filter</label>
+              <button
+                onClick={() => {
+                  setStartDate(currentMonthStart);
+                  setEndDate(today);
+                }}
+                className={`${primaryButtonClass} w-full`}
+              >
+                <FiClock size={16} />
+                This Month
+              </button>
+            </div>
           </div>
 
           {/* DYNAMIC GRID: Switches between 3 and 4 columns automatically */}
-          <div className={`grid grid-cols-1 gap-6 ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
+          <div className={`order-1 grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 sm:gap-6 lg:order-none ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
             {currentData.kpis.map((kpi, index) => {
-              
+
               let IconComponent = FiTrendingUp;
               let colorClass = "bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none";
               const labelLower = kpi.label.toLowerCase();
-              
+
               if (labelLower.includes('refund') || labelLower.includes('expire')) {
                 IconComponent = FiTrendingDown;
                 colorClass = "bg-red-800 text-white shadow-lg shadow-red-800/40 dark:shadow-none";
@@ -6162,43 +7214,49 @@ export default function Reports() {
               }
 
               return (
-                <div key={index} className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
-                  <div className={`p-4 rounded-xl flex items-center justify-center ${colorClass}`}>
+                <div key={index} className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252833] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
+                  <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>
                     <IconComponent size={28} strokeWidth={2.5} />
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{kpi.label}</p>
-                    <h3 className="text-2xl font-normal text-slate-900 dark:text-gray-300 mt-1">{kpi.value}</h3>
+                  <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
+                    <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{kpi.label}</p>
+                    <h3 className="text-lg leading-tight sm:text-2xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{kpi.value}</h3>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border-2 border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden flex flex-col">
-            <div className="p-5 border-b-2 border-slate-200 dark:border-slate-700/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50 dark:bg-[#1e1e1e]">
-              <div className="flex items-center gap-3">
-                <h3 className="font-bold text-slate-800 dark:text-gray-300 text-lg">Recent Reports</h3>
+          <div className="order-5 bg-white dark:bg-[#252833] rounded-2xl border-2 border-slate-200 dark:border-[#393e4f] shadow-sm overflow-hidden flex flex-col lg:order-none">
+            <div className="p-4 sm:p-5 border-b-2 border-slate-200 dark:border-[#393e4f] flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 bg-slate-50 dark:bg-[#191b22]">
+              <div className="flex items-center gap-3 self-start sm:self-auto">
+                <h3 className="font-bold text-slate-800 dark:text-gray-300 text-base sm:text-lg">Recent Reports</h3>
               </div>
-              <input type="text" placeholder={`Search ${reportType}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 transition-all shadow-sm" />
+              <input 
+                type="text" 
+                placeholder={`Search ${reportType}...`} 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#191b22] border-2 border-slate-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 transition-all shadow-sm" 
+              />
             </div>
-            
+
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[650px] lg:min-w-full">
                 <thead>
-                  <tr className="bg-slate-100/50 dark:bg-[#1a1c23] border-b-2 border-slate-200 dark:border-slate-700/50">
+                  <tr className="bg-slate-100/50 dark:bg-[#191b22] border-b-2 border-slate-200 dark:border-[#393e4f]">
                     {currentData.columns.map((col, i) => (
-                      <th key={i} className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      <th key={i} className="px-3.5 sm:px-4 lg:px-6 py-3 sm:py-3.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#393e4f]">
                   {pageRows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#1e1e1e] transition-colors group">
+                    <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#191b22]/50 transition-colors group">
                       {row.map((cell, cellIndex) => (
-                        <td key={cellIndex} className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
+                        <td key={cellIndex} className="px-3.5 sm:px-4 lg:px-6 py-3 sm:py-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
                           {renderCellContent(cell)}
                         </td>
                       ))}
@@ -6214,15 +7272,22 @@ export default function Reports() {
                 </tbody>
               </table>
             </div>
-            <div className="px-5 pb-5">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredRows.length}
-                itemsPerPage={itemsPerPage}
-              />
-            </div>
+            {totalPages > 1 && (
+              <div className="p-4 border-t-2 border-slate-200 dark:border-[#393e4f] bg-slate-50 dark:bg-[#191b22] flex flex-col sm:flex-row justify-between items-center gap-4">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
+                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredRows.length)} of {filteredRows.length} Entries
+                </span>
+                <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
+                  <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <FiChevronLeft size={18} />
+                  </button>
+                  {generatePageNumbers()}
+                  <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage === totalPages} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <FiChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -6318,10 +7383,10 @@ export default function SecurityMonitor() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 h-full min-h-0">
+    <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-full h-auto lg:h-full flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">
         
-        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-slate-700/50 shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
+        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-[#393e4f] shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
           
           <div className="absolute top-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-b from-black/40 to-transparent flex justify-end items-start z-10 pointer-events-none">
             <div className="flex items-center gap-2 md:gap-4 bg-black/50 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10">
@@ -6403,10 +7468,10 @@ export default function SecurityMonitor() {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/4 flex flex-col gap-6 h-[400px] lg:h-full flex-shrink-0">
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col overflow-hidden h-full">
+        <div className="w-full lg:w-1/4 flex flex-col gap-6 min-h-[380px] lg:h-full flex-shrink-0">
+          <div className="bg-white dark:bg-[#252833] rounded-2xl border border-slate-200 dark:border-[#393e4f] shadow-sm flex flex-col overflow-hidden h-full">
             
-            <div className="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex items-center justify-between flex-shrink-0">
+            <div className="p-4 md:p-5 border-b border-slate-200 dark:border-[#393e4f] bg-slate-50 dark:bg-[#191b22] flex items-center justify-between flex-shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-gray-300 flex items-center gap-2 text-sm md:text-base">
                 <FiUserCheck className="text-emerald-500" size={18} />
                 Current Attendance
@@ -6438,8 +7503,8 @@ export default function SecurityMonitor() {
                )}
             </div>
 
-            <div className="p-3 md:p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex-shrink-0">
-              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-all">
+            <div className="p-3 md:p-4 border-t border-slate-200 dark:border-[#393e4f] bg-slate-50 dark:bg-[#191b22] flex-shrink-0">
+              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-[#252833] rounded-xl transition-all">
                 Full Log <FiArrowRight />
               </button>
             </div>
@@ -6452,7 +7517,7 @@ export default function SecurityMonitor() {
       {/* --- CUSTOM ALERT MODAL --- */}
       {alertDialog.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
+          <div className={`bg-white dark:bg-[#252833] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
             <div className="p-6 text-center space-y-4">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
                 {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
@@ -6460,7 +7525,7 @@ export default function SecurityMonitor() {
               <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
               <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
             </div>
-            <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center">
+            <div className="p-4 border-t-2 border-gray-100 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex justify-center">
               <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
                 Okay
               </button>
@@ -6475,7 +7540,7 @@ export default function SecurityMonitor() {
 
 === frontend\src\pages\Subscriptions.jsx ===
 import React from 'react';
-import { FiTag, FiList, FiCalendar } from 'react-icons/fi';
+import { FiTag, FiList, FiCalendar, FiFilter } from 'react-icons/fi';
 import { useSubscriptions } from '../features/subscriptions/hooks/useSubscriptions';
 import SubscriptionsTable from '../features/subscriptions/components/SubscriptionsTable';
 import SubscriptionsCalendarView from '../features/subscriptions/components/SubscriptionsCalendarView';
@@ -6529,30 +7594,48 @@ export default function Subscriptions() {
   const secondaryButtonClass = "flex items-center justify-center gap-2 bg-black hover:bg-slate-900 text-gray-200 dark:bg-gray-300 dark:hover:bg-white dark:text-black px-6 py-2.5 rounded-xl font-bold shadow-md transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-screen-2xl mx-auto space-y-6">
       
       {/* Top Header Actions */}
-      <div className="flex flex-col md:flex-row justify-end items-center gap-4 w-full">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto ml-auto">
-          <button onClick={() => setIsPlanModalOpen(true)} className={secondaryButtonClass}>
+      <div className="flex w-full flex-col items-stretch gap-3">
+        <div className="ml-auto flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <button onClick={() => setIsPlanModalOpen(true)} className={`${secondaryButtonClass} self-end px-4 sm:self-auto sm:px-6`}>
             <FiTag size={16} /> Manage Plans
           </button>
-          <div className="flex bg-gray-200 dark:bg-gray-800 rounded-xl p-1 shadow-inner w-full sm:w-auto">
+          <div className="flex bg-gray-200 dark:bg-[#1a1c23] rounded-xl p-1 shadow-inner w-full sm:w-auto">
             <button 
               onClick={() => setActiveView('list')} 
-              className={`flex-1 flex justify-center items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeView === 'list' ? 'bg-white dark:bg-[#252830] text-black dark:text-gray-300 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:text-black dark:hover:text-gray-300'}`}
+              className={`flex-1 flex justify-center items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeView === 'list' ? 'bg-white dark:bg-[#3F454D] text-black dark:text-white shadow-sm dark:ring-1 dark:ring-white/10' : 'text-slate-500 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}
             >
               <FiList size={16} /> List
             </button>
             <button 
               onClick={() => setActiveView('calendar')} 
-              className={`flex-1 flex justify-center items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeView === 'calendar' ? 'bg-white dark:bg-[#252830] text-black dark:text-gray-300 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:text-black dark:hover:text-gray-300'}`}
+              className={`flex-1 flex justify-center items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeView === 'calendar' ? 'bg-white dark:bg-[#3F454D] text-black dark:text-white shadow-sm dark:ring-1 dark:ring-white/10' : 'text-slate-500 dark:text-gray-400 hover:text-black dark:hover:text-white'}`}
             >
               <FiCalendar size={16} /> Calendar
             </button>
           </div>
         </div>
       </div>
+
+      {activeView === 'calendar' && (
+        <div className="xl:hidden bg-white dark:bg-[#252833] p-4 sm:p-5 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm">
+          <h3 className="text-base font-bold text-black dark:text-gray-300 flex items-center gap-2 mb-3">
+            <FiFilter className="text-amber-500" /> View Filters
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" checked={showSubscriptions} onChange={e => setShowSubscriptions(e.target.checked)} className="w-4 h-4 accent-amber-500 cursor-pointer" />
+              <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Client Subscriptions</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" checked={showCoachEvents} onChange={e => setShowCoachEvents(e.target.checked)} className="w-4 h-4 accent-amber-500 cursor-pointer" />
+              <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Coach Events & Sessions</span>
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* List View */}
       {activeView === 'list' && (
@@ -6788,7 +7871,7 @@ export const memberService = {
       plan: dbMember.plan,
       status: dbMember.status,
       enrolledFaceId: dbMember.enrolled_face_id,
-      profilePicUrl: dbMember.profile_pic ? `http://127.0.0.1:8000${dbMember.profile_pic}` : null,
+      profilePicUrl: dbMember.profile_pic || null,
       dob: dbMember.dob || '',
       height: dbMember.height || '',
       weight: dbMember.weight || '',
@@ -6920,7 +8003,7 @@ export default transactionService;
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -7002,13 +8085,128 @@ export default App;
 /* Enable manual class-based dark mode switching */
 @custom-variant dark (&:is(.dark *));
 
+@layer components {
+  button.bg-gradient-to-r,
+  button.bg-linear-to-r {
+    background-image: linear-gradient(to right, #FACC15, #F59E0B) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.025em !important;
+  }
+
+  button.bg-gradient-to-r:hover:not(:disabled),
+  button.bg-linear-to-r:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+}
+
 @layer base {
+  html {
+    min-width: 320px;
+  }
+
   body {
     @apply bg-brand-light text-brand-dark transition-colors duration-300;
   }
   
   .dark body {
     @apply bg-brand-dark text-brand-light;
+  }
+}
+
+@media (max-width: 639px) {
+  main > div {
+    padding: 1rem !important;
+  }
+
+  main > div > .overflow-x-auto,
+  main > div > div.overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  main > div {
+    padding: 1.25rem !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .fc .fc-toolbar {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1rem !important;
+  }
+
+  .fc .fc-button-primary {
+    margin: 0 2px !important;
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .mobile-calendar-grid .fc .fc-header-toolbar {
+    display: none !important;
+  }
+
+  .mobile-calendar-grid .fc-theme-standard th {
+    padding: 6px 0 !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-col-header-cell-cushion {
+    font-size: 0.7rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-number {
+    padding: 2px 4px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-event {
+    margin: 1px 1px !important;
+    padding: 1px 2px !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-event-main {
+    font-size: 0.58rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-more-link {
+    padding-left: 2px;
+    font-size: 0.65rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-frame {
+    min-height: 2.75rem !important;
+    height: auto !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-events {
+    min-height: 1rem !important;
+    margin-bottom: 2px !important;
+  }
+}
+
+@media (max-width: 359px) {
+  .mobile-calendar-grid .fc .fc-col-header-cell-cushion {
+    font-size: 0 !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-col-header-cell-cushion::first-letter {
+    font-size: 0.7rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-frame {
+    min-height: 2.5rem !important;
   }
 }
 
@@ -9791,6 +10989,19 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  server: {
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+      '/profiles': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -10243,7 +11454,12 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
+
+        if ($token) {
+            $token->delete();
+        }
+
         return response()->json(['message' => 'Logged out successfully']);
     }
 }
@@ -10891,7 +12107,7 @@ class WorkoutLog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['member_id', 'exercise', 'date'];
+    protected $fillable = ['member_id', 'exercise', 'date', 'sets', 'reps', 'gesture_class'];
 
     public function member()
     {
@@ -13244,6 +14460,55 @@ return new class extends Migration
     }
 };
 
+=== backend\database\migrations\2026_09_26_000000_add_sets_and_reps_to_workout_logs_table.php ===
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('workout_logs', function (Blueprint $table) {
+            $table->unsignedSmallInteger('sets')->nullable();
+            $table->unsignedSmallInteger('reps')->nullable();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('workout_logs', function (Blueprint $table) {
+            $table->dropColumn(['sets', 'reps']);
+        });
+    }
+};
+
+=== backend\database\migrations\2026_09_26_010000_add_gesture_class_to_workout_logs_table.php ===
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('workout_logs', function (Blueprint $table) {
+            $table->string('gesture_class')->nullable();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('workout_logs', function (Blueprint $table) {
+            $table->dropColumn('gesture_class');
+        });
+    }
+};
+
 === backend\database\seeders\DatabaseSeeder.php ===
 <?php
 
@@ -13724,23 +14989,91 @@ Route::get('/attendance/today', [AttendanceController::class, 'getTodayAttendanc
 
 // React Route: Coach Assigns a Task
 Route::post('/members/{id}/assign-task', function (Request $request, $id) {
-    $request->validate(['exercise' => 'required|string']);
+    $request->validate([
+        'exercise' => 'required|string',
+        'sets' => 'nullable|integer|min:1|max:99',
+        'reps' => 'nullable|integer|min:1|max:999',
+        'date' => 'nullable|date_format:Y-m-d|after_or_equal:today',
+        'gesture_class' => 'nullable|string|in:BURPEE,CRUNCH,CURL,DEADLIFT,HIGH KNEE,LUNGE,MOUNTAIN CLIMBER,PLANK,PUSH UP,RUSSIAN TWIST,SIT UP,SQUAT',
+    ]);
     $exerciseName = strtoupper($request->exercise);
+    $taskDate = $request->input('date', Carbon::today()->toDateString());
 
-    // Prevent assigning the exact same task twice in one day
+    // Prevent assigning the exact same task twice on the same date
     $alreadyAssigned = WorkoutLog::where('member_id', $id)
-        ->where('date', Carbon::today())
+        ->where('date', $taskDate)
         ->where('exercise', 'ASSIGNED: ' . $exerciseName)
-        ->exists();
+        ->first();
 
-    if (!$alreadyAssigned) {
+    if ($alreadyAssigned) {
+        $alreadyAssigned->update($request->only('sets', 'reps'));
+    } else {
         WorkoutLog::create([
             'member_id' => $id,
             'exercise' => 'ASSIGNED: ' . $exerciseName,
-            'date' => Carbon::today(),
+            'date' => $taskDate,
+            'sets' => $request->input('sets'),
+            'reps' => $request->input('reps'),
+            'gesture_class' => $request->input('gesture_class'),
         ]);
     }
     return response()->json(['message' => 'Task assigned successfully!']);
+});
+
+Route::get('/members/{id}/workout-plan', function ($id) {
+    abort_unless(\App\Models\Member\Member::whereKey($id)->exists(), 404);
+
+    $today = Carbon::today()->toDateString();
+    $lastDate = Carbon::today()->addDays(6)->toDateString();
+
+    return WorkoutLog::where('member_id', $id)
+        ->whereBetween('date', [$today, $lastDate])
+        ->where(function ($query) {
+            $query->where('exercise', 'like', 'ASSIGNED: %')
+                ->orWhere(function ($completed) {
+                    $completed->whereNotNull('sets')->whereNotNull('reps');
+                });
+        })
+        ->orderBy('date')
+        ->orderBy('id')
+        ->get();
+});
+
+Route::post('/members/{id}/workout-plan', function (Request $request, $id) {
+    abort_unless(\App\Models\Member\Member::whereKey($id)->exists(), 404);
+
+    $today = Carbon::today();
+    $lastDate = $today->copy()->addDays(6);
+    $validated = $request->validate([
+        'tasks' => 'present|array',
+        'tasks.*.exercise' => 'required|string|max:255',
+        'tasks.*.sets' => 'required|integer|min:1|max:99',
+        'tasks.*.reps' => 'required|integer|min:1|max:999',
+        'tasks.*.date' => 'required|date_format:Y-m-d|after_or_equal:' . $today->toDateString() . '|before_or_equal:' . $lastDate->toDateString(),
+        'tasks.*.gesture_class' => 'nullable|string|in:BURPEE,CRUNCH,CURL,DEADLIFT,HIGH KNEE,LUNGE,MOUNTAIN CLIMBER,PLANK,PUSH UP,RUSSIAN TWIST,SIT UP,SQUAT',
+    ]);
+
+    $startDate = $today->toDateString();
+    $endDate = $lastDate->toDateString();
+    \Illuminate\Support\Facades\DB::transaction(function () use ($id, $validated, $startDate, $endDate) {
+        WorkoutLog::where('member_id', $id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('exercise', 'like', 'ASSIGNED: %')
+            ->delete();
+
+        foreach ($validated['tasks'] as $task) {
+            WorkoutLog::create([
+                'member_id' => $id,
+                'exercise' => 'ASSIGNED: ' . strtoupper($task['exercise']),
+                'date' => $task['date'],
+                'sets' => $task['sets'],
+                'reps' => $task['reps'],
+                'gesture_class' => $task['gesture_class'] ?? null,
+            ]);
+        }
+    });
+
+    return response()->json(['message' => 'Workout plan synchronized.', 'task_count' => count($validated['tasks'])]);
 });
 
 // Python Route: AI Verifies the Task
@@ -13751,17 +15084,34 @@ Route::post('/ai/log-workout', function (Request $request) {
     ]);
     
     $exerciseName = strtoupper($request->exercise);
+    $today = Carbon::today()->toDateString();
     
     // Check if there is a PENDING task assigned for this exercise today
-    $assignedTask = WorkoutLog::where('member_id', $request->member_id)
-        ->where('date', Carbon::today())
-        ->where('exercise', 'ASSIGNED: ' . $exerciseName)
-        ->first();
+    $assignedTasks = WorkoutLog::where('member_id', $request->member_id)
+        ->where('date', $today)
+        ->where('exercise', 'like', 'ASSIGNED: %')
+        ->where(function ($query) use ($exerciseName) {
+            $query->where('gesture_class', $exerciseName)
+                ->orWhere(function ($legacyQuery) use ($exerciseName) {
+                    $legacyQuery->whereNull('gesture_class')
+                        ->where('exercise', 'ASSIGNED: ' . $exerciseName);
+                });
+        })
+        ->get();
 
-    if ($assignedTask) {
+    if ($assignedTasks->count() > 1) {
+        return response()->json([
+            'status' => 'ambiguous',
+            'message' => 'More than one assigned exercise matches this Gesture Engine class. Coach verification is required.',
+        ], 409);
+    }
+
+    if ($assignedTasks->count() === 1) {
+        $assignedTask = $assignedTasks->first();
         // Task Verified! Strip the "ASSIGNED: " tag to mark it completed
         $assignedTask->update([
-            'exercise' => $exerciseName,
+            'exercise' => substr($assignedTask->exercise, strlen('ASSIGNED: ')),
+            'date' => $today,
             'created_at' => Carbon::now() // Log the exact time it was verified
         ]);
         return response()->json(['status' => 'logged', 'message' => 'Task verified!']);
@@ -13789,7 +15139,7 @@ Route::post('/ai/log-workout', function (Request $request) {
 Route::get('/members/{id}/workouts', function ($id) {
     return WorkoutLog::where('member_id', $id)
         ->orderBy('created_at', 'desc')
-        ->take(15) 
+        ->take(50)
         ->get();
 });
 
@@ -13802,6 +15152,7 @@ Route::put('/workouts/{id}/manual-verify', function ($id) {
     
     $log->update([
         'exercise' => $cleanExerciseName,
+        'date' => Carbon::today(),
         'created_at' => Carbon::now() // Log the exact time the coach verified it
     ]);
     
@@ -13811,15 +15162,28 @@ Route::put('/workouts/{id}/manual-verify', function ($id) {
 // --- LIVE GESTURE LOGS ROUTE ---
 Route::get('/workouts/live', function () {
     return WorkoutLog::with('member:id,first_name,last_name')
+        ->where(function ($query) {
+            $query->where(function ($pending) {
+                $pending->where('exercise', 'like', 'ASSIGNED: %')
+                    ->whereDate('date', '>=', Carbon::today());
+            })->orWhere('created_at', '>=', Carbon::now()->subDay());
+        })
         ->orderBy('created_at', 'desc')
-        ->take(15)
+        ->take(50)
         ->get()
         ->map(function ($log) {
+            $isPending = str_starts_with($log->exercise, 'ASSIGNED: ');
+            $exerciseName = $isPending ? substr($log->exercise, strlen('ASSIGNED: ')) : $log->exercise;
+            $status = $isPending
+                ? ($log->gesture_class ? 'Pending AI verification' : 'Pending manual verification')
+                : 'AI detected';
+            $target = $log->sets && $log->reps ? " Â· {$log->sets} sets x {$log->reps} reps" : '';
+
             return [
                 'id' => $log->id,
-                'time' => Carbon::parse($log->created_at)->format('h:i:s A'),
+                'time' => $isPending ? Carbon::parse($log->date)->format('M j') : Carbon::parse($log->created_at)->format('h:i:s A'),
                 'name' => $log->member ? $log->member->first_name . ' ' . $log->member->last_name : 'Unknown Athlete',
-                'event' => str_replace('ASSIGNED: ', '(Pending) ', $log->exercise)
+                'event' => "{$status} Â· {$exerciseName}{$target}",
             ];
         });
 });
@@ -13861,6 +15225,139 @@ class ExampleTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
+    }
+}
+
+=== backend\tests\Feature\WorkoutPlanFlowTest.php ===
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Member\Member;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Carbon;
+use Tests\TestCase;
+
+class WorkoutPlanFlowTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Schema::create('members', function (Blueprint $table) {
+            $table->id();
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('email')->unique();
+            $table->string('phone');
+            $table->string('plan')->default('None');
+            $table->string('status')->default('Active');
+            $table->timestamps();
+        });
+
+        Schema::create('workout_logs', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('member_id');
+            $table->string('exercise');
+            $table->date('date');
+            $table->unsignedSmallInteger('sets')->nullable();
+            $table->unsignedSmallInteger('reps')->nullable();
+            $table->string('gesture_class')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
+    public function test_gesture_detection_completes_the_members_scheduled_workout(): void
+    {
+        Carbon::setTestNow('2026-09-26 12:00:00');
+
+        $member = Member::create([
+            'first_name' => 'Test',
+            'last_name' => 'Member',
+            'email' => 'workout-flow@example.test',
+            'phone' => '0000000000',
+        ]);
+
+        $this->postJson("/api/members/{$member->id}/workout-plan", [
+            'tasks' => [[
+                'exercise' => 'Barbell Full Squat',
+                'sets' => 3,
+                'reps' => 10,
+                'date' => Carbon::today()->toDateString(),
+                'gesture_class' => 'SQUAT',
+            ]],
+        ])->assertOk()->assertJson(['task_count' => 1]);
+
+        $this->getJson("/api/members/{$member->id}/workout-plan")
+            ->assertOk()
+            ->assertJsonFragment([
+                'exercise' => 'ASSIGNED: BARBELL FULL SQUAT',
+                'sets' => 3,
+                'reps' => 10,
+                'gesture_class' => 'SQUAT',
+            ]);
+
+        $this->getJson('/api/workouts/live')->assertOk()->assertJsonFragment([
+            'name' => 'Test Member',
+            'event' => 'Pending AI verification Â· BARBELL FULL SQUAT Â· 3 sets x 10 reps',
+        ]);
+
+        $this->postJson('/api/ai/log-workout', [
+            'member_id' => $member->id,
+            'exercise' => 'SQUAT',
+        ])->assertOk()->assertJson(['status' => 'logged']);
+
+        $this->assertDatabaseHas('workout_logs', [
+            'member_id' => $member->id,
+            'exercise' => 'BARBELL FULL SQUAT',
+            'date' => Carbon::today()->toDateString(),
+            'sets' => 3,
+            'reps' => 10,
+            'gesture_class' => 'SQUAT',
+        ]);
+
+        $this->getJson('/api/workouts/live')->assertOk()->assertJsonFragment([
+            'name' => 'Test Member',
+            'event' => 'AI detected Â· BARBELL FULL SQUAT Â· 3 sets x 10 reps',
+        ]);
+    }
+
+    public function test_ambiguous_gesture_class_does_not_verify_an_arbitrary_exercise(): void
+    {
+        Carbon::setTestNow('2026-09-26 12:00:00');
+
+        $member = Member::create([
+            'first_name' => 'Test',
+            'last_name' => 'Member',
+            'email' => 'ambiguous-workout@example.test',
+            'phone' => '0000000000',
+        ]);
+
+        $this->postJson("/api/members/{$member->id}/workout-plan", [
+            'tasks' => [
+                ['exercise' => 'Barbell Full Squat', 'sets' => 3, 'reps' => 10, 'date' => Carbon::today()->toDateString(), 'gesture_class' => 'SQUAT'],
+                ['exercise' => 'Bodyweight Squat', 'sets' => 2, 'reps' => 12, 'date' => Carbon::today()->toDateString(), 'gesture_class' => 'SQUAT'],
+            ],
+        ])->assertOk();
+
+        $this->postJson('/api/ai/log-workout', [
+            'member_id' => $member->id,
+            'exercise' => 'SQUAT',
+        ])->assertStatus(409)->assertJson(['status' => 'ambiguous']);
+
+        $this->assertDatabaseCount('workout_logs', 2);
+        $this->assertDatabaseHas('workout_logs', [
+            'member_id' => $member->id,
+            'exercise' => 'ASSIGNED: BARBELL FULL SQUAT',
+            'gesture_class' => 'SQUAT',
+        ]);
     }
 }
 

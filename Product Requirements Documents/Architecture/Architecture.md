@@ -240,14 +240,15 @@ erDiagram
         datetime paid_at
     }
 
-    WORKOUT_TASKS {
-        uint id PK
-        uint member_id FK
-        string exercise_name "squat | bicep_curl | pushup"
-        int target_reps
-        int completed_reps
-        string verification_status "pending | verified_ai | verified_manual"
-        datetime completed_at
+    WORKOUT_LOGS {
+        bigint id PK
+        bigint member_id FK
+        string exercise "ASSIGNED: name while pending; exercise name when detected"
+        date date
+        unsignedSmallint sets "nullable target"
+        unsignedSmallint reps "nullable target"
+        string gesture_class "nullable engine class"
+        timestamps created_at updated_at
     }
 ```
 
@@ -312,30 +313,32 @@ sequenceDiagram
     participant Py as Python AI Engine
     participant LV as Laravel API
     participant DB as MySQL Database
+    participant UI as React Member Profile
+    participant Catalog as Exercise JSON Catalog
 
-    Coach->>LV: Assigns Workout Task (e.g., Squats x 10 reps)
-    LV->>DB: INSERT INTO workout_tasks (target_reps = 10)
+    Coach->>UI: Opens member's Coach's Training Plan
+    UI->>Catalog: Load exercises with body_part metadata
+    Coach->>UI: Filter exercises by body part and set weekday, sets, and reps
+    UI->>UI: Save weekly routine in browser storage
+    UI->>LV: POST next seven days of dated tasks, targets, and gesture classes
+    LV->>DB: Replace pending scheduled assignments in workout_logs
+    UI->>LV: Gesture Monitor polls pending assignments and recent logs
+    LV-->>UI: Return member workout queue
     
     Member->>Cam: Begins Workout Routine in Camera View
     Cam->>Py: Streams Frame Sequence
     Py->>Py: MediaPipe Extracts 33 Body Joint Coordinates
-    Py->>Py: ML Classifier Identifies "Squat" Exercise
-    Py->>Py: State Machine Tracks Knee Flexion Angle
-    
-    loop Repetition State Machine
-        Py->>Py: State Transition: DOWN -> UP
-        Py->>Py: Increment Local Rep Count (+1)
-    end
-    
-    alt Local Rep Count == Target Reps (10)
-        Py->>LV: POST /api/workouts/verify-task (task_id, reps=10, status="verified_ai")
-        LV->>DB: UPDATE workout_tasks SET status = 'verified_ai'
-        LV-->>Coach: Send Task Completion Notification to Dashboard
-    else AI Verification Unclear / Obscured View
-        Coach->>LV: Manual Verification Override via Secure Coach Panel
-        LV->>DB: UPDATE workout_tasks SET status = 'verified_manual'
+    Py->>Py: Classifier emits a supported movement label
+    Py->>LV: POST /api/ai/log-workout (member_id, exercise label)
+    LV->>DB: Match label to that member's task scheduled for today
+    alt Matching assigned task exists
+        LV->>DB: Mark assigned exercise log performed; retain sets/reps targets
+    else No matching assigned task
+        LV->>DB: Save an unassigned exercise log (anti-spam guarded)
     end
 ```
+
+The current Gesture Engine sends movement labels, not measured repetition totals. Assigned sets and reps are targets; completion counts are not currently verified by this flow.
 
 ---
 

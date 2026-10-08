@@ -106,22 +106,23 @@ This comprehensive manual combines **User Operational Guides** for daily gym sta
 ## 3. Gym Coach & Trainer Operational Guide
 
 ### 3.1. Assigning Workout Programs
-1. Navigate to **Coach Portal** -> **Assign Program**.
-2. Select member and choose an approved exercise movement:
-   * **Squats**, **Bicep Curls**, **Push-ups**.
-3. Input target repetition count (e.g., 3 sets of 10 reps).
-4. Click **Assign Program**. The task appears on the member's workout queue.
+1. Open **Members**, select a member, and open **Coach's Training Plan** in the member profile.
+2. Use **All body parts** to filter the exercise library by the exercise's body part, or search by exercise name, target muscle, or equipment.
+3. Add exercises to a weekday, then set the target **sets** and **reps** for each exercise.
+4. Click **Save Weekly Plan**. The routine remains available in the browser and its next seven days of exercise assignments, dates, sets, reps, and supported Gesture Engine labels are synchronized to workout tracking.
+5. Open **Gesture Verification Monitor** to see scheduled tasks and recent detections. When the camera recognizes a supported movement for the face-matched member, Laravel matches it to that member's due task and changes the member-facing exercise log from pending to performed.
+
+The body-part categories come from each exercise's `body_part` value in `frontend/public/dataset/data/exercises.json`. They categorize individual exercises; they are not separate workout-program types. Exercises without a matching Gesture Engine class remain scheduled for manual verification.
 
 ---
 
 ### 3.2. Live AI Gesture Verification & Rep Counting
 1. Navigate to **Gesture Verification Monitor**.
 2. Select the active camera stream pointing to the gym exercise floor.
-3. As the member executes the exercise in front of the camera:
-   * MediaPipe tracks **33 3D body landmark joints** in real time.
-   * The **Scikit-Learn classifier (`workout_model.pkl`)** verifies correct exercise form.
-   * The **Repetition Counter State Machine** tracks flexion/extension joint angles and automatically increments verified rep counts on screen (`0/10` -> `1/10` -> `10/10`).
-4. Once target reps are reached, the system automatically marks the task as **`verified_ai`** and logs it in the database.
+3. As the member exercises in front of the camera, MediaPipe supplies pose landmarks and the **Scikit-Learn classifier (`workout_model.pkl`)** emits a supported movement label. The engine sends the label with the face-matched member ID to Laravel.
+4. Laravel matches that movement label to the member's workout task scheduled for today. A match updates the assigned exercise log as performed and retains its sets/reps target; a detection without a matching task is logged as an unassigned exercise.
+
+The current Gesture Engine detects exercise labels but does not report completed repetition totals or verify that every assigned set/repetition target was completed. The sets/reps shown on a task are assigned targets, not AI-measured completion counts.
 
 ---
 

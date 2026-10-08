@@ -6,9 +6,9 @@ import {
   FiFileText, FiShield, FiCamera, FiUser, FiSun, FiMoon, FiLogOut,
   FiMenu, FiX, FiBell, FiChevronDown, FiAlertCircle, FiClock, FiLogIn, FiCheckCircle, FiCalendar
 } from 'react-icons/fi';
-import logo from '../assets/logo.png';
 import api from '../api'; 
 import { usePrefetch } from '../hooks/usePrefetch'; 
+import { useSystemLogo } from '../hooks/useSystemLogo';
 
 const getPageTitle = (path) => {
     switch (path.toLowerCase()) {
@@ -28,7 +28,9 @@ export default function Layout() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const location = useLocation();
   const navigate = useNavigate();
+  const systemLogo = useSystemLogo();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [adminName, setAdminName] = useState(() => localStorage.getItem('admin_name') || 'Admin Profile');
 
   // Pre-fetch all pages' data in parallel on first load
   usePrefetch();
@@ -47,7 +49,11 @@ export default function Layout() {
   // --- NEW: Custom Confirm Dialog for Logout ---
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
-  const adminName = localStorage.getItem('admin_name') || 'Admin Profile';
+  useEffect(() => {
+    const handleProfileUpdate = (event) => setAdminName(event.detail || 'Admin Profile');
+    window.addEventListener('admin-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('admin-profile-updated', handleProfileUpdate);
+  }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -204,7 +210,7 @@ export default function Layout() {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-100 dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-dvh bg-slate-100 dark:bg-[#050505] overflow-hidden font-sans">
       
       <style>{`
         .hidden-scrollbar::-webkit-scrollbar { display: none; }
@@ -218,11 +224,11 @@ export default function Layout() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:w-72 bg-white dark:bg-[#161616] border-r border-slate-500 dark:border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-24 px-5 flex items-center justify-between gap-4 border-b border-slate-500 dark:border-white/10 flex-shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:w-72 bg-white dark:bg-[#161616] border-r border-gray-400 dark:border-gray-600 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-24 px-5 flex items-center justify-between gap-4 border-b border-gray-400 dark:border-gray-600 flex-shrink-0">
           <div className="flex items-center gap-4">
             <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-white dark:bg-[#161616] border-[3px] border-black dark:border-amber-500 shadow-md dark:shadow-[0_0_12px_rgba(245,158,11,0.4)] transition-all flex-shrink-0">
-              <img src={logo} alt="Double Alpha Logo" className="w-full h-full rounded-full object-cover bg-white p-0.5" />
+              <img src={systemLogo} alt="System logo" className="w-full h-full rounded-full object-cover bg-white p-0.5" />
             </div>
             <div className="flex flex-col justify-center">
               <h1 className="font-black italic text-transparent bg-clip-text bg-gradient-to-r from-brand-red to-brand-orange text-xl md:text-2xl leading-none uppercase tracking-tight drop-shadow-sm">
@@ -260,7 +266,7 @@ export default function Layout() {
                     >
                       {({ isActive }) => (
                         <>
-                          <span className={`text-xl ${isActive ? 'text-brand-gold dark:text-gray-300' : 'opacity-70'}`}>{item.icon}</span>
+                          <span className={`text-xl ${isActive ? 'text-gray-300 dark:text-gray-300' : 'opacity-70'}`}>{item.icon}</span>
                           {item.name}
                         </>
                       )}
@@ -272,7 +278,7 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="p-5 border-t border-slate-400 dark:border-white/10 flex-shrink-0">
+        <div className="p-5 border-t border-gray-400 dark:border-gray-600 flex-shrink-0">
           <button onClick={handleLogout} className="flex items-center gap-3.5 px-4 py-3 w-full text-base text-slate-600 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-xl transition-colors font-bold">
             <FiLogOut className="text-xl opacity-70" /> Sign Out
           </button>
@@ -281,7 +287,7 @@ export default function Layout() {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
         
-        <header className="h-16 sm:h-20 lg:h-24 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-md border-b border-slate-500 dark:border-white/10 flex justify-between items-center px-3 sm:px-5 lg:px-8 transition-colors duration-300 z-10 w-full flex-shrink-0">
+        <header className="h-16 sm:h-20 lg:h-24 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-md border-b border-gray-400 dark:border-gray-600 flex justify-between items-center px-3 sm:px-5 lg:px-8 transition-colors duration-300 z-10 w-full flex-shrink-0">
           
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button onClick={() => setIsSidebarOpen(true)} aria-label="Open navigation menu" className="lg:hidden p-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors border border-slate-200 dark:border-white/5 flex-shrink-0">
@@ -300,13 +306,13 @@ export default function Layout() {
 
           <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5 flex-shrink-0">
             
-            <div className="relative">
+            <div className="relative order-3">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
                 aria-label="Open notifications"
-                className="relative p-2 sm:p-2.5 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors border border-slate-500 dark:border-white/10"
+                className="relative rounded-full border border-gray-500 bg-gray-200 p-2.5 text-black shadow-sm transition-colors hover:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus-visible:ring-offset-[#161616] sm:p-3"
               >
-                <FiBell size={20} />
+                <FiBell size={21} strokeWidth={2.4} />
                 {visibleNotifications.length > 0 && (
                   <span className="absolute top-1 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-100 dark:border-[#161616] animate-pulse"></span>
                 )}
@@ -317,7 +323,7 @@ export default function Layout() {
                   {/* Panel Header */}
                   <div className="p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#121212] flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <FiBell size={16} className="text-amber-500" />
+                      <FiBell size={16} className="text-black dark:text-gray-300" />
                       <h4 className="font-bold text-black dark:text-gray-300 text-sm">Notifications</h4>
                       {visibleNotifications.length > 0 && (
                         <span className="text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 px-2 py-0.5 rounded-full">{visibleNotifications.length}</span>
@@ -430,32 +436,30 @@ export default function Layout() {
               )}
             </div>
 
-            <div className="w-px h-8 bg-slate-300 dark:bg-white/10 mx-1 hidden md:block"></div>
+            <div className="w-px h-8 bg-gray-400 dark:bg-gray-600 mx-1 hidden order-2 md:block"></div>
 
-            <NavLink to="/profile" aria-label="Open admin profile" className="flex items-center gap-3 p-1.5 md:py-1.5 md:px-2 md:pr-4 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-colors border border-transparent dark:hover:border-white/5 group">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-black dark:bg-amber-500/20 border border-transparent dark:border-amber-500/50 text-white dark:text-amber-500 flex items-center justify-center font-bold shadow-sm text-base transition-transform group-hover:scale-105">
-                <FiUser />
+            <NavLink to="/profile" aria-label="Open admin profile" className="order-1 flex items-center gap-3 rounded-full border border-transparent p-1.5 transition-colors hover:border-gray-400 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 md:py-1.5 md:pl-2 md:pr-4 dark:hover:border-gray-700 dark:hover:bg-gray-800 dark:focus-visible:ring-offset-[#161616] group">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-500 bg-gray-200 text-black shadow-sm transition-transform group-hover:scale-105 sm:h-9 sm:w-9 md:h-10 md:w-10 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                <FiUser size={19} strokeWidth={2.4} />
               </div>
               <div className="hidden md:flex flex-col items-start">
-                <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors leading-none">
+                <span className="text-sm font-bold text-black transition-colors leading-none group-hover:text-gray-700 dark:text-gray-300 dark:group-hover:text-white">
                   {adminName}
                 </span>
                 <span className="text-[10px] font-bold text-slate-600 dark:text-gray-500 uppercase tracking-widest mt-1.5 leading-none">
                   System Admin
                 </span>
               </div>
-              <FiChevronDown className="hidden md:block text-slate-400 dark:text-gray-500 group-hover:text-amber-500 ml-1 transition-transform group-hover:translate-y-0.5" size={16} />
+              <FiChevronDown className="ml-1 hidden text-gray-700 transition-transform group-hover:translate-y-0.5 group-hover:text-black md:block dark:text-gray-300 dark:group-hover:text-white" size={17} strokeWidth={2.5} />
             </NavLink>
-
-            <div className="w-px h-8 bg-slate-300 dark:bg-white/10 mx-1 hidden md:block"></div>
 
             <button 
               onClick={toggleTheme} 
               aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="p-2.5 sm:p-3 md:p-3.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-transform hover:scale-110 active:scale-95 shadow-sm border border-slate-500 dark:border-white/10 flex-shrink-0"
+              className="order-5 flex-shrink-0 rounded-full border border-gray-500 bg-gray-200 p-2.5 text-black shadow-sm transition-transform hover:scale-110 hover:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 active:scale-95 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus-visible:ring-offset-[#161616] sm:p-3 md:p-3.5"
               title="Toggle Dark Mode"
             >
-              {isDarkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
+              {isDarkMode ? <FiSun size={21} strokeWidth={2.4} /> : <FiMoon size={21} strokeWidth={2.4} />}
             </button>
           </div>
         </header>

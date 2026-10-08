@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FiSearch, FiPlus, FiDownload, FiEdit2, FiTrash2, 
-  FiPrinter, FiUser, FiChevronLeft, FiChevronRight, FiList, FiLoader 
+  FiPrinter, FiUser, FiChevronLeft, FiChevronRight, FiList, FiLoader, FiX 
 } from 'react-icons/fi';
 
 export default function TransactionTable({
@@ -41,7 +41,7 @@ export default function TransactionTable({
         <button 
           key={i} 
           onClick={() => setCurrentPage(i)} 
-          className={`px-3 py-1 rounded-md font-bold shadow-sm transition-colors ${currentPage === i ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black' : 'hover:text-slate-900 dark:hover:text-white font-medium text-slate-500 dark:text-gray-400'}`}
+          className={`px-3 py-1 rounded-md font-semibold shadow-sm transition-colors ${currentPage === i ? 'bg-slate-900 text-white' : 'hover:bg-slate-100 hover:text-slate-900 font-medium text-slate-500 dark:text-gray-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}
         >
           {i}
         </button>
@@ -68,34 +68,37 @@ export default function TransactionTable({
     return `${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`;
   };
 
-  const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
-  const exportButtonClass = "flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-300 dark:hover:bg-white dark:text-slate-900 px-6 py-2.5 rounded-xl font-bold shadow-md transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const exportButtonClass = "mx-1 flex min-h-[38px] min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border-0 bg-black px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200 sm:flex-none";
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4">
-        <button onClick={onAddTransaction} className={primaryButtonClass}>
-          <FiPlus size={18} strokeWidth={3} /> Record Transaction
-        </button>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#252830] p-5 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm items-center">
-        <div className="relative flex-1 w-full">
-          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none" />
-          <input 
-            type="text" 
-            placeholder="Search by ID or Member Name..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm" 
-          />
-        </div>
-        
-        <div className="flex gap-4 w-full md:w-auto">
+      <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 bg-white dark:bg-[#252833] p-4 sm:p-5 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm items-stretch lg:items-center">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full min-w-0 lg:flex-1">
+          <div className="relative flex-1 min-w-0">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
+            <input 
+              type="text" 
+              placeholder="Search by ID or Member Name..." 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+              className="w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm" 
+            />
+            {searchTerm && (
+              <button 
+                type="button" 
+                onClick={() => setSearchTerm('')} 
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
+              >
+                <FiX size={15} />
+              </button>
+            )}
+          </div>
           <select 
             value={filterType} 
             onChange={(e) => setFilterType(e.target.value)} 
-            className="w-full md:w-auto px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm"
+            className="w-full sm:w-auto px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
           >
             <option value="All">All Types</option>
             <option value="Subscription Payment">Subscription Payment</option>
@@ -103,40 +106,48 @@ export default function TransactionTable({
             <option value="Refund">Refund</option>
             <option value="Other">Other</option>
           </select>
+        </div>
 
-          <button onClick={onExportCSV} disabled={isExporting} className={exportButtonClass} title="Download table data to a spreadsheet">
+        <div className="flex w-full justify-end gap-1 sm:gap-2 lg:w-auto">
+          <button onClick={onAddTransaction} className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap md:hidden`}>
+            <FiPlus size={16} strokeWidth={3} /> Record
+          </button>
+          <button onClick={onAddTransaction} className={`${primaryButtonClass} hidden whitespace-nowrap md:flex`}>
+            <FiPlus size={18} strokeWidth={3} /> Record Transaction
+          </button>
+          <button onClick={onExportCSV} disabled={isExporting} className={`${exportButtonClass} min-w-0 flex-1 whitespace-nowrap sm:flex-none`} title="Download table data to a spreadsheet">
             {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
             {isExporting ? 'Exporting...' : 'Export CSV'}
           </button>
           
-          <button onClick={() => window.print()} className={primaryButtonClass}>
+          <button onClick={() => window.print()} className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap sm:flex-none`}>
             <FiPrinter size={18} /> Print All
           </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#252830] rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm overflow-hidden flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b-2 border-gray-300 dark:border-gray-600 gap-4 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-300 font-bold text-sm tracking-wide">
-            <FiList size={18} />
+      <div className="bg-white dark:bg-[#252833] rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm overflow-hidden flex flex-col">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b-2 border-gray-300 dark:border-[#393e4f] gap-4 bg-gray-50 dark:bg-[#191b22]/50">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-200 font-bold text-sm tracking-wide">
+            <FiList size={18} className="text-amber-500" />
             <span>{transactions.length} TOTAL TRANSACTIONS</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-[680px] lg:min-w-full">
             <thead>
-              <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Txn ID & Date</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Details</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Method</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Amount</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-right">Actions</th>
+              <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Txn ID & Date</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Details</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Method</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Amount</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
+                <th className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
+            <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
               {isLoading ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-24 text-center">
@@ -155,47 +166,47 @@ export default function TransactionTable({
                 </tr>
               ) : (
                 currentTxns.map((txn) => (
-                  <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className="font-bold text-slate-900 dark:text-gray-300">{txn.transaction_id}</div>
                       <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">{txn.transaction_date}</div>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 font-semibold text-slate-800 dark:text-gray-300 whitespace-nowrap">
                       {txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : <span className="flex items-center gap-1 text-amber-600 dark:text-amber-500 italic"><FiUser size={14} /> Walk-in Guest</span>}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className="text-sm font-semibold text-slate-800 dark:text-gray-300">{txn.type}</div>
                       <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">{txn.description || '-'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <span className={getMethodBadge(txn.payment_method)}>{txn.payment_method}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <div className={`font-normal text-lg tracking-tight ${Number(txn.amount) > 0 ? 'text-slate-800 dark:text-gray-300' : 'text-red-500'}`}>
                         {Number(txn.amount) > 0 ? `\u20B1 ${Number(txn.amount).toLocaleString()}` : `-\u20B1 ${Math.abs(Number(txn.amount)).toLocaleString()}`}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 whitespace-nowrap">
                       <span className={getStatusBadge(txn.status)}>{txn.status}</span>
                     </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap space-x-3">
+                    <td className="px-3.5 sm:px-4 lg:px-6 py-3.5 text-right whitespace-nowrap space-x-2 sm:space-x-3">
                       <button 
                         onClick={() => onPrintReceipt(txn)} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-[#393e4f] hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-[#252833] rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm"
                       >
                         <FiPrinter size={16} strokeWidth={2.5} />
                       </button>
                       <button 
                         onClick={() => onEditTransaction(txn)} 
                         disabled={deletingId === txn.id} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-gray-600 hover:border-amber-50 dark:hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
                       >
                         <FiEdit2 size={16} strokeWidth={2.5} />
                       </button>
                       <button 
                         onClick={() => onDeleteTransaction(txn.id)} 
                         disabled={deletingId === txn.id} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-gray-600 hover:border-red-500 dark:hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm disabled:opacity-50"
                       >
                         {deletingId === txn.id ? <FiLoader size={16} className="animate-spin" strokeWidth={2.5} /> : <FiTrash2 size={16} strokeWidth={2.5} />}
                       </button>
@@ -214,11 +225,11 @@ export default function TransactionTable({
               Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, transactions.length)} of {transactions.length} Entries
             </span>
             <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
-              <button onClick={goToPrevPage} disabled={currentPage === 1} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <button onClick={goToPrevPage} disabled={currentPage === 1} className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <FiChevronLeft size={18} />
               </button>
               {generatePageNumbers()}
-              <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <FiChevronRight size={18} />
               </button>
             </div>

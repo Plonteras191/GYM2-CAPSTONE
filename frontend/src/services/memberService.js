@@ -14,7 +14,7 @@ export const memberService = {
       plan: dbMember.plan,
       status: dbMember.status,
       enrolledFaceId: dbMember.enrolled_face_id,
-      profilePicUrl: dbMember.profile_pic ? `http://127.0.0.1:8000${dbMember.profile_pic}` : null,
+      profilePicUrl: dbMember.profile_pic || null,
       dob: dbMember.dob || '',
       height: dbMember.height || '',
       weight: dbMember.weight || '',

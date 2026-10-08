@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn, FiLoader, FiAlertCircle } from 'react-icons/fi';
 
 import loginBg from '../assets/Login.jpg';
-import logo from '../assets/logo.png';
+import { useSystemLogo } from '../hooks/useSystemLogo';
 
 export default function Login() {
-  const navigate = useNavigate();
+  const systemLogo = useSystemLogo();
 
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -78,40 +77,43 @@ export default function Login() {
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2.5 ml-1";
 
   return (
-    // SOFTENED BACKGROUND: Changed from #030303 to slate-900
-    <div className="min-h-dvh w-full relative bg-slate-950 text-gray-200 overflow-x-hidden font-sans">
+    <div className="min-h-dvh w-full relative bg-[#11100f] text-gray-200 overflow-x-hidden font-sans">
 
-      <div className="hidden lg:block absolute top-0 left-0 w-[65%] h-full z-0">
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_24%_55%,rgba(166,54,22,0.16),transparent_44%),radial-gradient(ellipse_at_78%_18%,rgba(245,158,11,0.07),transparent_36%)]"></div>
+
+      <div className="hidden lg:block absolute top-0 left-0 w-[68%] h-full z-0">
         <div
-          className="absolute inset-0 bg-cover bg-left-center mix-blend-lighten opacity-80"
-          style={{ backgroundImage: `url(${loginBg})` }}
+          className="absolute inset-0 bg-cover mix-blend-screen opacity-55"
+          style={{ backgroundImage: `url(${loginBg})`, backgroundPosition: 'calc(-40% + 5px) center' }}
         ></div>
-        {/* Softened Gradient to match slate-900 */}
-        <div className="absolute inset-0 bg-linear-to-r from-transparent via-slate-900/40 via-50% to-slate-900 to-100%"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-[#11100f]/30 via-55% to-[#11100f] to-100%"></div>
       </div>
 
       <div className="lg:hidden absolute inset-0 z-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${loginBg})` }}>
-        <div className="absolute inset-0 bg-slate-950/80" />
+        <div className="absolute inset-0 bg-[#11100f]/80" />
       </div>
 
       <div className="relative z-10 flex min-h-dvh w-full">
 
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 pointer-events-none">
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-14 pointer-events-none">
           <div className="flex items-center gap-4 pointer-events-auto">
-            <div className="p-1 bg-white/10 backdrop-blur-md rounded-full border-2 border-slate-400/30 shadow-[0_0_15px_rgba(0,0,0,0.2)]">
-              <img src={logo} alt="Double Alpha Logo" className="w-12 h-12 rounded-full object-cover" />
+            <div className="rounded-full border-2 border-gray-400">
+              <img src={systemLogo} alt="System logo" className="w-14 h-14 rounded-full object-cover" />
             </div>
-            <span className="font-black italic text-transparent bg-clip-text bg-linear-to-r from-brand-red to-brand-orange text-[1.1rem] leading-none uppercase tracking-tight">Double Alpha</span>
+            <div className="flex flex-col">
+              <span className="font-black italic text-transparent bg-clip-text bg-linear-to-r from-red-500 via-orange-500 to-amber-400 text-[25px] leading-none uppercase tracking-tight">Double Alpha</span>
+              <span className="mt-1.5 text-[15px] font-bold uppercase tracking-[0.28em] text-gray-100">Fitness</span>
+            </div>
           </div>
         </div>
 
         <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-5 py-8 sm:px-10 sm:py-12 lg:p-12 relative z-10">
 
-          <div className="max-w-105 w-full space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700 pointer-events-auto">
+          <div className="max-w-105 w-full space-y-2 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700 pointer-events-auto">
 
             <div className="flex flex-col items-center lg:hidden mb-8 sm:mb-10">
               <div className="p-1 rounded-full border-2 border-amber-500/50 bg-slate-950/50 shadow-[0_0_28px_rgba(245,158,11,0.18)]">
-                <img src={logo} alt="Double Alpha Logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 backdrop-blur-md p-1 object-cover" />
+                <img src={systemLogo} alt="System logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 backdrop-blur-md p-1 object-cover" />
               </div>
               <p className="mt-3 text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">Double Alpha Fitness</p>
             </div>
@@ -192,7 +194,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full min-h-12 flex items-center justify-center gap-3 bg-linear-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-slate-900 py-3.5 rounded-xl font-black shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-widest mt-6 sm:mt-8 text-sm"
+                className="mx-1 mt-6 flex min-h-[38px] w-full items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 sm:mt-8"
               >
                 {isLoading ? <FiLoader className="animate-spin" size={20} /> : <FiLogIn size={20} />}
                 {isLoading ? 'Authenticating...' : 'Login'}

@@ -85,10 +85,10 @@ export default function SecurityMonitor() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 h-full min-h-0">
+    <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-full h-auto lg:h-full flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">
         
-        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-slate-700/50 shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
+        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-[#393e4f] shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
           
           <div className="absolute top-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-b from-black/40 to-transparent flex justify-end items-start z-10 pointer-events-none">
             <div className="flex items-center gap-2 md:gap-4 bg-black/50 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10">
@@ -170,33 +170,33 @@ export default function SecurityMonitor() {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/4 flex flex-col gap-6 h-[400px] lg:h-full flex-shrink-0">
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col overflow-hidden h-full">
+        <div className="w-full lg:w-1/4 flex flex-col gap-6 min-h-[380px] lg:h-full flex-shrink-0">
+          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-gray-300 dark:border-gray-600 shadow-sm flex flex-col overflow-hidden h-full">
             
-            <div className="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex items-center justify-between flex-shrink-0">
+            <div className="p-4 md:p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex items-center justify-between flex-shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-gray-300 flex items-center gap-2 text-sm md:text-base">
-                <FiUserCheck className="text-emerald-500" size={18} />
+                <FiUserCheck className="text-black dark:text-gray-300" size={18} />
                 Current Attendance
               </h3>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 hidden-scrollbar">
                {liveLogs.length === 0 ? (
-                   <div className="text-center mt-6 md:mt-10 opacity-60">
-                     <div className="w-12 h-12 md:w-16 md:h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3"><FiCamera className="size-5 md:size-6 text-slate-400"/></div>
-                     <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400">Camera is Scanning...</p>
+                   <div className="text-center mt-6 md:mt-10">
+                     <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3"><FiCamera className="size-5 md:size-6 text-gray-500 dark:text-gray-300"/></div>
+                     <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400">Camera is Scanning...</p>
                    </div>
                ) : (
                    liveLogs.map((log, index) => {
                     const memberName = log.member ? `${log.member.first_name} ${log.member.last_name}` : 'Unknown';
                     return (
-                    <div key={index} className="flex gap-3 items-center border-b border-slate-100 dark:border-slate-700/50 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
+                    <div key={index} className="flex gap-3 items-center border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-white dark:bg-amber-500 dark:text-black flex items-center justify-center font-bold shadow-md text-xs md:text-sm flex-shrink-0">
                          {memberName.charAt(0)}
                        </div>
                        <div className="min-w-0 flex-1">
                          <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-gray-200 leading-tight truncate">{memberName}</p>
-                         <p className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5 truncate">
+                         <p className="text-[9px] md:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5 truncate">
                            {log.time_in}
                          </p>
                        </div>
@@ -205,8 +205,8 @@ export default function SecurityMonitor() {
                )}
             </div>
 
-            <div className="p-3 md:p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex-shrink-0">
-              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-all">
+            <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
+              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-gray-200 dark:hover:bg-[#252830] rounded-xl transition-all">
                 Full Log <FiArrowRight />
               </button>
             </div>
@@ -219,7 +219,7 @@ export default function SecurityMonitor() {
       {/* --- CUSTOM ALERT MODAL --- */}
       {alertDialog.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
+          <div className={`bg-white dark:bg-[#252833] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
             <div className="p-6 text-center space-y-4">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
                 {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
@@ -227,7 +227,7 @@ export default function SecurityMonitor() {
               <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
               <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
             </div>
-            <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center">
+            <div className="p-4 border-t-2 border-gray-100 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex justify-center">
               <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
                 Okay
               </button>

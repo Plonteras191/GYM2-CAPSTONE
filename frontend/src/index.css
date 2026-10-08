@@ -69,6 +69,68 @@
   }
 }
 
+@media (max-width: 639px) {
+  .mobile-calendar-grid .fc .fc-header-toolbar {
+    display: none !important;
+  }
+
+  .mobile-calendar-grid .fc-theme-standard th {
+    padding: 6px 0 !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-col-header-cell-cushion {
+    font-size: 0.7rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-number {
+    padding: 2px 4px !important;
+    font-size: 0.72rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-event {
+    margin: 1px 1px !important;
+    padding: 1px 2px !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-event-main {
+    font-size: 0.58rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-more-link {
+    padding-left: 2px;
+    font-size: 0.65rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-frame {
+    min-height: 2.75rem !important;
+    height: auto !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-events {
+    min-height: 1rem !important;
+    margin-bottom: 2px !important;
+  }
+}
+
+@media (max-width: 359px) {
+  .mobile-calendar-grid .fc .fc-col-header-cell-cushion {
+    font-size: 0 !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-col-header-cell-cushion::first-letter {
+    font-size: 0.7rem !important;
+  }
+
+  .mobile-calendar-grid .fc .fc-daygrid-day-frame {
+    min-height: 2.5rem !important;
+  }
+}
+
 /* React Calendar Dark Mode Overrides (Updated for Brand Colors) */
 .dark .react-calendar {
   background: transparent;

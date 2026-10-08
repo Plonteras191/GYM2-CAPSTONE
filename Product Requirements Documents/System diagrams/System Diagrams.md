@@ -183,7 +183,7 @@ flowchart LR
         UC4["UC-4: Touchless Facial Recognition Attendance"]
         UC5["UC-5: Manage Subscription Plans & Renewals"]
         UC6["UC-6: Record Payment Transaction (Cash/GCash/Maya)"]
-        UC7["UC-7: Assign Workout Program"]
+        UC7["UC-7: Filter Exercises by Body Part & Assign Workout Program"]
         UC8["UC-8: Real-Time Gesture Tracking & Rep Counting"]
         UC9["UC-9: Manual Workout Verification Override"]
         UC10["UC-10: View Live Multi-Camera Stream"]

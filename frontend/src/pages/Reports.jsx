@@ -96,7 +96,7 @@ export default function Reports() {
         <button
           key={i}
           onClick={() => setCurrentPage(i)}
-          className={`px-3 py-1 rounded-md font-bold shadow-sm transition-colors ${currentPage === i ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black' : 'hover:text-slate-900 dark:hover:text-white font-medium text-slate-500 dark:text-gray-400'}`}
+          className={`px-3 py-1 rounded-md font-semibold shadow-sm transition-colors ${currentPage === i ? 'bg-slate-900 text-white' : 'hover:bg-slate-100 hover:text-slate-900 font-medium text-slate-500 dark:text-gray-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}
         >
           {i}
         </button>
@@ -139,11 +139,11 @@ export default function Reports() {
     return val;
   };
 
-  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#1e1e1e] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium shadow-sm transition-all outline-none";
+  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#191b22] border-2 border-slate-300 dark:border-[#393e4f] rounded-xl focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium shadow-sm transition-all outline-none";
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2";
   const iconClass = "absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-900 dark:text-gray-300 text-lg pointer-events-none";
-  const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
-  const secondaryButtonClass = "flex items-center justify-center gap-2 bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 text-slate-700 dark:text-gray-300 px-6 py-2.5 rounded-xl font-bold shadow-sm transition-all hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const exportButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-black px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
 
   return (
     <>
@@ -245,19 +245,9 @@ export default function Reports() {
 
       {/* Regular UI (hidden during print) */}
       <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
-        <div className="print:hidden space-y-6">
-          <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4">
-            <div className="flex gap-3 w-full md:w-auto ml-auto">
-              <button onClick={handlePrint} className={secondaryButtonClass}><FiPrinter size={18} /> Print PDF</button>
-              <button onClick={handleExportCSV} disabled={isExporting} className={primaryButtonClass}>
-                {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
-                {isExporting ? 'Exporting...' : 'Export CSV'}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#252830] p-6 rounded-2xl border-2 border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col md:flex-row gap-6 items-end">
-            <div className="flex-1 w-full relative">
+        <div className="print:hidden flex flex-col gap-6">
+          <div className="order-3 bg-white dark:bg-[#252833] p-4 sm:p-6 rounded-2xl border-2 border-slate-200 dark:border-[#393e4f] shadow-sm grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-3 sm:gap-4 items-end lg:order-none">
+            <div className="w-full min-w-0 relative min-[400px]:col-span-2 lg:col-span-1">
               <label className={labelClass}>Report Type</label>
               <div className="relative">
                 <FiFileText className={iconClass} />
@@ -268,36 +258,46 @@ export default function Reports() {
                 </select>
               </div>
             </div>
-            <div className="flex-1 w-full relative">
+            <div className="w-full min-w-0 relative">
               <label className={labelClass}>Start Date</label>
               <div className="relative">
                 <FiCalendar className={iconClass} />
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputClass} text-[13px] sm:text-sm`} />
               </div>
             </div>
-            <div className="flex-1 w-full relative">
+            <div className="w-full min-w-0 relative">
               <label className={labelClass}>End Date</label>
               <div className="relative">
                 <FiCalendar className={iconClass} />
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={`${inputClass} text-[13px] sm:text-sm`} />
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                setStartDate(currentMonthStart);
-                setEndDate(today);
-              }}
-              className={primaryButtonClass}
-              style={{ minWidth: '160px' }}
-            >
-              <FiClock size={18} />
-              This Month
-            </button>
+            <div className="col-span-full flex w-full min-w-0 gap-0 sm:gap-1 lg:col-span-2 lg:col-start-4 lg:justify-end">
+              <button
+                onClick={() => {
+                  setStartDate(currentMonthStart);
+                  setEndDate(today);
+                }}
+                className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap lg:flex-none`}
+              >
+                <FiClock size={16} /> This Month
+              </button>
+              <button
+                onClick={handleExportCSV}
+                disabled={isExporting}
+                className={`${exportButtonClass} min-w-0 flex-1 whitespace-nowrap lg:flex-none`}
+              >
+                {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
+                {isExporting ? 'Exporting...' : 'Export CSV'}
+              </button>
+              <button onClick={handlePrint} className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap lg:flex-none`}>
+                <FiPrinter size={18} /> Print All
+              </button>
+            </div>
           </div>
 
           {/* DYNAMIC GRID: Switches between 3 and 4 columns automatically */}
-          <div className={`grid grid-cols-1 gap-6 ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
+          <div className={`order-first grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 sm:gap-6 ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
             {currentData.kpis.map((kpi, index) => {
 
               let IconComponent = FiTrendingUp;
@@ -316,43 +316,49 @@ export default function Reports() {
               }
 
               return (
-                <div key={index} className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
-                  <div className={`p-4 rounded-xl flex items-center justify-center ${colorClass}`}>
+                <div key={index} className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252833] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
+                  <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>
                     <IconComponent size={28} strokeWidth={2.5} />
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{kpi.label}</p>
-                    <h3 className="text-2xl font-normal text-slate-900 dark:text-gray-300 mt-1">{kpi.value}</h3>
+                  <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
+                    <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{kpi.label}</p>
+                    <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{kpi.value}</h3>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border-2 border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden flex flex-col">
-            <div className="p-5 border-b-2 border-slate-200 dark:border-slate-700/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50 dark:bg-[#1e1e1e]">
-              <div className="flex items-center gap-3">
-                <h3 className="font-bold text-slate-800 dark:text-gray-300 text-lg">Recent Reports</h3>
+          <div className="order-5 bg-white dark:bg-[#252833] rounded-2xl border-2 border-slate-200 dark:border-[#393e4f] shadow-sm overflow-hidden flex flex-col lg:order-none">
+            <div className="p-4 sm:p-5 border-b-2 border-slate-200 dark:border-[#393e4f] flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 bg-slate-50 dark:bg-[#191b22]">
+              <div className="flex items-center gap-3 self-start sm:self-auto">
+                <h3 className="font-bold text-slate-800 dark:text-gray-300 text-base sm:text-lg">Recent Reports</h3>
               </div>
-              <input type="text" placeholder={`Search ${reportType}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 transition-all shadow-sm" />
+              <input 
+                type="text" 
+                placeholder={`Search ${reportType}...`} 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#191b22] border-2 border-slate-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 transition-all shadow-sm" 
+              />
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[650px] lg:min-w-full">
                 <thead>
-                  <tr className="bg-slate-100/50 dark:bg-[#1a1c23] border-b-2 border-slate-200 dark:border-slate-700/50">
+                  <tr className="bg-slate-100/50 dark:bg-[#191b22] border-b-2 border-slate-200 dark:border-[#393e4f]">
                     {currentData.columns.map((col, i) => (
-                      <th key={i} className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      <th key={i} className="px-3.5 sm:px-4 lg:px-6 py-3 sm:py-3.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#393e4f]">
                   {pageRows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#1e1e1e] transition-colors group">
+                    <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#191b22]/50 transition-colors group">
                       {row.map((cell, cellIndex) => (
-                        <td key={cellIndex} className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
+                        <td key={cellIndex} className="px-3.5 sm:px-4 lg:px-6 py-3 sm:py-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
                           {renderCellContent(cell)}
                         </td>
                       ))}
@@ -369,16 +375,16 @@ export default function Reports() {
               </table>
             </div>
             {totalPages > 1 && (
-              <div className="p-4 border-t-2 border-gray-300 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="p-4 border-t-2 border-slate-200 dark:border-[#393e4f] bg-slate-50 dark:bg-[#191b22] flex flex-col sm:flex-row justify-between items-center gap-4">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
                   Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredRows.length)} of {filteredRows.length} Entries
                 </span>
                 <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
-                  <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     <FiChevronLeft size={18} />
                   </button>
                   {generatePageNumbers()}
-                  <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage === totalPages} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage === totalPages} className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     <FiChevronRight size={18} />
                   </button>
                 </div>

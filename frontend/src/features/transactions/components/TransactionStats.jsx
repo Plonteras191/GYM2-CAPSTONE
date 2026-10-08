@@ -2,18 +2,18 @@ import React from 'react';
 import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock } from 'react-icons/fi';
 
 const StatCard = ({ title, value, icon, colorClass }) => (
-  <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex items-center gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
-    <div className={`p-4 rounded-xl flex items-center justify-center ${colorClass}`}>{icon}</div>
-    <div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest">{title}</p>
-      <h3 className="text-3xl font-normal text-slate-900 dark:text-gray-300 mt-1">{value}</h3>
+  <div className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252830] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
+    <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>{icon}</div>
+    <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
+      <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{title}</p>
+      <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{value}</h3>
     </div>
   </div>
 );
 
 export default function TransactionStats({ totalIncome, totalRefunds, netRevenue, pendingAmount }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
       <StatCard 
         title="Total Income" 
         value={`\u20B1 ${totalIncome.toLocaleString()}`} 

@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\AdminProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\ReportController;
@@ -18,13 +19,15 @@ use Carbon\Carbon;
 
 // --- 1. AUTHENTICATION ROUTES ---
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/branding', [AdminProfileController::class, 'branding']);
+Route::get('/branding/logo', [AdminProfileController::class, 'logo']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
-    
-    Route::get('/admin/me', function (Request $request) {
-        return $request->user();
-    });
+    Route::get('/admin/me', [AdminProfileController::class, 'show']);
+    Route::post('/admin/profile', [AdminProfileController::class, 'update']);
+    Route::post('/admin/logo', [AdminProfileController::class, 'updateLogo']);
+    Route::post('/admin/password', [AdminProfileController::class, 'updatePassword']);
 });
 
 // --- 2. MEMBER ROUTES ---
@@ -87,23 +90,91 @@ Route::get('/attendance/today', [AttendanceController::class, 'getTodayAttendanc
 
 // React Route: Coach Assigns a Task
 Route::post('/members/{id}/assign-task', function (Request $request, $id) {
-    $request->validate(['exercise' => 'required|string']);
+    $request->validate([
+        'exercise' => 'required|string',
+        'sets' => 'nullable|integer|min:1|max:99',
+        'reps' => 'nullable|integer|min:1|max:999',
+        'date' => 'nullable|date_format:Y-m-d|after_or_equal:today',
+        'gesture_class' => 'nullable|string|in:BURPEE,CRUNCH,CURL,DEADLIFT,HIGH KNEE,LUNGE,MOUNTAIN CLIMBER,PLANK,PUSH UP,RUSSIAN TWIST,SIT UP,SQUAT',
+    ]);
     $exerciseName = strtoupper($request->exercise);
+    $taskDate = $request->input('date', Carbon::today()->toDateString());
 
-    // Prevent assigning the exact same task twice in one day
+    // Prevent assigning the exact same task twice on the same date
     $alreadyAssigned = WorkoutLog::where('member_id', $id)
-        ->where('date', Carbon::today())
+        ->where('date', $taskDate)
         ->where('exercise', 'ASSIGNED: ' . $exerciseName)
-        ->exists();
+        ->first();
 
-    if (!$alreadyAssigned) {
+    if ($alreadyAssigned) {
+        $alreadyAssigned->update($request->only('sets', 'reps'));
+    } else {
         WorkoutLog::create([
             'member_id' => $id,
             'exercise' => 'ASSIGNED: ' . $exerciseName,
-            'date' => Carbon::today(),
+            'date' => $taskDate,
+            'sets' => $request->input('sets'),
+            'reps' => $request->input('reps'),
+            'gesture_class' => $request->input('gesture_class'),
         ]);
     }
     return response()->json(['message' => 'Task assigned successfully!']);
+});
+
+Route::get('/members/{id}/workout-plan', function ($id) {
+    abort_unless(\App\Models\Member\Member::whereKey($id)->exists(), 404);
+
+    $today = Carbon::today()->toDateString();
+    $lastDate = Carbon::today()->addDays(6)->toDateString();
+
+    return WorkoutLog::where('member_id', $id)
+        ->whereBetween('date', [$today, $lastDate])
+        ->where(function ($query) {
+            $query->where('exercise', 'like', 'ASSIGNED: %')
+                ->orWhere(function ($completed) {
+                    $completed->whereNotNull('sets')->whereNotNull('reps');
+                });
+        })
+        ->orderBy('date')
+        ->orderBy('id')
+        ->get();
+});
+
+Route::post('/members/{id}/workout-plan', function (Request $request, $id) {
+    abort_unless(\App\Models\Member\Member::whereKey($id)->exists(), 404);
+
+    $today = Carbon::today();
+    $lastDate = $today->copy()->addDays(6);
+    $validated = $request->validate([
+        'tasks' => 'present|array',
+        'tasks.*.exercise' => 'required|string|max:255',
+        'tasks.*.sets' => 'required|integer|min:1|max:99',
+        'tasks.*.reps' => 'required|integer|min:1|max:999',
+        'tasks.*.date' => 'required|date_format:Y-m-d|after_or_equal:' . $today->toDateString() . '|before_or_equal:' . $lastDate->toDateString(),
+        'tasks.*.gesture_class' => 'nullable|string|in:BURPEE,CRUNCH,CURL,DEADLIFT,HIGH KNEE,LUNGE,MOUNTAIN CLIMBER,PLANK,PUSH UP,RUSSIAN TWIST,SIT UP,SQUAT',
+    ]);
+
+    $startDate = $today->toDateString();
+    $endDate = $lastDate->toDateString();
+    \Illuminate\Support\Facades\DB::transaction(function () use ($id, $validated, $startDate, $endDate) {
+        WorkoutLog::where('member_id', $id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('exercise', 'like', 'ASSIGNED: %')
+            ->delete();
+
+        foreach ($validated['tasks'] as $task) {
+            WorkoutLog::create([
+                'member_id' => $id,
+                'exercise' => 'ASSIGNED: ' . strtoupper($task['exercise']),
+                'date' => $task['date'],
+                'sets' => $task['sets'],
+                'reps' => $task['reps'],
+                'gesture_class' => $task['gesture_class'] ?? null,
+            ]);
+        }
+    });
+
+    return response()->json(['message' => 'Workout plan synchronized.', 'task_count' => count($validated['tasks'])]);
 });
 
 // Python Route: AI Verifies the Task
@@ -114,17 +185,34 @@ Route::post('/ai/log-workout', function (Request $request) {
     ]);
     
     $exerciseName = strtoupper($request->exercise);
+    $today = Carbon::today()->toDateString();
     
     // Check if there is a PENDING task assigned for this exercise today
-    $assignedTask = WorkoutLog::where('member_id', $request->member_id)
-        ->where('date', Carbon::today())
-        ->where('exercise', 'ASSIGNED: ' . $exerciseName)
-        ->first();
+    $assignedTasks = WorkoutLog::where('member_id', $request->member_id)
+        ->where('date', $today)
+        ->where('exercise', 'like', 'ASSIGNED: %')
+        ->where(function ($query) use ($exerciseName) {
+            $query->where('gesture_class', $exerciseName)
+                ->orWhere(function ($legacyQuery) use ($exerciseName) {
+                    $legacyQuery->whereNull('gesture_class')
+                        ->where('exercise', 'ASSIGNED: ' . $exerciseName);
+                });
+        })
+        ->get();
 
-    if ($assignedTask) {
+    if ($assignedTasks->count() > 1) {
+        return response()->json([
+            'status' => 'ambiguous',
+            'message' => 'More than one assigned exercise matches this Gesture Engine class. Coach verification is required.',
+        ], 409);
+    }
+
+    if ($assignedTasks->count() === 1) {
+        $assignedTask = $assignedTasks->first();
         // Task Verified! Strip the "ASSIGNED: " tag to mark it completed
         $assignedTask->update([
-            'exercise' => $exerciseName,
+            'exercise' => substr($assignedTask->exercise, strlen('ASSIGNED: ')),
+            'date' => $today,
             'created_at' => Carbon::now() // Log the exact time it was verified
         ]);
         return response()->json(['status' => 'logged', 'message' => 'Task verified!']);
@@ -152,7 +240,7 @@ Route::post('/ai/log-workout', function (Request $request) {
 Route::get('/members/{id}/workouts', function ($id) {
     return WorkoutLog::where('member_id', $id)
         ->orderBy('created_at', 'desc')
-        ->take(15) 
+        ->take(50)
         ->get();
 });
 
@@ -165,6 +253,7 @@ Route::put('/workouts/{id}/manual-verify', function ($id) {
     
     $log->update([
         'exercise' => $cleanExerciseName,
+        'date' => Carbon::today(),
         'created_at' => Carbon::now() // Log the exact time the coach verified it
     ]);
     
@@ -174,15 +263,28 @@ Route::put('/workouts/{id}/manual-verify', function ($id) {
 // --- LIVE GESTURE LOGS ROUTE ---
 Route::get('/workouts/live', function () {
     return WorkoutLog::with('member:id,first_name,last_name')
+        ->where(function ($query) {
+            $query->where(function ($pending) {
+                $pending->where('exercise', 'like', 'ASSIGNED: %')
+                    ->whereDate('date', '>=', Carbon::today());
+            })->orWhere('created_at', '>=', Carbon::now()->subDay());
+        })
         ->orderBy('created_at', 'desc')
-        ->take(15)
+        ->take(50)
         ->get()
         ->map(function ($log) {
+            $isPending = str_starts_with($log->exercise, 'ASSIGNED: ');
+            $exerciseName = $isPending ? substr($log->exercise, strlen('ASSIGNED: ')) : $log->exercise;
+            $status = $isPending
+                ? ($log->gesture_class ? 'Pending AI verification' : 'Pending manual verification')
+                : 'AI detected';
+            $target = $log->sets && $log->reps ? " · {$log->sets} sets x {$log->reps} reps" : '';
+
             return [
                 'id' => $log->id,
-                'time' => Carbon::parse($log->created_at)->format('h:i:s A'),
+                'time' => $isPending ? Carbon::parse($log->date)->format('M j') : Carbon::parse($log->created_at)->format('h:i:s A'),
                 'name' => $log->member ? $log->member->first_name . ' ' . $log->member->last_name : 'Unknown Athlete',
-                'event' => str_replace('ASSIGNED: ', '(Pending) ', $log->exercise)
+                'event' => "{$status} · {$exerciseName}{$target}",
             ];
         });
 });

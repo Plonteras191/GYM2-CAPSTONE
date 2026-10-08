@@ -1,6 +1,6 @@
 Admin Dashboard Login
-    Email: admin@example.com
-    Password: admin123
+    Email: admin1@example.com
+    Password: admin123456789
 
 Hikvision CCTV Hardware
     Web Portal: `[http://192.168.1.84](http://192.168.1.84)`
@@ -26,6 +26,11 @@ Other Part Of Camera
     cd "Gesture Engine"
     .\venv\Scripts\activate
     python collect_data.py
+
+Virtual Box
+    cd "C:\Users\THUNDEROBOT\OneDrive\Desktop\gym"
+    python -m http.server 8001
+    http://localhost:8001/compare-colors.html
 
 ======================================================================================================================================
 

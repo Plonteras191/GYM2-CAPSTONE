@@ -50,7 +50,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         dob: initialData.dob || '',
         height: initialData.height || '',
         weight: initialData.weight || '',
-        profilePicUrl: initialData.profilePicUrl || (initialData.profile_pic ? `http://127.0.0.1:8000${initialData.profile_pic}` : null),
+        profilePicUrl: initialData.profilePicUrl || initialData.profile_pic || null,
         enrolledFaceId: initialData.enrolledFaceId || initialData.enrolled_face_id || null
       } : defaultForm;
       setFormData(initial);
@@ -163,7 +163,9 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
 
   const inputClass = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm";
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-2";
-  const primaryBtn = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const primaryBtn = "flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-semibold shadow-sm transition-colors active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm";
+  const saveMemberBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const saveChangesBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
   const bmiData = getBmiInfo(formData.height, formData.weight);
 
   if (!isOpen) return null;
@@ -273,7 +275,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         {/* Footer */}
         <div className="p-5 border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3">
           <button type="button" onClick={() => { stopCamera(); onClose(); }} disabled={isSaving} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 uppercase tracking-wide text-sm">Cancel</button>
-          <button form="memberForm" type="submit" disabled={isSaving || ((formData.phone || '').length > 0 && (formData.phone || '').length < 11)} className={primaryBtn}>
+          <button form="memberForm" type="submit" disabled={isSaving || ((formData.phone || '').length > 0 && (formData.phone || '').length < 11)} className={isEditing ? saveChangesBtn : saveMemberBtn}>
             {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
             {isSaving ? 'Processing...' : (isEditing ? 'Save Changes' : 'Save Member')}
           </button>

@@ -94,10 +94,10 @@ export default function GestureMonitor() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 h-full min-h-0">
+    <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-full h-auto lg:h-full flex flex-col">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">
         
-        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-slate-700/50 shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
+        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-[#393e4f] shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
           
           <div className="absolute top-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-b from-black/40 to-transparent flex justify-end items-start z-10 pointer-events-none">
             <div className="flex items-center gap-2 md:gap-4 bg-black/50 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10">
@@ -174,26 +174,26 @@ export default function GestureMonitor() {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/4 flex flex-col gap-6 h-[400px] lg:h-full flex-shrink-0">
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex flex-col overflow-hidden h-full">
-            <div className="p-4 md:p-5 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex items-center justify-between flex-shrink-0">
+        <div className="w-full lg:w-1/4 flex flex-col gap-6 min-h-[380px] lg:h-full flex-shrink-0">
+          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-gray-300 dark:border-gray-600 shadow-sm flex flex-col overflow-hidden h-full">
+            <div className="p-4 md:p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex items-center justify-between flex-shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-gray-300 flex items-center gap-2 text-sm md:text-base">
-                <FiActivity className="text-amber-500" size={18} />
-                Gesture Logs
+                <FiActivity className="text-black dark:text-gray-300" size={18} />
+                Workout Queue & Gesture Logs
               </h3>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 hidden-scrollbar">
               {recentLogs.length === 0 ? (
-                <div className="text-center mt-10 opacity-60">
-                   <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400">Waiting for AI detections...</p>
+                <div className="text-center mt-10">
+                   <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400">No scheduled workouts or AI detections yet.</p>
                 </div>
               ) : (
                 recentLogs.map((log) => (
-                  <div key={log.id} className="flex gap-4 items-start relative pb-4 border-b border-slate-100 dark:border-slate-700/50 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
-                    <div className="text-[10px] md:text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5 w-[65px] md:w-[72px] flex-shrink-0">{log.time}</div>
+                  <div key={log.id} className="flex gap-4 items-start relative pb-4 border-b border-gray-200 dark:border-gray-700 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
+                    <div className="text-[10px] md:text-[11px] font-mono font-bold text-gray-600 dark:text-gray-400 mt-0.5 w-[65px] md:w-[72px] flex-shrink-0">{log.time}</div>
                     <div>
-                      <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-gray-200 leading-tight">{log.name}</p>
+                      <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-200 leading-tight">{log.name}</p>
                       <p className={`text-[10px] md:text-xs font-medium mt-1 ${log.event.includes('Pending') ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`}>
                         {log.event}
                       </p>
@@ -203,7 +203,7 @@ export default function GestureMonitor() {
               )}
             </div>
             
-            <div className="p-3 md:p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex-shrink-0">
+            <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
               <div className="flex justify-between items-center text-[10px] md:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-2">Latency: <span className={`${connectionState === 'LIVE' ? 'text-slate-800 dark:text-gray-300' : 'text-slate-400'}`}>{connectionState === 'LIVE' ? `${latency}ms` : '--'}</span></span>
                 <span className={`${connectionState === 'LIVE' ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'} flex items-center gap-1.5`}>API Status: {connectionState === 'LIVE' ? 'OK' : 'OFFLINE'}</span>
@@ -217,7 +217,7 @@ export default function GestureMonitor() {
       {/* --- CUSTOM ALERT MODAL --- */}
       {alertDialog.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
+          <div className={`bg-white dark:bg-[#252833] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
             <div className="p-6 text-center space-y-4">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
                 {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
@@ -225,7 +225,7 @@ export default function GestureMonitor() {
               <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
               <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
             </div>
-            <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center">
+            <div className="p-4 border-t-2 border-gray-100 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex justify-center">
               <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
                 Okay
               </button>

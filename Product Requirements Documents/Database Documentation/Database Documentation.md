@@ -179,16 +179,21 @@ erDiagram
         bigint member_id FK
         string exercise
         date date
+        smallint sets "nullable target"
+        smallint reps "nullable target"
+        string gesture_class "nullable engine class"
         timestamps created_at
     }
 
     GESTURE_LOGS {
         bigint id PK
         bigint member_id FK
+        bigint session_id FK "nullable"
         string exercise_type
-        integer completed_reps
-        string status "verified_ai | verified_manual"
-        timestamps created_at
+        decimal confidence_score
+        integer rep_count
+        timestamp recorded_at
+        timestamps created_at updated_at
     }
 ```
 
@@ -290,16 +295,33 @@ Master reference list defining available gym membership packages, duration, and 
 ---
 
 ### 4.6. `workout_logs` & `gesture_logs` Tables
-Tracks AI gesture-verified exercises, completed repetitions, and coach-assigned tasks.
+`workout_logs` stores dated coach assignments and exercise detections used by the member profile and Gesture Monitor. Pending assignments use the `ASSIGNED: ` exercise prefix. The optional `sets` and `reps` values are assigned targets; the current Gesture Engine does not send completed repetition totals. `gesture_logs` is a separate session-oriented table for exercise type, confidence, and rep-count data.
+
+#### `workout_logs`
 
 | Column | Data Type | Nullable | Default | Description & Key Constraints |
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `BIGINT UNSIGNED` | No | Auto Increment | Primary Key |
 | `member_id` | `BIGINT UNSIGNED` | No | None | Foreign Key referencing `members(id)` (`CASCADE`) |
-| `exercise` | `VARCHAR(255)` | No | None | Exercise movement type (`Squat`, `Bicep Curl`, `Pushup`) |
-| `completed_reps`| `INT` | No | `0` | AI-counted repetition quantity |
-| `status` | `VARCHAR(50)` | No | `'verified_ai'`| Verification source (`verified_ai`, `verified_manual`) |
+| `exercise` | `VARCHAR(255)` | No | None | Assigned exercise uses `ASSIGNED: <name>` until a matching detection/manual verification updates it |
 | `date` | `DATE` | No | None | Session date |
+| `sets` | `SMALLINT UNSIGNED` | Yes | `NULL` | Coach-assigned set target; not an AI-completed set count |
+| `reps` | `SMALLINT UNSIGNED` | Yes | `NULL` | Coach-assigned repetition target; not an AI-completed rep count |
+| `gesture_class` | `VARCHAR(255)` | Yes | `NULL` | Supported Gesture Engine class used to match a detection to the assignment |
+| `created_at` | `TIMESTAMP` | Yes | `NULL` | Record creation timestamp |
+| `updated_at` | `TIMESTAMP` | Yes | `NULL` | Record update timestamp |
+
+#### `gesture_logs`
+
+| Column | Data Type | Nullable | Default | Description & Key Constraints |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGINT UNSIGNED` | No | Auto Increment | Primary Key |
+| `member_id` | `BIGINT UNSIGNED` | No | None | Foreign Key referencing `members(id)` (`CASCADE`) |
+| `session_id` | `BIGINT UNSIGNED` | Yes | `NULL` | Nullable foreign key referencing `exercise_sessions(id)` |
+| `exercise_type` | `VARCHAR(255)` | No | None | Exercise label recorded for the gesture session |
+| `confidence_score` | `DECIMAL(5,2)` | No | None | Classifier confidence score |
+| `rep_count` | `INT` | No | None | Repetitions recorded for the gesture session |
+| `recorded_at` | `TIMESTAMP` | No | Current timestamp | Gesture record time |
 | `created_at` | `TIMESTAMP` | Yes | `NULL` | Record creation timestamp |
 | `updated_at` | `TIMESTAMP` | Yes | `NULL` | Record update timestamp |
 

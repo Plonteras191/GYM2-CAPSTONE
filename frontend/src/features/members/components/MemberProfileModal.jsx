@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import {
-  FiX, FiMapPin, FiPhone, FiChevronLeft, FiChevronRight, 
+  FiX, FiMapPin, FiPhone, FiActivity, FiChevronLeft, FiChevronRight,
   FiChevronDown, FiChevronUp, FiLock
 } from 'react-icons/fi';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import api from '../../../api';
+import MobileCalendarToolbar from '../../../components/ui/MobileCalendarToolbar';
+import MobileCalendarDaySheet from '../../../components/ui/MobileCalendarDaySheet';
+import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 
 const getBmiInfo = (height, weight) => {
   if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500' };
@@ -24,9 +28,10 @@ const getBmiInfo = (height, weight) => {
 
 const getTaskStatus = (log) => {
   if (!log.exercise.startsWith('ASSIGNED: ')) return 'VERIFIED';
-  const logDay = new Date(new Date(log.created_at).toDateString());
+  const logDay = log.date ? new Date(`${log.date}T00:00:00`) : new Date(new Date(log.created_at).toDateString());
   const today = new Date(new Date().toDateString());
   if (logDay < today) return 'MISSED';
+  if (logDay > today) return 'SCHEDULED';
   if (logDay.getTime() === today.getTime()) {
     const now = new Date();
     if (now.getHours() > 21 || (now.getHours() === 21 && now.getMinutes() >= 30)) return 'MISSED';
@@ -44,6 +49,32 @@ const calculateAge = (dob) => {
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const defaultRoutine = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] };
+const createEmptyRoutine = () => Object.fromEntries(daysOfWeek.map(day => [day, []]));
+const formatExerciseName = (name) => name.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+const getExerciseMediaUrl = (exercise, field = 'gif_url') => {
+  const mediaPath = exercise?.[field] || exercise?.image;
+  return mediaPath ? `/dataset/${mediaPath.replace(/^\//, '')}` : null;
+};
+const getGestureClass = (exercise) => {
+  const name = exercise.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const movementPatterns = [
+    ['BURPEE', /\bburpee\b/],
+    ['CRUNCH', /\bcrunch\b/],
+    ['DEADLIFT', /\bdeadlift\b/],
+    ['HIGH KNEE', /\bhigh knee\b/],
+    ['LUNGE', /\blunge\b/],
+    ['MOUNTAIN CLIMBER', /\bmountain climber\b/],
+    ['PLANK', /\bplank\b/],
+    ['PUSH UP', /\bpush up\b/],
+    ['RUSSIAN TWIST', /\brussian twist\b/],
+    ['SIT UP', /\bsit up\b/],
+    ['SQUAT', /\bsquat\b/]
+  ];
+  const matchedMovement = movementPatterns.find(([, pattern]) => pattern.test(name));
+  if (matchedMovement) return matchedMovement[0];
+  if (name.includes('curl') && exercise.body_part === 'upper arms' && exercise.target?.toLowerCase().includes('biceps')) return 'CURL';
+  return null;
+};
 
 export default function MemberProfileModal({ isOpen, member, onClose, onShowAlert }) {
   const [activeTab, setActiveTab] = useState('workouts');
@@ -53,9 +84,17 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const [workoutPage, setWorkoutPage] = useState(1);
   const [expandedDate, setExpandedDate] = useState(null);
   const [weeklyRoutine, setWeeklyRoutine] = useState(defaultRoutine);
+  const [planLogs, setPlanLogs] = useState(null);
   const [activeDay, setActiveDay] = useState('Monday');
   const [exercisesLib, setExercisesLib] = useState([]);
   const [exSearch, setExSearch] = useState('');
+  const [selectedBodyPart, setSelectedBodyPart] = useState('all');
+  const [exercisePage, setExercisePage] = useState(1);
+  const attendanceCalendarRef = React.useRef(null);
+  const [attendanceCalendarTitle, setAttendanceCalendarTitle] = useState('');
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState(null);
+  const [selectedAttendanceEntries, setSelectedAttendanceEntries] = useState([]);
+  const [mobileCoachView, setMobileCoachView] = useState('routine');
   
   const [isCurrentMonth, setIsCurrentMonth] = useState(true);
 
@@ -67,16 +106,19 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     setCoachNotes(localStorage.getItem(`notes_${member.id}`) || '');
     const saved = localStorage.getItem(`routine_${member.id}`);
     setWeeklyRoutine(saved ? JSON.parse(saved) : defaultRoutine);
+    setPlanLogs(null);
     setActiveDay('Monday');
 
     (async () => {
       try {
-        const [attRes, workRes] = await Promise.all([
+        const [attRes, workRes, planRes] = await Promise.all([
           api.get(`/members/${member.id}/attendance`),
-          api.get(`/members/${member.id}/workouts`)
+          api.get(`/members/${member.id}/workouts`),
+          api.get(`/members/${member.id}/workout-plan`)
         ]);
         setAttendance(attRes.data);
         setWorkouts(workRes.data);
+        setPlanLogs(planRes.data);
       } catch (err) { console.error('Failed to load profile logs', err); }
     })();
 
@@ -85,6 +127,24 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
       .then(d => setExercisesLib(d.data || d))
       .catch(() => {});
   }, [isOpen, member]);
+
+  React.useEffect(() => {
+    if (planLogs === null) return;
+    const routine = createEmptyRoutine();
+    planLogs.forEach(log => {
+      const date = String(log.date || '').slice(0, 10);
+      const day = new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' });
+      if (!routine[day]) return;
+      const exerciseName = log.exercise.replace(/^ASSIGNED:\s*/i, '');
+      const catalogExercise = exercisesLib.find(ex => ex.name.toUpperCase() === exerciseName.toUpperCase());
+      routine[day].push({
+        ...(catalogExercise || { id: `planned-${log.id}`, name: exerciseName }),
+        sets: log.sets || 3,
+        reps: log.reps || 10
+      });
+    });
+    setWeeklyRoutine(routine);
+  }, [planLogs, exercisesLib]);
 
   const handleManualVerify = async (logId) => {
     try {
@@ -96,20 +156,28 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
   const handleAssignWeeklyPlan = async () => {
     localStorage.setItem(`routine_${member.id}`, JSON.stringify(weeklyRoutine));
-    const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todayExercises = weeklyRoutine[dayName] || [];
+    const today = new Date();
+    const todayIndex = (today.getDay() + 6) % 7;
+    const tasks = daysOfWeek.flatMap((day, index) => {
+      const daysUntil = (index - todayIndex + 7) % 7;
+      const scheduledDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntil);
+      const date = [scheduledDate.getFullYear(), String(scheduledDate.getMonth() + 1).padStart(2, '0'), String(scheduledDate.getDate()).padStart(2, '0')].join('-');
+      return weeklyRoutine[day].map(ex => ({
+        exercise: ex.name.toUpperCase(),
+        sets: Number(ex.sets),
+        reps: Number(ex.reps),
+        date,
+        gesture_class: getGestureClass(ex)
+      }));
+    });
     try {
-      for (const ex of todayExercises) {
-        await api.post(`/members/${member.id}/assign-task`, { 
-          exercise: ex.name.toUpperCase(),
-          sets: ex.sets,
-          reps: ex.reps 
-        }).catch(() => {});
-      }
-      onShowAlert('Plan Saved', `✅ Weekly routine saved! Today's tasks (${dayName}) have been dispatched to the AI for monitoring.`, 'success');
+      await api.post(`/members/${member.id}/workout-plan`, { tasks });
+      onShowAlert('Plan Saved', `${tasks.length} workout task${tasks.length === 1 ? '' : 's'} synchronized for the next seven days. AI-supported movements will be verified by the Gesture Engine; other tasks remain available for manual verification.`, 'success');
       const res = await api.get(`/members/${member.id}/workouts`);
       setWorkouts(res.data);
-    } catch { onShowAlert('Error', 'Failed to assign workout plan.', 'error'); }
+    } catch (err) {
+      onShowAlert('Error', err.response?.data?.message || 'Failed to assign workout plan.', 'error');
+    }
   };
 
   const handleAddExercise = (ex) => {
@@ -135,7 +203,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   };
 
   const groupedWorkouts = Object.values(workouts.reduce((acc, log) => {
-    const dateStr = new Date(log.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const dateValue = log.date ? new Date(`${log.date}T12:00:00`) : new Date(log.created_at);
+    const dateStr = dateValue.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     if (!acc[dateStr]) acc[dateStr] = { date: dateStr, exercises: [] };
     acc[dateStr].exercises.push(log);
     return acc;
@@ -144,6 +213,15 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const workoutsPerPage = 5;
   const totalWorkoutPages = Math.ceil(groupedWorkouts.length / workoutsPerPage);
   const currentGroupedWorkouts = groupedWorkouts.slice((workoutPage - 1) * workoutsPerPage, workoutPage * workoutsPerPage);
+  const bodyPartOptions = [...new Set(exercisesLib.map(ex => ex.body_part).filter(Boolean))].sort();
+  const matchingExercises = exercisesLib.filter(ex =>
+    (selectedBodyPart === 'all' || ex.body_part === selectedBodyPart) &&
+    [ex.name, ex.target, ex.body_part, ex.equipment]
+      .some(value => value?.toLowerCase().includes(exSearch.trim().toLowerCase()))
+  );
+  const exercisesPerPage = 50;
+  const totalExercisePages = Math.ceil(matchingExercises.length / exercisesPerPage);
+  const currentExercises = matchingExercises.slice((exercisePage - 1) * exercisesPerPage, exercisePage * exercisesPerPage);
 
   const formatTime12h = (time24) => {
     if (!time24) return '';
@@ -163,6 +241,70 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     extendedProps: { logId: log.id, timeIn: formatTime12h(log.time_in) }
   }));
 
+  const [hoveredAttendanceDay, setHoveredAttendanceDay] = useState(null);
+  const attendanceHoverTimeoutRef = React.useRef(null);
+
+  const handleAttendanceMouseMove = (e) => {
+    if (selectedAttendanceDate) return;
+    const dayCell = e.target.closest('.fc-daygrid-day');
+    if (!dayCell) {
+      if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+      attendanceHoverTimeoutRef.current = setTimeout(() => setHoveredAttendanceDay(null), 120);
+      return;
+    }
+    const dateStr = dayCell.getAttribute('data-date');
+    if (!dateStr) return;
+    if (hoveredAttendanceDay?.date === dateStr) return;
+
+    const entries = attendance.filter(log => log.date === dateStr);
+    if (!entries.length) {
+      if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+      setHoveredAttendanceDay(null);
+      return;
+    }
+
+    if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+    const rect = dayCell.getBoundingClientRect();
+    attendanceHoverTimeoutRef.current = setTimeout(() => {
+      setHoveredAttendanceDay({
+        date: dateStr,
+        events: entries.map(log => ({
+          id: log.id,
+          title: 'Gym Attendance Confirmed',
+          color: '#10b981',
+          type: 'attendance',
+          time: `Time in: ${formatTime12h(log.time_in)}`,
+          detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
+        })),
+        rect
+      });
+    }, 80);
+  };
+
+  const handleAttendanceMouseLeave = () => {
+    if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+    attendanceHoverTimeoutRef.current = setTimeout(() => setHoveredAttendanceDay(null), 150);
+  };
+
+  const showAttendanceDay = (date) => {
+    if (!date) return;
+    setHoveredAttendanceDay(null);
+    setSelectedAttendanceDate(date);
+    const entries = attendance.filter(log => log.date === date);
+    if (!entries.length) {
+      setSelectedAttendanceEntries([]);
+      return;
+    }
+    setSelectedAttendanceEntries(entries.map(log => ({
+      id: log.id,
+      title: 'Gym Attendance Confirmed',
+      color: '#10b981',
+      type: 'attendance',
+      time: `Time in: ${formatTime12h(log.time_in)}`,
+      detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
+    })));
+  };
+
   if (!isOpen || !member) return null;
 
   const profileBmi = getBmiInfo(member.height, member.weight);
@@ -180,64 +322,72 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
         <div className="flex flex-col lg:flex-row h-full overflow-y-auto lg:overflow-hidden">
 
           {/* LEFT SIDEBAR */}
-          <div className="w-full lg:w-[32%] bg-gray-50 dark:bg-[#1a1c23] border-r-2 border-gray-300 dark:border-gray-700 p-8 flex flex-col items-center flex-shrink-0 overflow-y-auto">
-            <div className="relative mb-4 group mt-2">
-              {member.profilePicUrl ? (
-                <img src={member.profilePicUrl} alt="Avatar" className="w-36 h-36 rounded-full object-cover border-4 border-white dark:border-gray-600 shadow-lg" />
-              ) : (
-                <div className="w-36 h-36 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-4xl border-4 border-white dark:border-gray-600 shadow-lg">
-                  {getInitials(member.firstName, member.lastName)}
+          <div className="w-full lg:w-[32%] bg-gray-50 dark:bg-[#1a1c23] border-r-2 border-gray-300 dark:border-gray-700 p-4 sm:p-6 lg:p-8 flex flex-col items-center flex-shrink-0 lg:overflow-y-auto">
+            <div className="flex w-full items-center justify-between gap-4 lg:flex-col lg:justify-center lg:gap-0">
+              <div className="flex items-center gap-3 lg:flex-col">
+                <div className="relative group mt-0 lg:mt-2 shrink-0">
+                  {member.profilePicUrl ? (
+                    <img src={member.profilePicUrl} alt="Avatar" className="w-16 h-16 lg:w-36 lg:h-36 rounded-full object-cover border-2 lg:border-4 border-white dark:border-gray-600 shadow-md lg:shadow-lg" />
+                  ) : (
+                    <div className="w-16 h-16 lg:w-36 lg:h-36 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-lg lg:text-4xl border-2 lg:border-4 border-white dark:border-gray-600 shadow-md lg:shadow-lg">
+                      {getInitials(member.firstName, member.lastName)}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-
-            <h2 className="text-2xl font-black text-slate-900 dark:text-gray-300 text-center tracking-tight">{member.firstName} {member.lastName}</h2>
-            <p className="text-amber-600 dark:text-amber-500 font-black uppercase tracking-widest text-xs mt-1 mb-6">{member.plan}</p>
-
-            <div className="w-full space-y-3 mb-6">
-              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                <FiMapPin className="text-amber-500 flex-shrink-0" size={16} />
-                <span className="truncate">{member.address || 'No Address Provided'}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                <FiPhone className="text-amber-500 flex-shrink-0" size={16} />
-                <span>{member.phone}</span>
-              </div>
-            </div>
-
-            {/* Body Metrics */}
-            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-6">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Body Metrics</h4>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">Age</p>
-                  <p className="text-lg font-bold text-slate-800 dark:text-gray-300">{calculateAge(member.dob)}</p>
-                </div>
-                <div className="flex flex-col items-center justify-center">
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">BMI</p>
-                  <p className="text-[17px] font-bold leading-none my-1.5 text-slate-900 dark:text-gray-300 tracking-tighter">{profileBmi.value}</p>
-                  <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border border-solid shadow-sm ${profileBmi.color}`}>{profileBmi.label}</span>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">Height</p>
-                  <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.height || '-'} cm</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold">Weight</p>
-                  <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.weight || '-'} kg</p>
+                <div className="min-w-0 text-left lg:text-center">
+                  <h2 className="text-lg lg:text-2xl font-black text-slate-900 dark:text-gray-300 tracking-tight">{member.firstName} {member.lastName}</h2>
+                  <p className="text-amber-600 dark:text-amber-500 font-black uppercase tracking-widest text-[10px] lg:text-xs mt-0.5 lg:mt-1">{member.plan}</p>
                 </div>
               </div>
             </div>
 
-            {/* Coach Notes */}
-            <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-5 shadow-sm mt-4 mb-4">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Coach Notes</h4>
-              <textarea
-                className="w-full bg-gray-50 dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-slate-800 dark:text-gray-300 transition-colors min-h-[100px]"
-                placeholder="Add Additional Notes here..."
-                value={coachNotes}
-                onChange={(e) => { setCoachNotes(e.target.value); localStorage.setItem(`notes_${member.id}`, e.target.value); }}
-              />
+            {/* Member information, visible on mobile and desktop */}
+            <div className="block w-full mt-4 lg:mt-6 animate-in fade-in">
+              <div className="w-full space-y-3 mb-6">
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+                  <FiMapPin className="text-amber-500 flex-shrink-0" size={16} />
+                  <span className="truncate">{member.address || 'No Address Provided'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+                  <FiPhone className="text-amber-500 flex-shrink-0" size={16} />
+                  <span>{member.phone}</span>
+                </div>
+              </div>
+
+              {/* Body Metrics */}
+              <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-6">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Body Metrics</h4>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">Age</p>
+                    <p className="text-lg font-bold text-slate-800 dark:text-gray-300">{calculateAge(member.dob)}</p>
+                  </div>
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">BMI</p>
+                    <p className="text-[17px] font-bold leading-none my-1.5 text-slate-900 dark:text-gray-300 tracking-tighter">{profileBmi.value}</p>
+                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border border-solid shadow-sm ${profileBmi.color}`}>{profileBmi.label}</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">Height</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.height || '-'} cm</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold">Weight</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.weight || '-'} kg</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coach Notes */}
+              <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-2">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Coach Notes</h4>
+                <textarea
+                  className="w-full bg-gray-50 dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-slate-800 dark:text-gray-300 transition-colors min-h-[90px]"
+                  placeholder="Add Additional Notes here..."
+                  value={coachNotes}
+                  onChange={(e) => { setCoachNotes(e.target.value); localStorage.setItem(`notes_${member.id}`, e.target.value); }}
+                />
+              </div>
             </div>
           </div>
 
@@ -272,23 +422,46 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .dark .fc .fc-button.fc-button-primary.fc-today-button,
                       .fc .fc-button.fc-button-primary.fc-today-button:disabled,
                       .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
-                        background: linear-gradient(to right, #facc15, #f59e0b) !important;
-                        color: #000000 !important; 
-                        border: none !important;
-                        border-radius: 0.75rem !important;
+                        background-color: #0f172a !important;
+                        color: #ffffff !important; 
+                        border: 1px solid #f59e0b !important;
+                        border-radius: 0.5rem !important;
+                        min-height: 38px !important;
                         font-weight: 700 !important;
-                        font-size: 0.875rem !important;
-                        padding: 0.625rem 1.5rem !important;
-                        box-shadow: 0 10px 15px -3px rgba(120, 53, 15, 0.2) !important;
-                        text-transform: uppercase !important;
-                        letter-spacing: 0.025em !important;
+                        font-size: 15px !important;
+                        padding: 8px 14px !important;
+                        box-shadow: none !important;
+                        text-transform: none !important;
+                        letter-spacing: 0 !important;
                         opacity: 1 !important;
                         text-shadow: none !important;
                         margin: 0 4px !important;
                       }
+                      .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled),
+                      .dark .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) {
+                        filter: none !important;
+                      }
+                      .calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { opacity: 1 !important; }
+                      .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #e5e7eb !important; color: #4b5563 !important; opacity: 0.5 !important; }
+                      .dark .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #1e293b !important; color: #9ca3af !important; }
+                      .dark .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { border-color: #f59e0b !important; color: #000 !important; }
+                      .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:disabled { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; border-color: #f59e0b !important; color: #000 !important; }
+                      .mobile-calendar-grid.calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { opacity: 1 !important; }
+                      .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; border-color: #f59e0b !important; color: #000 !important; opacity: 0.5 !important; }
+                      .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button { font-family: ui-sans-serif, system-ui, sans-serif !important; font-size: 15px !important; font-weight: 700 !important; text-transform: none !important; }
+                      @media (min-width: 640px) {
+                        .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button { min-height: 38px !important; padding: 8px 14px !important; margin: 0 4px !important; }
+                      }
                       
                       .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000 !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; transition: all 0.2s !important; margin: 0 4px !important; }
                       .dark .fc .fc-button-primary { background-color: #1e293b !important; border-color: #374151 !important; color: #d1d5db !important; }
+                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #e5e7eb !important; border-color: transparent !important; border-radius: 0.5rem !important; color: #000 !important; padding: .4em .65em !important; }
+                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #e5e7eb !important; border-color: #000 !important; color: #000 !important; }
+                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #4b5563 !important; border-color: transparent !important; color: #d1d5db !important; }
+                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #4b5563 !important; border-color: #d1d5db !important; color: #d1d5db !important; }
+                      .attendance-calendar-nav-button:hover, .attendance-calendar-nav-button:active { border-color: #000 !important; background-color: #e5e7eb !important; color: #000 !important; }
+                      .dark .attendance-calendar-nav-button { background-color: #4b5563 !important; border-color: transparent !important; color: #d1d5db !important; }
+                      .dark .attendance-calendar-nav-button:hover, .dark .attendance-calendar-nav-button:active { border-color: #d1d5db !important; background-color: #4b5563 !important; color: #d1d5db !important; }
                       
                       .fc-scrollgrid { border: none !important; }
                       .fc-theme-standard th, .fc-theme-standard td { border: none !important; border-bottom: 1px solid var(--fc-border-color) !important; }
@@ -308,37 +481,92 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       
                       .fc-event-main { 
                         width: 100%; 
-                        white-space: normal !important; 
-                        overflow: visible !important;   
+                        white-space: nowrap !important; 
+                        overflow: hidden !important;   
+                        text-overflow: ellipsis !important;
                       }
                       /* Hide the calendar scrollbar */
                       .fc-scroller { overflow: hidden !important; }
                     `}</style>
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="mb-3 sm:hidden">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="min-w-0 flex-1 truncate text-left text-sm font-black uppercase tracking-wide text-slate-900 dark:text-gray-300">
+                          {attendanceCalendarTitle}
+                        </h3>
+                        <div className="flex items-center gap-0 shrink-0">
+                          <button
+                            onClick={() => attendanceCalendarRef.current?.getApi().prev()}
+                            aria-label="Previous month"
+                            className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-[#e5e7eb] text-black shadow-sm transition-colors active:scale-95"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            onClick={() => attendanceCalendarRef.current?.getApi().next()}
+                            aria-label="Next month"
+                            className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-[#e5e7eb] text-black shadow-sm transition-colors active:scale-95"
+                          >
+                            ›
+                          </button>
+                          <button
+                            onClick={() => attendanceCalendarRef.current?.getApi().today()}
+                            aria-label="Today"
+                            className={`mx-1 flex min-h-[38px] shrink-0 items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 text-[15px] font-sans font-bold normal-case text-black shadow-sm transition-colors active:scale-95 ${isCurrentMonth ? 'opacity-100' : 'opacity-50'}`}
+                          >
+                            Today
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div 
+                      onMouseMove={handleAttendanceMouseMove}
+                      onMouseLeave={handleAttendanceMouseLeave}
+                      className={`mobile-calendar-grid min-w-0 ${isCurrentMonth ? 'calendar-current-month' : 'calendar-other-month'}`}
+                    >
                       <FullCalendar
-                        plugins={[dayGridPlugin, interactionPlugin]}
+                        ref={attendanceCalendarRef}
+                        plugins={[dayGridPlugin, listPlugin, interactionPlugin]}
                         initialView="dayGridMonth"
+                        buttonText={{ today: 'Today' }}
                         events={attendanceEvents}
-                        height="auto" 
+                        height="auto"
+                        datesSet={(dateInfo) => {
+                          setAttendanceCalendarTitle(dateInfo.view.title);
+                          handleDatesSet(dateInfo);
+                        }}
+                        dayHeaderContent={(headerInfo) => window.innerWidth < 640 ? headerInfo.text.charAt(0) : headerInfo.text}
                         headerToolbar={{ left: 'prev,next', center: 'title', right: 'today' }}
-                        dateClick={(info) => {
-                          console.log('Clicked to add manual attendance on:', info.dateStr);
-                        }}
-                        eventClick={(info) => {
-                          console.log('Clicked to edit/delete log ID:', info.event.extendedProps.logId);
-                        }}
+                        dateClick={info => showAttendanceDay(info.dateStr)}
+                        eventClick={info => showAttendanceDay(info.event.startStr.slice(0, 10))}
                         eventContent={(eventInfo) => (
-                          <div className="flex items-center gap-1 w-full px-1">
-                            <svg className="w-3.5 h-3.5 text-[#11a839] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-slate-600 dark:text-slate-300 font-bold text-[11px] leading-tight flex-1">
-                              Time In <span className="font-medium opacity-80 whitespace-nowrap">({eventInfo.event.extendedProps.timeIn})</span>
+                          <div className="flex items-center justify-center sm:justify-start gap-1 w-full px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-500/30 overflow-hidden shadow-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="text-[10px] font-bold truncate">
+                              <span className="hidden sm:inline">Time In: </span>
+                              {eventInfo.event.extendedProps.timeIn}
                             </span>
                           </div>
                         )}
                       />
                     </div>
+                    <MobileCalendarDaySheet
+                      date={selectedAttendanceDate}
+                      events={selectedAttendanceEntries}
+                      onClose={() => setSelectedAttendanceDate(null)}
+                      emptyMessage="No attendance logs recorded for this day."
+                    />
+                    <CalendarHoverPopover
+                      data={selectedAttendanceDate ? null : hoveredAttendanceDay}
+                      onClose={() => setHoveredAttendanceDay(null)}
+                      onClick={(date) => {
+                        setHoveredAttendanceDay(null);
+                        showAttendanceDay(date);
+                      }}
+                      onMouseEnter={() => {
+                        if (attendanceHoverTimeoutRef.current) clearTimeout(attendanceHoverTimeoutRef.current);
+                      }}
+                      onMouseLeave={handleAttendanceMouseLeave}
+                    />
                   </div>
                 </div>
               )}
@@ -349,9 +577,9 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                   {totalWorkoutPages > 1 && (
                     <div className="flex justify-end flex-shrink-0">
                       <div className="flex items-center gap-2 bg-white dark:bg-[#1a1c23] border border-gray-300 dark:border-gray-700 rounded-lg p-1 shadow-sm">
-                        <button onClick={() => setWorkoutPage(p => Math.max(1, p - 1))} disabled={workoutPage === 1} className="p-1 text-slate-500 hover:text-amber-500 disabled:opacity-30"><FiChevronLeft size={16} /></button>
+                        <button onClick={() => setWorkoutPage(p => Math.max(1, p - 1))} disabled={workoutPage === 1} className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 text-white disabled:opacity-30"><FiChevronLeft size={16} /></button>
                         <span className="text-[10px] font-bold text-slate-600 dark:text-gray-300">Page {workoutPage} of {totalWorkoutPages}</span>
-                        <button onClick={() => setWorkoutPage(p => Math.min(totalWorkoutPages, p + 1))} disabled={workoutPage === totalWorkoutPages} className="p-1 text-slate-500 hover:text-amber-500 disabled:opacity-30"><FiChevronRight size={16} /></button>
+                        <button onClick={() => setWorkoutPage(p => Math.min(totalWorkoutPages, p + 1))} disabled={workoutPage === totalWorkoutPages} className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 text-white disabled:opacity-30"><FiChevronRight size={16} /></button>
                       </div>
                     </div>
                   )}
@@ -381,9 +609,12 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">INCOMPLETE</span>;
                           } else {
                             const hasPending = group.exercises.some(log => getTaskStatus(log) === 'PENDING');
+                            const hasScheduled = group.exercises.some(log => getTaskStatus(log) === 'SCHEDULED');
                             groupBadge = hasPending
                               ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">PENDING</span>
-                              : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-red-50 text-red-700 border border-red-500/30 dark:bg-red-500/10 dark:text-red-400">MISSED</span>;
+                              : hasScheduled
+                                ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">SCHEDULED</span>
+                                : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-red-50 text-red-700 border border-red-500/30 dark:bg-red-500/10 dark:text-red-400">MISSED</span>;
                           }
 
                           return (
@@ -405,23 +636,39 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                       {group.exercises.map(log => {
                                         const taskStatus = getTaskStatus(log);
                                         const exName = log.exercise.replace('ASSIGNED: ', '');
-                                        const timeFormatted = new Date(log.created_at).toLocaleTimeString('en-US', { timeStyle: 'short' });
+                                        const exercise = exercisesLib.find(item => item.name.toUpperCase() === exName.toUpperCase());
+                                        const timeFormatted = taskStatus === 'SCHEDULED'
+                                          ? new Date(`${log.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                          : new Date(log.created_at).toLocaleTimeString('en-US', { timeStyle: 'short' });
                                         const badgeClass = taskStatus === 'VERIFIED'
-                                          ? 'bg-white border-green-200 text-green-700 dark:bg-[#252830] dark:border-green-500/50 dark:text-green-400'
+                                          ? 'bg-white border-emerald-200 text-emerald-800 dark:bg-[#252830] dark:border-emerald-500/40 dark:text-emerald-300'
                                           : taskStatus === 'PENDING'
                                             ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400'
-                                            : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400';
+                                            : taskStatus === 'SCHEDULED'
+                                              ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400'
+                                              : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400';
                                         return (
-                                          <div key={log.id} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider border shadow-sm ${badgeClass}`}>
-                                            <span>{exName}</span>
-                                            <span className="opacity-60 font-medium ml-0.5 border-l pl-1.5 border-current">({timeFormatted})</span>
-                                            {taskStatus === 'PENDING' && (
-                                              hasFaceIdToday
-                                                ? <button onClick={() => handleManualVerify(log.id)} className="ml-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-0.5 rounded text-[9px] transition-colors active:scale-95 shadow-sm">VERIFY</button>
-                                                : <span className="ml-1 opacity-50 cursor-not-allowed" title="Locked: No Face ID Today"><FiLock size={12} /></span>
-                                            )}
-                                            {taskStatus === 'MISSED' && <span className="ml-1.5 px-1.5 py-0.5 bg-red-100 dark:bg-red-500/20 rounded text-[9px]">MISSED</span>}
-                                            {taskStatus === 'VERIFIED' && <span className="ml-1.5 px-1.5 py-0.5 bg-green-100 dark:bg-green-500/20 rounded text-[9px]">VERIFIED</span>}
+                                          <div key={log.id} className={`flex items-center gap-3 w-full sm:w-[calc(50%-0.5rem)] xl:w-[calc(33.333%-0.55rem)] min-w-0 rounded-xl border p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${badgeClass}`}>
+                                            <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-[#1a1c23] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                              <FiActivity className="text-slate-400 dark:text-slate-500" size={19} />
+                                              {getExerciseMediaUrl(exercise) && <img src={getExerciseMediaUrl(exercise)} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
+                                                if (exercise?.image && event.currentTarget.dataset.fallback !== 'true') {
+                                                  event.currentTarget.dataset.fallback = 'true';
+                                                  event.currentTarget.src = getExerciseMediaUrl(exercise, 'image');
+                                                } else event.currentTarget.style.display = 'none';
+                                              }} />}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="font-bold text-xs truncate">{formatExerciseName(exName)}</p>
+                                              <p className="text-[10px] opacity-70 mt-0.5">{timeFormatted}</p>
+                                              {log.sets && log.reps && <p className="text-[10px] font-bold mt-1">{log.sets} sets x {log.reps} reps</p>}
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                              {taskStatus === 'PENDING' && (hasFaceIdToday
+                                                ? <button onClick={() => handleManualVerify(log.id)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded-md text-[9px] font-bold transition-colors active:scale-95 shadow-sm">VERIFY</button>
+                                                : <span className="opacity-50" title="Locked: No Face ID Today"><FiLock size={12} /></span>)}
+                                              {taskStatus !== 'PENDING' && <span className="text-[8px] font-bold uppercase tracking-wide">{taskStatus}</span>}
+                                            </div>
                                           </div>
                                         );
                                       })}
@@ -440,24 +687,84 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
               {/* COACH PLAN */}
               {activeTab === 'plan' && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 h-full relative min-h-0">
-                  <div className="absolute inset-0 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row overflow-hidden">
+                <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-[580px] lg:min-h-0 relative">
+                  {/* Mobile Sub-Navigation Switcher */}
+                  <div className="mb-2 grid w-full grid-cols-2 rounded-xl border border-gray-300 bg-gray-100 p-1 shadow-sm sm:hidden dark:border-[#393e4f] dark:bg-[#191b22]">
+                    <button
+                      onClick={() => setMobileCoachView('library')}
+                      aria-pressed={mobileCoachView === 'library'}
+                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'library' ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-300 dark:hover:bg-[#252833]'}`}
+                    >
+                      Browse Exercises
+                    </button>
+                    <button
+                      onClick={() => setMobileCoachView('routine')}
+                      aria-pressed={mobileCoachView === 'routine'}
+                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'routine' ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-300 dark:hover:bg-[#252833]'}`}
+                    >
+                      Weekly Routine ({activeDay.slice(0, 3)})
+                    </button>
+                  </div>
+
+                  <div className="lg:absolute lg:inset-0 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row flex-1 overflow-y-auto sm:overflow-hidden min-h-[520px] lg:min-h-0">
                     
                     {/* Exercise Library */}
-                    <div className="w-full sm:w-1/2 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 h-full">
-                      <div className="p-3 border-b border-gray-300 dark:border-gray-700 flex-shrink-0">
-                        <input type="text" placeholder="Search Exercise Library..." value={exSearch} onChange={e => setExSearch(e.target.value)} className="w-full p-2 text-xs bg-white dark:bg-[#252830] border border-gray-300 dark:border-gray-700 rounded outline-none text-slate-800 dark:text-gray-300 font-medium shadow-sm" />
+                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 sm:min-h-0 ${mobileCoachView === 'library' ? 'flex flex-1' : 'hidden sm:flex'}`}>
+                      <div className="p-3 border-b border-gray-300 dark:border-[#393e4f] flex-shrink-0 bg-white dark:bg-[#252833]">
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            placeholder="Search name, muscle, or equipment..." 
+                            value={exSearch} 
+                            onChange={e => { setExSearch(e.target.value); setExercisePage(1); }} 
+                            className="w-full pl-3 pr-8 py-2 text-xs bg-gray-50 dark:bg-[#191b22] border border-gray-300 dark:border-[#393e4f] rounded-lg outline-none text-slate-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium shadow-sm focus:ring-1 focus:ring-amber-500" 
+                          />
+                          {exSearch && (
+                            <button onClick={() => { setExSearch(''); setExercisePage(1); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white">
+                              <FiX size={12} />
+                            </button>
+                          )}
+                        </div>
+                        <label className="block mt-2">
+                          <span className="sr-only">Filter exercises by body part</span>
+                          <select 
+                            value={selectedBodyPart} 
+                            onChange={e => { setSelectedBodyPart(e.target.value); setExercisePage(1); }} 
+                            className="w-full p-2 text-xs bg-gray-50 dark:bg-[#191b22] border border-gray-300 dark:border-[#393e4f] rounded-lg outline-none text-slate-800 dark:text-gray-100 font-medium shadow-sm focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                          >
+                            <option value="all">All body parts</option>
+                            {bodyPartOptions.map(bodyPart => <option key={bodyPart} value={bodyPart}>{formatExerciseName(bodyPart)}</option>)}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 flex-shrink-0">
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-gray-400">
+                          {matchingExercises.length === 0 ? 'No matching exercises' : `Showing ${(exercisePage - 1) * exercisesPerPage + 1}-${Math.min(exercisePage * exercisesPerPage, matchingExercises.length)} of ${matchingExercises.length}`}
+                        </span>
+                        {totalExercisePages > 1 && <div className="flex items-center gap-1">
+                          <button onClick={() => setExercisePage(page => Math.max(1, page - 1))} disabled={exercisePage === 1} aria-label="Previous exercise page" className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30"><FiChevronLeft size={15} /></button>
+                          <span className="text-[10px] font-bold text-slate-600 dark:text-gray-300 tabular-nums">{exercisePage}/{totalExercisePages}</span>
+                          <button onClick={() => setExercisePage(page => Math.min(totalExercisePages, page + 1))} disabled={exercisePage === totalExercisePages} aria-label="Next exercise page" className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30"><FiChevronRight size={15} /></button>
+                        </div>}
                       </div>
                       <div className="p-3 flex-1 overflow-y-auto space-y-2">
-                        {exercisesLib.filter(ex => ex.name.toLowerCase().includes(exSearch.toLowerCase())).slice(0, 50).map(ex => {
-                          const exId = String(ex.id).padStart(4, '0');
+                        {currentExercises.map(ex => {
                           return (
-                            <div key={ex.id} className="flex items-center bg-white dark:bg-[#1a1c23] p-2 rounded-lg border border-gray-300 dark:border-gray-700 shadow-sm group">
-                              <img src={`/dataset/videos/${exId}.gif`} alt={ex.name} className="w-12 h-12 rounded object-cover flex-shrink-0 bg-gray-100 dark:bg-black" loading="lazy" onError={e => { e.target.onerror = null; e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" fill="%23f1f5f9" rx="4"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="8" fill="%2394a3b8" font-weight="bold">NO PREVIEW</text></svg>'; }} />
-                              <div className="flex-1 min-w-0 px-3">
-                                <span className="font-bold text-[11px] text-slate-800 dark:text-gray-200 truncate block">{ex.name.toUpperCase()}</span>
+                            <div key={ex.id} className="flex items-center bg-white dark:bg-[#252830] p-2 rounded-lg border border-slate-200 dark:border-gray-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md group">
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-[#1a1c23] flex items-center justify-center">
+                                <FiActivity className="text-slate-400 dark:text-slate-500" size={19} />
+                                {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
+                                  if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
+                                    event.currentTarget.dataset.fallback = 'true';
+                                    event.currentTarget.src = getExerciseMediaUrl(ex, 'image');
+                                  } else event.currentTarget.style.display = 'none';
+                                }} />}
                               </div>
-                              <button onClick={() => handleAddExercise(ex)} className="w-8 h-8 flex items-center justify-center bg-amber-100 text-amber-700 hover:bg-amber-500 hover:text-white rounded-lg font-black transition-colors flex-shrink-0">+</button>
+                              <div className="flex-1 min-w-0 px-3">
+                                <span className="font-bold text-xs text-slate-800 dark:text-gray-100 truncate block">{formatExerciseName(ex.name)}</span>
+                                <span className="text-[10px] text-slate-500 dark:text-gray-400 capitalize truncate block mt-0.5">{ex.target || ex.body_part} · {ex.equipment}</span>
+                              </div>
+                              <button onClick={() => handleAddExercise(ex)} aria-label={`Add ${ex.name} to ${activeDay}`} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 font-semibold text-black shadow-sm transition-all hover:brightness-105 active:scale-95">+</button>
                             </div>
                           );
                         })}
@@ -465,10 +772,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     </div>
 
                     {/* Selected Routine */}
-                    <div className="w-full sm:w-1/2 flex flex-col bg-white dark:bg-[#252830] h-full">
+                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col bg-white dark:bg-[#252830] sm:min-h-0 ${mobileCoachView === 'routine' ? 'flex flex-1' : 'hidden sm:flex'}`}>
                       <div className="flex w-full overflow-x-auto border-b border-gray-300 dark:border-gray-700 flex-shrink-0 bg-gray-50 dark:bg-[#1a1c23]/50">
                         {daysOfWeek.map(day => (
-                          <button key={day} onClick={() => setActiveDay(day)} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${activeDay === day ? 'border-amber-500 text-amber-600 dark:text-amber-500 bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
+                          <button key={day} onClick={() => setActiveDay(day)} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${activeDay === day ? 'border-[#d9a84a] text-[#d9a84a] bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
                             {day.substring(0, 3)}
                           </button>
                         ))}
@@ -478,35 +785,49 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         {weeklyRoutine[activeDay].length === 0
                           ? <p className="text-xs text-center text-gray-400 mt-6 font-medium">No exercises assigned for {activeDay}</p>
                           : weeklyRoutine[activeDay].map((ex, i) => (
-                            <div key={i} className="flex flex-col bg-amber-50 dark:bg-amber-500/10 p-3 rounded-lg border border-amber-100 dark:border-amber-500/30 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                            <div key={i} className="flex flex-col bg-white dark:bg-[#252830] p-3 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md animate-in fade-in zoom-in-95 duration-200">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <img src={`/dataset/videos/${String(ex.id).padStart(4, '0')}.gif`} className="w-10 h-10 rounded border border-amber-200 dark:border-amber-500/30 object-cover flex-shrink-0" onError={e => { e.target.onerror = null; e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="%23fcd34d" rx="4"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="8" fill="%2378350f" font-weight="bold">NA</text></svg>'; }} alt={ex.name} />
-                                  <span className="font-bold text-xs text-amber-900 dark:text-amber-400 truncate block">{ex.name.toUpperCase()}</span>
+                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-[#1a1c23] flex items-center justify-center">
+                                    <FiActivity className="text-slate-400 dark:text-slate-500" size={16} />
+                                    {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
+                                      if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
+                                        event.currentTarget.dataset.fallback = 'true';
+                                        event.currentTarget.src = getExerciseMediaUrl(ex, 'image');
+                                      } else event.currentTarget.style.display = 'none';
+                                    }} />}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-xs text-slate-800 dark:text-gray-100 truncate block">{formatExerciseName(ex.name)}</span>
+                                    <span className="text-[10px] text-slate-500 dark:text-gray-400">{ex.sets} sets x {ex.reps} reps</span>
+                                    <span className={`text-[9px] font-semibold block mt-0.5 ${getGestureClass(ex) ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                                      {getGestureClass(ex) ? `AI tracks ${getGestureClass(ex)}` : 'Manual verification'}
+                                    </span>
+                                  </div>
                                 </div>
-                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} className="text-[10px] text-red-500 hover:text-red-700 font-black px-2 py-1 bg-red-100/50 dark:bg-red-500/10 hover:bg-red-200 dark:hover:bg-red-500/30 rounded transition-colors flex-shrink-0">X</button>
+                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="text-[10px] text-red-600 dark:text-red-400 hover:text-white font-black px-2 py-1 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 rounded-md transition-colors flex-shrink-0">X</button>
                               </div>
                               
                               {/* --- REPS & SETS INPUTS --- */}
                               <div className="flex items-center gap-4 mt-3 pl-[3.25rem]">
-                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-500">
+                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-gray-300">
                                   Sets: 
                                   <input 
                                     type="number" 
                                     min="1" 
                                     value={ex.sets || ''} 
                                     onChange={(e) => updateExerciseDetail(i, 'sets', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded bg-white dark:bg-[#1a1c23] border border-amber-200 dark:border-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-black dark:text-gray-200 shadow-sm text-center" 
+                                    className="w-14 px-2 py-1 rounded-md bg-slate-50 dark:bg-[#1a1c23] border border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-900 dark:text-gray-100 shadow-sm text-center"
                                   />
                                 </label>
-                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-amber-500">
+                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-gray-300">
                                   Reps: 
                                   <input 
                                     type="number" 
                                     min="1" 
                                     value={ex.reps || ''} 
                                     onChange={(e) => updateExerciseDetail(i, 'reps', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded bg-white dark:bg-[#1a1c23] border border-amber-200 dark:border-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500 text-black dark:text-gray-200 shadow-sm text-center" 
+                                    className="w-14 px-2 py-1 rounded-md bg-slate-50 dark:bg-[#1a1c23] border border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-900 dark:text-gray-100 shadow-sm text-center"
                                   />
                                 </label>
                               </div>
@@ -516,7 +837,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       </div>
 
                       <div className="p-3 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#1a1c23]/50 flex-shrink-0">
-                        <button onClick={handleAssignWeeklyPlan} className="w-full py-2.5 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black font-bold uppercase tracking-widest text-[10px] rounded-lg shadow-md active:scale-95 transition-all">
+                        <button onClick={handleAssignWeeklyPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95">
                           Save Weekly Plan
                         </button>
                       </div>
