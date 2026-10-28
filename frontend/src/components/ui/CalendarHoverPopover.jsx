@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { 
-  FiCalendar, FiClock, FiMapPin, FiExternalLink, 
-  FiUser, FiAward, FiCheckCircle 
+import {
+  FiCalendar, FiClock, FiMapPin, FiExternalLink,
+  FiUser, FiAward, FiCheckCircle
 } from 'react-icons/fi';
 
-export default function CalendarHoverPopover({ data, onClose, onClick, onMouseEnter, onMouseLeave }) {
+export default function CalendarHoverPopover({ data, onClick, onMouseEnter, onMouseLeave }) {
   const popoverRef = useRef(null);
   const [coords, setCoords] = useState({ top: 0, left: 0, placement: 'bottom' });
 
@@ -44,20 +44,20 @@ export default function CalendarHoverPopover({ data, onClose, onClick, onMouseEn
       return {
         label: 'Attendance',
         icon: <FiCheckCircle size={10} />,
-        classes: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+        classes: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300 border-emerald-200 dark:border-emerald-400/30'
       };
     }
     if (type === 'coach') {
       return {
-        label: 'Coach Event',
+        label: event.category || 'Coach Event',
         icon: <FiAward size={10} />,
-        classes: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+        classes: 'bg-slate-100 text-black dark:bg-white/[.06] dark:text-gray-300 border-slate-200 dark:border-[#393e4f]'
       };
     }
     return {
       label: 'Membership',
       icon: <FiUser size={10} />,
-      classes: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+      classes: 'bg-slate-100 text-black dark:bg-white/[.06] dark:text-gray-300 border-slate-200 dark:border-[#393e4f]'
     };
   };
 
@@ -76,33 +76,28 @@ export default function CalendarHoverPopover({ data, onClose, onClick, onMouseEn
         e.stopPropagation();
         if (onClick) onClick(data.date);
       }}
-      className="w-[310px] rounded-2xl bg-white/95 dark:bg-[#191b22]/95 backdrop-blur-xl p-4 shadow-2xl border border-slate-200/80 dark:border-[#393e4f] text-slate-900 dark:text-gray-100 animate-in fade-in zoom-in-95 duration-150 cursor-pointer pointer-events-auto transition-all hover:border-amber-500/60"
+      className="w-[310px] rounded-2xl border-2 border-gray-300 bg-white/95 p-4 text-slate-900 shadow-sm backdrop-blur-xl transition-all duration-150 animate-in fade-in zoom-in-95 cursor-pointer pointer-events-auto dark:border-gray-600 dark:bg-[#191b22]/95 dark:text-gray-100"
     >
       {/* Header with Mini Date Block */}
-      <div className="flex items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-100 dark:border-[#252833]">
+      <div className="flex items-center justify-between gap-3 pb-3 mb-3 border-b-2 border-gray-300 dark:border-gray-600">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-slate-50 dark:bg-[#252833] border border-amber-500/40 text-center shrink-0">
-            <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 leading-none">
+          <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-slate-50 dark:bg-[#252833] border-2 border-gray-300 dark:border-gray-600 text-center shrink-0 shadow-sm">
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-black dark:text-gray-300 leading-none">
               {monthShort}
             </span>
-            <span className="text-sm font-black text-slate-900 dark:text-white leading-none mt-0.5">
+            <span className="text-sm font-semibold text-slate-900 dark:text-gray-300 leading-none mt-0.5">
               {dayNum}
             </span>
           </div>
           <div className="min-w-0">
-            <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+            <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">
               {weekdayName}, {fullDateFormatted}
             </h4>
-            <p className="text-[10px] text-slate-500 dark:text-[#6d758d] font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+            <p className="text-[10px] text-slate-700 dark:text-gray-300 font-medium flex items-center gap-1">
               <span>{data.events.length} {data.events.length === 1 ? 'Scheduled Event' : 'Scheduled Events'}</span>
             </p>
           </div>
         </div>
-
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-500/30 shrink-0">
-          View
-        </span>
       </div>
 
       {/* Events List */}
@@ -110,45 +105,57 @@ export default function CalendarHoverPopover({ data, onClose, onClick, onMouseEn
         {data.events.map((ev, idx) => {
           const badge = getEventBadge(ev);
           const accentColor = ev.color || '#f59e0b';
+          const badgeStyle = ev.type === 'coach' || ev.type === 'sub' ? {
+            backgroundColor: `color-mix(in srgb, ${accentColor} 14%, transparent)`,
+            borderColor: `color-mix(in srgb, ${accentColor} 50%, transparent)`,
+          } : undefined;
 
           return (
             <div
               key={ev.id || idx}
-              className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#252833]/70 border border-slate-200/60 dark:border-[#393e4f]/60 flex flex-col gap-1 transition-all hover:border-amber-500/40 hover:bg-slate-100/80 dark:hover:bg-[#252833]"
+              className={`flex min-w-0 flex-col gap-1 rounded-xl border-2 border-gray-300 bg-slate-50/80 p-2.5 transition-all hover:bg-slate-100/80 dark:border-gray-600 dark:bg-[#252833]/70 dark:hover:bg-[#252833] ${ev.type === 'attendance' ? 'border-emerald-200/80 bg-emerald-50/40 hover:bg-emerald-50/70 dark:border-emerald-500/20 dark:bg-emerald-500/[.04] dark:hover:bg-emerald-500/[.08]' : ''}`}
+              style={{
+                borderLeft: ev.type === 'coach' || ev.type === 'sub'
+                  ? `4px solid ${accentColor}`
+                  : ev.type === 'attendance' ? '4px solid #10b981' : undefined
+              }}
             >
               <div className="flex items-center justify-between gap-1.5">
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${badge.classes}`}>
+                <span style={badgeStyle} className={`inline-flex min-w-0 items-center gap-1 truncate rounded-md border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide ${badge.classes}`}>
                   {badge.icon}
                   {badge.label}
                 </span>
-                <span 
-                  className="w-2 h-2 rounded-full shrink-0" 
-                  style={{ backgroundColor: accentColor }} 
-                />
               </div>
 
-              <span className="text-xs font-extrabold text-slate-900 dark:text-gray-100 truncate mt-0.5">
+              <span className="text-xs font-semibold text-slate-900 dark:text-gray-100 truncate mt-0.5">
                 {ev.title}
               </span>
 
               {ev.detail && (
-                <p className="text-[10px] text-slate-500 dark:text-[#6d758d] font-medium truncate">
+                <p className="text-[10px] text-black dark:text-gray-300 font-medium truncate">
                   {ev.detail}
                 </p>
               )}
 
+              {ev.type === 'sub' && ev.startDate && ev.endDate && (
+                <span className="flex items-center gap-1 font-medium text-black dark:text-gray-300 text-[10px]">
+                  <FiCalendar size={10} />
+                  {formatDateRange(ev.startDate, ev.endDate)}
+                </span>
+              )}
+
               {(ev.time || ev.location) && (
-                <div className="flex items-center gap-2 text-[10px] text-slate-600 dark:text-gray-300 pt-0.5">
+                <div className="flex items-center gap-2 text-[10px] text-black dark:text-gray-300 pt-0.5">
                   {ev.time && (
-                    <span className="flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
-                      <FiClock size={10} />
+                    <span className={`flex items-center gap-1 font-medium ${ev.type === 'attendance' ? 'text-emerald-800 dark:text-emerald-300' : 'text-black dark:text-gray-300'}`}>
+                      <FiClock className={ev.type === 'attendance' ? 'text-emerald-600 dark:text-emerald-300' : ''} size={10} />
                       {ev.time}
                     </span>
                   )}
                   {ev.location && (
-                    <span className="flex items-center gap-1 truncate text-slate-400 dark:text-gray-400">
+                    <span className="flex min-w-0 items-center gap-1 truncate text-black dark:text-gray-300">
                       <FiMapPin size={10} />
-                      {ev.location}
+                      <span className="truncate">{ev.location}</span>
                     </span>
                   )}
                 </div>
@@ -159,13 +166,21 @@ export default function CalendarHoverPopover({ data, onClose, onClick, onMouseEn
       </div>
 
       {/* Footer hint */}
-      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-[#252833] flex items-center justify-between text-[10px] font-medium text-slate-400 dark:text-[#6d758d]">
+      <div className="mt-3 pt-2.5 border-t-2 border-gray-300 dark:border-gray-600 flex items-center justify-between text-[10px] font-medium text-slate-700 dark:text-gray-300">
         <span>Click day to open full sheet</span>
-        <div className="flex items-center gap-1 text-amber-500 font-bold">
+        <div className="flex items-center gap-1 font-semibold text-black dark:text-gray-300">
           <span>Details</span>
           <FiExternalLink size={11} />
         </div>
       </div>
     </div>
   );
+}
+
+function formatDateRange(startDate, endDate) {
+  const formatDate = value => new Date(`${value}T12:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }

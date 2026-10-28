@@ -27,6 +27,13 @@ Other Part Of Camera
     .\venv\Scripts\activate
     python collect_data.py
 
+CP Camera IP Cam
+    cd "Gesture Engine"
+    Set-Location "C:\Users\THUNDEROBOT\OneDrive\Desktop\gym2\Gesture Engine"
+    $env:PHONE_CAMERA_URL = 'rtsp://admin:123456789@192.168.1.55:8554/live'
+    $env:CAMERA_SOURCE = 'phone'
+    .\venv\Scripts\python.exe main.py
+
 Virtual Box
     cd "C:\Users\THUNDEROBOT\OneDrive\Desktop\gym"
     python -m http.server 8001

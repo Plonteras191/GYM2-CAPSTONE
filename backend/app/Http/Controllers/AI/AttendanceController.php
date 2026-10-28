@@ -61,7 +61,7 @@ class AttendanceController extends Controller
      */
     public function getTodayAttendance()
     {
-        return Attendance::with('member:id,first_name,last_name')
+        return Attendance::with('member:id,first_name,last_name,profile_pic,enrolled_face_id')
             ->where('date', Carbon::now()->toDateString())
             ->orderBy('time_in', 'desc')
             ->get();

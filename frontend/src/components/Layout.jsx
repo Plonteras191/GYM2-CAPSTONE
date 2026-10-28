@@ -13,11 +13,11 @@ import { useSystemLogo } from '../hooks/useSystemLogo';
 const getPageTitle = (path) => {
     switch (path.toLowerCase()) {
       case '/overview': return 'Overview';
-      case '/members': return 'Member Directory';
-      case '/subscriptions': return 'Subscriptions';
+      case '/members': return 'Member Registration';
+      case '/subscriptions': return 'Packages';
       case '/transactions': return 'Transactions';
       case '/reports': return 'System Reports';
-      case '/security': return 'Security Monitor';
+      case '/security': return 'Attendance Monitor';
       case '/gesture': return 'Gesture Monitor';
       case '/profile': return 'Admin Profile';
       default: return 'Admin Dashboard';
@@ -60,38 +60,35 @@ export default function Layout() {
       const res = await api.get('/notifications');
       let combinedAlerts = Array.isArray(res.data) ? [...res.data] : [];
 
-      // ── Special Days / Events from localStorage ('coach_events') ──
+      // ── Upcoming coach events ──
       try {
-        const savedEvents = localStorage.getItem('coach_events');
-        if (savedEvents) {
-          const events = JSON.parse(savedEvents);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+        const eventsResponse = await api.get('/coach-events');
+        const events = Array.isArray(eventsResponse.data) ? eventsResponse.data : [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-          events.forEach((ev) => {
-            if (!ev.start_date) return;
-            const evDate = new Date(ev.start_date);
-            evDate.setHours(0, 0, 0, 0);
-            const diffTime = evDate.getTime() - today.getTime();
-            const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        events.forEach((event) => {
+          if (!event.start_date) return;
+          const eventDate = new Date(event.start_date);
+          eventDate.setHours(0, 0, 0, 0);
+          const diffTime = eventDate.getTime() - today.getTime();
+          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Alert for events today or within 7 days
-            if (daysLeft >= 0 && daysLeft <= 7) {
-              combinedAlerts.push({
-                id: `event_${ev.id || ev.title}_${ev.start_date}`,
-                type: 'event',
-                member_name: ev.title || 'Special Event',
-                message: daysLeft === 0
-                  ? 'Special Gym Event is scheduled for TODAY!'
-                  : `Upcoming special event in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${ev.start_date}).`,
-                days_left: daysLeft,
-                link: '/subscriptions'
-              });
-            }
-          });
-        }
+          if (daysLeft >= 0 && daysLeft <= 7) {
+            combinedAlerts.push({
+              id: `event_${event.id}_${event.start_date}`,
+              type: 'event',
+              member_name: event.title || 'Special Event',
+              message: daysLeft === 0
+                ? 'Special Gym Event is scheduled for TODAY!'
+                : `Upcoming special event in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${event.start_date}).`,
+              days_left: daysLeft,
+              link: '/subscriptions'
+            });
+          }
+        });
       } catch (err) {
-        console.error("Error parsing coach events for notifications", err);
+        console.error("Failed to fetch coach events for notifications", err);
       }
 
       // ── Login Devices Alert ──
@@ -194,8 +191,8 @@ export default function Layout() {
       title: 'Main',
       items: [
         { name: 'Overview', path: '/overview', icon: <FiHome /> },
-        { name: 'Member Directory', path: '/members', icon: <FiUsers /> },
-        { name: 'Subscriptions', path: '/subscriptions', icon: <FiCheckSquare /> },
+        { name: 'Member Registration', path: '/members', icon: <FiUsers /> },
+        { name: 'Packages', path: '/subscriptions', icon: <FiCheckSquare /> },
         { name: 'Transactions', path: '/transactions', icon: <FiCreditCard /> },
         { name: 'Reports', path: '/reports', icon: <FiFileText /> },
       ]
@@ -203,7 +200,7 @@ export default function Layout() {
     {
       title: 'Monitoring',
       items: [
-        { name: 'Security Monitor', path: '/security', icon: <FiShield /> },
+        { name: 'Attendance Monitor', path: '/security', icon: <FiShield /> },
         { name: 'Gesture Monitor', path: '/gesture', icon: <FiCamera /> },
       ]
     }

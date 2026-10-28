@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useMembers } from '../features/members/hooks/useMembers';
 import MemberTable from '../features/members/components/MemberTable';
 import MemberFormModal from '../features/members/components/MemberFormModal';
@@ -7,6 +8,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
 
 export default function Members() {
+  const location = useLocation();
   const {
     filteredMembers,
     isLoading,
@@ -33,6 +35,10 @@ export default function Members() {
     handleDeleteMember,
     showAlert
   } = useMembers();
+
+  React.useEffect(() => {
+    if (location.state?.searchTerm) setSearchTerm(location.state.searchTerm);
+  }, [location.key, location.state, setSearchTerm]);
 
   return (
     <>

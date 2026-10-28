@@ -11,6 +11,7 @@ import api from '../../../api';
 import MobileCalendarToolbar from '../../../components/ui/MobileCalendarToolbar';
 import MobileCalendarDaySheet from '../../../components/ui/MobileCalendarDaySheet';
 import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
+import Pagination from '../../../components/ui/Pagination';
 
 const getBmiInfo = (height, weight) => {
   if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500' };
@@ -95,11 +96,16 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState(null);
   const [selectedAttendanceEntries, setSelectedAttendanceEntries] = useState([]);
   const [mobileCoachView, setMobileCoachView] = useState('routine');
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [isProfileDataLoading, setIsProfileDataLoading] = useState(false);
+  const [profileDataError, setProfileDataError] = useState('');
+  const [profileDataRetry, setProfileDataRetry] = useState(0);
   
   const [isCurrentMonth, setIsCurrentMonth] = useState(true);
 
   React.useEffect(() => {
     if (!isOpen || !member) return;
+    let isCurrent = true;
     setActiveTab('workouts');
     setWorkoutPage(1);
     setExpandedDate(null);
@@ -108,6 +114,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     setWeeklyRoutine(saved ? JSON.parse(saved) : defaultRoutine);
     setPlanLogs(null);
     setActiveDay('Monday');
+    setIsProfileDataLoading(true);
+    setProfileDataError('');
 
     (async () => {
       try {
@@ -116,17 +124,24 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
           api.get(`/members/${member.id}/workouts`),
           api.get(`/members/${member.id}/workout-plan`)
         ]);
+        if (!isCurrent) return;
         setAttendance(attRes.data);
         setWorkouts(workRes.data);
         setPlanLogs(planRes.data);
-      } catch (err) { console.error('Failed to load profile logs', err); }
+      } catch (err) {
+        console.error('Failed to load profile logs', err);
+        if (isCurrent) setProfileDataError('Member activity could not be loaded. Check your connection and retry.');
+      } finally {
+        if (isCurrent) setIsProfileDataLoading(false);
+      }
     })();
 
     fetch('/dataset/data/exercises.json')
       .then(r => r.json())
       .then(d => setExercisesLib(d.data || d))
       .catch(() => {});
-  }, [isOpen, member]);
+    return () => { isCurrent = false; };
+  }, [isOpen, member, profileDataRetry]);
 
   React.useEffect(() => {
     if (planLogs === null) return;
@@ -155,28 +170,40 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   };
 
   const handleAssignWeeklyPlan = async () => {
-    localStorage.setItem(`routine_${member.id}`, JSON.stringify(weeklyRoutine));
-    const today = new Date();
-    const todayIndex = (today.getDay() + 6) % 7;
-    const tasks = daysOfWeek.flatMap((day, index) => {
-      const daysUntil = (index - todayIndex + 7) % 7;
-      const scheduledDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntil);
-      const date = [scheduledDate.getFullYear(), String(scheduledDate.getMonth() + 1).padStart(2, '0'), String(scheduledDate.getDate()).padStart(2, '0')].join('-');
-      return weeklyRoutine[day].map(ex => ({
-        exercise: ex.name.toUpperCase(),
-        sets: Number(ex.sets),
-        reps: Number(ex.reps),
-        date,
-        gesture_class: getGestureClass(ex)
-      }));
-    });
+    if (isSavingPlan) return;
+
+    setIsSavingPlan(true);
     try {
+      localStorage.setItem(`routine_${member.id}`, JSON.stringify(weeklyRoutine));
+      const today = new Date();
+      const todayIndex = (today.getDay() + 6) % 7;
+      const tasks = daysOfWeek.flatMap((day, index) => {
+        const daysUntil = (index - todayIndex + 7) % 7;
+        const scheduledDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntil);
+        const date = [scheduledDate.getFullYear(), String(scheduledDate.getMonth() + 1).padStart(2, '0'), String(scheduledDate.getDate()).padStart(2, '0')].join('-');
+        return weeklyRoutine[day].map(ex => ({
+          exercise: ex.name.toUpperCase(),
+          sets: Number(ex.sets),
+          reps: Number(ex.reps),
+          date,
+          gesture_class: getGestureClass(ex)
+        }));
+      });
+
       await api.post(`/members/${member.id}/workout-plan`, { tasks });
       onShowAlert('Plan Saved', `${tasks.length} workout task${tasks.length === 1 ? '' : 's'} synchronized for the next seven days. AI-supported movements will be verified by the Gesture Engine; other tasks remain available for manual verification.`, 'success');
-      const res = await api.get(`/members/${member.id}/workouts`);
-      setWorkouts(res.data);
+
+      try {
+        const res = await api.get(`/members/${member.id}/workouts`);
+        setWorkouts(res.data);
+      } catch (err) {
+        console.error('Plan was saved, but workout logs could not be refreshed', err);
+        onShowAlert('Plan Saved, Refresh Needed', 'The weekly plan was saved, but the workout logs could not be refreshed. Reopen this profile to load the latest logs.', 'error');
+      }
     } catch (err) {
       onShowAlert('Error', err.response?.data?.message || 'Failed to assign workout plan.', 'error');
+    } finally {
+      setIsSavingPlan(false);
     }
   };
 
@@ -210,7 +237,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     return acc;
   }, {})).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  const workoutsPerPage = 5;
+  const workoutsPerPage = 9;
   const totalWorkoutPages = Math.ceil(groupedWorkouts.length / workoutsPerPage);
   const currentGroupedWorkouts = groupedWorkouts.slice((workoutPage - 1) * workoutsPerPage, workoutPage * workoutsPerPage);
   const bodyPartOptions = [...new Set(exercisesLib.map(ex => ex.body_part).filter(Boolean))].sort();
@@ -336,7 +363,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                 </div>
                 <div className="min-w-0 text-left lg:text-center">
                   <h2 className="text-lg lg:text-2xl font-black text-slate-900 dark:text-gray-300 tracking-tight">{member.firstName} {member.lastName}</h2>
-                  <p className="text-amber-600 dark:text-amber-500 font-black uppercase tracking-widest text-[10px] lg:text-xs mt-0.5 lg:mt-1">{member.plan}</p>
+                  <p className="mt-0.5 border-b-2 border-gray-300 pb-3 text-[10px] font-black uppercase tracking-widest text-amber-600 dark:border-gray-600 dark:text-amber-500 lg:mt-1 lg:text-xs">{member.plan}</p>
                 </div>
               </div>
             </div>
@@ -345,11 +372,11 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
             <div className="block w-full mt-4 lg:mt-6 animate-in fade-in">
               <div className="w-full space-y-3 mb-6">
                 <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                  <FiMapPin className="text-amber-500 flex-shrink-0" size={16} />
+                  <FiMapPin className="text-black dark:text-gray-300 flex-shrink-0" size={16} />
                   <span className="truncate">{member.address || 'No Address Provided'}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                  <FiPhone className="text-amber-500 flex-shrink-0" size={16} />
+                  <FiPhone className="text-black dark:text-gray-300 flex-shrink-0" size={16} />
                   <span>{member.phone}</span>
                 </div>
               </div>
@@ -396,12 +423,25 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
             {/* Tabs */}
             <div className="flex items-center gap-6 px-8 pt-6 border-b-2 border-gray-300 dark:border-gray-700 flex-shrink-0 overflow-x-auto">
               {[['workouts', 'Workout Logs'], ['attendance', 'Attendance Calendar'], ['plan', "Coach's Training Plan"]].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeTab === key ? 'text-amber-500' : 'text-gray-500 hover:text-slate-800 dark:hover:text-white'}`}>
+                <button key={key} onClick={() => setActiveTab(key)} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeTab === key ? 'text-amber-600 dark:text-amber-500' : 'text-black hover:text-black/50 dark:text-gray-500 dark:hover:text-white'}`}>
                   {label}
                   {activeTab === key && <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500 rounded-t-full" />}
                 </button>
               ))}
             </div>
+
+            {(isProfileDataLoading || profileDataError) && (
+              <div className={`mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${profileDataError ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-gray-700 dark:bg-[#252830] dark:text-gray-300'}`}>
+                <p role={profileDataError ? 'alert' : 'status'}>
+                  {profileDataError || 'Loading member activity...'}
+                </p>
+                {profileDataError && (
+                  <button type="button" onClick={() => setProfileDataRetry(retry => retry + 1)} className="shrink-0 font-bold underline">
+                    Retry
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Tab Content */}
             <div className="flex-1 p-1 flex flex-col min-h-0 overflow-hidden">
@@ -455,13 +495,69 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       
                       .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000 !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; transition: all 0.2s !important; margin: 0 4px !important; }
                       .dark .fc .fc-button-primary { background-color: #1e293b !important; border-color: #374151 !important; color: #d1d5db !important; }
-                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #e5e7eb !important; border-color: transparent !important; border-radius: 0.5rem !important; color: #000 !important; padding: .4em .65em !important; }
-                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #e5e7eb !important; border-color: #000 !important; color: #000 !important; }
-                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #4b5563 !important; border-color: transparent !important; color: #d1d5db !important; }
-                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #4b5563 !important; border-color: #d1d5db !important; color: #d1d5db !important; }
-                      .attendance-calendar-nav-button:hover, .attendance-calendar-nav-button:active { border-color: #000 !important; background-color: #e5e7eb !important; color: #000 !important; }
-                      .dark .attendance-calendar-nav-button { background-color: #4b5563 !important; border-color: transparent !important; color: #d1d5db !important; }
-                      .dark .attendance-calendar-nav-button:hover, .dark .attendance-calendar-nav-button:active { border-color: #d1d5db !important; background-color: #4b5563 !important; color: #d1d5db !important; }
+                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #e5e7eb !important; border: 2px solid #D1D5DB !important; border-radius: 0.5rem !important; color: #000 !important; padding: .4em .65em !important; }
+                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #e5e7eb !important; border-color: #D1D5DB !important; color: #000 !important; }
+                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
+                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
+                      .attendance-calendar-nav-button { border: 2px solid #D1D5DB !important; }
+                      .attendance-calendar-nav-button:hover, .attendance-calendar-nav-button:active { border-color: #D1D5DB !important; background-color: #e5e7eb !important; color: #000 !important; }
+                      .dark .attendance-calendar-nav-button { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
+                      .dark .attendance-calendar-nav-button:hover, .dark .attendance-calendar-nav-button:active { border-color: #4b5563 !important; background-color: #4b5563 !important; color: #d1d5db !important; }
+                      .attendance-calendar-nav-demo .attendance-calendar-nav-button,
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button,
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button {
+                        border: 2px solid #D1D5DB !important;
+                        border-radius: 0.5rem !important;
+                        background-color: #f8fafc !important;
+                        color: #334155 !important;
+                        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12) !important;
+                        transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease !important;
+                      }
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button,
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button {
+                        width: 38px !important;
+                        height: 38px !important;
+                        padding: 0 !important;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        line-height: 1 !important;
+                      }
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button .fc-icon,
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button .fc-icon {
+                        margin: 0 !important;
+                        vertical-align: middle !important;
+                      }
+                      .attendance-calendar-nav-demo .attendance-calendar-nav-button:hover,
+                      .attendance-calendar-nav-demo .attendance-calendar-nav-button:active,
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:hover:not(:disabled),
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
+                      .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
+                        border-color: #d97706 !important;
+                        background-color: #fef3c7 !important;
+                        color: #92400e !important;
+                        box-shadow: 0 2px 5px rgba(217, 119, 6, 0.2) !important;
+                      }
+                      .dark .attendance-calendar-nav-demo .attendance-calendar-nav-button,
+                      .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button,
+                      .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button {
+                        border-color: #4b5563 !important;
+                        background-color: #303643 !important;
+                        color: #e2e8f0 !important;
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+                      }
+                      .dark .attendance-calendar-nav-demo .attendance-calendar-nav-button:hover,
+                      .dark .attendance-calendar-nav-demo .attendance-calendar-nav-button:active,
+                      .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:hover:not(:disabled),
+                      .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
+                      .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
+                      .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
+                        border-color: #f59e0b !important;
+                        background-color: #3c4554 !important;
+                        color: #fbbf24 !important;
+                        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.18) !important;
+                      }
                       
                       .fc-scrollgrid { border: none !important; }
                       .fc-theme-standard th, .fc-theme-standard td { border: none !important; border-bottom: 1px solid var(--fc-border-color) !important; }
@@ -499,14 +595,14 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             aria-label="Previous month"
                             className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-[#e5e7eb] text-black shadow-sm transition-colors active:scale-95"
                           >
-                            ‹
+                            <FiChevronLeft size={16} />
                           </button>
                           <button
                             onClick={() => attendanceCalendarRef.current?.getApi().next()}
                             aria-label="Next month"
                             className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-[#e5e7eb] text-black shadow-sm transition-colors active:scale-95"
                           >
-                            ›
+                            <FiChevronRight size={16} />
                           </button>
                           <button
                             onClick={() => attendanceCalendarRef.current?.getApi().today()}
@@ -518,10 +614,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         </div>
                       </div>
                     </div>
-                    <div 
+                    <div
                       onMouseMove={handleAttendanceMouseMove}
                       onMouseLeave={handleAttendanceMouseLeave}
-                      className={`mobile-calendar-grid min-w-0 ${isCurrentMonth ? 'calendar-current-month' : 'calendar-other-month'}`}
+                      className={`mobile-calendar-grid attendance-calendar-nav-demo min-w-0 ${isCurrentMonth ? 'calendar-current-month' : 'calendar-other-month'}`}
                     >
                       <FullCalendar
                         ref={attendanceCalendarRef}
@@ -539,9 +635,9 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         dateClick={info => showAttendanceDay(info.dateStr)}
                         eventClick={info => showAttendanceDay(info.event.startStr.slice(0, 10))}
                         eventContent={(eventInfo) => (
-                          <div className="flex items-center justify-center sm:justify-start gap-1 w-full px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-500/30 overflow-hidden shadow-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span className="text-[10px] font-bold truncate">
+                          <div className="flex min-h-6 w-full items-center justify-center gap-1 overflow-hidden rounded-md border border-emerald-300/80 bg-emerald-50 px-1 py-0.5 text-emerald-800 shadow-xs dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300 sm:justify-start">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                            <span className="truncate text-[10px] font-medium">
                               <span className="hidden sm:inline">Time In: </span>
                               {eventInfo.event.extendedProps.timeIn}
                             </span>
@@ -573,17 +669,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
               {/* WORKOUT LOGS */}
               {activeTab === 'workouts' && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col gap-4 min-h-0">
-                  {totalWorkoutPages > 1 && (
-                    <div className="flex justify-end flex-shrink-0">
-                      <div className="flex items-center gap-2 bg-white dark:bg-[#1a1c23] border border-gray-300 dark:border-gray-700 rounded-lg p-1 shadow-sm">
-                        <button onClick={() => setWorkoutPage(p => Math.max(1, p - 1))} disabled={workoutPage === 1} className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 text-white disabled:opacity-30"><FiChevronLeft size={16} /></button>
-                        <span className="text-[10px] font-bold text-slate-600 dark:text-gray-300">Page {workoutPage} of {totalWorkoutPages}</span>
-                        <button onClick={() => setWorkoutPage(p => Math.min(totalWorkoutPages, p + 1))} disabled={workoutPage === totalWorkoutPages} className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 text-white disabled:opacity-30"><FiChevronRight size={16} /></button>
-                      </div>
-                    </div>
-                  )}
-                  <div className="border border-gray-300 dark:border-gray-700 rounded-xl overflow-y-auto shadow-sm flex-1 bg-white dark:bg-[#252830]">
+                <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex min-h-0 flex-col">
+                  <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-[#252830]">
                     <table className="w-full text-left border-collapse">
                       <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-[#1a1c23] border-b border-gray-300 dark:border-gray-700">
                         <tr>
@@ -682,6 +769,14 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       </tbody>
                     </table>
                   </div>
+                  <Pagination
+                    currentPage={workoutPage}
+                    totalPages={totalWorkoutPages}
+                    onPageChange={setWorkoutPage}
+                    totalItems={groupedWorkouts.length}
+                    itemsPerPage={workoutsPerPage}
+                    itemsLabel="dates"
+                  />
                 </div>
               )}
 
@@ -737,18 +832,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                           </select>
                         </label>
                       </div>
-                      <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 flex-shrink-0">
-                        <span className="text-[10px] font-semibold text-slate-500 dark:text-gray-400">
-                          {matchingExercises.length === 0 ? 'No matching exercises' : `Showing ${(exercisePage - 1) * exercisesPerPage + 1}-${Math.min(exercisePage * exercisesPerPage, matchingExercises.length)} of ${matchingExercises.length}`}
-                        </span>
-                        {totalExercisePages > 1 && <div className="flex items-center gap-1">
-                          <button onClick={() => setExercisePage(page => Math.max(1, page - 1))} disabled={exercisePage === 1} aria-label="Previous exercise page" className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30"><FiChevronLeft size={15} /></button>
-                          <span className="text-[10px] font-bold text-slate-600 dark:text-gray-300 tabular-nums">{exercisePage}/{totalExercisePages}</span>
-                          <button onClick={() => setExercisePage(page => Math.min(totalExercisePages, page + 1))} disabled={exercisePage === totalExercisePages} aria-label="Next exercise page" className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30"><FiChevronRight size={15} /></button>
-                        </div>}
-                      </div>
                       <div className="p-3 flex-1 overflow-y-auto space-y-2">
-                        {currentExercises.map(ex => {
+                        {currentExercises.length === 0 ? (
+                          <p className="py-8 text-center text-xs font-medium text-slate-500 dark:text-gray-400">No matching exercises</p>
+                        ) : currentExercises.map(ex => {
                           return (
                             <div key={ex.id} className="flex items-center bg-white dark:bg-[#252830] p-2 rounded-lg border border-slate-200 dark:border-gray-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md group">
                               <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-[#1a1c23] flex items-center justify-center">
@@ -769,14 +856,23 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                           );
                         })}
                       </div>
+                      <Pagination
+                        currentPage={exercisePage}
+                        totalPages={totalExercisePages}
+                        onPageChange={setExercisePage}
+                        totalItems={matchingExercises.length}
+                        itemsPerPage={exercisesPerPage}
+                        itemsLabel="exercises"
+                        stacked
+                      />
                     </div>
 
                     {/* Selected Routine */}
                     <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col bg-white dark:bg-[#252830] sm:min-h-0 ${mobileCoachView === 'routine' ? 'flex flex-1' : 'hidden sm:flex'}`}>
-                      <div className="flex w-full overflow-x-auto border-b border-gray-300 dark:border-gray-700 flex-shrink-0 bg-gray-50 dark:bg-[#1a1c23]/50">
+                      <div className="grid w-full flex-shrink-0 grid-cols-7 border-b border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-[#1a1c23]/50">
                         {daysOfWeek.map(day => (
-                          <button key={day} onClick={() => setActiveDay(day)} className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors border-b-2 ${activeDay === day ? 'border-[#d9a84a] text-[#d9a84a] bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
-                            {day.substring(0, 3)}
+                          <button key={day} title={day} onClick={() => setActiveDay(day)} className={`w-full min-w-0 px-1 py-3 text-[9px] font-bold uppercase tracking-wide transition-colors border-b-2 sm:px-2 sm:text-[10px] sm:tracking-widest ${activeDay === day ? 'border-[#d9a84a] text-[#d9a84a] bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
+                            {day.slice(0, 3)}
                           </button>
                         ))}
                       </div>
@@ -837,8 +933,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       </div>
 
                       <div className="p-3 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#1a1c23]/50 flex-shrink-0">
-                        <button onClick={handleAssignWeeklyPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95">
-                          Save Weekly Plan
+                        <button onClick={handleAssignWeeklyPlan} disabled={isSavingPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:cursor-wait disabled:opacity-70">
+                          {isSavingPlan ? 'Saving Plan...' : 'Save Weekly Plan'}
                         </button>
                       </div>
                     </div>

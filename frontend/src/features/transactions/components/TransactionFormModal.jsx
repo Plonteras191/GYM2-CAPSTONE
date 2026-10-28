@@ -1,9 +1,9 @@
 import React from 'react';
-import { FiX, FiTag, FiSave, FiLoader } from 'react-icons/fi';
+import { FiX, FiTag, FiSave, FiLoader, FiPlus } from 'react-icons/fi';
+import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 
 export default function TransactionFormModal({
   isOpen,
-  isEditing,
   isSaving,
   formData,
   setFormData,
@@ -13,6 +13,15 @@ export default function TransactionFormModal({
   onSave,
   onPlanSelection
 }) {
+  const initialSnapshotRef = React.useRef('');
+  React.useEffect(() => {
+    if (isOpen) initialSnapshotRef.current = JSON.stringify(formData);
+  }, [isOpen]);
+  const unsavedChangesGuard = useUnsavedChangesGuard(
+    isOpen && JSON.stringify(formData) !== initialSnapshotRef.current
+  );
+  const requestClose = () => unsavedChangesGuard.requestClose(onClose);
+
   if (!isOpen) return null;
 
   const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm";
@@ -20,124 +29,89 @@ export default function TransactionFormModal({
   const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border-2 border-gray-300 dark:border-gray-600">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border-2 border-gray-300 bg-white shadow-2xl dark:border-gray-600 dark:bg-[#252830]">
         
-        <div className="p-5 border-b-2 border-gray-300 dark:border-gray-600 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-xl font-bold text-slate-800 dark:text-gray-300">
-            {isEditing ? 'Edit Transaction' : 'Record New Transaction'}
+        <div className="flex items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
+          <h3 className="flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-gray-300">
+            <FiPlus size={20} /> Record New Transaction
           </h3>
-          <button onClick={onClose} disabled={isSaving} className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
+          <button
+            type="button"
+            onClick={requestClose}
+            disabled={isSaving}
+            aria-label="Close transaction form"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-300 dark:hover:bg-red-500/10"
+          >
             <FiX size={24} />
           </button>
         </div>
         
-        <form onSubmit={onSave} className="flex flex-col max-h-[80vh]">
-          <div className="p-6 overflow-y-auto space-y-5">
-            
+        <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-4 dark:bg-[#191b22] sm:p-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className={labelClass}>Member</label>
+              <label className={labelClass}>Select Member</label>
               <select 
-                required={formData.member_id !== ''} 
+                required={formData.type !== 'Walk-In' && formData.type !== 'Packages'}
                 value={formData.member_id} 
                 onChange={(e) => setFormData({ ...formData, member_id: e.target.value })} 
                 className={inputClass}
               >
-                <option value="">Select A Member</option>
+                <option value="">Select Member</option>
                 {membersList.map(m => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
               </select>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className={labelClass}>Transaction Date</label>
-                <input 
-                  type="date" 
-                  required 
-                  value={formData.transaction_date} 
-                  onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })} 
-                  className={inputClass} 
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Transaction Type</label>
-                <select 
-                  value={formData.type} 
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })} 
-                  className={inputClass}
-                >
-                  <option>Subscription Payment</option>
-                  <option>Fee</option>
-                  <option>Refund</option>
-                  <option>Other</option>
-                </select>
-              </div>
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+              <label className={labelClass}><FiTag className="inline mr-1" /> Select Packages</label>
+              <select
+                required
+                value={formData.package_name || ''}
+                className={inputClass}
+                onChange={event => onPlanSelection(event.target.value)}
+              >
+                <option value="">Select Packages</option>
+                {plansList.map(plan => <option key={plan.id} value={plan.name}>{plan.name} (&#8369;{plan.price})</option>)}
+              </select>
             </div>
 
-            {formData.type === 'Subscription Payment' && (
-              <div className="bg-amber-50 dark:bg-amber-500/10 p-4 rounded-xl border-2 border-amber-200 dark:border-amber-500/30 animate-in fade-in slide-in-from-top-2">
-                <label className={`${labelClass} text-amber-700 dark:text-amber-500`}><FiTag className="inline mr-1" /> Select Plan to Auto-Fill Price</label>
-                <select 
-                  className={`${inputClass} border-amber-300 focus:ring-amber-600`}
-                  onChange={(e) => onPlanSelection(e.target.value)}
-                >
-                  <option value="">-- Select A Subscription --</option>
-                  {plansList.map(p => <option key={p.id} value={p.name}>{p.name} (&#8369;{p.price})</option>)}
-                </select>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className={labelClass}>Amount (&#8369;)</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  required 
-                  placeholder="0.00" 
-                  value={formData.amount} 
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })} 
-                  className={inputClass} 
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Status</label>
-                <select 
-                  value={formData.status} 
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })} 
-                  className={inputClass}
-                >
-                  <option>Complete</option>
-                  <option>Pending</option>
-                  <option>Failed</option>
-                  <option>Refunded</option>
-                </select>
-              </div>
+            <div>
+              <label className={labelClass}>Amount (&#8369;)</label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                placeholder="0.00"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                className={inputClass}
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className={labelClass}>Payment Method</label>
-                <select 
-                  value={formData.payment_method} 
-                  onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })} 
-                  className={inputClass}
-                >
-                  <option>Cash</option>
-                  <option>Gcash</option>
-                  <option>Card</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Reference</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. GCash Ref / Receipt No." 
-                  value={formData.reference_number} 
-                  onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })} 
-                  className={inputClass} 
-                />
-              </div>
+            <div>
+              <label className={labelClass}>Payment Method</label>
+              <select
+                value={formData.payment_method}
+                onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+                className={inputClass}
+              >
+                <option>Cash</option>
+                <option>Gcash</option>
+                <option>Card</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Reference</label>
+              <input
+                type="text"
+                placeholder="e.g. GCash Ref / Receipt No."
+                value={formData.reference_number}
+                onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
+                className={inputClass}
+              />
             </div>
 
             <div>
@@ -150,13 +124,13 @@ export default function TransactionFormModal({
                 className={inputClass} 
               />
             </div>
-
+            </div>
           </div>
           
-          <div className="p-5 border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3">
+          <div className="flex justify-end gap-3 border-t-2 border-gray-300 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-800 sm:p-5">
             <button 
               type="button" 
-              onClick={onClose} 
+              onClick={requestClose}
               disabled={isSaving} 
               className="px-6 py-2.5 rounded-xl font-bold text-slate-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 uppercase tracking-wide text-sm"
             >
@@ -164,11 +138,13 @@ export default function TransactionFormModal({
             </button>
             <button type="submit" disabled={isSaving} className={primaryButtonClass}>
               {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
-              {isSaving ? 'Processing...' : (isEditing ? 'Save Changes' : 'Record Transaction')}
+              {isSaving ? 'Processing...' : 'Record Transaction'}
             </button>
           </div>
         </form>
       </div>
     </div>
+    {unsavedChangesGuard.dialog}
+    </>
   );
 }

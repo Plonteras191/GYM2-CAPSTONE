@@ -243,7 +243,7 @@ export default function AdminProfile() {
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
         <div className="flex h-full flex-col bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
             
-            <div className="flex items-center gap-2 mb-4 border-b border-gray-400 dark:border-gray-600 pb-3">
+            <div className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
               <FiUser className="text-black dark:text-gray-300 text-xl" />
               <h3 className="text-lg font-bold text-slate-800 dark:text-gray-300">Account Details</h3>
             </div>
@@ -293,7 +293,7 @@ export default function AdminProfile() {
 
         <div className="flex h-full flex-col bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
             
-            <div className="flex items-center gap-2 mb-4 border-b border-gray-400 dark:border-gray-600 pb-3">
+            <div className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
               <FiShield className="text-black dark:text-gray-300 text-xl" />
               <h3 className="text-lg font-bold text-slate-800 dark:text-gray-300">Security</h3>
             </div>

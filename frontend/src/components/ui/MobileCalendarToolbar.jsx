@@ -56,7 +56,7 @@ export default function MobileCalendarToolbar({
               key={view.id} 
               onClick={() => onViewChange(view.id)} 
               aria-pressed={activeView === view.id}
-              className={`calendar-view-button mx-1 flex min-h-[38px] items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${activeView === view.id ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-300 dark:hover:bg-[#252833]'}`}
+              className={`calendar-view-button mx-1 flex min-h-[38px] items-center justify-center rounded-lg border-l border-gray-400 px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] dark:border-gray-500 ${activeView === view.id ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-300 dark:hover:bg-[#252833]'}`}
             >
               {view.label}
             </button>

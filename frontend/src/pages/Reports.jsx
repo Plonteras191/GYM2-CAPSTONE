@@ -1,78 +1,86 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FiCalendar, FiDownload, FiPrinter, FiFileText,
+  FiCalendar, FiDownload, FiPrinter, FiFileText, FiList,
   FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock, FiActivity, FiLoader,
-  FiChevronLeft, FiChevronRight
 } from 'react-icons/fi';
 import api from '../api';
 import { useLocation } from 'react-router-dom';
 import { useDataCache } from '../context/DataCacheContext';
+import Pagination from '../components/ui/Pagination';
+import { downloadCsv } from '../utils/csvExport';
 
 export default function Reports() {
   const { getCache, setCache } = useDataCache();
   const location = useLocation();
   const [reportType, setReportType] = useState(location.state?.defaultTab || 'Payments');
 
-  const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
   const [startDate, setStartDate] = useState(currentMonthStart);
   const [endDate, setEndDate] = useState(today);
+  const isTodaySelected = startDate === today && endDate === today;
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  const cacheKey = `reports_${startDate}_${endDate}`;
+  const [isLoading, setIsLoading] = useState(() => !getCache(cacheKey));
+  const [loadError, setLoadError] = useState('');
+  const requestId = useRef(0);
 
   // Cache key includes date range so changing dates correctly re-fetches
-  const cacheKey = `reports_${startDate}_${endDate}`;
-  const [isLoading, setIsLoading] = useState(!getCache(cacheKey));
   const [reportData, setReportData] = useState(() => getCache(cacheKey));
 
   const fetchReports = useCallback(async () => {
-    const cached = getCache(cacheKey);
-    if (!cached) setIsLoading(true);
+    const currentRequestId = ++requestId.current;
+    setIsLoading(true);
+    setLoadError('');
     try {
       const res = await api.get(`/reports?start=${startDate}&end=${endDate}`);
-      setReportData(res.data);
-      setCache(cacheKey, res.data);
+      if (currentRequestId === requestId.current) {
+        setReportData(res.data);
+        setCache(cacheKey, res.data);
+      }
     } catch (error) {
       console.error("Failed to load reports:", error);
+      if (currentRequestId === requestId.current) {
+        setLoadError('Reports could not be loaded. Check your connection and try again.');
+      }
     } finally {
-      setIsLoading(false);
+      if (currentRequestId === requestId.current) setIsLoading(false);
     }
-  }, [startDate, endDate, cacheKey, getCache, setCache]);
+  }, [startDate, endDate, cacheKey, setCache]);
 
   useEffect(() => {
-    // Check if the cached version for this date range exists
     const cached = getCache(cacheKey);
     if (cached) {
       setReportData(cached);
-      setIsLoading(false);
+    } else {
+      setReportData(null);
     }
     fetchReports();
+    return () => {
+      requestId.current += 1;
+    };
   }, [fetchReports, cacheKey, getCache]);
 
   const handleExportCSV = async () => {
     if (!reportData) return;
     setIsExporting(true);
+    setExportError('');
     try {
       const currentData = reportData[reportType];
-      const headers = currentData.columns.join(',');
-      const rows = currentData.rows.map(row => row.join(',')).join('\n');
-      const csvContent = `${headers}\n${rows}`;
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${reportType}_Report_${startDate}_to_${endDate}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadCsv(
+        `${reportType}_Report_${startDate}_to_${endDate}.csv`,
+        [currentData.columns, ...filteredRows]
+      );
     } catch (error) {
-      console.error("Failed to export CSV:", error);
+      console.error('Failed to export report CSV:', error);
+      setExportError('The report CSV could not be created. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -81,29 +89,19 @@ export default function Reports() {
   const handlePrint = () => window.print();
 
   const currentData = reportData?.[reportType];
+  const reportColumnWeights = currentData?.columns.map(column => {
+    const name = column.toLowerCase();
+    if (name.includes('detail') || name.includes('description') || name.includes('plan')) return 2;
+    if (name.includes('member') || name.includes('name')) return 1.5;
+    if (name.includes('date') || name.includes('amount') || name.includes('revenue')) return 1.1;
+    return 1;
+  }) || [];
+  const reportColumnWeightTotal = reportColumnWeights.reduce((total, weight) => total + weight, 0);
   const filteredRows = currentData?.rows.filter(row =>
     row.some(cell => String(cell).toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
   const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
   const pageRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
-  const indexOfLastItem = currentPage * itemsPerPage;
-
-  const generatePageNumbers = () => {
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(
-        <button
-          key={i}
-          onClick={() => setCurrentPage(i)}
-          className={`px-3 py-1 rounded-md font-semibold shadow-sm transition-colors ${currentPage === i ? 'bg-slate-900 text-white' : 'hover:bg-slate-100 hover:text-slate-900 font-medium text-slate-500 dark:text-gray-400 dark:hover:bg-slate-700 dark:hover:text-white'}`}
-        >
-          {i}
-        </button>
-      );
-    }
-    return pages;
-  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -115,14 +113,23 @@ export default function Reports() {
     }
   }, [currentPage, totalPages]);
 
-  if (isLoading || !reportData) {
+  if (!reportData) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh] gap-4 animate-in fade-in">
-        <div className="relative w-20 h-20">
-          <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <h2 className="text-xl font-bold text-slate-700 dark:text-gray-300 animate-pulse mt-4">Crunching Numbers from Database...</h2>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 animate-in fade-in">
+        {isLoading ? (
+          <>
+            <div className="relative h-16 w-16">
+              <div className="absolute inset-0 rounded-full border-4 border-amber-200 dark:border-amber-900" />
+              <div className="absolute inset-0 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+            </div>
+            <h2 className="mt-2 text-lg font-bold text-slate-700 dark:text-gray-300">Loading reports...</h2>
+          </>
+        ) : (
+          <>
+            <p role="alert" className="text-center font-semibold text-red-700 dark:text-red-400">{loadError || 'Reports are unavailable.'}</p>
+            <button type="button" onClick={fetchReports} className="rounded-xl bg-amber-500 px-5 py-2.5 font-bold text-black shadow-sm hover:bg-amber-400">Retry</button>
+          </>
+        )}
       </div>
     );
   }
@@ -139,21 +146,23 @@ export default function Reports() {
     return val;
   };
 
-  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#191b22] border-2 border-slate-300 dark:border-[#393e4f] rounded-xl focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium shadow-sm transition-all outline-none";
+  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#1e1e1e] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium shadow-sm transition-all outline-none";
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2";
   const iconClass = "absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-900 dark:text-gray-300 text-lg pointer-events-none";
-  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
-  const exportButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-black px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
+  const primaryButtonClass = "flex min-h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-4 py-2 font-sans text-sm font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70";
+  const exportButtonClass = "flex min-h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-black px-4 py-2 font-sans text-sm font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
 
   return (
     <>
       <style type="text/css" media="print">
         {`
-          @page { size: A4 portrait; margin: 12mm 14mm; }
+          @page { size: A4 landscape; margin: 12mm; }
           html, body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           body * { visibility: hidden; }
           #printable-report, #printable-report * { visibility: visible; }
           #printable-report { position: fixed; inset: 0; width: 100%; padding: 0; margin: 0; background: white; color: #000; font-family: 'Arial', sans-serif; }
+          #printable-report thead { display: table-header-group; }
+          #printable-report tr { break-inside: avoid; }
         `}
       </style>
 
@@ -170,12 +179,17 @@ export default function Reports() {
               <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
                 Tagoloan, Misamis Oriental &nbsp;|&nbsp; 0991 448 9942
               </div>
+              <div style={{ fontSize: '10px', color: '#555', marginTop: '3px' }}>
+                Summary covers the selected date range; rows include all matches for the current search.
+              </div>
             </div>
             <div style={{ textAlign: 'right', fontSize: '11px', color: '#555' }}>
               <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#000', textTransform: 'uppercase' }}>
                 {reportType} Report
               </div>
               <div>Period: {startDate} &mdash; {endDate}</div>
+              {searchTerm && <div>Search: {searchTerm}</div>}
+              <div>Matching records: {filteredRows.length.toLocaleString()}</div>
               <div>Printed: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
             </div>
           </div>
@@ -204,9 +218,9 @@ export default function Reports() {
         </div>
 
         {/* Data Table */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed' }}>
           <thead>
-            <tr style={{ borderTop: '2px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f3f3f3' }}>
+            <tr style={{ borderTop: '2px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f3f3f3', breakInside: 'avoid' }}>
               {currentData.columns.map((col, idx) => (
                 <th key={idx} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.5px', color: '#333' }}>
                   {col}
@@ -246,58 +260,65 @@ export default function Reports() {
       {/* Regular UI (hidden during print) */}
       <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
         <div className="print:hidden flex flex-col gap-6">
-          <div className="order-3 bg-white dark:bg-[#252833] p-4 sm:p-6 rounded-2xl border-2 border-slate-200 dark:border-[#393e4f] shadow-sm grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-3 sm:gap-4 items-end lg:order-none">
-            <div className="w-full min-w-0 relative min-[400px]:col-span-2 lg:col-span-1">
+          {loadError && (
+            <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+              <span>{loadError} Showing the last available data.</span>
+              <button type="button" onClick={fetchReports} disabled={isLoading} className="font-bold underline disabled:opacity-50">
+                {isLoading ? 'Retrying...' : 'Retry'}
+              </button>
+            </div>
+          )}
+          <div className="order-2 grid grid-cols-1 items-end gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-[#252830] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.5fr)_repeat(5,minmax(0,1fr))]">
+            <div className="relative w-full min-w-0">
               <label className={labelClass}>Report Type</label>
               <div className="relative">
                 <FiFileText className={iconClass} />
-                <select value={reportType} onChange={(e) => setReportType(e.target.value)} className={inputClass}>
+                <select value={reportType} onChange={(e) => setReportType(e.target.value)} className={`${inputClass} min-w-0`}>
                   <option value="Payments">Payment Transactions</option>
                   <option value="Memberships">Membership Status</option>
                   <option value="Attendance">Attendance & Entry Logs</option>
                 </select>
               </div>
             </div>
-            <div className="w-full min-w-0 relative">
+            <div className="relative w-full min-w-0">
               <label className={labelClass}>Start Date</label>
               <div className="relative">
                 <FiCalendar className={iconClass} />
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${inputClass} text-[13px] sm:text-sm`} />
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
               </div>
             </div>
-            <div className="w-full min-w-0 relative">
+            <div className="relative w-full min-w-0">
               <label className={labelClass}>End Date</label>
               <div className="relative">
                 <FiCalendar className={iconClass} />
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={`${inputClass} text-[13px] sm:text-sm`} />
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
               </div>
             </div>
-            <div className="col-span-full flex w-full min-w-0 gap-0 sm:gap-1 lg:col-span-2 lg:col-start-4 lg:justify-end">
-              <button
-                onClick={() => {
-                  setStartDate(currentMonthStart);
-                  setEndDate(today);
-                }}
-                className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap lg:flex-none`}
-              >
-                <FiClock size={16} /> This Month
-              </button>
-              <button
-                onClick={handleExportCSV}
-                disabled={isExporting}
-                className={`${exportButtonClass} min-w-0 flex-1 whitespace-nowrap lg:flex-none`}
-              >
-                {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
-                {isExporting ? 'Exporting...' : 'Export CSV'}
-              </button>
-              <button onClick={handlePrint} className={`${primaryButtonClass} min-w-0 flex-1 whitespace-nowrap lg:flex-none`}>
-                <FiPrinter size={18} /> Print All
-              </button>
-            </div>
+
+            <button
+              onClick={() => {
+                setStartDate(today);
+                setEndDate(today);
+              }}
+              className={`${primaryButtonClass} w-full transition-opacity ${isTodaySelected ? 'opacity-50' : 'opacity-100'}`}
+              aria-pressed={isTodaySelected}
+              style={{ minWidth: '160px' }}
+            >
+              <FiClock size={18} />
+              This Day
+            </button>
+            <button onClick={handleExportCSV} disabled={isExporting || !reportData} className={`${exportButtonClass} w-full min-w-0 px-2`}>
+              {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+            <button onClick={handlePrint} className={`${primaryButtonClass} w-full min-w-0 px-2`}>
+              <FiPrinter size={18} /> Print All
+            </button>
+            {exportError && <p role="alert" className="text-sm font-semibold text-red-700 dark:text-red-400 sm:col-span-2 xl:col-span-6">{exportError}</p>}
           </div>
 
-          {/* DYNAMIC GRID: Switches between 3 and 4 columns automatically */}
-          <div className={`order-first grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 sm:gap-6 ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
+          {/* KPI summary appears first, matching the Overview page hierarchy. */}
+          <div className={`order-1 grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 sm:gap-6 ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
             {currentData.kpis.map((kpi, index) => {
 
               let IconComponent = FiTrendingUp;
@@ -316,49 +337,52 @@ export default function Reports() {
               }
 
               return (
-                <div key={index} className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252833] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
+                <div key={index} className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252830] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
                   <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>
                     <IconComponent size={28} strokeWidth={2.5} />
                   </div>
                   <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
                     <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{kpi.label}</p>
-                    <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{kpi.value}</h3>
+                    <h3 className="text-lg leading-tight sm:text-2xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{kpi.value}</h3>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="order-5 bg-white dark:bg-[#252833] rounded-2xl border-2 border-slate-200 dark:border-[#393e4f] shadow-sm overflow-hidden flex flex-col lg:order-none">
-            <div className="p-4 sm:p-5 border-b-2 border-slate-200 dark:border-[#393e4f] flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 bg-slate-50 dark:bg-[#191b22]">
-              <div className="flex items-center gap-3 self-start sm:self-auto">
-                <h3 className="font-bold text-slate-800 dark:text-gray-300 text-base sm:text-lg">Recent Reports</h3>
+          <div className="order-3 bg-white dark:bg-[#252830] rounded-2xl border-2 border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden flex flex-col">
+            <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-700/50 dark:bg-[#1e1e1e] sm:flex-row sm:items-center">
+              <div className="flex min-w-0 items-center gap-2">
+                <FiList size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
+                <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Recent Reports</h3>
+                <span className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
+                  {filteredRows.length.toLocaleString()}
+                </span>
               </div>
-              <input 
-                type="text" 
-                placeholder={`Search ${reportType}...`} 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#191b22] border-2 border-slate-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 transition-all shadow-sm" 
-              />
+              <input type="text" placeholder={`Search ${reportType}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 transition-all shadow-sm" />
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[650px] lg:min-w-full">
+              <table className="w-full min-w-[1120px] table-fixed border-collapse text-left">
+                <colgroup>
+                  {reportColumnWeights.map((weight, index) => (
+                    <col key={currentData.columns[index]} style={{ width: `${(weight / reportColumnWeightTotal) * 100}%` }} />
+                  ))}
+                </colgroup>
                 <thead>
-                  <tr className="bg-slate-100/50 dark:bg-[#191b22] border-b-2 border-slate-200 dark:border-[#393e4f]">
+                  <tr className="bg-slate-100/50 dark:bg-[#1a1c23] border-b-2 border-slate-200 dark:border-slate-700/50">
                     {currentData.columns.map((col, i) => (
-                      <th key={i} className="px-3.5 sm:px-4 lg:px-6 py-3 sm:py-3.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      <th key={i} className="overflow-hidden px-4 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-[#393e4f]">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {pageRows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#191b22]/50 transition-colors group">
+                    <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#1e1e1e] transition-colors group">
                       {row.map((cell, cellIndex) => (
-                        <td key={cellIndex} className="px-3.5 sm:px-4 lg:px-6 py-3 sm:py-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-nowrap">
+                        <td key={cellIndex} className="overflow-hidden px-4 py-4 text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap text-ellipsis">
                           {renderCellContent(cell)}
                         </td>
                       ))}
@@ -374,22 +398,13 @@ export default function Reports() {
                 </tbody>
               </table>
             </div>
-            {totalPages > 1 && (
-              <div className="p-4 border-t-2 border-slate-200 dark:border-[#393e4f] bg-slate-50 dark:bg-[#191b22] flex flex-col sm:flex-row justify-between items-center gap-4">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
-                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredRows.length)} of {filteredRows.length} Entries
-                </span>
-                <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
-                  <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <FiChevronLeft size={18} />
-                  </button>
-                  {generatePageNumbers()}
-                  <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage === totalPages} className="p-1 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    <FiChevronRight size={18} />
-                  </button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredRows.length}
+              itemsPerPage={itemsPerPage}
+            />
           </div>
         </div>
       </div>

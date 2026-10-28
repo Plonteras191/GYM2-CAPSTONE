@@ -2,14 +2,41 @@ import { useState, useEffect, useRef } from 'react';
 import { FiMaximize, FiCamera, FiWifiOff, FiLoader, FiUserCheck, FiArrowRight, FiRefreshCw, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import { getCameraSourceLabel } from '../utils/cameraSourceLabel';
+import { getMediaUrl } from '../utils/mediaUrl';
+
+function AttendanceAvatar({ member }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const name = `${member?.first_name || ''} ${member?.last_name || ''}`.trim();
+  const profilePic = getMediaUrl(member?.profile_pic || member?.enrolled_face_id);
+
+  if (profilePic && !imageFailed) {
+    return (
+      <img
+        src={profilePic}
+        alt={`${name || 'Member'} profile`}
+        onError={() => setImageFailed(true)}
+        className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-slate-300 dark:border-gray-600 shadow-md flex-shrink-0"
+      />
+    );
+  }
+
+  return (
+    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-white dark:bg-amber-500 dark:text-black flex items-center justify-center font-bold shadow-md text-xs md:text-sm flex-shrink-0">
+      {name.charAt(0) || '?'}
+    </div>
+  );
+}
 
 export default function SecurityMonitor() {
   const navigate = useNavigate();
   const [connectionState, setConnectionState] = useState('RECONNECTING'); 
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const AI_BASE = `http://${window.location.hostname || '127.0.0.1'}:5000`;
+  const AI_BASE = import.meta.env.VITE_AI_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? `http://${window.location.hostname}:5000` : 'http://127.0.0.1:5000');
   const [activeStreamUrl, setActiveStreamUrl] = useState("");
   const [cameraSource, setCameraSource] = useState('cctv');
+  const [availableCameraSources, setAvailableCameraSources] = useState(['cctv', 'webcam']);
+  const [cameraFps, setCameraFps] = useState(null);
+  const [cameraStatusError, setCameraStatusError] = useState(false);
   
   const [liveLogs, setLiveLogs] = useState([]); 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -26,53 +53,64 @@ export default function SecurityMonitor() {
       } else {
         setAlertDialog({ isOpen: true, title: 'Sync Failed', message: 'AI Sync failed to respond correctly.', type: 'error' });
       }
-    } catch (error) {
+    } catch {
       setAlertDialog({ isOpen: true, title: 'Engine Offline', message: 'Could not connect to the Python AI Engine.', type: 'error' });
     }
     setIsSyncing(false);
   };
 
-  const handleToggleCamera = async () => {
-    const nextSource = cameraSource === 'cctv' ? 'webcam' : 'cctv';
+  const handleCameraChange = async (event) => {
+    const nextSource = event.target.value;
     try {
       const res = await fetch(`${AI_BASE}/switch_camera`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: nextSource })
       });
-      if (res.ok) {
-        setCameraSource(nextSource);
-        setActiveStreamUrl(`${AI_BASE}/security_feed?t=${new Date().getTime()}`);
-        setAlertDialog({ isOpen: true, title: 'Camera Switched', message: `Switched video source to: ${nextSource.toUpperCase()}`, type: 'success' });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Camera source could not be switched.');
       }
-    } catch (err) {
-      setAlertDialog({ isOpen: true, title: 'Switch Failed', message: 'Could not reach Python engine to switch camera.', type: 'error' });
+
+      setCameraSource(data.mode);
+      setActiveStreamUrl(`${AI_BASE}/security_feed?t=${new Date().getTime()}`);
+      setAlertDialog({ isOpen: true, title: 'Camera Switched', message: `Switched video source to: ${data.mode.toUpperCase()}`, type: 'success' });
+    } catch (error) {
+      setAlertDialog({ isOpen: true, title: 'Switch Failed', message: error.message || 'Could not reach Python engine to switch camera.', type: 'error' });
     }
   };
   
   const containerRef = useRef(null);
-  const [cameraConfig] = useState({ name: 'Main Gym Floor', model: 'HIKVISION DS-2CD' });
-
   useEffect(() => {
-    setActiveStreamUrl(`${AI_BASE}/security_feed?t=${new Date().getTime()}`);
+    setActiveStreamUrl(`${AI_BASE}/security_feed?t=${Date.now()}`);
     setConnectionState('RECONNECTING');
-    
-    // Check initial camera status
-    fetch(`${AI_BASE}/camera_status`)
-      .then(r => r.json())
-      .then(d => { if (d.source) setCameraSource(d.source); })
-      .catch(() => {});
 
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const fetchCameraStatus = async () => {
+      try {
+        const response = await fetch(`${AI_BASE}/camera_status`);
+        if (!response.ok) throw new Error('Camera status request failed.');
+        const data = await response.json();
+        if (data.source) setCameraSource(data.source);
+        if (Array.isArray(data.available_sources)) setAvailableCameraSources(data.available_sources);
+        setCameraFps(Number.isFinite(data.fps) ? data.fps : null);
+        setCameraStatusError(false);
+      } catch (error) {
+        console.error('Failed to read camera status:', error);
+        setCameraStatusError(true);
+      }
+    };
+    fetchCameraStatus();
+    const statusInterval = setInterval(fetchCameraStatus, 2000);
+
     const logInterval = setInterval(async () => {
       try {
         const res = await api.get('/attendance/today');
         setLiveLogs(res.data); 
-      } catch (error) { console.error("Checking for new logs..."); }
+      } catch (error) { console.error("Failed to refresh today's attendance logs:", error); }
     }, 1000);
 
-    return () => { clearInterval(timer); clearInterval(logInterval); };
-  }, [cameraConfig.streamUrl]);
+    return () => { clearInterval(logInterval); clearInterval(statusInterval); };
+  }, [AI_BASE]);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -124,7 +162,7 @@ export default function SecurityMonitor() {
                   setTimeout(() => {
                     if (navigator.onLine) {
                       setConnectionState('RECONNECTING');
-                      setActiveStreamUrl(`${cameraConfig.streamUrl}?t=${new Date().getTime()}`);
+                      setActiveStreamUrl(`${AI_BASE}/security_feed?t=${Date.now()}`);
                     } else {
                       setConnectionState('DISCONNECTED');
                     }
@@ -147,20 +185,16 @@ export default function SecurityMonitor() {
               ) : null}
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-between items-end z-10">
-            <div className="text-slate-300 font-mono text-[9px] md:text-xs uppercase tracking-widest font-semibold">
-              <span className="hidden sm:block">{currentTime.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
-              <span className="text-lg md:text-2xl font-bold text-white tracking-widest">{currentTime.toLocaleTimeString('en-US', { hour12: false })}</span>
-            </div>
+          <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-end items-end z-10">
             <div className="flex gap-2 md:gap-3 items-center">
-              <button 
-                onClick={handleToggleCamera} 
-                className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" 
-                title={`Switch video source (Currently: ${cameraSource.toUpperCase()})`}
-              >
+              <label className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 text-white rounded-lg md:rounded-xl backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" title="Select video source">
                 <FiCamera className="size-4 md:size-5 text-amber-400" />
-                <span>{cameraSource.toUpperCase()}</span>
-              </button>
+                <select value={cameraSource} onChange={handleCameraChange} className="camera-source-select bg-transparent text-white font-bold uppercase focus:outline-none">
+                  {availableCameraSources.map(source => (
+                    <option key={source} value={source} className="bg-slate-900 text-white">{getCameraSourceLabel(source)}</option>
+                  ))}
+                </select>
+              </label>
               <button onClick={handleSyncAI} disabled={isSyncing} className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-colors border border-white/10 active:scale-95" title="Force AI Memory Sync">
                 <FiRefreshCw className={`size-4 md:size-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
@@ -189,12 +223,10 @@ export default function SecurityMonitor() {
                ) : (
                    liveLogs.map((log, index) => {
                     const memberName = log.member ? `${log.member.first_name} ${log.member.last_name}` : 'Unknown';
-                    return (
-                    <div key={index} className="flex gap-3 items-center border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
-                       <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-white dark:bg-amber-500 dark:text-black flex items-center justify-center font-bold shadow-md text-xs md:text-sm flex-shrink-0">
-                         {memberName.charAt(0)}
-                       </div>
-                       <div className="min-w-0 flex-1">
+                     return (
+                     <div key={index} className="flex gap-3 items-center border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
+                        <AttendanceAvatar member={log.member} />
+                        <div className="min-w-0 flex-1">
                          <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-gray-200 leading-tight truncate">{memberName}</p>
                          <p className="text-[9px] md:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5 truncate">
                            {log.time_in}
@@ -206,6 +238,11 @@ export default function SecurityMonitor() {
             </div>
 
             <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
+              <div className="mb-3 grid grid-cols-2 gap-2 text-[10px] font-semibold text-slate-500 dark:text-gray-400">
+                <span>Source: <span className="text-slate-800 dark:text-gray-200">{getCameraSourceLabel(cameraSource)}</span></span>
+                <span>FPS: <span className="text-slate-800 dark:text-gray-200">{cameraFps === null ? '--' : cameraFps.toFixed(1)}</span></span>
+                <span className="col-span-2">{cameraStatusError ? 'Camera status unavailable' : 'Camera status connected'}</span>
+              </div>
               <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-gray-200 dark:hover:bg-[#252830] rounded-xl transition-all">
                 Full Log <FiArrowRight />
               </button>

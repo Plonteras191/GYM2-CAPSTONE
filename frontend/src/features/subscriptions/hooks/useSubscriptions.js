@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../../api';
 import { useDataCache } from '../../../context/DataCacheContext';
+import { isValidPackagePrice } from '../../../utils/priceInput';
+import { getPackageColor } from '../packageCategories';
 
 export function useSubscriptions() {
   const { getCache, setCache, invalidateCache } = useDataCache();
@@ -28,8 +30,15 @@ export function useSubscriptions() {
   const [deletingPlanId, setDeletingPlanId] = useState(null);
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [eventCategories, setEventCategories] = useState([]);
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState(null);
+  const legacyEventMigrationRef = useRef(false);
   const [showSubscriptions, setShowSubscriptions] = useState(true);
   const [showCoachEvents, setShowCoachEvents] = useState(true);
+  const [selectedCoachCategories, setSelectedCoachCategories] = useState(null);
+  const [selectedSubscriptionCategories, setSelectedSubscriptionCategories] = useState(null);
 
   // Dialogs
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -42,14 +51,13 @@ export function useSubscriptions() {
     start_time: '18:00', 
     end_time: '19:00', 
     location: 'Main Gym Floor', 
-    color: '#eab308' 
+    description: '',
+    category: 'General',
+    color: '#eab308',
   };
   const [eventForm, setEventForm] = useState(defaultEventForm);
 
-  const [coachEvents, setCoachEvents] = useState(() => {
-    const saved = localStorage.getItem('coach_events');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [coachEvents, setCoachEvents] = useState([]);
 
   const [recentColors, setRecentColors] = useState(() => {
     const saved = localStorage.getItem('recent_colors');
@@ -65,17 +73,111 @@ export function useSubscriptions() {
     });
   };
 
+  const refreshCoachCalendar = useCallback(async () => {
+    const [eventsResponse, categoriesResponse] = await Promise.all([
+      api.get('/coach-events'),
+      api.get('/coach-event-categories')
+    ]);
+    const events = Array.isArray(eventsResponse.data) ? eventsResponse.data : [];
+    const categories = Array.isArray(categoriesResponse.data) ? categoriesResponse.data : [];
+    setCoachEvents(events);
+    setEventCategories(categories);
+    return events;
+  }, []);
+
+  const fetchCoachCalendar = useCallback(async () => {
+    try {
+      let events = await refreshCoachCalendar();
+      const legacyEventsJson = localStorage.getItem('coach_events');
+      if (legacyEventsJson && !legacyEventMigrationRef.current) {
+        legacyEventMigrationRef.current = true;
+        const legacyEvents = JSON.parse(legacyEventsJson);
+        if (!Array.isArray(legacyEvents)) {
+          throw new Error('Saved coach events must be a list.');
+        }
+
+        for (const event of legacyEvents) {
+          const startDate = String(event.start_date || '').slice(0, 10);
+          const requestedEndDate = String(event.end_date || event.start_date || '').slice(0, 10);
+          const validDate = value => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+            const parsedDate = new Date(`${value}T00:00:00Z`);
+            return !Number.isNaN(parsedDate.getTime()) && parsedDate.toISOString().slice(0, 10) === value;
+          };
+          if (!validDate(startDate)) {
+            throw new Error(`Saved coach event "${event.title || 'Untitled'}" has an invalid start date and was not migrated.`);
+          }
+          const endDate = validDate(requestedEndDate) && requestedEndDate >= startDate
+            ? requestedEndDate
+            : startDate;
+          const alreadyMigrated = events.some(existing =>
+            existing.title === event.title
+            && String(existing.start_date).slice(0, 10) === startDate
+            && existing.location === event.location
+          );
+          if (alreadyMigrated) continue;
+
+          await api.post('/coach-events', {
+            title: event.title,
+            description: event.description || '',
+            category: event.category?.name || event.category || 'General',
+            color: event.category?.color || event.color || '#3b82f6',
+            start_date: startDate,
+            end_date: endDate,
+            start_time: (event.start_time || '18:00').slice(0, 5),
+            end_time: (event.end_time || '19:00').slice(0, 5),
+            location: event.location || 'Main Gym Floor',
+          });
+        }
+
+        localStorage.removeItem('coach_events');
+        events = await refreshCoachCalendar();
+      }
+      return events;
+    } catch (error) {
+      legacyEventMigrationRef.current = false;
+      console.error('Failed to load coach calendar:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Calendar Error',
+        message: error.response?.data?.message || error.message || 'Failed to load coach events.',
+        type: 'error'
+      });
+      return [];
+    }
+  }, [refreshCoachCalendar, setAlertDialog]);
+
   useEffect(() => {
-    localStorage.setItem('coach_events', JSON.stringify(coachEvents));
-  }, [coachEvents]);
+    fetchCoachCalendar();
+  }, [fetchCoachCalendar]);
+
+  const handleOpenNewCoachEvent = (date) => {
+    const defaultCategory = eventCategories.find(category =>
+      category.name.toLowerCase() === defaultEventForm.category.toLowerCase()
+    );
+    setEventForm({
+      ...defaultEventForm,
+      start_date: date || defaultEventForm.start_date,
+      end_date: date || defaultEventForm.end_date,
+      color: defaultCategory?.color || defaultEventForm.color,
+    });
+    setIsEventModalOpen(true);
+  };
 
   // Cleaned default form fields
   const defaultForm = {
     id: '', member_id: '', plan_type: '', start_date: new Date().toISOString().split('T')[0], 
-    end_date: '', payment_method: 'Cash', color: '#f59e0b', reference_number: ''
+    end_date: '', payment_method: 'Cash', reference_number: ''
   };
   const [formData, setFormData] = useState(defaultForm);
-  const [newPlan, setNewPlan] = useState({ name: '', price: '', duration_days: 30 });
+  const [newPlan, setNewPlan] = useState({
+    name: '',
+    price: '',
+    duration_days: 30,
+    category: 'normal',
+    category_detail: '',
+    color: '#10b981',
+  });
 
   const fetchData = useCallback(async (showSpinner = true) => {
     if (showSpinner) setIsLoading(true);
@@ -83,7 +185,7 @@ export function useSubscriptions() {
       const [subsResponse, membersResponse, plansResponse] = await Promise.all([
         api.get('/memberships'),
         api.get('/members'),
-        api.get('/plans') 
+        api.get('/plans'),
       ]);
       const newSubs = Array.isArray(subsResponse.data) ? subsResponse.data : [];
       const newMembers = Array.isArray(membersResponse.data) ? membersResponse.data : [];
@@ -154,7 +256,7 @@ export function useSubscriptions() {
   const handleOpenEditModal = (sub) => {
     setFormData({
       id: sub.id, member_id: sub.member_id, plan_type: sub.plan_type, start_date: sub.start_date,
-      end_date: sub.end_date, payment_method: sub.payment_method, color: sub.color || '#f59e0b', reference_number: sub.reference_number || ''
+      end_date: sub.end_date, payment_method: sub.payment_method, reference_number: sub.reference_number || ''
     });
     setIsEditing(true);
     setIsModalOpen(true);
@@ -198,6 +300,7 @@ export function useSubscriptions() {
       const cleanNotes = formData.notes?.trim() || null;
       const memberId = formData.member_id ? parseInt(formData.member_id, 10) : null;
       const amt = parseFloat(calculatedPrice) || 0;
+      const selectedPlan = plans.find(plan => plan.name === formData.plan_type);
 
       const payload = { 
         member_id: memberId,
@@ -207,7 +310,7 @@ export function useSubscriptions() {
         payment_method: formData.payment_method,
         reference_number: cleanRef,
         amount: amt,
-        color: formData.color,
+        color: getPackageColor(selectedPlan),
         status: 'Active',
         auto_renew: 0,
         notes: cleanNotes
@@ -236,7 +339,6 @@ export function useSubscriptions() {
         memberData.append('_method', 'PUT');
         await api.post(`/members/${memberId}`, memberData).catch(() => {});
       }
-      saveRecentColor(formData.color);
       
       invalidateCache('subscriptions_data');
       invalidateCache('members');
@@ -254,12 +356,66 @@ export function useSubscriptions() {
     }
   };
 
-  const handleSaveCoachEvent = (e) => {
+  const handleSaveCoachEvent = async (e) => {
     e.preventDefault();
-    const newEvent = { ...eventForm, id: Date.now() };
-    setCoachEvents(prev => [...prev, newEvent]);
-    saveRecentColor(eventForm.color);
-    setIsEventModalOpen(false);
+    if (eventForm.end_date < eventForm.start_date) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Invalid Event Dates',
+        message: 'End date must be on or after the start date.',
+        type: 'error'
+      });
+      return;
+    }
+    setIsSavingEvent(true);
+    const payload = {
+      title: eventForm.title.trim(),
+      description: eventForm.description?.trim() || null,
+      category: eventForm.category.trim(),
+      color: eventForm.color,
+      start_date: eventForm.start_date,
+      end_date: eventForm.end_date,
+      start_time: eventForm.start_time.slice(0, 5),
+      end_time: eventForm.end_time.slice(0, 5),
+      location: eventForm.location.trim(),
+    };
+    try {
+      if (eventForm.id) {
+        await api.put(`/coach-events/${eventForm.id}`, payload);
+      } else {
+        await api.post('/coach-events', payload);
+      }
+      await refreshCoachCalendar();
+      saveRecentColor(eventForm.color);
+      setIsEventModalOpen(false);
+      setAlertDialog({ isOpen: true, title: 'Success', message: `Coach event ${eventForm.id ? 'updated' : 'saved'} successfully.`, type: 'success' });
+    } catch (error) {
+      console.error('Failed to save coach event:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to save coach event. Check the event details and try again.',
+        type: 'error'
+      });
+    } finally {
+      setIsSavingEvent(false);
+    }
+  };
+
+  const handleEditCoachEvent = (event) => {
+    setEventForm({
+      id: event.id,
+      title: event.title,
+      description: event.description || '',
+      category: event.category?.name || 'General',
+      color: event.category?.color || '#3b82f6',
+      start_date: String(event.start_date || '').slice(0, 10),
+      end_date: String(event.end_date || event.start_date || '').slice(0, 10),
+      start_time: (event.start_time || '18:00').slice(0, 5),
+      end_time: (event.end_time || '19:00').slice(0, 5),
+      location: event.location || '',
+    });
+    setIsEventModalOpen(true);
   };
 
   const handleDeleteCoachEvent = (id) => {
@@ -267,18 +423,122 @@ export function useSubscriptions() {
       isOpen: true,
       title: 'Delete Coach Event',
       message: 'Are you sure you want to permanently delete this scheduled coaching event?',
-      onConfirm: () => {
+      onConfirm: async () => {
         setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        setCoachEvents(prev => prev.filter(ev => ev.id !== id));
+        setDeletingEventId(id);
+        try {
+          await api.delete(`/coach-events/${id}`);
+          await refreshCoachCalendar();
+          setAlertDialog({ isOpen: true, title: 'Success', message: 'Coach event deleted successfully.', type: 'success' });
+        } catch (error) {
+          console.error('Failed to delete coach event:', error);
+          setAlertDialog({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || 'Failed to delete coach event. Please try again.',
+            type: 'error'
+          });
+        } finally {
+          setDeletingEventId(null);
+        }
+      }
+    });
+  };
+
+  const handleUpdateCoachEventCategory = async (category, updates) => {
+    setIsSavingCategory(true);
+    try {
+      await api.put(`/coach-event-categories/${category.id}`, updates);
+      await refreshCoachCalendar();
+      if (selectedCoachCategories !== null) {
+        setSelectedCoachCategories(selectedCoachCategories.map(name =>
+          name === category.name ? updates.name : name
+        ));
+      }
+      setAlertDialog({ isOpen: true, title: 'Success', message: 'Coach event category updated successfully.', type: 'success' });
+      return true;
+    } catch (error) {
+      console.error('Failed to update coach event category:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Unable to update category',
+        message: error.response?.data?.message || 'Failed to update category. Please try again.',
+        type: 'error'
+      });
+      return false;
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCoachEventCategory = (category) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Coach Event Category',
+      message: `Delete "${category.name}"? Categories assigned to coach events cannot be deleted. Reassign or delete those events first.`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setIsSavingCategory(true);
+        try {
+          await api.delete(`/coach-event-categories/${category.id}`);
+          await refreshCoachCalendar();
+          if (selectedCoachCategories !== null) {
+            const remainingCategories = selectedCoachCategories.filter(name => name !== category.name);
+            setSelectedCoachCategories(remainingCategories.length ? remainingCategories : null);
+          }
+          setAlertDialog({ isOpen: true, title: 'Success', message: 'Coach event category deleted successfully.', type: 'success' });
+        } catch (error) {
+          console.error('Failed to delete coach event category:', error);
+          setAlertDialog({
+            isOpen: true,
+            title: 'Unable to delete category',
+            message: error.response?.data?.message || 'Failed to delete category. Please try again.',
+            type: 'error'
+          });
+        } finally {
+          setIsSavingCategory(false);
+        }
       }
     });
   };
 
   const handleUpdatePlanPrice = (id, newPrice) => {
-    setPlans(prev => prev.map(p => p.id === id ? { ...p, price: Number(newPrice) } : p));
+    setPlans(prev => prev.map(p => p.id === id ? { ...p, price: newPrice } : p));
+  };
+
+  const handleSavePlan = async (plan) => {
+    setIsSaving(true);
+    try {
+      await api.put(`/plans/${plan.id}`, plan);
+      saveRecentColor(plan.color || getPackageColor(plan));
+      invalidateCache('subscriptions_data');
+      await fetchData(false);
+      setAlertDialog({ isOpen: true, title: 'Success', message: 'Package updated successfully!', type: 'success' });
+      return true;
+    } catch (error) {
+      console.error('Failed to update package:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to update package.',
+        type: 'error'
+      });
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSavePlans = async () => {
+    if (plans.some(plan => !isValidPackagePrice(plan.price))) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Invalid Package Price',
+        message: 'Enter a price using digits with up to two decimal places, from ₱0 to ₱9,999,999.99.',
+        type: 'error'
+      });
+      return;
+    }
     setIsSaving(true);
     try {
       await api.post('/plans/bulk-update', { plans: plans });
@@ -291,14 +551,35 @@ export function useSubscriptions() {
   };
 
   const handleAddNewPlan = async () => {
-    if (!newPlan.name || !newPlan.price || !newPlan.duration_days) {
+    if (!newPlan.name || newPlan.price === '' || !newPlan.duration_days) {
       setAlertDialog({ isOpen: true, title: 'Incomplete Data', message: 'Please fill out all plan fields.', type: 'error' });
+      return;
+    }
+    if (!isValidPackagePrice(newPlan.price)) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Invalid Package Price',
+        message: 'Enter a price using digits with up to two decimal places, from ₱0 to ₱9,999,999.99.',
+        type: 'error'
+      });
+      return;
+    }
+    if (newPlan.category === 'other' && !newPlan.category_detail.trim()) {
+      setAlertDialog({ isOpen: true, title: 'Specify Plan Type', message: 'Please specify the other subscription type.', type: 'error' });
       return;
     }
     setIsSaving(true);
     try {
       await api.post('/plans', newPlan);
-      setNewPlan({ name: '', price: '', duration_days: 30 }); 
+      saveRecentColor(newPlan.color || getPackageColor(newPlan));
+      setNewPlan({
+        name: '',
+        price: '',
+        duration_days: 30,
+        category: 'normal',
+        category_detail: '',
+        color: '#10b981',
+      });
       setIsAddingPlan(false); 
       await fetchData(); 
     } catch (error) { 
@@ -344,6 +625,12 @@ export function useSubscriptions() {
     deletingId,
     deletingPlanId,
     isEventModalOpen, setIsEventModalOpen,
+    isSavingEvent,
+    isSavingCategory,
+    deletingEventId,
+    eventCategories,
+    selectedCoachCategories, setSelectedCoachCategories,
+    selectedSubscriptionCategories, setSelectedSubscriptionCategories,
     showSubscriptions, setShowSubscriptions,
     showCoachEvents, setShowCoachEvents,
     confirmDialog, setConfirmDialog,
@@ -351,6 +638,7 @@ export function useSubscriptions() {
     eventForm, setEventForm,
     coachEvents,
     recentColors,
+    saveRecentColor,
     formData, setFormData,
     newPlan, setNewPlan,
     loyalDiscount,
@@ -361,8 +649,13 @@ export function useSubscriptions() {
     handleDelete,
     handleSaveSubscription,
     handleSaveCoachEvent,
+    handleUpdateCoachEventCategory,
+    handleDeleteCoachEventCategory,
+    handleOpenNewCoachEvent,
+    handleEditCoachEvent,
     handleDeleteCoachEvent,
     handleUpdatePlanPrice,
+    handleSavePlan,
     handleSavePlans,
     handleAddNewPlan,
     handleDeletePlan

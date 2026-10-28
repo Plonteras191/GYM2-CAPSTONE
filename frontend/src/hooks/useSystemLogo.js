@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 import defaultLogo from '../assets/logo.png';
+import { getMediaUrl } from '../utils/mediaUrl';
 
 export const notifySystemLogoChanged = (logoUrl) => {
   window.dispatchEvent(new CustomEvent('admin-branding-updated', { detail: logoUrl }));
@@ -11,12 +12,12 @@ export function useSystemLogo() {
 
   useEffect(() => {
     let active = true;
-    const handleLogoChange = (event) => setLogoUrl(event.detail || defaultLogo);
+    const handleLogoChange = (event) => setLogoUrl(getMediaUrl(event.detail) || defaultLogo);
 
     window.addEventListener('admin-branding-updated', handleLogoChange);
     api.get('/branding')
       .then(({ data }) => {
-        if (active) setLogoUrl(data.logo_url || defaultLogo);
+        if (active) setLogoUrl(getMediaUrl(data.logo_url) || defaultLogo);
       })
       .catch((error) => {
         console.error('Failed to load system logo:', error);

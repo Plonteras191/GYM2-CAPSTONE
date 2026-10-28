@@ -1,41 +1,34 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiVideo, FiMaximize, FiWifi, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiCamera } from 'react-icons/fi';
+import { FiMaximize, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiCamera } from 'react-icons/fi';
 import api from '../api';
+import { getCameraSourceLabel } from '../utils/cameraSourceLabel';
 
 export default function GestureMonitor() {
   const [connectionState, setConnectionState] = useState('CONNECTING'); 
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const AI_BASE = `http://${window.location.hostname || '127.0.0.1'}:5000`;
+  const AI_BASE = import.meta.env.VITE_AI_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? `http://${window.location.hostname}:5000` : 'http://127.0.0.1:5000');
   const [activeStreamUrl, setActiveStreamUrl] = useState(`${AI_BASE}/gesture_feed?t=${new Date().getTime()}`);
   const [cameraSource, setCameraSource] = useState('cctv');
+  const [availableCameraSources, setAvailableCameraSources] = useState(['cctv', 'webcam']);
   
-  const [latency, setLatency] = useState(0);
+  const [cameraFps, setCameraFps] = useState(null);
+  const [cameraStatusError, setCameraStatusError] = useState(false);
   const [recentLogs, setRecentLogs] = useState([]);
   
   // --- NEW: Custom Alert Modal ---
   const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   const containerRef = useRef(null);
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    const latencyInterval = setInterval(() => {
-      if (connectionState === 'LIVE') setLatency(Math.floor(Math.random() * (120 - 40 + 1) + 40));
-      else setLatency(0);
-    }, 2000);
-
-    return () => {
-      clearInterval(timer);
-      clearInterval(latencyInterval);
-    };
-  }, [connectionState]);
+  const reconnectCamera = () => {
+    setConnectionState('CONNECTING');
+    setActiveStreamUrl(`${AI_BASE}/gesture_feed?t=${Date.now()}`);
+  };
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
         const res = await api.get('/workouts/live');
         setRecentLogs(res.data);
-      } catch (error) {
+      } catch {
         console.error("Failed to fetch live gesture logs");
       }
     };
@@ -53,34 +46,51 @@ export default function GestureMonitor() {
       } else {
         setAlertDialog({ isOpen: true, title: 'Sync Failed', message: 'AI Sync failed to respond correctly.', type: 'error' });
       }
-    } catch (error) {
+    } catch {
       setAlertDialog({ isOpen: true, title: 'Engine Offline', message: 'Could not connect to the Python AI Engine.', type: 'error' });
     }
   };
 
-  const handleToggleCamera = async () => {
-    const nextSource = cameraSource === 'cctv' ? 'webcam' : 'cctv';
+  const handleCameraChange = async (event) => {
+    const nextSource = event.target.value;
     try {
       const res = await fetch(`${AI_BASE}/switch_camera`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: nextSource })
       });
-      if (res.ok) {
-        setCameraSource(nextSource);
-        setActiveStreamUrl(`${AI_BASE}/gesture_feed?t=${new Date().getTime()}`);
-        setAlertDialog({ isOpen: true, title: 'Camera Switched', message: `Switched video source to: ${nextSource.toUpperCase()}`, type: 'success' });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Camera source could not be switched.');
       }
-    } catch (err) {
-      setAlertDialog({ isOpen: true, title: 'Switch Failed', message: 'Could not reach Python engine to switch camera.', type: 'error' });
+
+      setCameraSource(data.mode);
+      setActiveStreamUrl(`${AI_BASE}/gesture_feed?t=${new Date().getTime()}`);
+      setAlertDialog({ isOpen: true, title: 'Camera Switched', message: `Switched video source to: ${data.mode.toUpperCase()}`, type: 'success' });
+    } catch (error) {
+      setAlertDialog({ isOpen: true, title: 'Switch Failed', message: error.message || 'Could not reach Python engine to switch camera.', type: 'error' });
     }
   };
 
   useEffect(() => {
-    fetch(`${AI_BASE}/camera_status`)
-      .then(r => r.json())
-      .then(d => { if (d.source) setCameraSource(d.source); })
-      .catch(() => {});
+    const fetchCameraStatus = async () => {
+      try {
+        const response = await fetch(`${AI_BASE}/camera_status`);
+        if (!response.ok) throw new Error('Camera status request failed.');
+        const d = await response.json();
+        if (d.source) setCameraSource(d.source);
+        if (Array.isArray(d.available_sources)) setAvailableCameraSources(d.available_sources);
+        setCameraFps(Number.isFinite(d.fps) ? d.fps : null);
+        setCameraStatusError(false);
+      } catch {
+        setCameraFps(null);
+        setCameraStatusError(true);
+      }
+    };
+
+    fetchCameraStatus();
+    const statusInterval = setInterval(fetchCameraStatus, 2000);
+    return () => clearInterval(statusInterval);
   }, [AI_BASE]);
 
   const toggleFullScreen = () => {
@@ -148,24 +158,23 @@ export default function GestureMonitor() {
                 <FiWifiOff size={40} md:size={56} className="mx-auto text-slate-600 mb-2 md:mb-4 opacity-90" />
                 <p className="text-sm md:text-lg font-bold text-slate-200">Connection Lost</p>
                 <p className="text-xs font-medium mt-1">Auto-reconnecting...</p>
+                <button type="button" onClick={reconnectCamera} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20">
+                  <FiRefreshCw size={14} /> Retry now
+                </button>
               </div>
             ) : null}
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-between items-end z-10">
-            <div className="text-slate-300 font-mono text-[9px] md:text-xs uppercase tracking-widest font-semibold">
-              <span className="hidden sm:block">{currentTime.toLocaleDateString('en-PH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
-              <span className="text-lg md:text-2xl font-bold text-white tracking-widest">{currentTime.toLocaleTimeString('en-US', { hour12: false })}</span>
-            </div>
+          <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-end items-end z-10">
             <div className="flex gap-2 md:gap-3 items-center">
-              <button 
-                onClick={handleToggleCamera} 
-                className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-all border border-white/10 active:scale-95 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" 
-                title={`Switch video source (Currently: ${cameraSource.toUpperCase()})`}
-              >
+              <label className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 text-white rounded-lg md:rounded-xl backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" title="Select video source">
                 <FiCamera className="size-4 md:size-5 text-amber-400" />
-                <span>{cameraSource.toUpperCase()}</span>
-              </button>
+                <select value={cameraSource} onChange={handleCameraChange} className="camera-source-select bg-transparent text-white font-bold uppercase focus:outline-none">
+                  {availableCameraSources.map(source => (
+                    <option key={source} value={source} className="bg-slate-900 text-white">{getCameraSourceLabel(source)}</option>
+                  ))}
+                </select>
+              </label>
               <button onClick={handleSyncAI} className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-colors border border-white/10 active:scale-95" title="Force AI Memory Sync">
                 <FiRefreshCw className="size-4 md:size-5" />
               </button>
@@ -177,8 +186,8 @@ export default function GestureMonitor() {
         <div className="w-full lg:w-1/4 flex flex-col gap-6 min-h-[380px] lg:h-full flex-shrink-0">
           <div className="bg-white dark:bg-[#252830] rounded-2xl border border-gray-300 dark:border-gray-600 shadow-sm flex flex-col overflow-hidden h-full">
             <div className="p-4 md:p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex items-center justify-between flex-shrink-0">
-              <h3 className="font-bold text-slate-800 dark:text-gray-300 flex items-center gap-2 text-sm md:text-base">
-                <FiActivity className="text-black dark:text-gray-300" size={18} />
+              <h3 className="flex min-w-0 items-center gap-2 whitespace-nowrap font-bold text-slate-800 dark:text-gray-300 text-[11px] sm:text-xs lg:text-[9px] xl:text-[11px] 2xl:text-sm">
+                <FiActivity className="shrink-0 text-black dark:text-gray-300" size={18} />
                 Workout Queue & Gesture Logs
               </h3>
             </div>
@@ -205,8 +214,12 @@ export default function GestureMonitor() {
             
             <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
               <div className="flex justify-between items-center text-[10px] md:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-2">Latency: <span className={`${connectionState === 'LIVE' ? 'text-slate-800 dark:text-gray-300' : 'text-slate-400'}`}>{connectionState === 'LIVE' ? `${latency}ms` : '--'}</span></span>
+                <span className="flex items-center gap-2">Camera FPS: <span className={`${connectionState === 'LIVE' ? 'text-slate-800 dark:text-gray-300' : 'text-slate-400'}`}>{connectionState === 'LIVE' && cameraFps !== null ? cameraFps.toFixed(1) : '--'}</span></span>
                 <span className={`${connectionState === 'LIVE' ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'} flex items-center gap-1.5`}>API Status: {connectionState === 'LIVE' ? 'OK' : 'OFFLINE'}</span>
+              </div>
+              <div className="mt-2 flex flex-wrap justify-between gap-1 text-[10px] font-semibold text-slate-500 dark:text-gray-400">
+                <span>Source: {getCameraSourceLabel(cameraSource)}</span>
+                <span>{cameraStatusError ? 'Status unavailable' : 'Status connected'}</span>
               </div>
             </div>
           </div>

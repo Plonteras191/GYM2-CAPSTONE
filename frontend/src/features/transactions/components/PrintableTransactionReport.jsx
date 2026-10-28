@@ -2,88 +2,118 @@ import React from 'react';
 
 export default function PrintableTransactionReport({
   filteredTxns,
-  totalIncome,
-  totalRefunds,
-  netRevenue,
-  pendingAmount
+  filterType,
+  searchTerm
 }) {
+  const totalIncome = filteredTxns
+    .filter(transaction => Number(transaction.amount) > 0 && transaction.status === 'Complete')
+    .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
+  const totalRefunds = filteredTxns
+    .filter(transaction => transaction.type === 'Refund')
+    .reduce((sum, transaction) => sum + Math.abs(Number(transaction.amount)), 0);
+  const pendingAmount = filteredTxns
+    .filter(transaction => transaction.status === 'Pending')
+    .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
+  const netRevenue = totalIncome - totalRefunds;
+  const formatCurrency = amount => `\u20B1 ${amount.toLocaleString()}`;
+
   return (
     <>
       <style type="text/css" media="print">
         {`
-          @page { size: A4 portrait; margin: 15mm; }
-          html, body { background-color: white !important; -webkit-print-color-adjust: exact; }
+          @page { size: A4 landscape; margin: 12mm; }
+          html, body { background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           body * { visibility: hidden; }
           #printable-report, #printable-report * { visibility: visible; }
           #printable-report { position: absolute; left: 0; top: 0; width: 100%; margin: 0; background: white; color: black; }
+          #printable-report thead { display: table-header-group; }
+          #printable-report tr { break-inside: avoid; }
         `}
       </style>
 
-      <div id="printable-report" className="hidden print:block bg-white text-black font-sans w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-black uppercase tracking-widest mb-1">
-            Double Alpha Fitness Transaction Records
-          </h1>
-          <p className="text-sm font-bold text-gray-600">
-            Generated on: {new Date().toLocaleDateString()}
-          </p>
+      <div id="printable-report" className="hidden w-full bg-white font-sans text-black print:block">
+        <div className="mb-5 flex items-end justify-between border-b-2 border-black pb-3">
+          <div>
+            <h1 className="text-xl font-black uppercase tracking-wide">Double Alpha Fitness Gym</h1>
+            <p className="mt-1 text-xs font-medium text-gray-600">
+              Transaction report · {filterType === 'All' ? 'All transaction types' : filterType}
+              {searchTerm ? ` · Search: ${searchTerm}` : ''}
+            </p>
+          </div>
+          <div className="text-right text-xs text-gray-600">
+            <p>Records: {filteredTxns.length.toLocaleString()}</p>
+            <p>Generated: {new Date().toLocaleString()}</p>
+          </div>
         </div>
 
-        <table className="w-full border-collapse border-2 border-black mb-8 text-center">
+        <table className="mb-5 w-full border-collapse border border-black text-center">
           <thead>
-            <tr className="bg-gray-100 border-b-2 border-black">
-              <th className="py-2 text-sm font-bold uppercase tracking-widest border-r-2 border-black">Total Income</th>
-              <th className="py-2 text-sm font-bold uppercase tracking-widest border-r-2 border-black">Refunds</th>
-              <th className="py-2 text-sm font-bold uppercase tracking-widest border-r-2 border-black">Net Revenue</th>
-              <th className="py-2 text-sm font-bold uppercase tracking-widest">Pending</th>
+            <tr className="border-b border-black bg-gray-100">
+              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Total Income</th>
+              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Refunds</th>
+              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Net Revenue</th>
+              <th className="py-1.5 text-xs font-bold uppercase">Pending</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="py-4 text-2xl font-black border-r-2 border-black">&#8369; {totalIncome.toLocaleString()}</td>
-              <td className="py-4 text-2xl font-black border-r-2 border-black">&#8369; {totalRefunds.toLocaleString()}</td>
-              <td className="py-4 text-2xl font-black border-r-2 border-black">&#8369; {netRevenue.toLocaleString()}</td>
-              <td className="py-4 text-2xl font-black">&#8369; {pendingAmount.toLocaleString()}</td>
+              <td className="border-r border-black py-2 text-lg font-black">{formatCurrency(totalIncome)}</td>
+              <td className="border-r border-black py-2 text-lg font-black">{formatCurrency(totalRefunds)}</td>
+              <td className="border-r border-black py-2 text-lg font-black">{formatCurrency(netRevenue)}</td>
+              <td className="py-2 text-lg font-black">{formatCurrency(pendingAmount)}</td>
             </tr>
           </tbody>
         </table>
 
-        <table className="w-full border-collapse border-2 border-black text-center text-sm">
+        <table className="w-full table-fixed border-collapse border border-black text-left text-xs">
+          <colgroup>
+            <col className="w-[13%]" />
+            <col className="w-[17%]" />
+            <col className="w-[13%]" />
+            <col className="w-[23%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[14%]" />
+          </colgroup>
           <thead>
-            <tr className="bg-gray-100 border-b-2 border-black">
-              <th className="py-2 font-bold uppercase tracking-widest border-r-2 border-black">TXN ID & DATE</th>
-              <th className="py-2 font-bold uppercase tracking-widest border-r-2 border-black">MEMBER</th>
-              <th className="py-2 font-bold uppercase tracking-widest border-r-2 border-black">DETAILS</th>
-              <th className="py-2 font-bold uppercase tracking-widest border-r-2 border-black">METHOD</th>
-              <th className="py-2 font-bold uppercase tracking-widest border-r-2 border-black">AMOUNT</th>
-              <th className="py-2 font-bold uppercase tracking-widest">STATUS</th>
+            <tr className="border-b-2 border-black bg-gray-100">
+              <th className="px-2 py-2 font-bold uppercase">Transaction / Date</th>
+              <th className="px-2 py-2 font-bold uppercase">Member</th>
+              <th className="px-2 py-2 font-bold uppercase">Type</th>
+              <th className="px-2 py-2 font-bold uppercase">Package / Details</th>
+              <th className="px-2 py-2 font-bold uppercase">Method</th>
+              <th className="px-2 py-2 text-right font-bold uppercase">Amount</th>
+              <th className="px-2 py-2 font-bold uppercase">Status / Reference</th>
             </tr>
           </thead>
           <tbody>
             {filteredTxns.map((txn) => {
               const memberName = txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-in Guest';
-              const amtStr = Number(txn.amount) > 0 ? `\u20B1 ${Number(txn.amount).toLocaleString()}` : `-\u20B1 ${Math.abs(Number(txn.amount)).toLocaleString()}`;
+              const amount = Number(txn.amount);
+              const packageDetails = txn.membership?.plan_type || txn.description || '-';
+              const formattedAmount = `${amount < 0 ? '-' : ''}${formatCurrency(Math.abs(amount))}`;
               return (
-                <tr key={txn.id} className="border-b border-black last:border-0">
-                  <td className="py-3 font-medium border-r-2 border-black">
+                <tr key={txn.id} className="border-b border-gray-400">
+                  <td className="break-words px-2 py-2 font-medium">
                     <div className="font-bold">{txn.transaction_id}</div>
-                    <div className="text-xs">{txn.transaction_date}</div>
+                    <div className="mt-0.5 text-[10px]">{txn.transaction_date}</div>
                   </td>
-                  <td className="py-3 font-medium border-r-2 border-black uppercase">{memberName}</td>
-                  <td className="py-3 font-medium border-r-2 border-black uppercase">
-                    <div className="font-bold">{txn.type}</div>
-                    <div className="text-xs">{txn.description || '-'}</div>
+                  <td className="break-words px-2 py-2 font-medium">{memberName}</td>
+                  <td className="break-words px-2 py-2 font-medium">{txn.type || '-'}</td>
+                  <td className="break-words px-2 py-2 font-medium">{packageDetails}</td>
+                  <td className="break-words px-2 py-2 font-medium">{txn.payment_method || '-'}</td>
+                  <td className="whitespace-nowrap px-2 py-2 text-right font-bold">{formattedAmount}</td>
+                  <td className="break-words px-2 py-2 font-medium">
+                    <div>{txn.status || '-'}</div>
+                    {txn.reference_number && <div className="mt-0.5 text-[10px]">{txn.reference_number}</div>}
                   </td>
-                  <td className="py-3 font-medium border-r-2 border-black uppercase">{txn.payment_method}</td>
-                  <td className="py-3 font-medium border-r-2 border-black uppercase">{amtStr}</td>
-                  <td className="py-3 font-medium uppercase">{txn.status}</td>
                 </tr>
               );
             })}
             {filteredTxns.length === 0 && (
               <tr>
-                <td colSpan="6" className="py-8 font-medium">
-                  No matching records found in the database.
+                <td colSpan="7" className="py-8 text-center font-medium">
+                  No transactions match the current filters.
                 </td>
               </tr>
             )}

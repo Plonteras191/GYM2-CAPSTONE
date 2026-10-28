@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTransactions } from '../features/transactions/hooks/useTransactions';
 import TransactionStats from '../features/transactions/components/TransactionStats';
 import TransactionTable from '../features/transactions/components/TransactionTable';
@@ -8,6 +9,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
 
 export default function Transactions() {
+  const location = useLocation();
   const {
     membersList,
     plansList,
@@ -15,11 +17,10 @@ export default function Transactions() {
     searchTerm, setSearchTerm,
     filterType, setFilterType,
     isModalOpen, setIsModalOpen,
-    isEditing,
     formData, setFormData,
     isSaving,
     isExporting,
-    deletingId,
+    refundingId,
     confirmDialog, setConfirmDialog,
     alertDialog, setAlertDialog,
     filteredTxns,
@@ -29,12 +30,15 @@ export default function Transactions() {
     pendingAmount,
     handlePlanSelection,
     handleOpenAddModal,
-    handleOpenEditModal,
-    handleDelete,
+    handleRefundTransaction,
     handleSaveTransaction,
     handleExportCSV,
     handlePrintReceipt
   } = useTransactions();
+
+  React.useEffect(() => {
+    if (location.state?.searchTerm) setSearchTerm(location.state.searchTerm);
+  }, [location.key, location.state, setSearchTerm]);
 
   return (
     <>
@@ -43,10 +47,8 @@ export default function Transactions() {
         {/* Printable Report View (Visible only during window.print()) */}
         <PrintableTransactionReport
           filteredTxns={filteredTxns}
-          totalIncome={totalIncome}
-          totalRefunds={totalRefunds}
-          netRevenue={netRevenue}
-          pendingAmount={pendingAmount}
+          filterType={filterType}
+          searchTerm={searchTerm}
         />
 
         {/* Regular UI (Hidden during window.print()) */}
@@ -66,17 +68,15 @@ export default function Transactions() {
             filterType={filterType}
             setFilterType={setFilterType}
             isExporting={isExporting}
-            deletingId={deletingId}
+            refundingId={refundingId}
             onAddTransaction={handleOpenAddModal}
-            onEditTransaction={handleOpenEditModal}
-            onDeleteTransaction={handleDelete}
+            onRefundTransaction={handleRefundTransaction}
             onExportCSV={handleExportCSV}
             onPrintReceipt={handlePrintReceipt}
           />
 
           <TransactionFormModal
             isOpen={isModalOpen}
-            isEditing={isEditing}
             isSaving={isSaving}
             formData={formData}
             setFormData={setFormData}

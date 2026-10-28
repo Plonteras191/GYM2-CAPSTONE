@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../../api';
 import logo from '../../../assets/logo.png';
 import { useDataCache } from '../../../context/DataCacheContext';
+import { downloadCsv } from '../../../utils/csvExport';
 
 export function useTransactions() {
   const { getCache, setCache, invalidateCache } = useDataCache();
@@ -16,17 +17,15 @@ export function useTransactions() {
   const [filterType, setFilterType] = useState('All');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  
-  const defaultForm = { 
-    id: '', transaction_date: '', member_id: '', type: 'Subscription Payment', 
-    description: '', payment_method: 'Cash', amount: '', status: 'Complete', reference_number: '' 
+  const defaultForm = {
+    id: '', member_id: '', package_id: '', package_name: '', type: '',
+    description: '', payment_method: 'Cash', amount: '', reference_number: ''
   };
   const [formData, setFormData] = useState(defaultForm);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+  const [refundingId, setRefundingId] = useState(null);
 
   // Dialogs
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -40,7 +39,17 @@ export function useTransactions() {
         api.get('/members'),
         api.get('/plans') 
       ]);
-      const newTxns = Array.isArray(txnRes.data) ? txnRes.data : (txnRes.data?.data || []);
+      const responseTransactions = Array.isArray(txnRes.data) ? txnRes.data : (txnRes.data?.data || []);
+      const newTxns = responseTransactions.map(transaction => {
+        const dailyPlanPayment = transaction.type === 'Subscription Payment'
+          && (
+            (transaction.membership?.plan_type || '').toLowerCase().includes('daily')
+            || (transaction.description || '').toLowerCase().includes('daily')
+          );
+        return dailyPlanPayment
+          ? { ...transaction, type: 'Walk-in Guest', description: 'Walk-in Guest' }
+          : transaction;
+      });
       const newMembers = Array.isArray(memRes.data) ? memRes.data : [];
       const newPlans = Array.isArray(plansRes.data) ? plansRes.data : [];
       setTransactions(newTxns);
@@ -61,55 +70,58 @@ export function useTransactions() {
 
   const handlePlanSelection = (planName) => {
     const selectedPlan = plansList.find(p => p.name === planName);
-    if (selectedPlan) {
-      setFormData(prev => ({
-        ...prev,
-        amount: selectedPlan.price,
-        description: `${selectedPlan.name} Plan Payment`
-      }));
+    if (!selectedPlan) {
+      setFormData(prev => ({ ...prev, package_id: '', package_name: '', type: '', amount: '', description: '' }));
+      return;
     }
+    const normalizedPlanName = selectedPlan.name.toLowerCase();
+    const type = selectedPlan.category === 'walk_in'
+      ? 'Walk-In'
+      : selectedPlan.category === 'other'
+        ? 'Packages'
+        : normalizedPlanName.includes('walk')
+          || normalizedPlanName.includes('daily')
+          ? 'Walk-In'
+          : 'Subscription';
+    setFormData(prev => ({
+      ...prev,
+      package_id: selectedPlan.id,
+      package_name: selectedPlan.name,
+      type,
+      amount: selectedPlan.price,
+      description: `${selectedPlan.name} Package`
+    }));
   };
 
   const handleOpenAddModal = () => {
-    setFormData({ ...defaultForm, transaction_date: new Date().toISOString().split('T')[0] });
-    setIsEditing(false);
+    setFormData(defaultForm);
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (txn) => {
-    setFormData({
-      id: txn.id,
-      transaction_date: txn.transaction_date,
-      member_id: txn.member_id || '', 
-      type: txn.type,
-      description: txn.description || '',
-      payment_method: txn.payment_method,
-      amount: txn.amount,
-      status: txn.status,
-      reference_number: txn.reference_number || ''
-    });
-    setIsEditing(true);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id) => {
+  const handleRefundTransaction = (transaction) => {
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Transaction',
-      message: 'Are you sure you want to permanently delete this transaction? This action cannot be undone.',
+      title: 'Refund Transaction',
+      message: `Refund the full amount of ₱${Math.abs(Number(transaction.amount)).toLocaleString()} for ${transaction.transaction_id}? This will create a separate refund record.`,
       onConfirm: async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false })); 
-        setDeletingId(id);
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setRefundingId(transaction.id);
         try {
-          await api.delete(`/transactions/${id}`);
-        } catch (error) {
-          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
-        } finally {
-          setTransactions(prev => prev.filter(t => t.id !== id));
-          setDeletingId(null);
+          await api.post(`/transactions/${transaction.id}/refund`);
           invalidateCache('transactions_data');
           invalidateCache('dashboard');
-          fetchData(false);
+          await fetchData(false);
+          setAlertDialog({ isOpen: true, title: 'Success', message: 'Transaction refunded successfully.', type: 'success' });
+        } catch (error) {
+          console.error('Failed to refund transaction:', error);
+          setAlertDialog({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || 'Failed to refund transaction. Please try again.',
+            type: 'error'
+          });
+        } finally {
+          setRefundingId(null);
         }
       }
     });
@@ -117,23 +129,25 @@ export function useTransactions() {
 
   const handleSaveTransaction = async (e) => {
     e.preventDefault();
+    if (!formData.package_id || !formData.package_name || !formData.type) {
+      setAlertDialog({ isOpen: true, title: 'Select a Package', message: 'Choose a package before recording the transaction.', type: 'error' });
+      return;
+    }
     setIsSaving(true);
     try {
+      const transactionFields = Object.fromEntries(
+        Object.entries(formData).filter(([key]) => !['package_id', 'package_name', 'type'].includes(key))
+      );
       const payload = { 
-        ...formData, 
+        ...transactionFields,
+        plan_id: parseInt(formData.package_id, 10),
         member_id: formData.member_id ? parseInt(formData.member_id, 10) : null,
         reference_number: formData.reference_number ? formData.reference_number : null,
         description: formData.description ? formData.description : null,
         amount: parseFloat(formData.amount)
       };
 
-      if (!isEditing) delete payload.id;
-      
-      if (isEditing) {
-        await api.put(`/transactions/${formData.id}`, payload);
-      } else {
-        await api.post('/transactions', payload);
-      }
+      await api.post('/transactions', payload);
       invalidateCache('transactions_data');
       invalidateCache('dashboard');
       await fetchData(false);
@@ -150,30 +164,50 @@ export function useTransactions() {
   const filteredTxns = transactions.filter(txn => {
     const memberName = txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-in Guest';
     const matchesSearch = memberName.toLowerCase().includes(searchTerm.toLowerCase()) || (txn.transaction_id || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'All' || txn.type === filterType;
+    const type = (txn.type || '').trim().toLowerCase();
+    const matchesWalkIn = ['walk-in', 'walk in', 'walk-in guest', 'walk in guest', 'fee', 'fee (walk-in)', 'fee(walk-in)', 'other'].includes(type);
+    const matchesType = filterType === 'All'
+      || (filterType === 'Walk-In' ? matchesWalkIn
+        : filterType === 'Subscription' ? ['subscription', 'subscription payment'].includes(type)
+          : filterType === 'Packages' ? type === 'packages'
+            : filterType === 'Refund' ? type === 'refund'
+              : txn.type === filterType);
     return matchesSearch && matchesType;
   });
 
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800)); 
-      const headers = "Transaction ID,Date,Member,Type,Description,Method,Amount,Status,Reference\n";
-      const rows = filteredTxns.map(t => {
-        const memberName = t.member ? `${t.member.first_name} ${t.member.last_name}` : 'Walk-in Guest';
-        return `${t.transaction_id},${t.transaction_date},${memberName},${t.type},"${t.description || ''}",${t.payment_method},${t.amount},${t.status},${t.reference_number || ''}`;
-      }).join("\n");
-      
-      const csvContent = headers + rows;
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `Transactions_Export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const headers = ['Transaction ID', 'Date', 'Member', 'Type', 'Package / Details', 'Payment Method', 'Amount', 'Status', 'Reference'];
+      const rows = filteredTxns.map(transaction => {
+        const memberName = transaction.member
+          ? `${transaction.member.first_name} ${transaction.member.last_name}`
+          : 'Walk-in Guest';
+        return [
+          transaction.transaction_id,
+          transaction.transaction_date,
+          memberName,
+          transaction.type,
+          transaction.membership?.plan_type || transaction.description,
+          transaction.payment_method,
+          transaction.amount,
+          transaction.status,
+          transaction.reference_number,
+        ];
+      });
+
+      downloadCsv(
+        `Transactions_Export_${new Date().toISOString().split('T')[0]}.csv`,
+        [headers, ...rows]
+      );
     } catch (error) {
-      console.error("Failed to export:", error);
+      console.error('Failed to export transactions:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Export Failed',
+        message: 'The transaction CSV could not be created. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsExporting(false);
     }
@@ -185,7 +219,7 @@ export function useTransactions() {
     const memberId = txn.member ? String(txn.member.id).padStart(4, '0') : 'N/A';
     const memberName = txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-In Guest';
 
-    const isSubPayment = txn.type === 'Subscription Payment';
+    const isSubPayment = ['Subscription Payment', 'Subscription'].includes(txn.type);
 
     // Phase 1: Try to extract the plan from the description first
     let matchedPlan = plansList.find(p => txnDesc.toLowerCase().includes(p.name.toLowerCase()));
@@ -223,7 +257,10 @@ export function useTransactions() {
     }
 
     // Force Walk-In logic completely preventing "Walk-In" bugs for subscription buyers
-    const isWalkIn = !isSubPayment && (txn.type === 'Fee' || !txn.member || memberPlan.toLowerCase().includes('walk') || txnDesc.toLowerCase().includes('walk'));
+    const isWalkIn = txn.type === 'Walk-In'
+      || txn.type === 'Walk-in Guest'
+      || (!isSubPayment && (txn.type === 'Fee' || !txn.member || memberPlan.toLowerCase().includes('walk') || txnDesc.toLowerCase().includes('walk')));
+    const isPackageSale = txn.type === 'Packages';
 
     let membershipPlan = 'Walk-In';
     if (!isWalkIn) {
@@ -238,7 +275,11 @@ export function useTransactions() {
 
     let basePrice = Number(txn.amount);
     let discountAmount = 0;
-    let itemName = isWalkIn ? 'Walk-In Access' : 'Subscription Bill';
+    let itemName = isWalkIn
+      ? 'Walk-In Access'
+      : isPackageSale
+        ? `${matchedPlan?.name || txnDesc || 'Package'} Purchase`
+        : 'Subscription Bill';
 
     if (isSubPayment && matchedPlan) {
         if (Number(matchedPlan.price) > Number(txn.amount)) {
@@ -366,11 +407,10 @@ export function useTransactions() {
     searchTerm, setSearchTerm,
     filterType, setFilterType,
     isModalOpen, setIsModalOpen,
-    isEditing,
     formData, setFormData,
     isSaving,
     isExporting,
-    deletingId,
+    refundingId,
     confirmDialog, setConfirmDialog,
     alertDialog, setAlertDialog,
     filteredTxns,
@@ -380,8 +420,7 @@ export function useTransactions() {
     pendingAmount,
     handlePlanSelection,
     handleOpenAddModal,
-    handleOpenEditModal,
-    handleDelete,
+    handleRefundTransaction,
     handleSaveTransaction,
     handleExportCSV,
     handlePrintReceipt

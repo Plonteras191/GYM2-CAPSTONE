@@ -86,14 +86,20 @@ export function useMembers() {
         setDeletingId(id);
         try {
           await api.delete(`/members/${id}`);
-        } catch (error) {
-          // If backend throws an empty parsing error despite successful deletion, suppress it.
-          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
-        } finally {
-          setDeletingId(null);
           invalidateCache('members');
           invalidateCache('dashboard');
+          setAlertDialog({ isOpen: true, title: 'Success', message: 'Member successfully deleted.', type: 'success' });
           loadMembers(false);
+        } catch (error) {
+          console.error('Failed to delete member:', error);
+          setAlertDialog({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || 'Failed to delete member. Please try again.',
+            type: 'error'
+          });
+        } finally {
+          setDeletingId(null);
         }
       }
     });

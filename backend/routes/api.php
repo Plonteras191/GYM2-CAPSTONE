@@ -5,7 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\AdminProfileController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\CoachEventController;
 use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Admin\PackageCategoryController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Member\MemberController;
 use App\Http\Controllers\Member\MembershipController;
@@ -45,14 +47,29 @@ Route::delete('/memberships/{id}', [MembershipController::class, 'destroy']);
 // --- 4. PLAN ROUTES ---
 Route::get('/plans', [PlanController::class, 'index']);
 Route::post('/plans', [PlanController::class, 'store']); // Adds a new plan
+Route::put('/plans/{id}', [PlanController::class, 'update']);
 Route::delete('/plans/{id}', [PlanController::class, 'destroy']); // Deletes a plan
 Route::post('/plans/bulk-update', [PlanController::class, 'bulkUpdate']);
+Route::get('/package-categories', [PackageCategoryController::class, 'index']);
+Route::post('/package-categories', [PackageCategoryController::class, 'store']);
+Route::put('/package-categories/{id}', [PackageCategoryController::class, 'update']);
+Route::delete('/package-categories/{id}', [PackageCategoryController::class, 'destroy']);
+
+// --- 4A. COACH CALENDAR EVENT ROUTES ---
+Route::get('/coach-events', [CoachEventController::class, 'index']);
+Route::post('/coach-events', [CoachEventController::class, 'store']);
+Route::put('/coach-events/{id}', [CoachEventController::class, 'update']);
+Route::delete('/coach-events/{id}', [CoachEventController::class, 'destroy']);
+Route::get('/coach-event-categories', [CoachEventController::class, 'categories']);
+Route::put('/coach-event-categories/{id}', [CoachEventController::class, 'updateCategory']);
+Route::delete('/coach-event-categories/{id}', [CoachEventController::class, 'destroyCategory']);
 
 // --- 5. TRANSACTION ROUTES ---
 Route::get('/transactions', [TransactionController::class, 'index']);
 Route::post('/transactions', [TransactionController::class, 'store']);
 Route::put('/transactions/{id}', [TransactionController::class, 'update']);
 Route::delete('/transactions/{id}', [TransactionController::class, 'destroy']);
+Route::post('/transactions/{id}/refund', [TransactionController::class, 'refund']);
 
 // --- 6. REPORTS ROUTE ---
 Route::get('/reports', [ReportController::class, 'index']);
@@ -62,15 +79,30 @@ Route::get('/reports', [ReportController::class, 'index']);
 Route::get('/ai/members-faces', function () {
     return Member::whereNotNull('enrolled_face_id')
         ->select('id', 'first_name', 'last_name', 'enrolled_face_id')
+        ->withExists(['memberships as has_active_coach_membership' => function ($query) {
+            $query->activeWithCoach();
+        }])
         ->get()
         ->map(function ($member) {
             return [
                 'id' => $member->id,
                 'name' => $member->first_name . ' ' . $member->last_name,
-                // Assuming enrolled_face_id stores the filename like "1783...png"
-                'image_file' => $member->enrolled_face_id 
+                'image_file' => $member->enrolled_face_id,
+                'workout_eligible' => (bool) $member->has_active_coach_membership,
             ];
         });
+});
+
+Route::get('/ai/workout-plans', function () {
+    return WorkoutLog::whereDate('date', Carbon::today())
+        ->where('exercise', 'like', 'ASSIGNED: %')
+        ->whereHas('member', function ($query) {
+            $query->where('status', 'Active')
+                ->whereHas('memberships', function ($membershipQuery) {
+                    $membershipQuery->activeWithCoach();
+                });
+        })
+        ->get(['member_id', 'exercise', 'gesture_class']);
 });
 
         // 2. The Attendance Logger: Python will hit this when it sees a member
@@ -183,6 +215,20 @@ Route::post('/ai/log-workout', function (Request $request) {
         'member_id' => 'required|exists:members,id',
         'exercise' => 'required|string'
     ]);
+
+    $isEligibleForAi = Member::whereKey($request->member_id)
+        ->where('status', 'Active')
+        ->whereHas('memberships', function ($query) {
+            $query->activeWithCoach();
+        })
+        ->exists();
+
+    if (!$isEligibleForAi) {
+        return response()->json([
+            'status' => 'ineligible',
+            'message' => 'AI workout verification requires an active With Coach membership.',
+        ], 403);
+    }
     
     $exerciseName = strtoupper($request->exercise);
     $today = Carbon::today()->toDateString();

@@ -1,8 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { FiX, FiSave, FiLoader, FiUpload } from 'react-icons/fi';
+import { FiX, FiSave, FiLoader, FiUpload, FiPlus, FiEdit2 } from 'react-icons/fi';
 import AvatarEditor from 'react-avatar-editor';
 import CameraCapture from './CameraCapture';
 import api from '../../../api';
+import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 
 const getBmiInfo = (height, weight) => {
   if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500' };
@@ -34,6 +35,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   const editorRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const initialSnapshotRef = useRef('');
 
   // Sync initialData when modal opens
   React.useEffect(() => {
@@ -56,7 +58,9 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       setFormData(initial);
       setProfilePic(null);
       setEditorScale(1.2);
-      setFaceImage(isEditing && (initialData?.enrolledFaceId || initialData?.enrolled_face_id) ? 'existing_data' : null);
+      const initialFaceImage = isEditing && (initialData?.enrolledFaceId || initialData?.enrolled_face_id) ? 'existing_data' : null;
+      setFaceImage(initialFaceImage);
+      initialSnapshotRef.current = JSON.stringify({ form: initial, faceImage: initialFaceImage });
       setIsCameraActive(false);
     }
   }, [isOpen, initialData, isEditing]);
@@ -135,7 +139,8 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       } else {
         await api.post('/members', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       }
-      fetch('http://127.0.0.1:5000/refresh_ai', { method: 'POST' }).catch(() => {});
+      const aiBase = import.meta.env.VITE_AI_URL || 'http://127.0.0.1:5000';
+      fetch(`${aiBase}/refresh_ai`, { method: 'POST' }).catch(() => {});
       onShowAlert('Success', 'Member profile saved successfully!', 'success');
       stopCamera();
       onSaved();
@@ -155,7 +160,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   };
 
   const handleNameChange = (e, field) => {
-    setFormData({ ...formData, [field]: e.target.value.replace(/[^a-zA-Z\s\-Ã±Ã‘]/g, '') });
+    setFormData({ ...formData, [field]: e.target.value.replace(/[^\p{L}\p{M}\s'-]/gu, '') });
   };
   const handlePhoneChange = (e) => {
     setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 11) });
@@ -167,12 +172,20 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   const saveMemberBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
   const saveChangesBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
   const bmiData = getBmiInfo(formData.height, formData.weight);
+  const isDirty = Boolean(profilePic)
+    || JSON.stringify({ form: formData, faceImage }) !== initialSnapshotRef.current;
+  const unsavedChangesGuard = useUnsavedChangesGuard(isDirty);
+  const requestClose = () => unsavedChangesGuard.requestClose(() => {
+    stopCamera();
+    onClose();
+  });
 
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border-2 border-gray-300 dark:border-gray-600">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border-2 border-gray-300 bg-white shadow-2xl dark:border-gray-600 dark:bg-[#252830]">
         
         {/* ADDED: Style block to completely hide the number input spinner arrows */}
         <style>{`
@@ -187,22 +200,31 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         `}</style>
 
         {/* Header */}
-        <div className="p-6 border-b-2 border-gray-300 dark:border-gray-600 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-xl font-bold text-slate-800 dark:text-gray-300">{isEditing ? 'Edit Member Profile' : 'Add New Member'}</h3>
-          <button onClick={() => { stopCamera(); onClose(); }} disabled={isSaving} className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50">
+        <div className="flex items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
+          <h3 className="flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-gray-300">
+            {isEditing ? <FiEdit2 size={19} /> : <FiPlus size={20} />}
+            {isEditing ? 'Edit Member Profile' : 'Add New Member'}
+          </h3>
+          <button
+            type="button"
+            onClick={requestClose}
+            disabled={isSaving}
+            aria-label="Close member form"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-300 dark:hover:bg-red-500/10"
+          >
             <FiX size={24} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-8 flex-1 bg-white dark:bg-[#252830]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex-1 space-y-5 overflow-y-auto bg-slate-100 p-4 dark:bg-[#191b22] sm:p-5">
+          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
             {/* Profile Pic */}
-            <div className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-700/50 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-3">
-              <h4 className="font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wide text-sm">Display Picture</h4>
+            <div className="flex min-h-[18rem] flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-4 text-center shadow-sm dark:border-gray-600 dark:bg-[#252830]">
+              <h4 className="flex h-6 items-center font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wide text-sm">Display Picture</h4>
               {profilePic ? (
-                <div className="flex flex-col items-center gap-4 w-full">
-                  <div className="rounded-full overflow-hidden border-4 border-amber-500 shadow-lg">
+                <div className="flex w-full flex-1 flex-col items-center justify-center gap-4">
+                  <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-full border-4 border-amber-500 shadow-lg">
                     <AvatarEditor ref={editorRef} image={profilePic} width={150} height={150} border={0} borderRadius={75} color={[255,255,255,0.6]} scale={editorScale} rotate={0} />
                   </div>
                   <div className="w-full max-w-[200px] flex items-center gap-2">
@@ -213,12 +235,14 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                   <button type="button" onClick={() => { setProfilePic(null); setEditorScale(1.2); }} className="text-[10px] font-bold text-red-500 uppercase tracking-widest hover:underline">Cancel / Pick New Image</button>
                 </div>
               ) : (
-                <label className="relative group cursor-pointer mt-2">
-                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-gray-400 dark:border-gray-500 flex items-center justify-center bg-white dark:bg-[#252830] group-hover:border-amber-500 transition-colors overflow-hidden">
+                <label className="group relative mt-2 flex flex-1 cursor-pointer items-center justify-center">
+                  <div className="h-40 w-40 overflow-hidden rounded-full border-4 border-dashed border-gray-400 bg-white transition-colors group-hover:border-amber-500 dark:border-gray-500 dark:bg-[#252830]">
                     {formData.profilePicUrl ? (
                       <img src={formData.profilePicUrl} alt="Existing Profile" className="w-full h-full object-cover" />
                     ) : (
-                      <FiUpload className="text-gray-400 group-hover:text-amber-500" size={24} />
+                      <div className="flex h-full w-full items-center justify-center">
+                        <FiUpload className="text-gray-400 group-hover:text-amber-500" size={24} />
+                      </div>
                     )}
                   </div>
                   <input type="file" accept="image/*" className="hidden" onChange={e => { setProfilePic(e.target.files[0]); setEditorScale(1.2); }} />
@@ -240,10 +264,10 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
           </div>
 
           {/* Personal Details Form */}
-          <form id="memberForm" className="space-y-6" onSubmit={handleSave}>
-            <div>
-              <h4 className="text-lg font-bold border-b-2 border-gray-300 dark:border-gray-700/50 pb-2 mb-4 text-slate-800 dark:text-gray-300">Personal Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <form id="memberForm" className="space-y-5" onSubmit={handleSave}>
+            <div className="rounded-xl border-2 border-gray-300 bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-[#252830]">
+              <h4 className="mb-4 border-b-2 border-gray-300 pb-2 text-base font-bold text-slate-800 dark:border-gray-600 dark:text-gray-300">Personal Details</h4>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <label className="block"><span className={labelClass}>First Name</span><input type="text" required value={formData.firstName} onChange={e => handleNameChange(e, 'firstName')} className={inputClass} placeholder="Juan" /></label>
                 <label className="block"><span className={labelClass}>Last Name</span><input type="text" required value={formData.lastName} onChange={e => handleNameChange(e, 'lastName')} className={inputClass} placeholder="Dela Cruz" /></label>
                 <label className="block"><span className={labelClass}>Email</span><input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={inputClass} placeholder="juan@email.com" /></label>
@@ -253,19 +277,18 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                   <input type="text" required value={formData.phone || ''} onChange={handlePhoneChange} className={inputClass} placeholder="09123456789" />
                   <span className="text-[10px] text-gray-400 font-medium float-right mt-1">{(formData.phone || '').length}/11</span>
                 </label>
-                <label className="block"><span className={labelClass}>Date of Birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>
-                <label className="block"><span className={labelClass}>Height (cm)</span><input type="number" value={formData.height || ''} onChange={e => setFormData({...formData, height: e.target.value})} className={inputClass} placeholder="170" /></label>
-                <label className="block"><span className={labelClass}>Weight (kg)</span><input type="number" value={formData.weight || ''} onChange={e => setFormData({...formData, weight: e.target.value})} className={inputClass} placeholder="65" /></label>
+                <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 items-end gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <label className="block"><span className={labelClass}>Date of Birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>
+                  <label className="block"><span className={labelClass}>Height (cm)</span><input type="number" value={formData.height || ''} onChange={e => setFormData({...formData, height: e.target.value})} className={inputClass} placeholder="170" /></label>
+                  <label className="block"><span className={labelClass}>Weight (kg)</span><input type="number" value={formData.weight || ''} onChange={e => setFormData({...formData, weight: e.target.value})} className={inputClass} placeholder="65" /></label>
 
-                {/* BMI Display */}
-                <div className="md:col-span-2 lg:col-span-3 bg-slate-100 dark:bg-gray-800 p-4 rounded-xl border border-slate-200 dark:border-gray-700 flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest text-xs">Body Mass Index (BMI)</span>
-                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border border-solid shadow-sm mt-1.5 w-fit ${bmiData.color}`}>
-                      {bmiData.label}
-                    </span>
-                  </div>
-                  <span className="font-bold text-2xl text-slate-900 dark:text-gray-300">{bmiData.value}</span>
+                  <label className="block min-w-0">
+                    <span className={labelClass}>Body Mass Index</span>
+                    <div className={`flex min-h-[46px] items-center justify-between gap-3 rounded-xl border-2 p-2.5 shadow-sm ${bmiData.color}`}>
+                      <span className="min-w-0 truncate text-sm font-medium">{bmiData.label}</span>
+                      <span className="shrink-0 text-sm font-bold tabular-nums">{bmiData.value}</span>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>
@@ -273,8 +296,8 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3">
-          <button type="button" onClick={() => { stopCamera(); onClose(); }} disabled={isSaving} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 uppercase tracking-wide text-sm">Cancel</button>
+        <div className="flex justify-end gap-3 border-t-2 border-gray-300 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-800 sm:p-5">
+          <button type="button" onClick={requestClose} disabled={isSaving} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 uppercase tracking-wide text-sm">Cancel</button>
           <button form="memberForm" type="submit" disabled={isSaving || ((formData.phone || '').length > 0 && (formData.phone || '').length < 11)} className={isEditing ? saveChangesBtn : saveMemberBtn}>
             {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
             {isSaving ? 'Processing...' : (isEditing ? 'Save Changes' : 'Save Member')}
@@ -282,5 +305,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         </div>
       </div>
     </div>
+    {unsavedChangesGuard.dialog}
+    </>
   );
 }

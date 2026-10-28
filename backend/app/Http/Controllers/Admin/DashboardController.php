@@ -23,7 +23,7 @@ class DashboardController extends Controller
         $activeSubs = Membership::where('status', 'Active')->count();
 
         // 2. Recent Activity (Middle Grid)
-        $recentMembers = Member::orderBy('created_at', 'desc')->take(5)->get();
+        $recentMembers = Member::orderBy('created_at', 'desc')->take(8)->get();
         $recentTxns = Transaction::with('member:id,first_name,last_name')->orderBy('created_at', 'desc')->take(5)->get();
 
         // 3. Expiring Soon Alerts
