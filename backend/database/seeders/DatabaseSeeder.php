@@ -17,22 +17,23 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // The admin password comes from ADMIN_PASSWORD in .env. If it is not
-        // set, a strong random password is generated and printed once.
-        $email = env('ADMIN_EMAIL', 'admin@example.com');
-        $password = env('ADMIN_PASSWORD');
+        if (! Admin::query()->exists()) {
+            // The first admin's password comes from ADMIN_PASSWORD in .env.
+            // If it is not set, a strong random password is generated and
+            // printed once, so no known default password ever exists.
+            $email = env('ADMIN_EMAIL', 'admin@example.com');
+            $password = env('ADMIN_PASSWORD');
 
-        if (empty($password)) {
-            $password = Str::password(16);
-            $this->command?->warn("ADMIN_PASSWORD not set. Generated admin password for {$email}: {$password}");
-        }
+            if (empty($password)) {
+                $password = Str::password(16);
+                $this->command?->warn("ADMIN_PASSWORD not set. Generated admin password for {$email}: {$password}");
+            }
 
-        Admin::firstOrCreate(
-            ['email' => $email],
-            [
+            Admin::create([
+                'email' => $email,
                 'name' => 'System Admin',
                 'password' => Hash::make($password),
-            ]
-        );
+            ]);
+        }
     }
 }

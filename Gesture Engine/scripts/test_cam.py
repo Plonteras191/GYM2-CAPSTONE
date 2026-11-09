@@ -3,18 +3,26 @@ import os
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 import cv2
 
-# Your specific Hikvision Camera
-# Camera credentials are read from "Gesture Engine/.env" (see .env.example), never hardcoded.
-import sys as _sys
-_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.settings import build_cctv_url, mask_url
-CCTV_URL = build_cctv_url(os.getenv('CCTV_CHANNEL', '102'))
+CAMERA_URL = (
+    os.getenv('CAMERA_TEST_URL')
+    or os.getenv('CCTV_2_URL')
+    or os.getenv('CCTV_URL')
+    or ''
+).strip()
 
-print("Attempting to connect to HIKVISION camera via Python...")
-cap = cv2.VideoCapture(CCTV_URL, cv2.CAP_FFMPEG)
+if not CAMERA_URL:
+    raise SystemExit(
+        "Set CAMERA_TEST_URL, CCTV_2_URL, or CCTV_URL to an RTSP stream before testing."
+    )
+
+print("Attempting to connect to the configured CCTV stream...")
+cap = cv2.VideoCapture(CAMERA_URL, cv2.CAP_FFMPEG)
 
 if not cap.isOpened():
-    print("ERROR: OpenCV completely failed to open the camera stream. Check IP/Credentials.")
+    print(
+        "ERROR: Could not open the CCTV stream. Check the camera IP, RTSP settings, "
+        "stream path, and credentials."
+    )
 else:
     print("SUCCESS: Camera opened! Waiting for video frames...")
     while True:

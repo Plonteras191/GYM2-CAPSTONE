@@ -1,8 +1,9 @@
 import React from 'react';
 import {
-  FiSearch, FiPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiUsers,
-  FiChevronLeft, FiChevronRight
+  FiSearch, FiPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiX, FiList
 } from 'react-icons/fi';
+import Pagination from '../../../components/ui/Pagination';
+import StyledSelect from '../../../components/ui/StyledSelect';
 
 const getStatusBadge = (status) => {
   const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
@@ -12,6 +13,10 @@ const getStatusBadge = (status) => {
 };
 
 const getInitials = (first, last) => `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase();
+const getActivePackageName = (member) => {
+  const membership = member.activeMembership || member.active_membership;
+  return membership?.plan?.name || membership?.plan_type || 'None';
+};
 
 export default function MemberTable({
   members,
@@ -27,86 +32,95 @@ export default function MemberTable({
   onViewProfile,
 }) {
   const [currentPage, setCurrentPage] = React.useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   React.useEffect(() => { setCurrentPage(1); }, [searchTerm, filterStatus]);
 
   const totalPages = Math.ceil(members.length / itemsPerPage);
   const indexOfFirst = (currentPage - 1) * itemsPerPage;
   const currentMembers = members.slice(indexOfFirst, indexOfFirst + itemsPerPage);
+  React.useEffect(() => {
+    setCurrentPage(page => Math.max(1, Math.min(page, totalPages || 1)));
+  }, [totalPages]);
 
-  const primaryBtn = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
-
-  const generatePageNumbers = () => {
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(
-        <button key={i} onClick={() => setCurrentPage(i)} className={`px-3 py-1 rounded-md font-bold shadow-sm transition-colors ${currentPage === i ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black' : 'hover:text-slate-900 dark:hover:text-white font-medium text-slate-500 dark:text-gray-400'}`}>
-          {i}
-        </button>
-      );
-    }
-    return pages;
-  };
+  const primaryBtn = "flex min-h-[42px] shrink-0 items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-sm font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div />
-        <button onClick={onAddMember} className={primaryBtn}>
+      {/* Search & Filter */}
+      <div className="flex flex-col items-stretch gap-3 bg-white p-4 shadow-sm dark:bg-[#252833] sm:flex-row sm:items-center sm:p-5 sm:gap-4 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f]">
+        <div className="relative min-w-0 flex-1">
+          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
+            >
+              <FiX size={15} />
+            </button>
+          )}
+        </div>
+        <div className="min-w-0 sm:w-40">
+          <StyledSelect
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            aria-label="Filter members by status"
+            className="w-full min-w-0 px-3 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
+          >
+            <option value="All">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </StyledSelect>
+        </div>
+        <button onClick={onAddMember} className={`${primaryBtn} w-full whitespace-nowrap sm:w-auto`}>
           <FiPlus size={18} strokeWidth={3} /> Add Member
         </button>
       </div>
 
-      {/* Search & Filter */}
-      <div className="flex flex-col md:flex-row gap-4 bg-white dark:bg-[#252830] p-5 rounded-2xl border-2 border-gray-300 dark:border-gray-600 shadow-sm items-center">
-        <div className="relative flex-1 w-full">
-          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm"
-          />
-        </div>
-        <div className="flex gap-4 w-full md:w-auto">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full md:w-auto px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm"
-          >
-            <option value="All">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Expired">Expired</option>
-          </select>
-        </div>
-      </div>
-
       {/* Table */}
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-sm border-2 border-gray-300 dark:border-gray-600 overflow-hidden flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b-2 border-gray-300 dark:border-gray-600 gap-4 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center gap-2 text-slate-800 dark:text-gray-300 font-bold text-sm tracking-wide">
-            <FiUsers size={18} />
-            <span>{members.length} TOTAL MEMBERS</span>
+      <div className="bg-white dark:bg-[#252833] rounded-2xl shadow-sm border-2 border-gray-300 dark:border-[#393e4f] overflow-hidden flex flex-col">
+        <div className="flex min-w-0 items-center gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-600 dark:bg-[#191b22]/50">
+          <div className="flex min-w-0 items-center gap-2">
+            <FiList size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
+            <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Total Members</h3>
+            <span className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
+              {members.length.toLocaleString()}
+            </span>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+        <div className="hidden overflow-hidden xl:block">
+          <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
+            <colgroup>
+              <col className="w-[8%]" />
+              <col className="w-[22%]" />
+              <col className="w-[12%]" />
+              <col className="w-[13%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
+              <col className="w-[15%]" />
+            </colgroup>
             <thead>
-              <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
-                {['Member Details', 'Phone Number', 'Address', 'Membership Plan', 'Customer Since', 'Status', 'Actions'].map((h, i) => (
-                  <th key={h} className={`px-6 py-5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest${i === 6 ? ' text-right' : ''}`}>{h}</th>
+              <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
+                {['Member ID', 'Member Details', 'Phone Number', 'Address', 'Package Type', 'Customer Since', 'Attendance Status', 'Actions'].map((h, i) => (
+                  <th key={h} scope="col" className={`whitespace-nowrap px-3 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest${i === 0 || i === 6 ? ' text-center' : i === 7 ? ' text-right' : ' text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
+            <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-24 text-center">
+                  <td colSpan="8" className="px-6 py-24 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="relative w-16 h-16">
                         <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full" />
@@ -118,43 +132,46 @@ export default function MemberTable({
                 </tr>
               ) : currentMembers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">
+                  <td colSpan="8" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">
                     No members found in the database.
                   </td>
                 </tr>
               ) : (
                 currentMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group border-b border-gray-300 dark:border-gray-700/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-4">
+                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group border-b border-gray-200 dark:border-[#393e4f]">
+                    <td className="px-3 py-3 text-center text-sm font-bold tabular-nums text-slate-600 dark:text-gray-400">{member.id}</td>
+                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         {member.profilePicUrl ? (
-                          <img src={member.profilePicUrl} alt="Avatar" className="w-10 h-10 rounded-full object-cover border-2 border-gray-300 dark:border-gray-600 flex-shrink-0 shadow-sm" />
+                          <img src={member.profilePicUrl} alt="Avatar" className="h-10 w-10 shrink-0 rounded-full border-2 border-gray-300 object-cover dark:border-gray-600" />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm border-2 border-gray-300 dark:border-gray-600 flex-shrink-0 shadow-sm">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-xs font-bold text-slate-700 dark:border-gray-600 dark:bg-[#191b22] dark:text-gray-300">
                             {getInitials(member.firstName, member.lastName)}
                           </div>
                         )}
-                        <div>
-                          <div className="font-semibold text-slate-900 dark:text-gray-300">{member.firstName} {member.lastName}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{member.email}</div>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-black dark:text-gray-300">{member.firstName} {member.lastName}</div>
+                          <div className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">{member.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 font-normal whitespace-nowrap">{member.phone}</td>
-                    <td className="px-6 py-4 text-sm text-slate-700 dark:text-gray-300 font-normal truncate max-w-[150px]">{member.address || '-'}</td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-gray-400 whitespace-nowrap">{member.plan}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-gray-400 font-normal whitespace-nowrap">{member.customerSince}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(member.status)}</td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap space-x-3">
-                      <button onClick={() => onViewProfile(member)} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-blue-600 dark:text-blue-400 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm">
+                    <td className="overflow-hidden px-3 py-3 text-sm font-normal tabular-nums text-slate-700 dark:text-gray-300 whitespace-nowrap">{member.phone}</td>
+                    <td className="overflow-hidden px-3 py-3 text-sm font-normal text-slate-700 dark:text-gray-300 truncate">{member.address || '-'}</td>
+                    <td className="overflow-hidden px-3 py-3 text-sm font-bold text-slate-900 dark:text-gray-400 whitespace-nowrap truncate">{getActivePackageName(member)}</td>
+                    <td className="overflow-hidden px-3 py-3 text-sm font-normal text-slate-500 dark:text-gray-400 whitespace-nowrap">{member.customerSince}</td>
+                    <td className="overflow-hidden px-3 py-3 text-center whitespace-nowrap">{getStatusBadge(member.status)}</td>
+                    <td className="overflow-hidden px-3 py-3 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-2">
+                      <button onClick={() => onViewProfile(member)} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-blue-600 dark:text-blue-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm">
                         <FiEye size={16} strokeWidth={2.5} />
                       </button>
-                      <button onClick={() => onEditMember(member)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-gray-600 hover:border-amber-50 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
+                      <button onClick={() => onEditMember(member)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-amber-50 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
                         <FiEdit2 size={16} strokeWidth={2.5} />
                       </button>
-                      <button onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#252830] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-gray-600 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
+                      <button onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
                         {deletingId === member.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} strokeWidth={2.5} />}
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -163,23 +180,49 @@ export default function MemberTable({
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="p-4 border-t-2 border-gray-300 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">
-              Showing {indexOfFirst + 1} to {Math.min(indexOfFirst + itemsPerPage, members.length)} of {members.length} Entries
-            </span>
-            <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-lg p-1 border border-gray-300 dark:border-gray-600 shadow-inner">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                <FiChevronLeft size={18} />
-              </button>
-              {generatePageNumbers()}
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                <FiChevronRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="space-y-3 p-3 xl:hidden">
+          {isLoading ? (
+            <p role="status" className="py-8 text-center text-sm font-semibold text-slate-500 dark:text-gray-400">Loading members…</p>
+          ) : currentMembers.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500 dark:text-gray-400">No members found in the database.</p>
+          ) : currentMembers.map(member => (
+            <article key={member.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#393e4f] dark:bg-[#1b1e26]">
+              <div className="flex items-start gap-3">
+                {member.profilePicUrl ? (
+                  <img src={member.profilePicUrl} alt="" className="h-11 w-11 shrink-0 rounded-full border border-slate-300 object-cover dark:border-[#393e4f]" />
+                ) : (
+                  <div aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-sm font-bold text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
+                    {getInitials(member.firstName, member.lastName)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-slate-900 dark:text-gray-200">{member.firstName} {member.lastName}</p>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-gray-400">Member ID: {member.id}</p>
+                  <p className="truncate text-xs text-slate-500 dark:text-gray-400">{member.email}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-gray-300">
+                    <span>{member.phone || 'No phone'}</span>
+                    <span>{getActivePackageName(member)}</span>
+                    {getStatusBadge(member.status)}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-[#393e4f]">
+                <button onClick={() => onViewProfile(member)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-blue-700 dark:border-[#393e4f] dark:text-blue-400">View profile</button>
+                <button onClick={() => onEditMember(member)} disabled={deletingId === member.id} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-amber-700 disabled:opacity-50 dark:border-[#393e4f] dark:text-amber-400">Edit</button>
+                <button onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:border-red-900 dark:text-red-400">Delete</button>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={members.length}
+          itemsPerPage={itemsPerPage}
+          itemsLabel="members"
+        />
       </div>
     </div>
   );

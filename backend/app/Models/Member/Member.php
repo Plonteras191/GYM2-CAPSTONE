@@ -31,6 +31,13 @@ class Member extends Model
 
     public function activeMembership()
     {
-        return $this->hasOne(Membership::class)->where('status', 'Active')->latestOfMany();
+        return $this->hasOne(Membership::class)
+            ->where('status', 'Active')
+            ->whereDate('start_date', '<=', today())
+            ->where(function ($query) {
+                $query->whereDate('end_date', '>=', today())
+                    ->orWhereNull('end_date');
+            })
+            ->latestOfMany();
     }
 }

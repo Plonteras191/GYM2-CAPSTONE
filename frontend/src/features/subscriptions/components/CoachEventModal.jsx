@@ -1,31 +1,101 @@
-import React from 'react';
-import { FiX, FiSave } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiX, FiSave, FiCalendar, FiChevronDown, FiEdit2, FiTrash2, FiCheck } from 'react-icons/fi';
+import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 
 export default function CoachEventModal({
   isOpen,
   onClose,
   eventForm,
   setEventForm,
-  recentColors,
+  recentColors = [],
+  eventCategories = [],
+  isSaving = false,
+  isSavingCategory = false,
+  onUpdateCategory,
+  onDeleteCategory,
   onSave
 }) {
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [categoryRequired, setCategoryRequired] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState({ name: '', color: '#eab308' });
+  const initialSnapshotRef = React.useRef('');
+  const categorySnapshotRef = React.useRef('');
+  const currentFormRef = React.useRef({ eventForm, categoryDraft });
+  currentFormRef.current = { eventForm, categoryDraft };
+  React.useEffect(() => {
+    if (isOpen) {
+      initialSnapshotRef.current = JSON.stringify(currentFormRef.current.eventForm);
+      categorySnapshotRef.current = JSON.stringify(currentFormRef.current.categoryDraft);
+      setIsCategoryMenuOpen(false);
+      setIsCreatingCategory(false);
+      setEditingCategoryId(null);
+      setCategoryRequired(false);
+    } else {
+      setIsCategoryMenuOpen(false);
+      setIsCreatingCategory(false);
+      setEditingCategoryId(null);
+      setCategoryRequired(false);
+    }
+  }, [isOpen]);
+  const unsavedChangesGuard = useUnsavedChangesGuard(
+    isOpen && (
+      JSON.stringify(eventForm) !== initialSnapshotRef.current
+      || (Boolean(editingCategoryId) && JSON.stringify(categoryDraft) !== categorySnapshotRef.current)
+    )
+  );
+  const requestClose = () => unsavedChangesGuard.requestClose(onClose);
+  const handleSubmit = event => {
+    if (!eventForm.category?.trim()) {
+      event.preventDefault();
+      setCategoryRequired(true);
+      setIsCategoryMenuOpen(true);
+      return;
+    }
+    onSave(event);
+  };
+
   if (!isOpen) return null;
 
-  const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm";
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-2";
-  const primaryButtonClass = "flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black px-6 py-2.5 rounded-xl font-bold shadow-lg shadow-amber-900/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const inputClass = "w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#191b22] border border-slate-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-[#6d758d] text-sm font-semibold transition-all shadow-xs";
+  const labelClass = "flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-gray-400 mb-1.5";
+  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const existingCategory = eventCategories.find(category =>
+    category.name.toLowerCase() === (eventForm.category || '').trim().toLowerCase()
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex flex-col">
-        <div className="p-5 border-b-2 border-gray-300 dark:border-gray-600 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-lg font-bold text-black dark:text-gray-300">Add Coach Event</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-red-500 transition-colors">
-            <FiX size={24} />
+    <>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <button 
+        type="button"
+        onClick={requestClose}
+        aria-label="Close modal" 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+      />
+
+      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-2 border-gray-300 bg-white text-slate-900 shadow-2xl dark:border-gray-600 dark:bg-[#252830] dark:text-gray-100 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
+          <div className="flex items-center gap-3">
+            {eventForm.id ? <FiEdit2 size={19} /> : <FiCalendar size={20} />}
+            <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-gray-300">
+              {eventForm.id ? 'Edit Coach Event' : 'Schedule Coach Event'}
+            </h3>
+          </div>
+          <button 
+            type="button"
+            onClick={requestClose}
+            aria-label="Close event form"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-500 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-300 dark:hover:bg-red-500/10"
+          >
+            <FiX size={18} />
           </button>
         </div>
         
-        <form onSubmit={onSave} className="p-6 space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="min-h-0 flex flex-1 flex-col bg-slate-100 dark:bg-[#191b22]">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
           <label className="block">
             <span className={labelClass}>Event Title</span>
             <input 
@@ -33,19 +103,163 @@ export default function CoachEventModal({
               required 
               value={eventForm.title} 
               onChange={e => setEventForm({ ...eventForm, title: e.target.value })} 
-              placeholder="e.g. CrossFit WOD" 
+              placeholder="e.g. CrossFit WOD, Conditioning Session" 
               className={inputClass} 
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className={labelClass}>Category</span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsCategoryMenuOpen(open => !open)}
+                aria-label="Choose an event category"
+                aria-expanded={isCategoryMenuOpen}
+                className={`${inputClass} flex items-center justify-between gap-3 text-left ${!isCreatingCategory && !existingCategory ? '!text-slate-400 dark:!text-gray-500' : ''}`}
+              >
+                <span className="min-w-0 truncate">
+                  {isCreatingCategory ? 'Create New Category' : existingCategory?.name || 'Select/Create Category'}
+                </span>
+                <FiChevronDown className={`shrink-0 text-slate-500 transition-transform dark:text-gray-400 ${isCategoryMenuOpen ? 'rotate-180' : ''}`} size={16} />
+              </button>
+              {isCategoryMenuOpen && (
+                <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border-2 border-gray-300 bg-white p-1 shadow-sm dark:border-gray-600 dark:bg-[#191b22]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEventForm({ ...eventForm, category: '' });
+                      setIsCreatingCategory(true);
+                      setIsCategoryMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-white/[.06]"
+                  >
+                    <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 bg-transparent dark:border-white/20" />
+                    Create New Category
+                  </button>
+                  {eventCategories.map(category => (
+                    <div key={category.id} className="flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-slate-100 dark:hover:bg-white/[.06]">
+                      {editingCategoryId === category.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={categoryDraft.name}
+                            onChange={event => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
+                            aria-label="Category name"
+                            maxLength={80}
+                            className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-black dark:border-gray-600 dark:bg-[#252833] dark:text-gray-300"
+                          />
+                          <input
+                            type="color"
+                            value={categoryDraft.color}
+                            onChange={event => setCategoryDraft({ ...categoryDraft, color: event.target.value })}
+                            aria-label="Category color"
+                            className="h-8 w-8 shrink-0 cursor-pointer rounded border-0 bg-transparent p-1"
+                          />
+                          <button
+                            type="button"
+                            disabled={isSavingCategory || !categoryDraft.name.trim()}
+                            onClick={async () => {
+                              const saved = await onUpdateCategory?.(category, {
+                                name: categoryDraft.name.trim(),
+                                color: categoryDraft.color,
+                              });
+                              if (saved) setEditingCategoryId(null);
+                            }}
+                            aria-label={`Save ${category.name}`}
+                            className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                          >
+                            <FiCheck size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => unsavedChangesGuard.requestClose(() => setEditingCategoryId(null))}
+                            aria-label={`Cancel editing ${category.name}`}
+                            className="rounded-md p-1.5 text-slate-600 hover:bg-slate-200 dark:text-gray-300 dark:hover:bg-white/[.08]"
+                          >
+                            <FiX size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEventForm({ ...eventForm, category: category.name, color: category.color });
+                              setIsCreatingCategory(false);
+                              setIsCategoryMenuOpen(false);
+                            }}
+                            className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-sm text-black dark:text-gray-300"
+                          >
+                            <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 dark:border-white/20" style={{ backgroundColor: category.color || '#eab308' }} />
+                            <span className="truncate">{category.name}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCategoryId(category.id);
+                              const draft = { name: category.name, color: category.color || '#eab308' };
+                              setCategoryDraft(draft);
+                              categorySnapshotRef.current = JSON.stringify(draft);
+                            }}
+                            aria-label={`Edit ${category.name}`}
+                            title="Edit category"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-amber-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-500 hover:bg-amber-50 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-amber-400 dark:hover:bg-amber-500/10"
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteCategory?.(category)}
+                            aria-label={`Delete ${category.name}`}
+                            title="Delete category"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-red-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-red-500 hover:bg-red-50 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-red-400 dark:hover:bg-red-500/10"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {isCreatingCategory && (
+              <input
+                type="text"
+                required
+                maxLength={80}
+                value={eventForm.category || ''}
+                onChange={e => {
+                  const category = eventCategories.find(item => item.name.toLowerCase() === e.target.value.trim().toLowerCase());
+                  setEventForm({
+                    ...eventForm,
+                    category: e.target.value,
+                    ...(category ? { color: category.color } : {}),
+                  });
+                  if (category) setIsCreatingCategory(false);
+                }}
+                placeholder="Enter a new category name"
+                className={`${inputClass} mt-2`}
+              />
+            )}
+            {categoryRequired && !eventForm.category?.trim() && (
+              <span role="alert" className="mt-1 block text-xs font-semibold text-orange-600 dark:text-orange-400">Select or create a category before saving.</span>
+            )}
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <label className="block">
               <span className={labelClass}>Start Date</span>
               <input 
                 type="date" 
                 required 
                 value={eventForm.start_date} 
-                onChange={e => setEventForm({ ...eventForm, start_date: e.target.value })} 
+                onChange={e => setEventForm({
+                  ...eventForm,
+                  start_date: e.target.value,
+                  end_date: eventForm.end_date < e.target.value ? e.target.value : eventForm.end_date,
+                })}
                 className={inputClass} 
               />
             </label>
@@ -54,14 +268,20 @@ export default function CoachEventModal({
               <input 
                 type="date" 
                 required 
+                min={eventForm.start_date}
                 value={eventForm.end_date} 
                 onChange={e => setEventForm({ ...eventForm, end_date: e.target.value })} 
                 className={inputClass} 
               />
             </label>
           </div>
+          {eventForm.start_date && eventForm.end_date && eventForm.end_date < eventForm.start_date && (
+            <p role="alert" className="text-sm font-semibold text-red-600 dark:text-red-400">
+              End date must be on or after the start date.
+            </p>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <label className="block">
               <span className={labelClass}>Start Time</span>
               <input 
@@ -84,33 +304,35 @@ export default function CoachEventModal({
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
             <label className="block">
-              <span className={labelClass}>Location</span>
+              <span className={labelClass}>Location / Area</span>
               <input 
                 type="text" 
                 required 
                 value={eventForm.location} 
                 onChange={e => setEventForm({ ...eventForm, location: e.target.value })} 
+                placeholder="e.g. Boxing Ring, Turf Area"
                 className={inputClass} 
               />
             </label>
+            
             <label className="block">
               <span className={labelClass}>Banner Color</span>
-              <div className="flex gap-2 mt-1 items-center">
+              <div className="flex gap-2 items-center h-[42px] px-2 bg-slate-50 dark:bg-[#191b22] border border-slate-300 dark:border-[#393e4f] rounded-xl">
                 <input 
                   type="color" 
                   value={eventForm.color} 
                   onChange={e => setEventForm({ ...eventForm, color: e.target.value })} 
-                  className="w-12 h-12 rounded-lg cursor-pointer border-2 border-gray-300 dark:border-gray-600 bg-transparent p-1" 
+                  className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0" 
                 />
-                <div className="flex flex-wrap gap-1.5 ml-2 border-l border-gray-300 dark:border-gray-600 pl-3">
+                <div className="flex flex-wrap gap-1.5 ml-1 border-l border-slate-200 dark:border-[#393e4f] pl-2">
                   {recentColors.map(c => (
                     <button 
                       type="button" 
                       key={c} 
                       onClick={() => setEventForm({ ...eventForm, color: c })} 
-                      className="w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 shadow-sm transition-transform hover:scale-110" 
+                      className={`w-5 h-5 rounded-full border transition-transform hover:scale-125 ${eventForm.color === c ? 'ring-2 ring-amber-500 ring-offset-1 ring-offset-slate-900 border-white' : 'border-black/20'}`} 
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -119,20 +341,35 @@ export default function CoachEventModal({
             </label>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-gray-300 dark:border-gray-700 mt-6">
+          <label className="block">
+            <span className={labelClass}>Description</span>
+            <textarea
+              rows={3}
+              maxLength={5000}
+              value={eventForm.description || ''}
+              onChange={e => setEventForm({ ...eventForm, description: e.target.value })}
+              placeholder="Add event details"
+              className={inputClass}
+            />
+          </label>
+          </div>
+
+          <div className="sticky bottom-0 flex shrink-0 items-center justify-end gap-3 border-t-2 border-gray-300 bg-white p-3 dark:border-gray-600 dark:bg-[#252830]">
             <button 
               type="button" 
-              onClick={onClose} 
-              className="px-5 py-2.5 rounded-xl font-bold text-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors uppercase tracking-wide text-xs"
+              onClick={requestClose}
+              className="px-4 py-2 rounded-xl font-bold text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-[#252833] transition-colors uppercase tracking-wider text-xs"
             >
               Cancel
             </button>
-            <button type="submit" className={primaryButtonClass + " !text-xs !px-5"}>
-              <FiSave size={16} /> Save Event
+            <button type="submit" disabled={isSaving} className={primaryButtonClass}>
+              <FiSave size={15} /> {isSaving ? 'Saving...' : eventForm.id ? 'Update Event' : 'Save Event'}
             </button>
           </div>
         </form>
       </div>
     </div>
+    {unsavedChangesGuard.dialog}
+    </>
   );
 }

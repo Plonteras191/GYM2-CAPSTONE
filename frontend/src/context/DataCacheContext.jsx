@@ -73,6 +73,15 @@ export function DataCacheProvider({ children }) {
     removeFromStorage(key);
   };
 
+  const invalidateCachePrefix = (prefix) => {
+    Object.keys(cacheRef.current)
+      .filter(key => key.startsWith(prefix))
+      .forEach(key => invalidateCache(key));
+    Object.keys(sessionStorage)
+      .filter(key => key.startsWith(STORAGE_PREFIX + prefix))
+      .forEach(key => sessionStorage.removeItem(key));
+  };
+
   const invalidateAll = () => {
     cacheRef.current = {};
     // Clear only our prefixed keys, not unrelated sessionStorage data
@@ -82,7 +91,7 @@ export function DataCacheProvider({ children }) {
   };
 
   return (
-    <DataCacheContext.Provider value={{ getCache, setCache, invalidateCache, invalidateAll }}>
+    <DataCacheContext.Provider value={{ getCache, setCache, invalidateCache, invalidateCachePrefix, invalidateAll }}>
       {children}
     </DataCacheContext.Provider>
   );

@@ -1,13 +1,16 @@
 import React from 'react';
-import { FiTag, FiList, FiCalendar } from 'react-icons/fi';
+import { FiTag, FiList, FiCalendar, FiFilter } from 'react-icons/fi';
 import { useSubscriptions } from '../features/subscriptions/hooks/useSubscriptions';
 import SubscriptionsTable from '../features/subscriptions/components/SubscriptionsTable';
 import SubscriptionsCalendarView from '../features/subscriptions/components/SubscriptionsCalendarView';
+import { getActivePackageCategoryOptions, getCoachEventCategoryOptions } from '../features/subscriptions/packageCategories';
 import SubscriptionFormModal from '../features/subscriptions/components/SubscriptionFormModal';
 import CoachEventModal from '../features/subscriptions/components/CoachEventModal';
 import PricingCatalogModal from '../features/subscriptions/components/PricingCatalogModal';
+import CalendarCategoryFilters from '../features/subscriptions/components/CalendarCategoryFilters';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
+import { getLocalDateString } from '../utils/dateFormat';
 
 export default function Subscriptions() {
   const {
@@ -26,14 +29,21 @@ export default function Subscriptions() {
     isSaving,
     deletingId,
     deletingPlanId,
+    deletingEventId,
     isEventModalOpen, setIsEventModalOpen,
+    isSavingEvent,
+    isSavingCategory,
+    eventCategories,
     showSubscriptions, setShowSubscriptions,
     showCoachEvents, setShowCoachEvents,
+    selectedCoachCategories, setSelectedCoachCategories,
+    selectedSubscriptionCategories, setSelectedSubscriptionCategories,
     confirmDialog, setConfirmDialog,
     alertDialog, setAlertDialog,
     eventForm, setEventForm,
     coachEvents,
     recentColors,
+    saveRecentColor,
     formData, setFormData,
     newPlan, setNewPlan,
     loyalDiscount,
@@ -43,40 +53,74 @@ export default function Subscriptions() {
     handleDelete,
     handleSaveSubscription,
     handleSaveCoachEvent,
+    handleUpdateCoachEventCategory,
+    handleDeleteCoachEventCategory,
+    handleOpenNewCoachEvent,
+    handleEditCoachEvent,
     handleDeleteCoachEvent,
     handleUpdatePlanPrice,
+    handleSavePlan,
     handleSavePlans,
     handleAddNewPlan,
     handleDeletePlan
   } = useSubscriptions();
+  const todayStr = getLocalDateString();
 
-  const secondaryButtonClass = "flex items-center justify-center gap-2 bg-black hover:bg-slate-900 text-gray-200 dark:bg-gray-300 dark:hover:bg-white dark:text-black px-6 py-2.5 rounded-xl font-bold shadow-md transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wide text-sm";
+  const secondaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-black px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className={`${activeView === 'list' ? 'max-w-7xl' : 'max-w-screen-2xl'} mx-auto space-y-6 p-6`}>
       
       {/* Top Header Actions */}
-      <div className="flex flex-col md:flex-row justify-end items-center gap-4 w-full">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto ml-auto">
-          <button onClick={() => setIsPlanModalOpen(true)} className={secondaryButtonClass}>
-            <FiTag size={16} /> Manage Plans
+      <div className="flex w-full flex-col items-stretch gap-3">
+        <div className="ml-auto flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <button onClick={() => setIsPlanModalOpen(true)} className={`${secondaryButtonClass} self-end sm:self-auto`}>
+            <FiTag size={16} /> Manage Packages
           </button>
-          <div className="flex bg-gray-200 dark:bg-gray-800 rounded-xl p-1 shadow-inner w-full sm:w-auto">
+          <div className="flex w-full rounded-xl border border-gray-300 bg-gray-100 p-1 shadow-sm dark:border-[#393e4f] dark:bg-[#191b22] sm:w-auto">
             <button 
               onClick={() => setActiveView('list')} 
-              className={`flex-1 flex justify-center items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeView === 'list' ? 'bg-white dark:bg-[#252830] text-black dark:text-gray-300 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:text-black dark:hover:text-gray-300'}`}
+              className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center gap-2 rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${activeView === 'list' ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-400 dark:hover:bg-[#252833]'}`}
             >
               <FiList size={16} /> List
             </button>
             <button 
               onClick={() => setActiveView('calendar')} 
-              className={`flex-1 flex justify-center items-center gap-2 px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeView === 'calendar' ? 'bg-white dark:bg-[#252830] text-black dark:text-gray-300 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:text-black dark:hover:text-gray-300'}`}
+              className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center gap-2 rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${activeView === 'calendar' ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-400 dark:hover:bg-[#252833]'}`}
             >
               <FiCalendar size={16} /> Calendar
             </button>
           </div>
         </div>
       </div>
+
+      {activeView === 'calendar' && (
+        <div className="xl:hidden rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm dark:border-[#454e5e] dark:bg-[#252833] sm:p-5">
+          <div className="mb-3 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-300">
+              <FiFilter size={18} className="shrink-0 text-slate-800 dark:text-gray-300" /> View Filters
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <CalendarCategoryFilters
+              title="Client Subscriptions"
+              categories={getActivePackageCategoryOptions(plans, subscriptions, todayStr)}
+              selectedCategories={selectedSubscriptionCategories}
+              onChange={setSelectedSubscriptionCategories}
+              enabled={showSubscriptions}
+              onEnabledChange={setShowSubscriptions}
+            />
+            <CalendarCategoryFilters
+              title="Coach Events & Sessions"
+              categories={getCoachEventCategoryOptions(eventCategories, coachEvents, todayStr)}
+              selectedCategories={selectedCoachCategories}
+              onChange={setSelectedCoachCategories}
+              enabled={showCoachEvents}
+              onEnabledChange={setShowCoachEvents}
+            />
+          </div>
+        </div>
+      )}
 
       {/* List View */}
       {activeView === 'list' && (
@@ -101,16 +145,23 @@ export default function Subscriptions() {
       {activeView === 'calendar' && (
         <SubscriptionsCalendarView
           subscriptions={subscriptions}
+          plans={plans}
           coachEvents={coachEvents}
           showSubscriptions={showSubscriptions}
           setShowSubscriptions={setShowSubscriptions}
           showCoachEvents={showCoachEvents}
           setShowCoachEvents={setShowCoachEvents}
-          onOpenEventModal={() => setIsEventModalOpen(true)}
+          eventCategories={eventCategories}
+          selectedCoachCategories={selectedCoachCategories}
+          setSelectedCoachCategories={setSelectedCoachCategories}
+          selectedSubscriptionCategories={selectedSubscriptionCategories}
+          setSelectedSubscriptionCategories={setSelectedSubscriptionCategories}
+          onOpenEventModal={() => handleOpenNewCoachEvent()}
+          onEditCoachEvent={handleEditCoachEvent}
           onDeleteCoachEvent={handleDeleteCoachEvent}
+          deletingEventId={deletingEventId}
           onDateClick={(info) => {
-            setEventForm(prev => ({ ...prev, start_date: info.dateStr, end_date: info.dateStr }));
-            setIsEventModalOpen(true);
+            handleOpenNewCoachEvent(info.dateStr);
           }}
         />
       )}
@@ -122,6 +173,11 @@ export default function Subscriptions() {
         eventForm={eventForm}
         setEventForm={setEventForm}
         recentColors={recentColors}
+        eventCategories={eventCategories}
+        isSaving={isSavingEvent}
+        isSavingCategory={isSavingCategory}
+        onUpdateCategory={handleUpdateCoachEventCategory}
+        onDeleteCategory={handleDeleteCoachEventCategory}
         onSave={handleSaveCoachEvent}
       />
 
@@ -133,6 +189,7 @@ export default function Subscriptions() {
         formData={formData}
         setFormData={setFormData}
         membersList={membersList}
+        subscriptions={subscriptions}
         plans={plans}
         recentColors={recentColors}
         loyalDiscount={loyalDiscount}
@@ -148,12 +205,18 @@ export default function Subscriptions() {
         setIsAddingPlan={setIsAddingPlan}
         isSaving={isSaving}
         plans={plans}
+        recentColors={recentColors}
         newPlan={newPlan}
         setNewPlan={setNewPlan}
         deletingPlanId={deletingPlanId}
-        onClose={() => setIsPlanModalOpen(false)}
+        onClose={() => {
+          setIsPlanModalOpen(false);
+          setIsAddingPlan(false);
+        }}
         onUpdatePlanPrice={handleUpdatePlanPrice}
         onSavePlans={handleSavePlans}
+        onSavePlan={handleSavePlan}
+        onUseColor={saveRecentColor}
         onAddNewPlan={handleAddNewPlan}
         onDeletePlan={handleDeletePlan}
       />

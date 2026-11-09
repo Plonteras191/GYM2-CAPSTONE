@@ -21,7 +21,8 @@ Following the role-based DFD structure, Figure 4.3 illustrates the Level 1 Data 
 ```mermaid
 flowchart LR
     %% Left Entity
-    Admin["Gym Owner or Admin - Primary Operator"]
+    Admin["Gym Owner, Admin, or Coach"]
+    GestureEngine["Python Gesture Engine"]
 
     %% Middle Processes
     subgraph Processes ["Operational System Processes"]
@@ -76,11 +77,13 @@ flowchart LR
     P4 -->|Live attendance logs and recognition alerts| Admin
 
     %% Process 5.0: Program Monitoring
-    Admin -->|Exercise assignment and AI-verified repetition result| P5
+    Admin -->|Member workout plan: body-part exercises, dates, sets, reps| P5
     D2 -->|Retrieve assigned member info| P5
-    P5 -->|Record exercise type and repetition count| D5
-    D5 -->|Retrieve workout logs and progress| P5
-    P5 -->|Program monitoring results and rep counts| Admin
+    P5 -->|Save dated assignments, targets, and gesture class| D5
+    D5 -->|Pending tasks and recent workout logs| P5
+    GestureEngine -->|Detected movement class and face-matched member ID| P5
+    P5 -->|Match detection to member's due assignment and update exercise log| D5
+    P5 -->|Workout queue, detection status, and exercise history| Admin
 
     %% Process 6.0: Subscription Management
     Admin -->|Plan rates and subscription renewals| P6
@@ -153,12 +156,13 @@ The Level 1 Data Flow Diagram breaks down the system into **eight operational pr
 ---
 
 ### Process 5.0: Program Monitoring
-* **Description:** Handles workout exercise assignments and tracks repetition counts detected by the vision engine.
-* **Inflow from Admin:** The administrator assigns a selected exercise (e.g., Squats, Push-ups, Curls) from the approved scope to a member, or performs manual workout log verification.
+* **Description:** Synchronizes the next seven days of a member's exercise assignments and matches Gesture Engine movement labels to due tasks.
+* **Inflow from Admin:** The coach selects exercises from the body-part-filtered catalog, assigns weekdays and sets/reps targets, and synchronizes the plan.
 * **Data Store Interaction:**
-  - Reads member information from **`D2 members`** to verify task eligibility.
-  - Inserts completed exercise type, repetition counts, and timestamps into **`D5 workout_logs`**.
-* **Outflow to Admin:** Returns real-time repetition updates, completed workout summaries, and historical progress notes.
+  - Reads member information from **`D2 members`** to validate the member ID sent by the face-matched engine.
+  - Saves dated assigned tasks, set/rep targets, and nullable Gesture Engine class mappings in **`D5 workout_logs`**.
+  - When the engine reports a matching movement class for that member, updates the assigned log as performed; otherwise logs the detection as an unassigned exercise.
+* **Outflow to Admin:** Returns scheduled tasks and recent exercise detections through the Gesture Monitor and member workout history. The current engine reports movement labels, not completed rep totals.
 
 ---
 

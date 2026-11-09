@@ -1,14 +1,26 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import useDialogAccessibility from './useDialogAccessibility';
 
 export default function AlertDialog({ isOpen, title, message, onClose, type = 'success' }) {
+  const titleId = useId();
+  const messageId = useId();
+  const dialogRef = useDialogAccessibility(isOpen, onClose);
   if (!isOpen) return null;
 
   const isSuccess = type === 'success';
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 text-center">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
+        tabIndex={-1}
+        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 text-center"
+      >
         <div className={`mx-auto mb-4 w-12 h-12 flex items-center justify-center rounded-full ${
           isSuccess 
             ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' 
@@ -17,8 +29,8 @@ export default function AlertDialog({ isOpen, title, message, onClose, type = 's
           {isSuccess ? <FiCheckCircle className="w-7 h-7" /> : <FiAlertCircle className="w-7 h-7" />}
         </div>
         
-        <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h4>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{message}</p>
+        <h4 id={titleId} className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h4>
+        <p id={messageId} className="text-sm text-slate-500 dark:text-slate-400 mt-2">{message}</p>
 
         <button
           onClick={onClose}

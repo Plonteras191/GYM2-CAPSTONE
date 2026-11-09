@@ -13,7 +13,10 @@ class Plan extends Model
     protected $fillable = [
         'name', 
         'price', 
-        'duration_days'
+        'duration_days',
+        'category',
+        'category_detail',
+        'color',
     ];
 
     public function memberships()

@@ -28,16 +28,16 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'ai_engine' => [
+        // Shared secret the Python Gesture Engine sends in X-AI-Engine-Token.
+        'token' => env('AI_ENGINE_TOKEN'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
-    ],
-
-    // Shared secret the Python AI / Gesture Engine sends in the X-AI-Key header.
-    'ai_engine' => [
-        'key' => env('AI_SERVICE_KEY'),
     ],
 
 ];

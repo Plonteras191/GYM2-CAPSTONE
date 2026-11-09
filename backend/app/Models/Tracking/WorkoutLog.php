@@ -10,7 +10,7 @@ class WorkoutLog extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['member_id', 'exercise', 'date'];
+    protected $fillable = ['member_id', 'exercise', 'date', 'sets', 'reps', 'gesture_class'];
 
     public function member()
     {

@@ -13,9 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'ai.key' => \App\Http\Middleware\VerifyAiServiceKey::class,
+            'ai.engine' => \App\Http\Middleware\EnsureAiEngineToken::class,
         ]);
+
+        // There is no named "login" route on the backend (the SPA owns /login),
+        // so never let the auth middleware try to resolve one.
+        $middleware->redirectGuestsTo('/login');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // API callers always get JSON (e.g. a 401), never an HTML redirect.
+        $exceptions->shouldRenderJsonWhen(
+            fn (\Illuminate\Http\Request $request) => $request->is('api/*') || $request->expectsJson()
+        );
     })->create();
