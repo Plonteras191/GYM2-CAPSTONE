@@ -1,23 +1,24 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { 
   FiHome, FiUsers, FiCheckSquare, FiCreditCard, 
   FiFileText, FiShield, FiCamera, FiUser, FiSun, FiMoon, FiLogOut,
   FiMenu, FiX, FiBell, FiChevronDown, FiAlertCircle, FiClock, FiLogIn, FiCheckCircle, FiCalendar
 } from 'react-icons/fi';
-import logo from '../assets/logo.png';
 import api from '../api'; 
 import { usePrefetch } from '../hooks/usePrefetch'; 
+import { useSystemLogo } from '../hooks/useSystemLogo';
 
 const getPageTitle = (path) => {
     switch (path.toLowerCase()) {
       case '/overview': return 'Overview';
-      case '/members': return 'Member Directory';
-      case '/subscriptions': return 'Subscriptions';
+      case '/members': return 'Member Registration';
+      case '/subscriptions': return 'Packages';
       case '/transactions': return 'Transactions';
       case '/reports': return 'System Reports';
-      case '/security': return 'Security Monitor';
+      case '/security': return 'Attendance Monitor';
       case '/gesture': return 'Gesture Monitor';
       case '/profile': return 'Admin Profile';
       default: return 'Admin Dashboard';
@@ -28,7 +29,11 @@ export default function Layout() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const location = useLocation();
   const navigate = useNavigate();
+  const systemLogo = useSystemLogo();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [adminName, setAdminName] = useState(() => localStorage.getItem('admin_name') || 'Admin Profile');
+  const notificationButtonRef = useRef(null);
+  const [notificationPanelPosition, setNotificationPanelPosition] = useState(null);
 
   // Pre-fetch all pages' data in parallel on first load
   usePrefetch();
@@ -47,45 +52,46 @@ export default function Layout() {
   // --- NEW: Custom Confirm Dialog for Logout ---
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
-  const adminName = localStorage.getItem('admin_name') || 'Admin Profile';
+  useEffect(() => {
+    const handleProfileUpdate = (event) => setAdminName(event.detail || 'Admin Profile');
+    window.addEventListener('admin-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('admin-profile-updated', handleProfileUpdate);
+  }, []);
 
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/notifications');
       let combinedAlerts = Array.isArray(res.data) ? [...res.data] : [];
 
-      // ── Special Days / Events from localStorage ('coach_events') ──
+      // ── Upcoming coach events ──
       try {
-        const savedEvents = localStorage.getItem('coach_events');
-        if (savedEvents) {
-          const events = JSON.parse(savedEvents);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+        const eventsResponse = await api.get('/coach-events');
+        const events = Array.isArray(eventsResponse.data) ? eventsResponse.data : [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-          events.forEach((ev) => {
-            if (!ev.start_date) return;
-            const evDate = new Date(ev.start_date);
-            evDate.setHours(0, 0, 0, 0);
-            const diffTime = evDate.getTime() - today.getTime();
-            const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        events.forEach((event) => {
+          if (!event.start_date) return;
+          const eventDate = new Date(event.start_date);
+          eventDate.setHours(0, 0, 0, 0);
+          const diffTime = eventDate.getTime() - today.getTime();
+          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Alert for events today or within 7 days
-            if (daysLeft >= 0 && daysLeft <= 7) {
-              combinedAlerts.push({
-                id: `event_${ev.id || ev.title}_${ev.start_date}`,
-                type: 'event',
-                member_name: ev.title || 'Special Event',
-                message: daysLeft === 0
-                  ? 'Special Gym Event is scheduled for TODAY!'
-                  : `Upcoming special event in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${ev.start_date}).`,
-                days_left: daysLeft,
-                link: '/subscriptions'
-              });
-            }
-          });
-        }
+          if (daysLeft >= 0 && daysLeft <= 7) {
+            combinedAlerts.push({
+              id: `event_${event.id}_${event.start_date}`,
+              type: 'event',
+              member_name: event.title || 'Special Event',
+              message: daysLeft === 0
+                ? 'Special Gym Event is scheduled for TODAY!'
+                : `Upcoming special event in ${daysLeft} day${daysLeft === 1 ? '' : 's'} (${event.start_date}).`,
+              days_left: daysLeft,
+              link: '/subscriptions'
+            });
+          }
+        });
       } catch (err) {
-        console.error("Error parsing coach events for notifications", err);
+        console.error("Failed to fetch coach events for notifications", err);
       }
 
       // ── Login Devices Alert ──
@@ -137,6 +143,44 @@ export default function Layout() {
 
   const visibleNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
 
+  const updateNotificationPanelPosition = () => {
+    const button = notificationButtonRef.current;
+    if (!button) return;
+
+    const bounds = button.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const top = bounds.bottom + 8;
+    const isMobile = viewportWidth < 640;
+    const width = isMobile ? Math.max(0, viewportWidth - 24) : Math.min(384, viewportWidth - 24);
+
+    setNotificationPanelPosition({
+      top,
+      width,
+      ...(isMobile
+        ? { left: 12 }
+        : { right: Math.max(12, viewportWidth - bounds.right) }),
+      maxHeight: Math.max(0, viewportHeight - top - 12),
+    });
+  };
+
+  useEffect(() => {
+    if (!showNotifications) return undefined;
+
+    const repositionPanel = () => updateNotificationPanelPosition();
+    window.addEventListener('resize', repositionPanel);
+    window.addEventListener('scroll', repositionPanel, true);
+    return () => {
+      window.removeEventListener('resize', repositionPanel);
+      window.removeEventListener('scroll', repositionPanel, true);
+    };
+  }, [showNotifications]);
+
+  const toggleNotifications = () => {
+    if (!showNotifications) updateNotificationPanelPosition();
+    setShowNotifications(!showNotifications);
+  };
+
   const dismissAll = () => {
     const allIds = notifications.map(n => n.id);
     const updated = Array.from(new Set([...dismissedIds, ...allIds]));
@@ -176,6 +220,7 @@ export default function Layout() {
           console.error("Server logout failed, forcing local logout", error);
         } finally {
           localStorage.removeItem('admin_token');
+          sessionStorage.removeItem('admin_token');
           localStorage.removeItem('admin_name');
           window.location.href = '/login';
         }
@@ -188,8 +233,8 @@ export default function Layout() {
       title: 'Main',
       items: [
         { name: 'Overview', path: '/overview', icon: <FiHome /> },
-        { name: 'Member Directory', path: '/members', icon: <FiUsers /> },
-        { name: 'Subscriptions', path: '/subscriptions', icon: <FiCheckSquare /> },
+        { name: 'Member Registration', path: '/members', icon: <FiUsers /> },
+        { name: 'Packages', path: '/subscriptions', icon: <FiCheckSquare /> },
         { name: 'Transactions', path: '/transactions', icon: <FiCreditCard /> },
         { name: 'Reports', path: '/reports', icon: <FiFileText /> },
       ]
@@ -197,14 +242,14 @@ export default function Layout() {
     {
       title: 'Monitoring',
       items: [
-        { name: 'Security Monitor', path: '/security', icon: <FiShield /> },
+        { name: 'Attendance Monitor', path: '/security', icon: <FiShield /> },
         { name: 'Gesture Monitor', path: '/gesture', icon: <FiCamera /> },
       ]
     }
   ];
 
   return (
-    <div className="flex h-screen bg-slate-100 dark:bg-[#050505] overflow-hidden font-sans">
+    <div className="flex h-dvh bg-slate-100 dark:bg-[#050505] overflow-hidden font-sans">
       
       <style>{`
         .hidden-scrollbar::-webkit-scrollbar { display: none; }
@@ -218,11 +263,11 @@ export default function Layout() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:w-72 bg-white dark:bg-[#161616] border-r border-slate-500 dark:border-white/20 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-24 px-5 flex items-center justify-between gap-4 border-b border-slate-500 dark:border-white/10 flex-shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:w-72 bg-white dark:bg-[#161616] border-r border-gray-400 dark:border-gray-600 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-24 px-5 flex items-center justify-between gap-4 border-b border-gray-400 dark:border-gray-600 flex-shrink-0">
           <div className="flex items-center gap-4">
             <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-white dark:bg-[#161616] border-[3px] border-black dark:border-amber-500 shadow-md dark:shadow-[0_0_12px_rgba(245,158,11,0.4)] transition-all flex-shrink-0">
-              <img src={logo} alt="Double Alpha Logo" className="w-full h-full rounded-full object-cover bg-white p-0.5" />
+              <img src={systemLogo} alt="System logo" className="w-full h-full rounded-full object-cover bg-white p-0.5" />
             </div>
             <div className="flex flex-col justify-center">
               <h1 className="font-black italic text-transparent bg-clip-text bg-gradient-to-r from-brand-red to-brand-orange text-xl md:text-2xl leading-none uppercase tracking-tight drop-shadow-sm">
@@ -260,7 +305,7 @@ export default function Layout() {
                     >
                       {({ isActive }) => (
                         <>
-                          <span className={`text-xl ${isActive ? 'text-brand-gold dark:text-gray-300' : 'opacity-70'}`}>{item.icon}</span>
+                          <span className={`text-xl ${isActive ? 'text-gray-300 dark:text-gray-300' : 'opacity-70'}`}>{item.icon}</span>
                           {item.name}
                         </>
                       )}
@@ -272,7 +317,7 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="p-5 border-t border-slate-400 dark:border-white/10 flex-shrink-0">
+        <div className="p-5 border-t border-gray-400 dark:border-gray-600 flex-shrink-0">
           <button onClick={handleLogout} className="flex items-center gap-3.5 px-4 py-3 w-full text-base text-slate-600 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-xl transition-colors font-bold">
             <FiLogOut className="text-xl opacity-70" /> Sign Out
           </button>
@@ -281,7 +326,7 @@ export default function Layout() {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
         
-        <header className="h-16 sm:h-20 lg:h-24 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-md border-b border-slate-500 dark:border-white/10 flex justify-between items-center px-3 sm:px-5 lg:px-8 transition-colors duration-300 z-10 w-full flex-shrink-0">
+        <header className="h-16 sm:h-20 lg:h-24 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-md border-b border-gray-400 dark:border-gray-600 flex justify-between items-center px-3 sm:px-5 lg:px-8 transition-colors duration-300 z-10 w-full flex-shrink-0">
           
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button onClick={() => setIsSidebarOpen(true)} aria-label="Open navigation menu" className="lg:hidden p-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors border border-slate-200 dark:border-white/5 flex-shrink-0">
@@ -300,41 +345,50 @@ export default function Layout() {
 
           <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5 flex-shrink-0">
             
-            <div className="relative">
+            <div className="relative order-3">
               <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                aria-label="Open notifications"
-                className="relative p-2 sm:p-2.5 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors border border-slate-500 dark:border-white/10"
+                ref={notificationButtonRef}
+                onClick={toggleNotifications}
+                aria-label={`Open notifications${visibleNotifications.length ? `, ${visibleNotifications.length} unread` : ''}`}
+                aria-expanded={showNotifications}
+                aria-controls="notification-panel"
+                className="relative rounded-full border border-gray-500 bg-gray-200 p-2.5 text-black shadow-sm transition-colors hover:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus-visible:ring-offset-[#161616] sm:p-3"
               >
-                <FiBell size={20} />
+                <FiBell size={21} strokeWidth={2.4} />
                 {visibleNotifications.length > 0 && (
-                  <span className="absolute top-1 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-100 dark:border-[#161616] animate-pulse"></span>
+                  <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-gray-200 bg-amber-500 px-1 text-[10px] font-extrabold leading-none tabular-nums text-slate-950 shadow-sm dark:border-gray-700 dark:bg-amber-400 dark:text-[#17191f]">
+                    {visibleNotifications.length > 99 ? '99+' : visibleNotifications.length}
+                  </span>
                 )}
               </button>
 
-              {showNotifications && (
-                <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-[4.5rem] sm:top-auto sm:mt-3 w-auto sm:w-96 bg-white dark:bg-[#161616] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+              {/* Portal layer: above sidebar (z-50), below logout (z-100) and alerts (z-120). */}
+              {showNotifications && notificationPanelPosition && createPortal(
+                <div
+                  id="notification-panel"
+                  style={notificationPanelPosition}
+                  className="fixed z-[90] flex flex-col overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 text-slate-800 shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 dark:border-[#3a3e49] dark:bg-[#1d2028] dark:text-gray-200 dark:shadow-[0_18px_44px_rgba(0,0,0,0.5)] dark:ring-white/5"
+                >
                   {/* Panel Header */}
-                  <div className="p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#121212] flex justify-between items-center">
+                  <div className="flex items-center justify-between border-b border-slate-300 bg-slate-200 px-4 py-3.5 dark:border-[#343843] dark:bg-[#232630]">
                     <div className="flex items-center gap-2">
-                      <FiBell size={16} className="text-amber-500" />
-                      <h4 className="font-bold text-black dark:text-gray-300 text-sm">Notifications</h4>
-                      {visibleNotifications.length > 0 && (
-                        <span className="text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 px-2 py-0.5 rounded-full">{visibleNotifications.length}</span>
-                      )}
+                      <FiBell size={16} className="text-slate-500 dark:text-gray-400" />
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-gray-100">Notifications</h4>
                     </div>
                     {visibleNotifications.length > 0 && (
-                      <button onClick={dismissAll} className="text-[10px] font-bold text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors uppercase tracking-wide">Clear All</button>
+                      <button onClick={dismissAll} className="rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100">Clear All</button>
                     )}
                   </div>
 
                   {/* Notification List */}
-                  <div className="max-h-[360px] overflow-y-auto hidden-scrollbar divide-y divide-slate-100 dark:divide-white/5">
+                  <div className="max-h-[360px] min-h-0 flex-1 overflow-y-auto hidden-scrollbar divide-y divide-slate-200/80 dark:divide-[#343843]">
                     {visibleNotifications.length === 0 ? (
                       <div className="p-8 text-center">
-                        <FiCheckCircle size={32} className="mx-auto text-green-500 mb-3" />
-                        <p className="text-sm font-bold text-slate-700 dark:text-gray-300">All Clear!</p>
-                        <p className="text-xs text-slate-400 dark:text-gray-500 mt-1">No pending alerts at the moment.</p>
+                        <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                          <FiCheckCircle size={21} />
+                        </span>
+                        <p className="text-sm font-bold text-slate-800 dark:text-gray-200">All clear</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">No pending alerts right now.</p>
                       </div>
                     ) : (
                       visibleNotifications.map((alert, index) => {
@@ -342,58 +396,59 @@ export default function Layout() {
                         let icon, iconBg, iconColor, badge, badgeColor;
                         if (alert.type === 'expiring') {
                           icon = <FiClock size={15}/>;
-                          iconBg = 'bg-amber-100 dark:bg-amber-500/20';
-                          iconColor = 'text-amber-600 dark:text-amber-400';
+                          iconBg = 'bg-amber-50 dark:bg-amber-500/10';
+                          iconColor = 'text-amber-700 dark:text-amber-300';
                           badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d left`;
-                          badgeColor = alert.days_left === 0 ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400';
+                          badgeColor = alert.days_left === 0 ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-500/10 dark:text-red-300' : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700/50 dark:bg-amber-500/10 dark:text-amber-300';
                         } else if (alert.type === 'event') {
                           icon = <FiCalendar size={15}/>;
-                          iconBg = 'bg-emerald-100 dark:bg-emerald-500/20';
-                          iconColor = 'text-emerald-600 dark:text-emerald-400';
+                          iconBg = 'bg-emerald-50 dark:bg-emerald-500/10';
+                          iconColor = 'text-emerald-700 dark:text-emerald-300';
                           badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d event`;
-                          badgeColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400';
+                          badgeColor = 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300';
                         } else if (alert.type === 'no_sub') {
                           icon = <FiAlertCircle size={15}/>;
-                          iconBg = 'bg-red-100 dark:bg-red-500/20';
-                          iconColor = 'text-red-600 dark:text-red-400';
+                          iconBg = 'bg-rose-50 dark:bg-rose-500/10';
+                          iconColor = 'text-rose-700 dark:text-rose-300';
                           badge = 'No Sub';
-                          badgeColor = 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400';
+                          badgeColor = 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700/50 dark:bg-rose-500/10 dark:text-rose-300';
                         } else if (alert.type === 'login') {
                           icon = <FiLogIn size={15}/>;
-                          iconBg = 'bg-blue-100 dark:bg-blue-500/20';
-                          iconColor = 'text-blue-600 dark:text-blue-400';
+                          iconBg = 'bg-slate-100 dark:bg-slate-500/15';
+                          iconColor = 'text-slate-700 dark:text-slate-300';
                           badge = 'Login';
-                          badgeColor = 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400';
+                          badgeColor = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-500/15 dark:text-slate-300';
                         } else {
                           // task
                           icon = <FiCheckSquare size={15}/>;
-                          iconBg = 'bg-purple-100 dark:bg-purple-500/20';
-                          iconColor = 'text-purple-600 dark:text-purple-400';
+                          iconBg = 'bg-violet-50 dark:bg-violet-500/10';
+                          iconColor = 'text-violet-700 dark:text-violet-300';
                           badge = 'Task';
-                          badgeColor = 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400';
+                          badgeColor = 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-700/50 dark:bg-violet-500/10 dark:text-violet-300';
                         }
 
                         return (
                           <div
                             key={alert.id || index}
                             onClick={() => handleNotificationClick(alert)}
-                            className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group relative"
+                            className="group relative cursor-pointer px-4 py-3.5 transition-colors hover:bg-slate-200 dark:hover:bg-[#292d37]"
                           >
                             <div className="flex gap-3 items-start">
-                              <div className={`w-8 h-8 rounded-full ${iconBg} ${iconColor} flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform`}>
+                              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-black/5 ${iconBg} ${iconColor} dark:border-white/5`}>
                                 {icon}
                               </div>
                               <div className="flex-1 min-w-0 pr-4">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-bold text-black dark:text-gray-300 leading-tight">{alert.member_name}</p>
-                                  <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${badgeColor}`}>{badge}</span>
+                                  <p className="text-sm font-semibold leading-tight text-slate-900 dark:text-gray-100">{alert.member_name}</p>
+                                  <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${badgeColor}`}>{badge}</span>
                                 </div>
-                                <p className="text-xs font-medium text-slate-500 dark:text-gray-400 mt-0.5 leading-snug">{alert.message}</p>
+                                <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-400">{alert.message}</p>
                               </div>
                               <button
                                 onClick={(e) => dismissOne(alert.id, e)}
                                 title="Dismiss notification"
-                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity p-1 -mr-2 -mt-1 rounded"
+                                aria-label="Dismiss notification"
+                                className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-gray-500 dark:hover:bg-white/5 dark:hover:text-rose-300"
                               >
                                 <FiX size={13} />
                               </button>
@@ -406,8 +461,8 @@ export default function Layout() {
 
                   {/* Panel Footer */}
                   {visibleNotifications.length > 0 && (
-                    <div className="p-3 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#121212] text-center">
-                      <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium flex items-center justify-center gap-2 flex-wrap">
+                    <div className="border-t border-slate-300 bg-slate-200 px-3 py-2.5 text-center dark:border-[#343843] dark:bg-[#232630]">
+                      <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-medium text-slate-500 dark:text-gray-400">
                         {visibleNotifications.filter(n => n.type === 'expiring').length > 0 && (
                           <span>{visibleNotifications.filter(n => n.type === 'expiring').length} expiring</span>
                         )}
@@ -426,36 +481,35 @@ export default function Layout() {
                       </p>
                     </div>
                   )}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
 
-            <div className="w-px h-8 bg-slate-300 dark:bg-white/10 mx-1 hidden md:block"></div>
+            <div className="w-px h-8 bg-gray-400 dark:bg-gray-600 mx-1 hidden order-2 md:block"></div>
 
-            <NavLink to="/profile" aria-label="Open admin profile" className="flex items-center gap-3 p-1.5 md:py-1.5 md:px-2 md:pr-4 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-colors border border-transparent dark:hover:border-white/5 group">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-black dark:bg-amber-500/20 border border-transparent dark:border-amber-500/50 text-white dark:text-amber-500 flex items-center justify-center font-bold shadow-sm text-base transition-transform group-hover:scale-105">
-                <FiUser />
+            <NavLink to="/profile" aria-label="Open admin profile" className="order-1 flex items-center gap-3 rounded-full border border-transparent p-1.5 transition-colors hover:border-gray-400 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 md:py-1.5 md:pl-2 md:pr-4 dark:hover:border-gray-700 dark:hover:bg-gray-800 dark:focus-visible:ring-offset-[#161616] group">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-500 bg-gray-200 text-black shadow-sm transition-transform group-hover:scale-105 sm:h-9 sm:w-9 md:h-10 md:w-10 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                <FiUser size={19} strokeWidth={2.4} />
               </div>
               <div className="hidden md:flex flex-col items-start">
-                <span className="text-sm font-bold text-black dark:text-gray-300 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors leading-none">
+                <span className="text-sm font-bold text-black transition-colors leading-none group-hover:text-gray-700 dark:text-gray-300 dark:group-hover:text-white">
                   {adminName}
                 </span>
                 <span className="text-[10px] font-bold text-slate-600 dark:text-gray-500 uppercase tracking-widest mt-1.5 leading-none">
                   System Admin
                 </span>
               </div>
-              <FiChevronDown className="hidden md:block text-slate-400 dark:text-gray-500 group-hover:text-amber-500 ml-1 transition-transform group-hover:translate-y-0.5" size={16} />
+              <FiChevronDown className="ml-1 hidden text-gray-700 transition-transform group-hover:translate-y-0.5 group-hover:text-black md:block dark:text-gray-300 dark:group-hover:text-white" size={17} strokeWidth={2.5} />
             </NavLink>
-
-            <div className="w-px h-8 bg-slate-300 dark:bg-white/10 mx-1 hidden md:block"></div>
 
             <button 
               onClick={toggleTheme} 
               aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="p-2.5 sm:p-3 md:p-3.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-transform hover:scale-110 active:scale-95 shadow-sm border border-slate-500 dark:border-white/10 flex-shrink-0"
+              className="order-5 flex-shrink-0 rounded-full border border-gray-500 bg-gray-200 p-2.5 text-black shadow-sm transition-transform hover:scale-110 hover:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 active:scale-95 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus-visible:ring-offset-[#161616] sm:p-3 md:p-3.5"
               title="Toggle Dark Mode"
             >
-              {isDarkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
+              {isDarkMode ? <FiSun size={21} strokeWidth={2.4} /> : <FiMoon size={21} strokeWidth={2.4} />}
             </button>
           </div>
         </header>

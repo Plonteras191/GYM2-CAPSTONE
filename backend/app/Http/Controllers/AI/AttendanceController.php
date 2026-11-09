@@ -14,6 +14,10 @@ class AttendanceController extends Controller
      */
     public function logAttendance(Request $request)
     {
+        $request->validate([
+            'member_id' => 'required|integer|exists:members,id',
+        ]);
+
         $now = Carbon::now();
         $today = $now->toDateString();
 
@@ -25,9 +29,7 @@ class AttendanceController extends Controller
             return response()->json(['status' => 'ignored', 'message' => 'Outside gym operating hours.']);
         }
 
-        $memberId = $request->validate([
-            'member_id' => 'required|integer|exists:members,id',
-        ])['member_id'];
+        $memberId = $request->member_id;
 
         // RULE 2: Enforce the "Once-a-Day" check-in rule
         $alreadyLogged = Attendance::where('member_id', $memberId)
@@ -63,7 +65,7 @@ class AttendanceController extends Controller
      */
     public function getTodayAttendance()
     {
-        return Attendance::with('member:id,first_name,last_name')
+        return Attendance::with('member:id,first_name,last_name,profile_pic,enrolled_face_id')
             ->where('date', Carbon::now()->toDateString())
             ->orderBy('time_in', 'desc')
             ->get();

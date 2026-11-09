@@ -24,21 +24,36 @@ class ReportController extends Controller
 
         // 1. Transactions in date range (only needed columns)
         $txns = Transaction::select(
-                'id', 'transaction_id', 'transaction_date', 'member_id',
-                'type', 'description', 'payment_method', 'amount', 'status'
+                'id', 'transaction_id', 'transaction_date', 'member_id', 'member_name_snapshot', 'member_profile_pic_snapshot', 'member_email_snapshot', 'membership_id',
+                'type', 'description', 'payment_method', 'amount', 'status', 'package_name_snapshot',
+                'package_category_snapshot'
             )
-            ->with('member:id,first_name,last_name')
+            ->with([
+                'member:id,first_name,last_name,email,profile_pic',
+                'membership:id,plan_type,plan_id',
+                'membership.plan:id,name,category,category_detail',
+            ])
             ->whereBetween('transaction_date', [$start, $end])
             ->orderBy('transaction_date', 'desc')
             ->get();
 
         // 2. Memberships created in date range
         $memberships = Membership::select(
-                'id', 'member_id', 'plan_type', 'start_date', 'end_date',
+                'id', 'member_id', 'member_name_snapshot', 'member_profile_pic_snapshot', 'member_email_snapshot', 'plan_id', 'plan_type', 'start_date', 'end_date',
                 'status', 'created_at'
             )
-            ->with('member:id,first_name,last_name')
-            ->whereBetween('created_at', [$startDateTime, $endDateTime])
+            ->with(['member:id,first_name,last_name,email,profile_pic', 'plan:id,name,category,category_detail'])
+            ->withExists(['transactions as has_upgraded' => function ($query) {
+                $query->where('type', 'Subscription Upgrade')->where('status', 'Complete');
+            }])
+            ->where(function ($query) use ($startDateTime, $endDateTime, $start, $end) {
+                $query->whereBetween('created_at', [$startDateTime, $endDateTime])
+                    ->orWhereHas('transactions', function ($transactionQuery) use ($start, $end) {
+                        $transactionQuery->where('type', 'Subscription Upgrade')
+                            ->where('status', 'Complete')
+                            ->whereBetween('transaction_date', [$start, $end]);
+                    });
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -55,7 +70,7 @@ class ReportController extends Controller
 
         // 5. Attendance records in date range
         $attendances = Attendance::select('id', 'member_id', 'date', 'time_in')
-            ->with('member:id,first_name,last_name,plan')
+            ->with('member:id,first_name,last_name,email,profile_pic,plan')
             ->whereBetween('date', [$start, $end])
             ->orderBy('date', 'desc')
             ->orderBy('time_in', 'desc')
@@ -65,30 +80,75 @@ class ReportController extends Controller
         $totalIncome   = $txns->where('status', 'Complete')->where('amount', '>', 0)->sum('amount');
         $refunds       = $txns->where('type', 'Refund')->sum('amount');
         $netRevenue    = $totalIncome - abs($refunds);
-        $pendingAmount = $txns->where('status', 'Pending')->sum('amount');
         $totalCheckIns = $attendances->count();
 
         // Map rows
+        $memberDetails = fn($member, $fallback, $snapshot = null, $profilePicSnapshot = null, $emailSnapshot = null) => [
+            'id' => $member?->id,
+            'name' => $member ? "{$member->first_name} {$member->last_name}" : ($snapshot ?: $fallback),
+            'email' => $member?->email ?: $emailSnapshot,
+            'profile_pic' => $member?->profile_pic ?: $profilePicSnapshot,
+        ];
+
+        $plans = \App\Models\Gym\Plan::select('id', 'name', 'category', 'category_detail')->get();
+        $paymentDetails = function ($transaction) use ($plans) {
+            if ($transaction->type === 'Refund') {
+                return [
+                    'title' => 'Refund Payment',
+                    'category' => trim((string) $transaction->description) ?: 'Refund',
+                ];
+            }
+
+            $package = $transaction->membership?->plan;
+            $planName = trim((string) ($transaction->package_name_snapshot ?: $package?->name ?: $transaction->membership?->plan_type));
+            if (!$package && $planName === '') {
+                $description = trim((string) $transaction->description);
+                $package = $plans->first(fn($plan) => str_contains(strtolower($description), strtolower($plan->name)));
+                $planName = trim((string) ($package?->name ?: $description));
+            }
+
+            $category = match ($transaction->package_category_snapshot ?: $package?->category) {
+                'with_coach' => 'With Coach Subscription',
+                'walk_in' => 'Walk-In Package',
+                'other' => $package?->category_detail ?: 'Other / Custom',
+                default => 'Normal Subscription',
+            };
+
+            return [
+                'title' => ($planName ?: 'Unknown') . ' Package Payment'
+                    . ($transaction->type === 'Subscription Upgrade' ? ' + Upgraded' : ''),
+                'category' => $category,
+            ];
+        };
+
         $paymentRows = $txns->map(fn($t) => [
             $t->transaction_id,
             $t->transaction_date,
-            $t->member ? "{$t->member->first_name} {$t->member->last_name}" : 'Walk-in Guest',
-            $t->type . ($t->description ? " ({$t->description})" : ''),
+            $memberDetails($t->member, 'Walk-in Guest', $t->member_name_snapshot, $t->member_profile_pic_snapshot, $t->member_email_snapshot),
+            $paymentDetails($t),
             $t->payment_method,
-            '₱ ' . number_format($t->amount, 2),
+            (float) $t->amount,
             $t->status,
         ]);
 
         $membershipRows = $memberships->map(fn($m) => [
-            $m->member ? "{$m->member->first_name} {$m->member->last_name}" : 'Unknown Member',
-            $m->plan_type,
+            $memberDetails($m->member, 'Unknown Member', $m->member_name_snapshot, $m->member_profile_pic_snapshot, $m->member_email_snapshot),
+            [
+                'title' => $m->plan_type,
+                'category' => match ($m->plan?->category) {
+                    'with_coach' => 'With Coach Subscription',
+                    'walk_in' => 'Walk-In Package',
+                    'other' => $m->plan?->category_detail ?: 'Other / Custom',
+                    default => 'Normal Subscription',
+                } . ($m->has_upgraded ? ' + Upgraded' : ''),
+            ],
             $m->start_date,
             $m->end_date,
             $m->status,
         ]);
 
-        $attendanceRows = $attendances->map(function ($a) {
-            $name       = $a->member ? "{$a->member->first_name} {$a->member->last_name}" : 'Unknown Face';
+        $attendanceRows = $attendances->map(function ($a) use ($memberDetails) {
+            $name       = $memberDetails($a->member, 'Unknown Face');
             $memberType = ($a->member && $a->member->plan && $a->member->plan !== 'None')
                 ? $a->member->plan
                 : 'Walk-in Guest';
@@ -98,12 +158,11 @@ class ReportController extends Controller
         return response()->json([
             'Payments' => [
                 'kpis' => [
-                    ['label' => 'Total Income',  'value' => '₱ ' . number_format($totalIncome, 2),   'trend' => 'Live'],
-                    ['label' => 'Refunds',        'value' => '₱ ' . number_format(abs($refunds), 2),  'trend' => 'Live'],
-                    ['label' => 'Net Revenue',    'value' => '₱ ' . number_format($netRevenue, 2),    'trend' => 'Live'],
-                    ['label' => 'Pending',        'value' => '₱ ' . number_format($pendingAmount, 2), 'trend' => 'Live'],
+                    ['label' => 'Total Income',  'value' => '₱ ' . $this->formatAmount($totalIncome),   'trend' => 'Live'],
+                    ['label' => 'Refunds',        'value' => '₱ ' . $this->formatAmount(abs($refunds)),  'trend' => 'Live'],
+                    ['label' => 'Net Revenue',    'value' => '₱ ' . $this->formatAmount($netRevenue),    'trend' => 'Live'],
                 ],
-                'columns' => ['Txn ID', 'Date', 'Member', 'Details', 'Method', 'Amount', 'Status'],
+                'columns' => ['Txn ID', 'Date', 'Member Details', 'Details', 'Method', 'Amount', 'Payment Status'],
                 'rows'    => $paymentRows,
             ],
             'Memberships' => [
@@ -111,8 +170,9 @@ class ReportController extends Controller
                     ['label' => 'New Signups',   'value' => (string) $newSignups,   'trend' => 'Live'],
                     ['label' => 'Total Active',  'value' => (string) $activeCount,  'trend' => 'Live'],
                     ['label' => 'Total Expired', 'value' => (string) $expiredCount, 'trend' => 'Live'],
+                    ['label' => 'Total Check-ins', 'value' => (string) $totalCheckIns, 'trend' => 'Live'],
                 ],
-                'columns' => ['Member', 'Plan', 'Start Date', 'Expiry Date', 'Status'],
+                'columns' => ['Member Details', 'Plan', 'Start Date', 'Expiry Date', 'Status'],
                 'rows'    => $membershipRows,
             ],
             'Attendance' => [
@@ -121,9 +181,14 @@ class ReportController extends Controller
                     ['label' => 'Avg. Daily Visits',  'value' => 'Tracking Active',       'trend' => 'Live'],
                     ['label' => 'System Status',      'value' => 'Online',                'trend' => 'Live'],
                 ],
-                'columns' => ['Date / Time', 'Member', 'Member Type', 'Status'],
+                'columns' => ['Date / Time', 'Member Details', 'Member Type', 'Status'],
                 'rows'    => $attendanceRows,
             ],
         ]);
+    }
+
+    private function formatAmount(float|int|string $amount): string
+    {
+        return rtrim(rtrim(number_format((float) $amount, 2, '.', ','), '0'), '.');
     }
 }

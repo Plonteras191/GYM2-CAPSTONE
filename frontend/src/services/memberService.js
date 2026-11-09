@@ -1,4 +1,5 @@
 import api from '../api';
+import { getMediaUrl } from '../utils/mediaUrl';
 
 export const memberService = {
   async getAll() {
@@ -12,9 +13,10 @@ export const memberService = {
       phone: dbMember.phone,
       address: dbMember.address || '',
       plan: dbMember.plan,
+      activeMembership: dbMember.active_membership || null,
       status: dbMember.status,
       enrolledFaceId: dbMember.enrolled_face_id,
-      profilePicUrl: dbMember.profile_pic ? `http://127.0.0.1:8000${dbMember.profile_pic}` : null,
+      profilePicUrl: getMediaUrl(dbMember.profile_pic || dbMember.enrolled_face_id),
       dob: dbMember.dob || '',
       height: dbMember.height || '',
       weight: dbMember.weight || '',

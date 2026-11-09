@@ -4,43 +4,71 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Models\Member\Member;
-use App\Models\Tracking\Attendance;
+use App\Support\MemberMediaStorage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 
 class MemberController extends Controller
 {
-    private const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
-    private const MAX_FACE_BYTES = 5 * 1024 * 1024; // 5 MB
+    public function __construct(private MemberMediaStorage $media)
+    {
+    }
 
     public function index()
     {
-        $members = Member::orderBy('created_at', 'desc')->get();
-        $oneMonthAgo = Carbon::now()->subDays(30);
+        $this->demoteInactiveMembers();
 
-        // --- THE AI INACTIVITY AUDITOR ---
+        $members = Member::with('memberships.plan')->orderBy('created_at', 'desc')->get();
+        $today = Carbon::today()->toDateString();
+
         foreach ($members as $member) {
-            // Only audit members that are currently active
-            if ($member->status === 'Active') {
-                // Find the absolute last time the AI saw them
-                $lastAttendance = Attendance::where('member_id', $member->id)->orderBy('date', 'desc')->first();
-                
-                // If they have no logs yet, use the day their account was created
-                $lastActiveDate = $lastAttendance ? Carbon::parse($lastAttendance->date) : $member->created_at;
+            $activeMembership = $member->memberships
+                ->filter(function ($membership) use ($today) {
+                    $startDate = $membership->start_date ? Carbon::parse($membership->start_date)->toDateString() : null;
+                    $endDate = $membership->end_date ? Carbon::parse($membership->end_date)->toDateString() : null;
 
-                // If it has been more than 30 days, silently demote them
-                if ($lastActiveDate->lt($oneMonthAgo)) {
-                    $member->status = 'Inactive';
-                    $member->save();
-                }
-            }
+                    return strcasecmp((string) $membership->status, 'Active') === 0
+                        && (!$startDate || $startDate <= $today)
+                        && (!$endDate || $endDate >= $today);
+                })
+                ->sortByDesc('id')
+                ->first();
+
+            $member->setRelation('activeMembership', $activeMembership);
+            $member->unsetRelation('memberships');
         }
 
         return response()->json($members);
+    }
+
+    /**
+     * THE AI INACTIVITY AUDITOR, as one UPDATE instead of a query per member.
+     *
+     * An Active member becomes Inactive when the camera has not seen them for
+     * over a month: their latest attendance is a month old or more, or they
+     * have no attendance and joined over a month ago.
+     */
+    private function demoteInactiveMembers(): void
+    {
+        $oneMonthAgo = Carbon::now()->subMonth();
+        $cutoffDate = $oneMonthAgo->toDateString();
+
+        Member::where('status', 'Active')
+            ->whereNotExists(function ($query) use ($cutoffDate) {
+                $query->select(DB::raw(1))
+                    ->from('attendances')
+                    ->whereColumn('attendances.member_id', 'members.id')
+                    ->where('attendances.date', '>', $cutoffDate);
+            })
+            ->where(function ($query) use ($oneMonthAgo) {
+                $query->whereExists(function ($attendance) {
+                    $attendance->select(DB::raw(1))
+                        ->from('attendances')
+                        ->whereColumn('attendances.member_id', 'members.id');
+                })->orWhere('created_at', '<', $oneMonthAgo);
+            })
+            ->update(['status' => 'Inactive']);
     }
 
     public function store(Request $request)
@@ -53,21 +81,22 @@ class MemberController extends Controller
             'plan' => 'required|string',
             'status' => 'required|string',
             'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
-            'enrolled_face_id' => 'nullable|string',
+            'enrolled_face_id' => ['nullable', 'string', 'regex:' . MemberMediaStorage::FACE_DATA_URI_REGEX],
             'dob' => 'nullable|date',
             'height' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
-            'address' => 'nullable|string|max:500'
+            'address' => 'nullable|string'
         ]);
 
+        // Only server-generated paths are ever saved for photos.
+        unset($validatedData['profile_pic'], $validatedData['enrolled_face_id']);
+
         if ($request->hasFile('profile_pic')) {
-            $validatedData['profile_pic'] = $this->storeProfilePicture($request->file('profile_pic'));
+            $validatedData['profile_pic'] = $this->media->storeProfilePicture($request->file('profile_pic'));
         }
 
-        // Never trust a client-supplied path: only a freshly captured image is accepted.
-        unset($validatedData['enrolled_face_id']);
         if ($request->filled('enrolled_face_id')) {
-            $validatedData['enrolled_face_id'] = $this->storeFaceImage($request->enrolled_face_id);
+            $validatedData['enrolled_face_id'] = $this->media->storeFace($request->input('enrolled_face_id'));
         }
 
         $member = Member::create($validatedData);
@@ -87,120 +116,92 @@ class MemberController extends Controller
             'plan' => 'sometimes|required|string',
             'status' => 'sometimes|required|string',
             'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
-            'enrolled_face_id' => 'nullable|string',
+            'enrolled_face_id' => ['nullable', 'string', 'regex:' . MemberMediaStorage::FACE_DATA_URI_REGEX],
             'dob' => 'nullable|date',
             'height' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
-            'address' => 'nullable|string|max:500'
+            'address' => 'nullable|string'
         ]);
 
+        // Only server-generated paths are ever saved for photos.
+        unset($validatedData['profile_pic'], $validatedData['enrolled_face_id']);
+
         if ($request->hasFile('profile_pic')) {
-            $this->deletePublicFile($member->profile_pic, 'profiles');
-            $validatedData['profile_pic'] = $this->storeProfilePicture($request->file('profile_pic'));
+            if ($member->profile_pic) {
+                $profilePicIsInHistory = DB::table('transactions')
+                    ->where('member_profile_pic_snapshot', $member->profile_pic)
+                    ->exists()
+                    || DB::table('memberships')
+                        ->where('member_profile_pic_snapshot', $member->profile_pic)
+                        ->exists();
+                if (!$profilePicIsInHistory) {
+                    $this->media->deleteProfilePicture($member->profile_pic);
+                }
+            }
+            $validatedData['profile_pic'] = $this->media->storeProfilePicture($request->file('profile_pic'));
         }
 
-        // Never trust a client-supplied path: only a freshly captured image is accepted.
-        unset($validatedData['enrolled_face_id']);
         if ($request->filled('enrolled_face_id')) {
-            $newFace = $this->storeFaceImage($request->enrolled_face_id);
-            $this->deletePublicFile($member->enrolled_face_id, 'faces');
-            $validatedData['enrolled_face_id'] = $newFace;
+            $newFacePath = $this->media->storeFace($request->input('enrolled_face_id'));
+            $this->media->deleteFace($member->enrolled_face_id);
+            $validatedData['enrolled_face_id'] = $newFacePath;
         }
 
         $member->update($validatedData);
 
         return response()->json(['message' => 'Member updated successfully', 'member' => $member]);
     }
-    
+
     public function destroy($id)
     {
         try {
-            $member = Member::findOrFail($id);
+            DB::transaction(function () use ($id) {
+                $member = Member::findOrFail($id);
 
-            $member->delete();
+                $memberName = trim($member->first_name . ' ' . $member->last_name);
+                DB::table('memberships')
+                    ->where('member_id', $member->id)
+                    ->where('status', 'Active')
+                    ->update(['status' => 'Cancelled']);
+                DB::table('transactions')
+                    ->where('member_id', $member->id)
+                    ->update([
+                        'member_name_snapshot' => $memberName,
+                        'member_profile_pic_snapshot' => $member->profile_pic,
+                        'member_email_snapshot' => $member->email,
+                        'member_id' => null,
+                    ]);
+                DB::table('memberships')
+                    ->where('member_id', $member->id)
+                    ->update([
+                        'member_name_snapshot' => $memberName,
+                        'member_profile_pic_snapshot' => $member->profile_pic,
+                        'member_email_snapshot' => $member->email,
+                        'member_id' => null,
+                    ]);
 
-            // Remove files only after the database row is really gone.
-            $this->deletePublicFile($member->profile_pic, 'profiles');
-            $this->deletePublicFile($member->enrolled_face_id, 'faces');
+                foreach ([
+                    'attendances',
+                    'workout_logs',
+                    'gesture_logs',
+                    'exercise_sessions',
+                    'face_encodings',
+                    'payments',
+                ] as $table) {
+                    if (DB::getSchemaBuilder()->hasTable($table)) {
+                        DB::table($table)->where('member_id', $member->id)->delete();
+                    }
+                }
 
-            return response()->json(['message' => 'Member and associated files deleted successfully.']);
+                $this->media->deleteFace($member->enrolled_face_id);
+
+                $member->delete();
+            });
+
+            return response()->json(['message' => 'Member deleted. Financial and subscription history was preserved.']);
 
         } catch (\Illuminate\Database\QueryException $e) {
-            if ($e->getCode() == "23000") {
-                return response()->json([
-                    'message' => 'Cannot delete this member because they have existing subscriptions or transactions tied to them. Please delete their records in the Subscriptions/Transactions tab first.'
-                ], 400);
-            }
-            
             return response()->json(['message' => 'A database error occurred while trying to delete.'], 500);
-        }
-    }
-
-    /**
-     * Save an uploaded profile picture under a random server-generated name.
-     * The client's original filename (which could be "shell.php") is never used.
-     */
-    private function storeProfilePicture(UploadedFile $file): string
-    {
-        $extension = $file->guessExtension();
-        if (!in_array($extension, self::ALLOWED_IMAGE_EXTENSIONS, true)) {
-            throw ValidationException::withMessages(['profile_pic' => ['Profile picture must be a JPG, PNG or WEBP image.']]);
-        }
-
-        $filename = Str::random(40) . '.' . $extension;
-        $file->move(public_path('profiles'), $filename);
-
-        return '/profiles/' . $filename;
-    }
-
-    /**
-     * Decode a base64 data-URI face capture, verify it is a real JPEG/PNG
-     * image of a sane size, and store it under a random name.
-     */
-    private function storeFaceImage(string $dataUri): string
-    {
-        $fail = fn () => throw ValidationException::withMessages(['enrolled_face_id' => ['Invalid face image.']]);
-
-        if (!preg_match('/^data:image\/(png|jpe?g);base64,/', $dataUri)) {
-            $fail();
-        }
-
-        $binary = base64_decode(substr($dataUri, strpos($dataUri, ',') + 1), true);
-        if ($binary === false || strlen($binary) === 0 || strlen($binary) > self::MAX_FACE_BYTES) {
-            $fail();
-        }
-
-        $info = @getimagesizefromstring($binary);
-        $extensions = [IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg'];
-        if ($info === false || !isset($extensions[$info[2]])) {
-            $fail();
-        }
-
-        if (!File::exists(public_path('faces'))) {
-            File::makeDirectory(public_path('faces'), 0755, true);
-        }
-
-        $filename = Str::random(40) . '.' . $extensions[$info[2]];
-        file_put_contents(public_path('faces/' . $filename), $binary);
-
-        return '/faces/' . $filename;
-    }
-
-    /**
-     * Delete a stored member file, but only if it really lives inside the
-     * expected public sub-folder (prevents "../../.env" style path traversal).
-     */
-    private function deletePublicFile(?string $relativePath, string $folder): void
-    {
-        if (!$relativePath) {
-            return;
-        }
-
-        $baseDir = realpath(public_path($folder));
-        $target = realpath(public_path(ltrim($relativePath, '/')));
-
-        if ($baseDir && $target && str_starts_with($target, $baseDir . DIRECTORY_SEPARATOR) && is_file($target)) {
-            File::delete($target);
         }
     }
 }

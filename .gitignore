@@ -31,9 +31,10 @@ Gesture Engine/__pycache__/
 .DS_Store
 Thumbs.db
 
-# Secrets for the Gesture Engine (camera password, AI key)
-Gesture Engine/.env
-
-# Member biometric data and photos — personal data, must never be committed
+# Member photos and biometric face images (personal data - never commit)
 backend/public/faces/
 backend/public/profiles/
+
+# Notes that contain camera passwords
+DOCUMENTATION/Updated Current Plan For Development/OpenSesami.md
+DOCUMENTATION/Updated Current Plan For Development/Reminder.md

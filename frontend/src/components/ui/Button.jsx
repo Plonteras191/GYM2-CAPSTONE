@@ -13,7 +13,7 @@ export default function Button({
   onClick,
   ...props
 }) {
-  const baseClasses = "inline-flex items-center justify-center font-bold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 shadow-sm tracking-wide";
+  const baseClasses = "inline-flex items-center justify-center font-semibold rounded-xl transition-colors duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 shadow-sm";
   
   const sizeClasses = {
     sm: "px-3 py-1.5 text-xs gap-1.5",
@@ -22,9 +22,9 @@ export default function Button({
   };
 
   const variantClasses = {
-    primary: "bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-black shadow-amber-900/20 uppercase font-black",
-    secondary: "bg-black hover:bg-slate-900 text-gray-200 dark:bg-gray-300 dark:hover:bg-white dark:text-black uppercase",
-    danger: "bg-red-600 hover:bg-red-700 text-white shadow-red-900/20 uppercase",
+    primary: "bg-slate-900 hover:bg-slate-800 text-white",
+    secondary: "bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100",
+    danger: "bg-red-600 hover:bg-red-700 text-white",
     outline: "bg-white dark:bg-[#252830] text-slate-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500",
     ghost: "bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 text-slate-700 dark:text-gray-300 shadow-none"
   };

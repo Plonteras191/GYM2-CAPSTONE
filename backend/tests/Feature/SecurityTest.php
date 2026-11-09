@@ -4,104 +4,19 @@ namespace Tests\Feature;
 
 use App\Models\Auth\Admin;
 use App\Models\Member\Member;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
-use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
+/**
+ * Security checks not covered by ApiAccessControlTest / MemberMediaSecurityTest.
+ */
 class SecurityTest extends TestCase
 {
     use RefreshDatabase;
-
-    private const AI_KEY = 'test-ai-service-key';
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        config(['services.ai_engine.key' => self::AI_KEY]);
-    }
-
-    private function actingAsAdmin(): void
-    {
-        Sanctum::actingAs(Admin::create([
-            'name' => 'Admin',
-            'email' => 'admin@test.local',
-            'password' => 'secret-password',
-        ]));
-    }
-
-    private function makeMember(array $overrides = []): Member
-    {
-        return Member::create(array_merge([
-            'first_name' => 'Juan',
-            'last_name' => 'Dela Cruz',
-            'email' => uniqid() . '@test.local',
-            'phone' => '09170000000',
-            'plan' => 'Monthly',
-            'status' => 'Active',
-        ], $overrides));
-    }
-
-    public function test_admin_routes_reject_unauthenticated_requests(): void
-    {
-        $this->makeMember();
-
-        foreach ([
-            ['GET', '/api/members'],
-            ['POST', '/api/members'],
-            ['DELETE', '/api/members/1'],
-            ['GET', '/api/transactions'],
-            ['POST', '/api/plans/bulk-update'],
-            ['GET', '/api/reports'],
-            ['GET', '/api/dashboard'],
-            ['PUT', '/api/workouts/1/manual-verify'],
-        ] as [$method, $uri]) {
-            $this->json($method, $uri)->assertStatus(401);
-        }
-
-        $this->assertDatabaseCount('members', 1);
-    }
-
-    public function test_admin_routes_work_with_valid_token(): void
-    {
-        $this->actingAsAdmin();
-        $this->getJson('/api/members')->assertOk();
-        $this->getJson('/api/transactions')->assertOk();
-    }
-
-    public function test_ai_routes_require_the_service_key(): void
-    {
-        $member = $this->makeMember();
-
-        $this->getJson('/api/ai/members-faces')->assertStatus(401);
-        $this->getJson('/api/ai/members-faces', ['X-AI-Key' => 'wrong'])->assertStatus(401);
-        $this->postJson('/api/ai/log-workout', ['member_id' => $member->id, 'exercise' => 'SQUAT'])->assertStatus(401);
-
-        $this->getJson('/api/ai/members-faces', ['X-AI-Key' => self::AI_KEY])->assertOk();
-        $this->postJson('/api/ai/log-workout', ['member_id' => $member->id, 'exercise' => 'SQUAT'], ['X-AI-Key' => self::AI_KEY])
-            ->assertOk();
-    }
-
-    public function test_ai_routes_fail_closed_when_no_key_is_configured(): void
-    {
-        config(['services.ai_engine.key' => null]);
-        $this->getJson('/api/ai/members-faces', ['X-AI-Key' => ''])->assertStatus(401);
-    }
-
-    public function test_log_attendance_validates_member_id(): void
-    {
-        $this->postJson('/api/ai/log-attendance', ['member_id' => 99999], ['X-AI-Key' => self::AI_KEY])
-            ->assertStatus(422);
-    }
-
-    public function test_login_is_rate_limited(): void
-    {
-        for ($i = 0; $i < 5; $i++) {
-            $this->postJson('/api/auth/login', ['email' => 'x@test.local', 'password' => 'wrong'])->assertStatus(422);
-        }
-        $this->postJson('/api/auth/login', ['email' => 'x@test.local', 'password' => 'wrong'])->assertStatus(429);
-    }
 
     private function pngBytes(): string
     {
@@ -111,15 +26,28 @@ class SecurityTest extends TestCase
         return ob_get_clean();
     }
 
-    private function memberPayload(array $extra): array
+    private function memberPayload(array $extra = []): array
     {
         return array_merge([
-            'first_name' => 'A', 'last_name' => 'B', 'email' => uniqid() . '@test.local',
-            'phone' => '0917', 'plan' => 'Monthly', 'status' => 'Active',
+            'first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'email' => uniqid() . '@test.local',
+            'phone' => '09170000000', 'plan' => 'Monthly', 'status' => 'Active',
         ], $extra);
     }
 
-    public function test_real_image_named_php_is_rejected(): void
+    public function test_login_is_rate_limited(): void
+    {
+        $limited = false;
+        for ($i = 0; $i < 15; $i++) {
+            $status = $this->postJson('/api/auth/login', ['email' => 'x@test.local', 'password' => 'wrong'])->status();
+            if ($status === 429) {
+                $limited = true;
+                break;
+            }
+        }
+        $this->assertTrue($limited, 'Login should be throttled after repeated failures.');
+    }
+
+    public function test_profile_picture_named_php_is_rejected(): void
     {
         $this->actingAsAdmin();
 
@@ -132,82 +60,50 @@ class SecurityTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $response = $this->post('/api/members', $this->memberPayload([
+        $path = $this->post('/api/members', $this->memberPayload([
             'profile_pic' => UploadedFile::fake()->createWithContent('../../evil name.png', $this->pngBytes()),
-        ]), ['Accept' => 'application/json'])->assertCreated();
+        ]), ['Accept' => 'application/json'])->assertCreated()->json('member.profile_pic');
 
-        $path = $response->json('member.profile_pic');
-        $this->assertMatchesRegularExpression('#^/profiles/[A-Za-z0-9]{40}\.png$#', $path);
-
+        $this->assertMatchesRegularExpression('#^/profiles/\d+_profile_[A-Za-z0-9]{16}\.png$#', $path);
         File::delete(public_path(ltrim($path, '/')));
     }
 
-    public function test_non_image_upload_is_rejected(): void
+    public function test_oversized_profile_picture_is_rejected(): void
     {
         $this->actingAsAdmin();
 
-        $this->post('/api/members', [
-            'first_name' => 'A', 'last_name' => 'B', 'email' => 'bad@test.local',
-            'phone' => '0917', 'plan' => 'Monthly', 'status' => 'Active',
-            'profile_pic' => UploadedFile::fake()->createWithContent('shell.php', '<?php system($_GET["c"]); ?>'),
-        ], ['Accept' => 'application/json'])->assertStatus(422);
+        $this->post('/api/members', $this->memberPayload([
+            'profile_pic' => UploadedFile::fake()->create('huge.png', 6000, 'image/png'),
+        ]), ['Accept' => 'application/json'])->assertStatus(422);
     }
 
-    public function test_fake_face_image_is_rejected(): void
+    public function test_negative_subscription_payment_is_rejected(): void
     {
         $this->actingAsAdmin();
+        $member = Member::create($this->memberPayload());
 
-        $this->postJson('/api/members', [
-            'first_name' => 'A', 'last_name' => 'B', 'email' => 'face@test.local',
-            'phone' => '0917', 'plan' => 'Monthly', 'status' => 'Active',
-            'enrolled_face_id' => 'data:image/png;base64,' . base64_encode('<?php echo "pwned"; ?>'),
+        $this->postJson('/api/memberships', [
+            'member_id' => $member->id, 'plan_type' => 'Monthly', 'start_date' => '2026-11-09',
+            'status' => 'Active', 'payment_method' => 'Cash', 'color' => '#000000', 'amount' => -500,
         ])->assertStatus(422);
+
+        $this->assertDatabaseCount('memberships', 0);
     }
 
-    public function test_real_webcam_face_capture_still_enrolls(): void
+    public function test_login_tokens_expire(): void
     {
-        $this->actingAsAdmin();
-
-        $response = $this->postJson('/api/members', $this->memberPayload([
-            'enrolled_face_id' => 'data:image/png;base64,' . base64_encode($this->pngBytes()),
-        ]))->assertCreated();
-
-        $path = $response->json('member.enrolled_face_id');
-        $this->assertMatchesRegularExpression('#^/faces/[A-Za-z0-9]{40}\.png$#', $path);
-        $this->assertFileExists(public_path(ltrim($path, '/')));
-
-        File::delete(public_path(ltrim($path, '/')));
+        $this->assertNotNull(config('sanctum.expiration'));
+        $this->assertGreaterThan(0, (int) config('sanctum.expiration'));
     }
 
-    public function test_client_cannot_set_face_path_to_delete_arbitrary_files(): void
+    public function test_seeder_never_creates_a_known_default_password(): void
     {
-        $this->actingAsAdmin();
+        $this->seed(DatabaseSeeder::class);
 
-        $victim = public_path('security-test-victim.txt');
-        file_put_contents($victim, 'do not delete');
-
-        $member = $this->makeMember();
-        $this->postJson("/api/members/{$member->id}", [
-            '_method' => 'PUT',
-            'enrolled_face_id' => '/security-test-victim.txt',
-        ])->assertStatus(422);
-        $this->assertNull($member->fresh()->enrolled_face_id);
-
-        // Even if a bad path were already stored, deletion must stay inside public/faces.
-        $member->forceFill(['enrolled_face_id' => '/security-test-victim.txt'])->save();
-        $this->deleteJson("/api/members/{$member->id}")->assertOk();
-
-        $this->assertFileExists($victim);
-        File::delete($victim);
-    }
-
-    public function test_negative_transaction_amount_is_rejected(): void
-    {
-        $this->actingAsAdmin();
-
-        $this->postJson('/api/transactions', [
-            'transaction_date' => '2026-11-09', 'type' => 'Refund', 'payment_method' => 'Cash',
-            'amount' => -500, 'status' => 'Complete',
-        ])->assertStatus(422);
+        $admin = Admin::first();
+        $this->assertNotNull($admin);
+        foreach (['admin123', 'password', 'admin'] as $weak) {
+            $this->assertFalse(Hash::check($weak, $admin->password), "Seeded admin must not use '{$weak}'.");
+        }
     }
 }

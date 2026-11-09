@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#f2f2f2">
+	<title>Gym System Color Palette</title>
+	<style>
+		/* Edit these values to adjust this palette preview. */
+		:root {
+			color-scheme: light;
+			font-family: "Segoe UI", sans-serif;
+			--page: #F2F2F2;
+			--ink: #111827;
+			--muted: #6B7280;
+			--line: #D1D5DB;
+			--card: #FFFFFF;
+			--light-page: #F2F2F2;
+			--light-panel: #FFFFFF;
+			--light-field: #F9FAFB;
+			--light-border: #D1D5DB;
+			--light-muted: #6B7280;
+			--light-hover: #F3F4F6;
+			--light-selected: #E5E7EB;
+			--light-selected-text: #111827;
+			--dark-page: #0B0C0E;
+			--dark-panel: #252833;
+			--dark-field: #191B22;
+			--dark-border: #393E4F;
+			--dark-muted: #6D758D;
+			--dark-control: #2A2D35;
+			--dark-hover: #393E4F;
+			--dark-selected: #E5E7EB;
+			--dark-selected-text: #111827;
+			--action-start: #FACC15;
+			--action-end: #F59E0B;
+			--action-text: #000000;
+			--cta-font-size: 14px;
+			--action-hover-brightness: 1.05;
+			--brand-red: #A60303;
+			--brand-crimson: #A61F2B;
+			--brand-gold: #F2B705;
+			--brand-orange: #D97A07;
+			--brand-dark: #0D0D0D;
+			--brand-navy: #031226;
+			--brand-surface: #212226;
+			--brand-slate: #3F454D;
+			--brand-light: #F2F2F2;
+			--brand-white: #FCFCFC;
+			--status-green: #10B981;
+			--status-purple: #A855F7;
+			--status-amber: #F59E0B;
+			--status-red: #EF4444;
+			background: var(--page);
+			color: var(--ink);
+			font-synthesis: none;
+		}
+
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 30px 24px 48px; background: var(--page); }
+		main { max-width: 1160px; margin: 0 auto; }
+		header { margin-bottom: 28px; }
+		h1 { margin: 0; font-size: 30px; line-height: 1.2; }
+		header p { margin: 8px 0 0; color: var(--muted); }
+		h2 { margin: 0 0 16px; font-size: 19px; }
+		h3 { margin: 0 0 12px; font-size: 14px; }
+		code { font-family: Consolas, "Courier New", monospace; }
+
+		.section { border-top: 1px solid var(--line); margin-top: 26px; padding-top: 24px; }
+		.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+		.section-heading p { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+
+		.swatch-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+		.color-card { overflow: hidden; min-width: 0; border: 1px solid var(--line); border-radius: 7px; background: var(--card); }
+		.color-chip { height: 68px; border-bottom: 1px solid #00000012; }
+		.color-info { min-height: 64px; padding: 10px 12px; }
+		.color-info strong, .color-info code, .color-info small { display: block; overflow-wrap: anywhere; }
+		.color-info strong { font-size: 13px; }
+		.color-info code { margin-top: 4px; color: #59616B; font-size: 12px; }
+		.color-info small { margin-top: 3px; color: #6B7280; font-size: 11px; }
+
+		.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+		.mode-panel { min-width: 0; border: 1px solid var(--light-border); border-radius: 8px; padding: 18px; background: var(--light-page); color: var(--ink); }
+		.mode-panel.dark { border-color: var(--dark-border); background: var(--dark-page); color: #D1D5DB; }
+		.mode-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+		.mode-title h3 { margin: 0; font-size: 16px; }
+		.mode-title span { color: var(--light-muted); font-size: 12px; }
+		.dark .mode-title span { color: var(--dark-muted); }
+		.state-list { display: grid; gap: 14px; }
+		.state-row { display: grid; grid-template-columns: 112px repeat(3, minmax(0, 1fr)); align-items: center; gap: 8px; }
+		.state-name { font-size: 12px; font-weight: 650; }
+		.state-name small { display: block; margin-top: 3px; color: var(--light-muted); font-size: 10px; font-weight: 400; }
+		.dark .state-name small { color: var(--dark-muted); }
+		.state-preview { display: grid; justify-items: center; gap: 6px; min-width: 0; }
+		.state-preview > span { color: var(--light-muted); font-size: 10px; text-align: center; }
+		.state-preview > span small { display: block; margin-top: 2px; font-size: 9px; }
+		.dark .state-preview > span { color: var(--dark-muted); }
+		.preview-button, .preview-tab, .preview-input { width: 100%; min-height: 36px; border: 1px solid transparent; border-radius: 5px; font: inherit; font-size: var(--cta-font-size); letter-spacing: .025em; text-transform: uppercase; }
+		.preview-button, .preview-tab { font-weight: 700; }
+		.preview-button { cursor: pointer; background: linear-gradient(90deg, var(--action-start), var(--action-end)); color: var(--action-text); }
+		.preview-button:hover, .preview-button.forced-hover { filter: brightness(var(--action-hover-brightness)); }
+		.preview-button.forced-active { filter: brightness(.92); transform: translateY(1px); box-shadow: inset 0 1px 2px #00000030; }
+		.preview-tab { cursor: pointer; border-color: var(--light-border); background: var(--light-panel); color: var(--ink); }
+		.dark .preview-tab { border-color: var(--dark-border); background: var(--dark-control); color: #D1D5DB; }
+		.preview-tab:hover, .preview-tab.forced-hover { background: var(--light-hover); }
+		.dark .preview-tab:hover, .dark .preview-tab.forced-hover { border-color: var(--dark-hover); background: var(--dark-hover); }
+		.preview-tab[aria-pressed="true"] { border-color: var(--light-selected); background: var(--light-selected); color: var(--light-selected-text); }
+		.dark .preview-tab[aria-pressed="true"] { border-color: var(--dark-selected); background: var(--dark-selected); color: var(--dark-selected-text); }
+		.preview-input { outline: none; border-color: var(--light-border); background: var(--light-field); color: var(--ink); padding: 0 9px; }
+		.preview-input:hover { background: var(--light-hover); }
+		.preview-input:focus { border-color: var(--brand-gold); box-shadow: 0 0 0 2px #F2B70540; }
+		.preview-input.forced-hover { background: var(--light-hover); }
+		.preview-input.forced-focus { border-color: var(--brand-gold); box-shadow: 0 0 0 2px #F2B70540; }
+		.dark .preview-input { border-color: var(--dark-border); background: var(--dark-field); color: #F3F4F6; }
+		.dark .preview-input:hover { background: var(--dark-panel); }
+		.dark .preview-input:focus { border-color: var(--action-start); box-shadow: 0 0 0 2px #FACC1540; }
+		.dark .preview-input.forced-hover { background: var(--dark-panel); }
+		.dark .preview-input.forced-focus { border-color: var(--action-start); box-shadow: 0 0 0 2px #FACC1540; }
+
+		.state-key { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+		.key-item { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 7px; align-items: center; min-width: 0; font-size: 10px; }
+		.key-chip { height: 22px; border: 1px solid #00000020; border-radius: 4px; }
+		.key-item code { display: block; margin-top: 2px; color: var(--light-muted); font-size: 9px; }
+		.dark .key-item code { color: var(--dark-muted); }
+		.picker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+		.picker-item { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 9px; background: white; }
+		.picker-item input { width: 34px; height: 34px; border: 0; padding: 0; background: transparent; cursor: pointer; }
+		.picker-item span { display: block; font-size: 11px; font-weight: 650; }
+		.picker-item code { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+		.font-size-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 9px; background: white; }
+		.font-size-item label { font-size: 11px; font-weight: 650; }
+		.font-size-item input { width: 68px; border: 1px solid var(--line); border-radius: 4px; padding: 5px; color: var(--ink); font: inherit; font-size: 12px; }
+		.font-size-item code { color: var(--muted); font-size: 10px; }
+
+		.status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+		.status-card { overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: white; }
+		.status-chip { height: 48px; }
+		.status-info { padding: 9px 11px; }
+		.status-info strong, .status-info code { display: block; font-size: 12px; }
+		.status-info code { margin-top: 4px; color: var(--muted); }
+		.note { margin: 14px 0 0; color: var(--muted); font-size: 12px; }
+
+		@media (max-width: 850px) {
+			.swatch-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+			.state-row { grid-template-columns: 90px repeat(3, minmax(0, 1fr)); }
+			.picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+		}
+		@media (max-width: 640px) {
+			body { padding: 22px 14px 34px; }
+			h1 { font-size: 25px; }
+			.mode-grid { grid-template-columns: 1fr; }
+			.swatch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+			.status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+			.picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+			.mode-panel { padding: 13px; }
+			.state-row { grid-template-columns: 76px repeat(3, minmax(0, 1fr)); gap: 5px; }
+			.section-heading { display: block; }
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<header>
+			<h1>System Color Palette</h1>
+			<p>Color swatches and interactive states. Edit the CSS variables near the top of this file to adjust the preview.</p>
+		</header>
+
+		<section class="section" aria-labelledby="brand-heading">
+			<div class="section-heading"><h2 id="brand-heading">Brand colors</h2><p>Core brand values from frontend/src/index.css</p></div>
+			<div class="swatch-grid">
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-red)"></div><div class="color-info"><strong>Brand red</strong><code>#A60303</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-crimson)"></div><div class="color-info"><strong>Brand crimson</strong><code>#A61F2B</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-gold)"></div><div class="color-info"><strong>Brand gold</strong><code>#F2B705</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-orange)"></div><div class="color-info"><strong>Brand orange</strong><code>#D97A07</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-dark)"></div><div class="color-info"><strong>Brand dark</strong><code>#0D0D0D</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-navy)"></div><div class="color-info"><strong>Brand navy</strong><code>#031226</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-surface)"></div><div class="color-info"><strong>Brand surface</strong><code>#212226</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-slate)"></div><div class="color-info"><strong>Brand slate</strong><code>#3F454D</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-light)"></div><div class="color-info"><strong>Brand light</strong><code>#F2F2F2</code></div></article>
+				<article class="color-card"><div class="color-chip" style="background:var(--brand-white)"></div><div class="color-info"><strong>Brand white</strong><code>#FCFCFC</code></div></article>
+			</div>
+		</section>
+
+		<section class="section" aria-labelledby="theme-heading">
+			<div class="section-heading"><h2 id="theme-heading">Light and dark theme colors</h2><p>Surface roles and supporting colors</p></div>
+			<div class="mode-grid">
+				<article class="mode-panel">
+					<div class="mode-title"><h3>Light mode</h3><span>Backgrounds · controls · text</span></div>
+					<div class="swatch-grid">
+						<article class="color-card"><div class="color-chip" style="background:var(--light-page)"></div><div class="color-info"><strong>Page background</strong><code>#F2F2F2</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--light-panel)"></div><div class="color-info"><strong>Panel / card</strong><code>white</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--light-field)"></div><div class="color-info"><strong>Input field</strong><code>gray-50</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--light-border)"></div><div class="color-info"><strong>Border</strong><code>gray-300</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--light-muted)"></div><div class="color-info"><strong>Muted text</strong><code>gray-500</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--light-hover)"></div><div class="color-info"><strong>Hover surface</strong><code>#F3F4F6</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--light-selected)"></div><div class="color-info"><strong>Selected surface</strong><code>#E5E7EB</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:linear-gradient(90deg,var(--action-start),var(--action-end))"></div><div class="color-info"><strong>Action gradient</strong><code>yellow-400 → amber-500</code></div></article>
+					</div>
+				</article>
+				<article class="mode-panel dark">
+					<div class="mode-title"><h3>Dark mode</h3><span>Backgrounds · controls · text</span></div>
+					<div class="swatch-grid">
+						<article class="color-card"><div class="color-chip" style="background:var(--dark-page)"></div><div class="color-info"><strong>Page background</strong><code>#0B0C0E</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--dark-panel)"></div><div class="color-info"><strong>Panel / card</strong><code>#252833</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--dark-field)"></div><div class="color-info"><strong>Input field</strong><code>#191B22</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--dark-border)"></div><div class="color-info"><strong>Border</strong><code>#393E4F</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--dark-muted)"></div><div class="color-info"><strong>Muted text</strong><code>#6D758D</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--dark-hover)"></div><div class="color-info"><strong>Hover surface</strong><code>#393E4F</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:var(--dark-selected)"></div><div class="color-info"><strong>Selected surface</strong><code>#E5E7EB</code></div></article>
+						<article class="color-card"><div class="color-chip" style="background:linear-gradient(90deg,var(--action-start),var(--action-end))"></div><div class="color-info"><strong>Action gradient</strong><code>#FACC15 → #F59E0B</code></div></article>
+					</div>
+				</article>
+			</div>
+		</section>
+
+		<section class="section" aria-labelledby="states-heading">
+			<div class="section-heading"><h2 id="states-heading">Hover and selected states</h2><p>Hover with your pointer; click a tab to toggle its selected state.</p></div>
+			<div class="picker-grid" aria-label="Adjust preview colors">
+				<div class="font-size-item"><label for="cta-font-size">Button font size</label><span><input id="cta-font-size" type="number" min="8" max="24" step="1" value="14" data-font-size-picker aria-label="Button font size in pixels"> <code>px</code></span></div>
+				<label class="picker-item"><input type="color" value="#FACC15" data-color-picker="--action-start" aria-label="Adjust action gradient start"><span>Action start<code data-color-value="--action-start">#FACC15</code></span></label>
+				<label class="picker-item"><input type="color" value="#F59E0B" data-color-picker="--action-end" aria-label="Adjust action gradient end"><span>Action end<code data-color-value="--action-end">#F59E0B</code></span></label>
+				<label class="picker-item"><input type="color" value="#F3F4F6" data-color-picker="--light-hover" aria-label="Adjust light hover color"><span>Light hover<code data-color-value="--light-hover">#F3F4F6</code></span></label>
+				<label class="picker-item"><input type="color" value="#E5E7EB" data-color-picker="--light-selected" aria-label="Adjust light selected color"><span>Light selected<code data-color-value="--light-selected">#E5E7EB</code></span></label>
+				<label class="picker-item"><input type="color" value="#393E4F" data-color-picker="--dark-hover" aria-label="Adjust dark hover color"><span>Dark hover<code data-color-value="--dark-hover">#393E4F</code></span></label>
+				<label class="picker-item"><input type="color" value="#E5E7EB" data-color-picker="--dark-selected" aria-label="Adjust dark selected color"><span>Dark selected<code data-color-value="--dark-selected">#E5E7EB</code></span></label>
+			</div>
+			<div class="mode-grid">
+				<article class="mode-panel">
+					<div class="mode-title"><h3>Light mode preview</h3><span>Interactive samples</span></div>
+					<div class="state-list">
+						<div class="state-row">
+							<div class="state-name">Action button<small>Hover brightens</small></div>
+							<div class="state-preview"><span>Default<small class="state-font-size">14px</small></span><button class="preview-button" type="button">SAVE</button></div>
+							<div class="state-preview"><span>Hover<small class="state-font-size">14px</small></span><button class="preview-button forced-hover" type="button">SAVE</button></div>
+							<div class="state-preview"><span>Pressed<small class="state-font-size">14px</small></span><button class="preview-button forced-active" type="button">SAVE</button></div>
+						</div>
+						<div class="state-row">
+							<div class="state-name">Segmented tab<small>Click to toggle</small></div>
+							<div class="state-preview"><span>Default<small class="state-font-size">14px</small></span><button class="preview-tab" type="button" aria-pressed="false" data-toggle>MONTH</button></div>
+							<div class="state-preview"><span>Hover<small class="state-font-size">14px</small></span><button class="preview-tab forced-hover" type="button" aria-pressed="false" data-toggle>MONTH</button></div>
+							<div class="state-preview"><span>Selected<small class="state-font-size">14px</small></span><button class="preview-tab" type="button" aria-pressed="true" data-toggle>MONTH</button></div>
+						</div>
+						<div class="state-row">
+							<div class="state-name">Input field<small>Focus with click</small></div>
+							<div class="state-preview"><span>Default<small class="state-font-size">14px</small></span><input class="preview-input" value="Search" aria-label="Default light search preview" readonly></div>
+							<div class="state-preview"><span>Hover<small class="state-font-size">14px</small></span><input class="preview-input forced-hover" value="Search" aria-label="Hover light search preview" readonly></div>
+							<div class="state-preview"><span>Focus<small class="state-font-size">14px</small></span><input class="preview-input forced-focus" value="Search" aria-label="Focused light search preview" readonly></div>
+						</div>
+					</div>
+					<div class="state-key">
+						<div class="key-item"><div class="key-chip" style="background:var(--light-hover)"></div><div>Hover<code>#F3F4F6</code></div></div>
+						<div class="key-item"><div class="key-chip" style="background:var(--light-selected)"></div><div>Selected<code>#E5E7EB</code></div></div>
+						<div class="key-item"><div class="key-chip" style="background:var(--brand-gold)"></div><div>Focus border<code>#F2B705</code></div></div>
+					</div>
+				</article>
+				<article class="mode-panel dark">
+					<div class="mode-title"><h3>Dark mode preview</h3><span>Interactive samples</span></div>
+					<div class="state-list">
+						<div class="state-row">
+							<div class="state-name">Action button<small>Hover brightens</small></div>
+							<div class="state-preview"><span>Default<small class="state-font-size">14px</small></span><button class="preview-button" type="button">SAVE</button></div>
+							<div class="state-preview"><span>Hover<small class="state-font-size">14px</small></span><button class="preview-button forced-hover" type="button">SAVE</button></div>
+							<div class="state-preview"><span>Pressed<small class="state-font-size">14px</small></span><button class="preview-button forced-active" type="button">SAVE</button></div>
+						</div>
+						<div class="state-row">
+							<div class="state-name">Segmented tab<small>Click to toggle</small></div>
+							<div class="state-preview"><span>Default<small class="state-font-size">14px</small></span><button class="preview-tab" type="button" aria-pressed="false" data-toggle>MONTH</button></div>
+							<div class="state-preview"><span>Hover<small class="state-font-size">14px</small></span><button class="preview-tab forced-hover" type="button" aria-pressed="false" data-toggle>MONTH</button></div>
+							<div class="state-preview"><span>Selected<small class="state-font-size">14px</small></span><button class="preview-tab" type="button" aria-pressed="true" data-toggle>MONTH</button></div>
+						</div>
+						<div class="state-row">
+							<div class="state-name">Input field<small>Focus with click</small></div>
+							<div class="state-preview"><span>Default<small class="state-font-size">14px</small></span><input class="preview-input" value="Search" aria-label="Default dark search preview" readonly></div>
+							<div class="state-preview"><span>Hover<small class="state-font-size">14px</small></span><input class="preview-input forced-hover" value="Search" aria-label="Hover dark search preview" readonly></div>
+							<div class="state-preview"><span>Focus<small class="state-font-size">14px</small></span><input class="preview-input forced-focus" value="Search" aria-label="Focused dark search preview" readonly></div>
+						</div>
+					</div>
+					<div class="state-key">
+						<div class="key-item"><div class="key-chip" style="background:var(--dark-hover)"></div><div>Hover<code>#393E4F</code></div></div>
+						<div class="key-item"><div class="key-chip" style="background:var(--dark-selected)"></div><div>Selected<code>#E5E7EB</code></div></div>
+						<div class="key-item"><div class="key-chip" style="background:var(--action-start)"></div><div>Focus border<code>#FACC15</code></div></div>
+					</div>
+				</article>
+			</div>
+			<p class="note">The action button hover matches the app's brightness treatment. Hover and focus surface values are editable preview choices; change their CSS variables above to compare alternatives.</p>
+		</section>
+
+		<section class="section" aria-labelledby="status-heading">
+			<div class="section-heading"><h2 id="status-heading">Status accents</h2><p>Common badge and status hues</p></div>
+			<div class="status-grid">
+				<article class="status-card"><div class="status-chip" style="background:var(--status-green)"></div><div class="status-info"><strong>Emerald</strong><code>emerald-500</code></div></article>
+				<article class="status-card"><div class="status-chip" style="background:var(--status-purple)"></div><div class="status-info"><strong>Purple</strong><code>purple-500</code></div></article>
+				<article class="status-card"><div class="status-chip" style="background:var(--status-amber)"></div><div class="status-info"><strong>Amber</strong><code>amber-500</code></div></article>
+				<article class="status-card"><div class="status-chip" style="background:var(--status-red)"></div><div class="status-info"><strong>Red</strong><code>red-500</code></div></article>
+			</div>
+		</section>
+	</main>
+	<script>
+		const root = document.documentElement;
+		const utilityColors = new Map([
+			["#FACC15", "yellow-400"], ["#F59E0B", "amber-500"],
+			["#F9FAFB", "gray-50"], ["#F3F4F6", "gray-100"], ["#E5E7EB", "gray-200"],
+			["#D1D5DB", "gray-300"], ["#9CA3AF", "gray-400"], ["#6B7280", "gray-500"],
+			["#111827", "gray-900"], ["#FFFFFF", "white"], ["#000000", "black"],
+			["#10B981", "emerald-500"], ["#A855F7", "purple-500"], ["#EF4444", "red-500"]
+		]);
+
+		function displayColor(value) {
+			const hex = value.toUpperCase();
+			return utilityColors.get(hex) || hex;
+		}
+
+		function refreshColorValues() {
+			const color = (variable) => getComputedStyle(root).getPropertyValue(variable).trim().toUpperCase();
+			const fontSize = `${Math.min(24, Math.max(8, Number(document.querySelector("[data-font-size-picker]").value) || 14))}px`;
+			root.style.setProperty("--cta-font-size", fontSize);
+			document.querySelectorAll(".state-font-size").forEach((label) => {
+				label.textContent = fontSize;
+			});
+
+			document.querySelectorAll("[data-color-picker]").forEach((picker) => {
+				picker.closest(".picker-item").querySelector("code").textContent = displayColor(color(picker.dataset.colorPicker));
+			});
+
+			document.querySelectorAll(".mode-panel").forEach((panel) => {
+				const darkMode = panel.classList.contains("dark");
+				const hoverColor = color(darkMode ? "--dark-hover" : "--light-hover");
+				const selectedColor = color(darkMode ? "--dark-selected" : "--light-selected");
+				const gradient = `${displayColor(color("--action-start"))} → ${displayColor(color("--action-end"))}`;
+
+				panel.querySelectorAll(".color-card").forEach((card) => {
+					const name = card.querySelector("strong").textContent;
+					const value = card.querySelector("code");
+					if (name === "Hover surface") value.textContent = displayColor(hoverColor);
+					if (name === "Selected surface") value.textContent = displayColor(selectedColor);
+					if (name === "Action gradient") value.textContent = gradient;
+				});
+
+				panel.querySelectorAll(".state-key .key-item").forEach((item) => {
+					const label = item.children[1].firstChild.textContent.trim();
+					if (label === "Hover") item.querySelector("code").textContent = displayColor(hoverColor);
+					if (label === "Selected") item.querySelector("code").textContent = displayColor(selectedColor);
+				});
+			});
+		}
+
+		document.querySelectorAll("[data-color-picker]").forEach((picker) => {
+			picker.addEventListener("input", () => {
+				root.style.setProperty(picker.dataset.colorPicker, picker.value);
+				refreshColorValues();
+			});
+		});
+		document.querySelector("[data-font-size-picker]").addEventListener("input", refreshColorValues);
+
+		document.querySelectorAll("[data-toggle]").forEach((button) => {
+			button.addEventListener("click", () => {
+				const selected = button.getAttribute("aria-pressed") === "true";
+				button.setAttribute("aria-pressed", String(!selected));
+			});
+		});
+
+		refreshColorValues();
+	</script>
+</body>
+</html>

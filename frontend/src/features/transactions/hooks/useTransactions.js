@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../../../api';
 import logo from '../../../assets/logo.png';
 import { useDataCache } from '../../../context/DataCacheContext';
+import { downloadCsv } from '../../../utils/csvExport';
+import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
+import { getPackageDetails } from '../../../utils/packageDisplay';
+import { isValidPackagePrice, sanitizePackagePrice } from '../../../utils/priceInput';
+import { formatNumber } from '../../../utils/numberFormat';
 
 export function useTransactions() {
   const { getCache, setCache, invalidateCache } = useDataCache();
@@ -16,17 +21,14 @@ export function useTransactions() {
   const [filterType, setFilterType] = useState('All');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  
-  const defaultForm = { 
-    id: '', transaction_date: '', member_id: '', type: 'Subscription Payment', 
-    description: '', payment_method: 'Cash', amount: '', status: 'Complete', reference_number: '' 
+  const defaultForm = {
+    id: '', member_id: '', package_id: '', package_name: '', type: '',
+    description: '', payment_method: '', amount: '', reference_number: ''
   };
   const [formData, setFormData] = useState(defaultForm);
-
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+  const [refundingId, setRefundingId] = useState(null);
 
   // Dialogs
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -35,81 +37,123 @@ export function useTransactions() {
   const fetchData = useCallback(async (showSpinner = true) => {
     if (showSpinner) setIsLoading(true);
     try {
-      const [txnRes, memRes, plansRes] = await Promise.all([
+      const [txnResult, membersResult, plansResult] = await Promise.allSettled([
         api.get('/transactions'),
         api.get('/members'),
         api.get('/plans') 
       ]);
-      const newTxns = Array.isArray(txnRes.data) ? txnRes.data : (txnRes.data?.data || []);
-      const newMembers = Array.isArray(memRes.data) ? memRes.data : [];
-      const newPlans = Array.isArray(plansRes.data) ? plansRes.data : [];
-      setTransactions(newTxns);
-      setMembersList(newMembers);
-      setPlansList(newPlans);
-      setCache('transactions_data', { transactions: newTxns, membersList: newMembers, plansList: newPlans });
+      const cachedData = getCache('transactions_data') || {};
+      let nextCache = {
+        transactions: cachedData.transactions || [],
+        membersList: cachedData.membersList || [],
+        plansList: cachedData.plansList || [],
+      };
+
+      if (txnResult.status === 'fulfilled') {
+        const responseTransactions = Array.isArray(txnResult.value.data)
+          ? txnResult.value.data
+          : (txnResult.value.data?.data || []);
+        nextCache.transactions = responseTransactions.map(transaction => {
+          const dailyPlanPayment = transaction.type === 'Subscription Payment'
+            && (
+              (transaction.membership?.plan_type || '').toLowerCase().includes('daily')
+              || (transaction.description || '').toLowerCase().includes('daily')
+            );
+          return dailyPlanPayment
+            ? { ...transaction, type: 'Walk-in Guest', description: 'Walk-in Guest' }
+            : transaction;
+        });
+        setTransactions(nextCache.transactions);
+      } else {
+        console.error('Failed to load transactions:', txnResult.reason);
+      }
+
+      if (membersResult.status === 'fulfilled') {
+        nextCache.membersList = Array.isArray(membersResult.value.data) ? membersResult.value.data : [];
+        setMembersList(nextCache.membersList);
+      } else {
+        console.error('Failed to load members for transaction form:', membersResult.reason);
+      }
+
+      if (plansResult.status === 'fulfilled') {
+        nextCache.plansList = Array.isArray(plansResult.value.data) ? plansResult.value.data : [];
+        setPlansList(nextCache.plansList);
+      } else {
+        console.error('Failed to load packages for transaction form:', plansResult.reason);
+      }
+
+      setCache('transactions_data', nextCache);
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [setCache]);
+  }, [getCache, setCache]);
 
   useEffect(() => {
     const hasCached = !!getCache('transactions_data');
     fetchData(!hasCached);
   }, [fetchData, getCache]);
 
-  const handlePlanSelection = (planName) => {
-    const selectedPlan = plansList.find(p => p.name === planName);
-    if (selectedPlan) {
-      setFormData(prev => ({
-        ...prev,
-        amount: selectedPlan.price,
-        description: `${selectedPlan.name} Plan Payment`
-      }));
+  const handlePlanSelection = (planId) => {
+    const selectedPlan = plansList.find(plan => String(plan.id) === String(planId));
+    if (!selectedPlan) {
+      setFormData(prev => ({ ...prev, package_id: '', package_name: '', type: '', amount: '', description: '' }));
+      return;
     }
+    const normalizedPlanName = selectedPlan.name.toLowerCase();
+    const type = selectedPlan.category === 'walk_in'
+      ? 'Walk-In'
+      : selectedPlan.category === 'other'
+        ? 'Packages'
+        : normalizedPlanName.includes('walk')
+          || normalizedPlanName.includes('daily')
+          ? 'Walk-In'
+          : 'Subscription';
+    setFormData(prev => ({
+      ...prev,
+      package_id: selectedPlan.id,
+      package_name: selectedPlan.name,
+      type,
+      amount: selectedPlan.price,
+      description: `${selectedPlan.name} Package`
+    }));
+  };
+
+  const handleAmountChange = (value) => {
+    const amount = sanitizePackagePrice(value);
+    if (amount !== null) setFormData(prev => ({ ...prev, amount }));
   };
 
   const handleOpenAddModal = () => {
-    setFormData({ ...defaultForm, transaction_date: new Date().toISOString().split('T')[0] });
-    setIsEditing(false);
+    setFormData(defaultForm);
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (txn) => {
-    setFormData({
-      id: txn.id,
-      transaction_date: txn.transaction_date,
-      member_id: txn.member_id || '', 
-      type: txn.type,
-      description: txn.description || '',
-      payment_method: txn.payment_method,
-      amount: txn.amount,
-      status: txn.status,
-      reference_number: txn.reference_number || ''
-    });
-    setIsEditing(true);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id) => {
+  const handleRefundTransaction = (transaction) => {
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Transaction',
-      message: 'Are you sure you want to permanently delete this transaction? This action cannot be undone.',
+      title: 'Refund Transaction',
+      message: `Refund the full amount of ₱${formatNumber(Math.abs(Number(transaction.amount)))} for ${transaction.transaction_id}? This will create a separate refund record.`,
       onConfirm: async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false })); 
-        setDeletingId(id);
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setRefundingId(transaction.id);
         try {
-          await api.delete(`/transactions/${id}`);
-        } catch (error) {
-          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
-        } finally {
-          setTransactions(prev => prev.filter(t => t.id !== id));
-          setDeletingId(null);
+          await api.post(`/transactions/${transaction.id}/refund`);
           invalidateCache('transactions_data');
           invalidateCache('dashboard');
-          fetchData(false);
+          await fetchData(false);
+          setAlertDialog({ isOpen: true, title: 'Success', message: 'Transaction refunded successfully.', type: 'success' });
+        } catch (error) {
+          console.error('Failed to refund transaction:', error);
+          setAlertDialog({
+            isOpen: true,
+            title: 'Error',
+            message: error.response?.data?.message || 'Failed to refund transaction. Please try again.',
+            type: 'error'
+          });
+        } finally {
+          setRefundingId(null);
         }
       }
     });
@@ -117,23 +161,30 @@ export function useTransactions() {
 
   const handleSaveTransaction = async (e) => {
     e.preventDefault();
+    if (!formData.package_id || !formData.package_name || !formData.type) {
+      setAlertDialog({ isOpen: true, title: 'Select a Package', message: 'Choose a package before recording the transaction.', type: 'error' });
+      return;
+    }
+    if (!formData.member_id && !['Walk-In', 'Packages'].includes(formData.type)) {
+      setAlertDialog({ isOpen: true, title: 'Select a Member', message: 'Choose a member for this transaction.', type: 'error' });
+      return;
+    }
+    if (!isValidPackagePrice(formData.amount)) return;
     setIsSaving(true);
     try {
+      const transactionFields = Object.fromEntries(
+        Object.entries(formData).filter(([key]) => !['package_id', 'package_name', 'type'].includes(key))
+      );
       const payload = { 
-        ...formData, 
+        ...transactionFields,
+        plan_id: parseInt(formData.package_id, 10),
         member_id: formData.member_id ? parseInt(formData.member_id, 10) : null,
         reference_number: formData.reference_number ? formData.reference_number : null,
         description: formData.description ? formData.description : null,
-        amount: parseFloat(formData.amount)
+        amount: Number(formData.amount)
       };
 
-      if (!isEditing) delete payload.id;
-      
-      if (isEditing) {
-        await api.put(`/transactions/${formData.id}`, payload);
-      } else {
-        await api.post('/transactions', payload);
-      }
+      await api.post('/transactions', payload);
       invalidateCache('transactions_data');
       invalidateCache('dashboard');
       await fetchData(false);
@@ -148,32 +199,54 @@ export function useTransactions() {
   };
 
   const filteredTxns = transactions.filter(txn => {
-    const memberName = txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-in Guest';
+    const memberName = txn.member
+      ? `${txn.member.first_name} ${txn.member.last_name}`
+      : txn.member_name_snapshot || 'Walk-in Guest';
     const matchesSearch = memberName.toLowerCase().includes(searchTerm.toLowerCase()) || (txn.transaction_id || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'All' || txn.type === filterType;
+    const type = (txn.type || '').trim().toLowerCase();
+    const matchesWalkIn = ['walk-in', 'walk in', 'walk-in guest', 'walk in guest', 'fee', 'fee (walk-in)', 'fee(walk-in)', 'other'].includes(type);
+    const matchesType = filterType === 'All'
+      || (filterType === 'Walk-In' ? matchesWalkIn
+        : filterType === 'Subscription' ? ['subscription', 'subscription payment', 'subscription upgrade'].includes(type)
+          : filterType === 'Packages' ? type === 'packages'
+            : filterType === 'Refund' ? type === 'refund'
+              : txn.type === filterType);
     return matchesSearch && matchesType;
   });
 
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800)); 
-      const headers = "Transaction ID,Date,Member,Type,Description,Method,Amount,Status,Reference\n";
-      const rows = filteredTxns.map(t => {
-        const memberName = t.member ? `${t.member.first_name} ${t.member.last_name}` : 'Walk-in Guest';
-        return `${t.transaction_id},${t.transaction_date},${memberName},${t.type},"${t.description || ''}",${t.payment_method},${t.amount},${t.status},${t.reference_number || ''}`;
-      }).join("\n");
-      
-      const csvContent = headers + rows;
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `Transactions_Export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const headers = ['Transaction ID', 'Date', 'Member', 'Type', 'Package / Details', 'Payment Method', 'Amount', 'Status', 'Reference'];
+      const rows = filteredTxns.map(transaction => {
+        const memberName = transaction.member
+          ? `${transaction.member.first_name} ${transaction.member.last_name}`
+          : transaction.member_name_snapshot || 'Walk-in Guest';
+        return [
+          transaction.transaction_id,
+          transaction.transaction_date,
+          memberName,
+          transaction.type,
+          `${getPackageDetails(transaction).title}${getPackageDetails(transaction).category ? ` — ${getPackageDetails(transaction).category}` : ''}`,
+          getPaymentMethodLabel(transaction.payment_method),
+          transaction.amount,
+          transaction.status,
+          transaction.reference_number,
+        ];
+      });
+
+      downloadCsv(
+        `Transactions_Export_${new Date().toISOString().split('T')[0]}.csv`,
+        [headers, ...rows]
+      );
     } catch (error) {
-      console.error("Failed to export:", error);
+      console.error('Failed to export transactions:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Export Failed',
+        message: 'The transaction CSV could not be created. Please try again.',
+        type: 'error',
+      });
     } finally {
       setIsExporting(false);
     }
@@ -182,13 +255,17 @@ export function useTransactions() {
   const handlePrintReceipt = (txn) => {
     const memberPlan = txn.member?.plan || 'Walk-in';
     const txnDesc = txn.description || '';
-    const memberId = txn.member ? String(txn.member.id).padStart(4, '0') : 'N/A';
-    const memberName = txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-In Guest';
+    const memberId = txn.member?.id ? String(txn.member.id).padStart(4, '0') : 'N/A';
+    const memberName = txn.member
+      ? `${txn.member.first_name} ${txn.member.last_name}`
+      : txn.member_name_snapshot || 'Walk-In Guest';
 
-    const isSubPayment = txn.type === 'Subscription Payment';
+    const isUpgrade = txn.type === 'Subscription Upgrade';
+    const isSubPayment = ['Subscription Payment', 'Subscription', 'Subscription Upgrade'].includes(txn.type);
 
     // Phase 1: Try to extract the plan from the description first
-    let matchedPlan = plansList.find(p => txnDesc.toLowerCase().includes(p.name.toLowerCase()));
+    let matchedPlan = plansList.find(p => p.name === txn.package_name_snapshot)
+      || plansList.find(p => txnDesc.toLowerCase().includes(p.name.toLowerCase()));
 
     // Phase 2: Use the DIRECTLY linked subscription (membership_id FK).
     // This is the exact subscription this transaction paid for — no ambiguity.
@@ -223,7 +300,10 @@ export function useTransactions() {
     }
 
     // Force Walk-In logic completely preventing "Walk-In" bugs for subscription buyers
-    const isWalkIn = !isSubPayment && (txn.type === 'Fee' || !txn.member || memberPlan.toLowerCase().includes('walk') || txnDesc.toLowerCase().includes('walk'));
+    const isWalkIn = txn.type === 'Walk-In'
+      || txn.type === 'Walk-in Guest'
+      || (!isSubPayment && (txn.type === 'Fee' || !txn.member || memberPlan.toLowerCase().includes('walk') || txnDesc.toLowerCase().includes('walk')));
+    const isPackageSale = txn.type === 'Packages';
 
     let membershipPlan = 'Walk-In';
     if (!isWalkIn) {
@@ -238,14 +318,22 @@ export function useTransactions() {
 
     let basePrice = Number(txn.amount);
     let discountAmount = 0;
-    let itemName = isWalkIn ? 'Walk-In Access' : 'Subscription Bill';
+    let itemName = isWalkIn
+      ? 'Walk-In Access'
+      : isPackageSale
+        ? `${matchedPlan?.name || txnDesc || 'Package'} Purchase`
+        : isUpgrade ? `${matchedPlan?.name || 'Subscription'} Upgrade Balance` : 'Subscription Bill';
 
-    if (isSubPayment && matchedPlan) {
+    if (isSubPayment && matchedPlan && !isUpgrade) {
         if (Number(matchedPlan.price) > Number(txn.amount)) {
             basePrice = Number(matchedPlan.price);
             discountAmount = basePrice - Number(txn.amount);
         }
         itemName = `${matchedPlan.name} Bill`;
+    }
+    if (isUpgrade) {
+        membershipPlan = `${matchedPlan?.name || txn.package_name_snapshot || 'Subscription'} + Upgraded`;
+        basePrice = Number(txn.amount);
     }
 
     const now = new Date();
@@ -330,7 +418,7 @@ export function useTransactions() {
             <div>Open Daily 9:00 AM - 9:00 PM</div>
           </div>
           <div class="dashed-line"></div>
-          <div class="flex-between"><span>Date: ${printDate}</span><span>Time: ${printTime}</span></div>
+          <div class="flex-between"><span>Date: ${esc(printDate)}</span><span>Time: ${esc(printTime)}</span></div>
           <div class="dashed-line"></div>
           <div class="left">
             <div>Name: <span class="bold">${esc(memberName)}</span></div>
@@ -338,14 +426,14 @@ export function useTransactions() {
             <div>Membership: <span class="bold">${esc(membershipPlan)}</span></div>
           </div>
           <div class="dashed-line"></div>
-          <div class="flex-between"><span>${esc(itemName)}:</span><span>&#8369;${basePrice.toFixed(2)}</span></div>
-          ${discountAmount > 0 ? `<div class="flex-between" style="font-size: 10px;"><span>Loyalty Discount:</span><span>-&#8369;${discountAmount.toFixed(2)}</span></div>` : ''}
+          <div class="flex-between"><span>${esc(itemName)}:</span><span>&#8369;${formatNumber(basePrice)}</span></div>
+          ${discountAmount > 0 ? `<div class="flex-between" style="font-size: 10px;"><span>Loyalty Discount:</span><span>-&#8369;${formatNumber(discountAmount)}</span></div>` : ''}
           <div class="dashed-line"></div>
-          <div class="flex-between"><span>Sub Total:</span><span>&#8369;${Number(txn.amount).toFixed(2)}</span></div>
+          <div class="flex-between"><span>Sub Total:</span><span>&#8369;${formatNumber(txn.amount)}</span></div>
           <div class="dashed-line"></div>
-          <div class="flex-between bold" style="font-size: 14px; margin-top: 4px;"><span>Total:</span><span>&#8369;${Number(txn.amount).toFixed(2)}</span></div>
+          <div class="flex-between bold" style="font-size: 14px; margin-top: 4px;"><span>Total:</span><span>&#8369;${formatNumber(txn.amount)}</span></div>
           <br/>
-          <div class="flex-between"><span>Payment Method:</span><span class="uppercase">${esc(txn.payment_method)}</span></div>
+          <div class="flex-between"><span>Payment Method:</span><span class="uppercase">${esc(getPaymentMethodLabel(txn.payment_method))}</span></div>
           <div class="flex-between"><span>Receipt Number:</span><span>${esc(txn.transaction_id)}</span></div>
           ${txn.reference_number ? `<div class="flex-between"><span>Ref/Trace:</span><span>${esc(txn.reference_number)}</span></div>` : ''}
           <br/>
@@ -365,7 +453,6 @@ export function useTransactions() {
   const totalIncome = transactions.filter(t => Number(t.amount) > 0 && t.status === 'Complete').reduce((sum, t) => sum + Number(t.amount), 0);
   const totalRefunds = transactions.filter(t => t.type === 'Refund').reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
   const netRevenue = totalIncome - totalRefunds;
-  const pendingAmount = transactions.filter(t => t.status === 'Pending').reduce((sum, t) => sum + Number(t.amount), 0);
 
   return {
     transactions,
@@ -375,22 +462,20 @@ export function useTransactions() {
     searchTerm, setSearchTerm,
     filterType, setFilterType,
     isModalOpen, setIsModalOpen,
-    isEditing,
     formData, setFormData,
     isSaving,
     isExporting,
-    deletingId,
+    refundingId,
     confirmDialog, setConfirmDialog,
     alertDialog, setAlertDialog,
     filteredTxns,
     totalIncome,
     totalRefunds,
     netRevenue,
-    pendingAmount,
     handlePlanSelection,
+    handleAmountChange,
     handleOpenAddModal,
-    handleOpenEditModal,
-    handleDelete,
+    handleRefundTransaction,
     handleSaveTransaction,
     handleExportCSV,
     handlePrintReceipt

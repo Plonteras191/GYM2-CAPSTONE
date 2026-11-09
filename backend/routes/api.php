@@ -1,34 +1,47 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\AdminProfileController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\CoachEventController;
 use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Admin\PackageCategoryController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Member\MemberController;
 use App\Http\Controllers\Member\MembershipController;
 use App\Http\Controllers\Member\TransactionController;
+use App\Http\Controllers\AI\AiBridgeController;
 use App\Http\Controllers\AI\AttendanceController;
-
-use App\Models\Member\Member;
-use App\Models\Tracking\Attendance;
-use App\Models\Tracking\WorkoutLog;
-use Carbon\Carbon;
-
-// --- 1. AUTHENTICATION ROUTES ---
-// Login is public but rate-limited to slow down password guessing (5 tries / minute).
-Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+use App\Http\Controllers\Tracking\WorkoutController;
 
 // =====================================================================
-// ADMIN ROUTES — every route below requires a valid Sanctum login token.
+// PUBLIC ROUTES
+// =====================================================================
+
+// --- 1. AUTHENTICATION ROUTES (rate limited per IP) ---
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/login/verify', [AuthController::class, 'verifyLogin']);
+    Route::post('/auth/password-reset/verify', [AuthController::class, 'verifyPasswordResetPin']);
+    Route::post('/auth/password-reset', [AuthController::class, 'resetPassword']);
+});
+// Sending a reset PIN emails the admin, so allow fewer requests.
+Route::post('/auth/password-reset/request', [AuthController::class, 'requestPasswordReset'])
+    ->middleware('throttle:3,1');
+
+Route::get('/branding', [AdminProfileController::class, 'branding']);
+Route::get('/branding/logo', [AdminProfileController::class, 'logo']);
+
+// =====================================================================
+// PROTECTED ADMIN ROUTES (React dashboard) - require a Sanctum token
 // =====================================================================
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
-
-    Route::get('/admin/me', function (Request $request) {
-        return $request->user();
-    });
+    Route::get('/admin/me', [AdminProfileController::class, 'show']);
+    Route::post('/admin/profile', [AdminProfileController::class, 'update']);
+    Route::post('/admin/logo', [AdminProfileController::class, 'updateLogo']);
+    Route::post('/admin/password', [AdminProfileController::class, 'updatePassword']);
 
     // --- 2. MEMBER ROUTES ---
     Route::get('/members', [MemberController::class, 'index']);
@@ -44,155 +57,57 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- 4. PLAN ROUTES ---
     Route::get('/plans', [PlanController::class, 'index']);
-    Route::post('/plans', [PlanController::class, 'store']); // Adds a new plan
-    Route::delete('/plans/{id}', [PlanController::class, 'destroy']); // Deletes a plan
+    Route::post('/plans', [PlanController::class, 'store']);
+    Route::put('/plans/{id}', [PlanController::class, 'update']);
+    Route::delete('/plans/{id}', [PlanController::class, 'destroy']);
     Route::post('/plans/bulk-update', [PlanController::class, 'bulkUpdate']);
+    Route::get('/package-categories', [PackageCategoryController::class, 'index']);
+    Route::post('/package-categories', [PackageCategoryController::class, 'store']);
+    Route::put('/package-categories/{id}', [PackageCategoryController::class, 'update']);
+    Route::delete('/package-categories/{id}', [PackageCategoryController::class, 'destroy']);
+
+    // --- 4A. COACH CALENDAR EVENT ROUTES ---
+    Route::get('/coach-events', [CoachEventController::class, 'index']);
+    Route::post('/coach-events', [CoachEventController::class, 'store']);
+    Route::put('/coach-events/{id}', [CoachEventController::class, 'update']);
+    Route::delete('/coach-events/{id}', [CoachEventController::class, 'destroy']);
+    Route::get('/coach-event-categories', [CoachEventController::class, 'categories']);
+    Route::put('/coach-event-categories/{id}', [CoachEventController::class, 'updateCategory']);
+    Route::delete('/coach-event-categories/{id}', [CoachEventController::class, 'destroyCategory']);
 
     // --- 5. TRANSACTION ROUTES ---
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::post('/transactions', [TransactionController::class, 'store']);
     Route::put('/transactions/{id}', [TransactionController::class, 'update']);
     Route::delete('/transactions/{id}', [TransactionController::class, 'destroy']);
+    Route::post('/transactions/{id}/refund', [TransactionController::class, 'refund']);
 
-    // --- 6. REPORTS ROUTE ---
+    // --- 6. REPORTS ---
     Route::get('/reports', [ReportController::class, 'index']);
 
-    // --- 8. DASHBOARD ROUTES ---
+    // --- 7. DASHBOARD ---
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/notifications', [DashboardController::class, 'notifications']);
 
-    // --- 9. ATTENDANCE ROUTES ---
+    // --- 8. ATTENDANCE ---
     Route::get('/members/{id}/attendance', [AttendanceController::class, 'getMemberAttendance']);
-
-    // --- 10. LIVE DASHBOARD ROUTE ---
     Route::get('/attendance/today', [AttendanceController::class, 'getTodayAttendance']);
 
-    // --- 11. AI WORKOUT LOGGING PIPELINE (SUPERVISOR MODE) ---
-
-    // React Route: Coach Assigns a Task
-    Route::post('/members/{id}/assign-task', function (Request $request, $id) {
-        Member::findOrFail($id);
-        $request->validate(['exercise' => 'required|string|max:100']);
-        $exerciseName = strtoupper($request->exercise);
-
-        // Prevent assigning the exact same task twice in one day
-        $alreadyAssigned = WorkoutLog::where('member_id', $id)
-            ->where('date', Carbon::today())
-            ->where('exercise', 'ASSIGNED: ' . $exerciseName)
-            ->exists();
-
-        if (!$alreadyAssigned) {
-            WorkoutLog::create([
-                'member_id' => $id,
-                'exercise' => 'ASSIGNED: ' . $exerciseName,
-                'date' => Carbon::today(),
-            ]);
-        }
-        return response()->json(['message' => 'Task assigned successfully!']);
-    });
-
-    // React Route: Fetch a specific member's workout history
-    Route::get('/members/{id}/workouts', function ($id) {
-        return WorkoutLog::where('member_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->take(15) 
-            ->get();
-    });
-
-    // React Route: Coach Manually Verifies an Obscure Task (Biometrically Locked)
-    Route::put('/workouts/{id}/manual-verify', function ($id) {
-        $log = WorkoutLog::findOrFail($id);
-    
-        // Strip the "ASSIGNED: " tag to officially mark it as complete
-        $cleanExerciseName = str_replace('ASSIGNED: ', '', $log->exercise);
-    
-        $log->update([
-            'exercise' => $cleanExerciseName,
-            'created_at' => Carbon::now() // Log the exact time the coach verified it
-        ]);
-    
-        return response()->json(['message' => 'Task manually verified!']);
-    });
-
-    // --- LIVE GESTURE LOGS ROUTE ---
-    Route::get('/workouts/live', function () {
-        return WorkoutLog::with('member:id,first_name,last_name')
-            ->orderBy('created_at', 'desc')
-            ->take(15)
-            ->get()
-            ->map(function ($log) {
-                return [
-                    'id' => $log->id,
-                    'time' => Carbon::parse($log->created_at)->format('h:i:s A'),
-                    'name' => $log->member ? $log->member->first_name . ' ' . $log->member->last_name : 'Unknown Athlete',
-                    'event' => str_replace('ASSIGNED: ', '(Pending) ', $log->exercise)
-                ];
-            });
-    });
+    // --- 9. WORKOUTS (SUPERVISOR MODE) ---
+    Route::post('/members/{id}/assign-task', [WorkoutController::class, 'assignTask']);
+    Route::get('/members/{id}/workout-plan', [WorkoutController::class, 'showPlan']);
+    Route::post('/members/{id}/workout-plan', [WorkoutController::class, 'syncPlan']);
+    Route::get('/members/{id}/workouts', [WorkoutController::class, 'history']);
+    Route::put('/workouts/{id}/manual-verify', [WorkoutController::class, 'manualVerify']);
+    Route::get('/workouts/live', [WorkoutController::class, 'live']);
 });
 
 // =====================================================================
-// PYTHON AI ENGINE ROUTES — require the shared X-AI-Key header.
+// PYTHON AI BRIDGE ROUTES - require the shared X-AI-Engine-Token header
 // =====================================================================
-Route::middleware(['ai.key', 'throttle:120,1'])->group(function () {
-    // --- 7. PYTHON AI BRIDGE ROUTES ---
-            // 1. The API Bridge: Tells Python who owns which face image
-    Route::get('/ai/members-faces', function () {
-        return Member::whereNotNull('enrolled_face_id')
-            ->select('id', 'first_name', 'last_name', 'enrolled_face_id')
-            ->get()
-            ->map(function ($member) {
-                return [
-                    'id' => $member->id,
-                    'name' => $member->first_name . ' ' . $member->last_name,
-                    // Assuming enrolled_face_id stores the filename like "1783...png"
-                    'image_file' => $member->enrolled_face_id 
-                ];
-            });
-    });
-
-            // 2. The Attendance Logger: Python will hit this when it sees a member
+Route::middleware('ai.engine')->group(function () {
+    Route::get('/ai/members-faces', [AiBridgeController::class, 'memberFaces']);
+    Route::get('/ai/workout-plans', [AiBridgeController::class, 'workoutPlans']);
     Route::post('/ai/log-attendance', [AttendanceController::class, 'logAttendance']);
-
-    // Python Route: AI Verifies the Task
-    Route::post('/ai/log-workout', function (Request $request) {
-        $request->validate([
-            'member_id' => 'required|exists:members,id',
-            'exercise' => 'required|string|max:100'
-        ]);
-    
-        $exerciseName = strtoupper($request->exercise);
-    
-        // Check if there is a PENDING task assigned for this exercise today
-        $assignedTask = WorkoutLog::where('member_id', $request->member_id)
-            ->where('date', Carbon::today())
-            ->where('exercise', 'ASSIGNED: ' . $exerciseName)
-            ->first();
-
-        if ($assignedTask) {
-            // Task Verified! Strip the "ASSIGNED: " tag to mark it completed
-            $assignedTask->update([
-                'exercise' => $exerciseName,
-                'created_at' => Carbon::now() // Log the exact time it was verified
-            ]);
-            return response()->json(['status' => 'logged', 'message' => 'Task verified!']);
-        }
-
-        // Anti-Spam: Normal unassigned logging
-        $recentlyLogged = WorkoutLog::where('member_id', $request->member_id)
-            ->where('exercise', $exerciseName)
-            ->where('created_at', '>=', Carbon::now()->subMinutes(2))
-            ->exists();
-        
-        if (!$recentlyLogged) {
-            WorkoutLog::create([
-                'member_id' => $request->member_id,
-                'exercise' => $exerciseName,
-                'date' => Carbon::today(),
-            ]);
-            return response()->json(['status' => 'logged']);
-        }
-    
-        return response()->json(['status' => 'ignored']);
-    });
+    Route::post('/ai/log-workout', [AiBridgeController::class, 'logWorkout']);
 });

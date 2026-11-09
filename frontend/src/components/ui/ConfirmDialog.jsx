@@ -1,19 +1,31 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { FiAlertCircle } from 'react-icons/fi';
+import useDialogAccessibility from './useDialogAccessibility';
 
 export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel, confirmText = "Confirm", cancelText = "Cancel", isDanger = true }) {
+  const titleId = useId();
+  const messageId = useId();
+  const dialogRef = useDialogAccessibility(isOpen, onCancel);
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
+        tabIndex={-1}
+        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6"
+      >
         <div className="flex items-center space-x-4">
           <div className={`p-3 rounded-full ${isDanger ? 'bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'}`}>
             <FiAlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h4>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{message}</p>
+            <h4 id={titleId} className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h4>
+            <p id={messageId} className="text-sm text-slate-500 dark:text-slate-400 mt-1">{message}</p>
           </div>
         </div>
 
