@@ -25,7 +25,9 @@ class AttendanceController extends Controller
             return response()->json(['status' => 'ignored', 'message' => 'Outside gym operating hours.']);
         }
 
-        $memberId = $request->member_id;
+        $memberId = $request->validate([
+            'member_id' => 'required|integer|exists:members,id',
+        ])['member_id'];
 
         // RULE 2: Enforce the "Once-a-Day" check-in rule
         $alreadyLogged = Attendance::where('member_id', $memberId)

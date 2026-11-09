@@ -4,7 +4,11 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 import cv2
 
 # Your specific Hikvision Camera
-CCTV_URL = 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102'
+# Camera credentials are read from "Gesture Engine/.env" (see .env.example), never hardcoded.
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.settings import build_cctv_url, mask_url
+CCTV_URL = build_cctv_url(os.getenv('CCTV_CHANNEL', '102'))
 
 print("Attempting to connect to HIKVISION camera via Python...")
 cap = cv2.VideoCapture(CCTV_URL, cv2.CAP_FFMPEG)

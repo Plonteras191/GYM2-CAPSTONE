@@ -287,11 +287,20 @@ export function useTransactions() {
 
     const fullLogoUrl = window.location.origin + logo;
 
+    // Escape every database value before writing it into the receipt HTML, so a
+    // member name or reference number like "<img onerror=...>" cannot run script.
+    const esc = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
     const printWindow = window.open('', '', 'width=400,height=600');
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${txn.transaction_id}</title>
+          <title>Receipt - ${esc(txn.transaction_id)}</title>
           <style>
             @page { size: A6 portrait; margin: 10mm; }
             body { 
@@ -314,7 +323,7 @@ export function useTransactions() {
         </head>
         <body>
           <div class="center">
-            <img src="${fullLogoUrl}" style="width: 45px; height: 45px; filter: grayscale(100%); margin-bottom: 5px;" onerror="this.style.display='none'" />
+            <img src="${esc(fullLogoUrl)}" style="width: 45px; height: 45px; filter: grayscale(100%); margin-bottom: 5px;" onerror="this.style.display='none'" />
             <div class="bold" style="font-size: 14px;">DOUBLE ALPHA FITNESS</div>
             <div>Tagoloan, Misamis Oriental</div>
             <div>0991 448 9942</div>
@@ -324,23 +333,23 @@ export function useTransactions() {
           <div class="flex-between"><span>Date: ${printDate}</span><span>Time: ${printTime}</span></div>
           <div class="dashed-line"></div>
           <div class="left">
-            <div>Name: <span class="bold">${memberName}</span></div>
-            <div>Member ID: <span class="bold">${memberId}</span></div>
-            <div>Membership: <span class="bold">${membershipPlan}</span></div>
+            <div>Name: <span class="bold">${esc(memberName)}</span></div>
+            <div>Member ID: <span class="bold">${esc(memberId)}</span></div>
+            <div>Membership: <span class="bold">${esc(membershipPlan)}</span></div>
           </div>
           <div class="dashed-line"></div>
-          <div class="flex-between"><span>${itemName}:</span><span>&#8369;${basePrice.toFixed(2)}</span></div>
+          <div class="flex-between"><span>${esc(itemName)}:</span><span>&#8369;${basePrice.toFixed(2)}</span></div>
           ${discountAmount > 0 ? `<div class="flex-between" style="font-size: 10px;"><span>Loyalty Discount:</span><span>-&#8369;${discountAmount.toFixed(2)}</span></div>` : ''}
           <div class="dashed-line"></div>
           <div class="flex-between"><span>Sub Total:</span><span>&#8369;${Number(txn.amount).toFixed(2)}</span></div>
           <div class="dashed-line"></div>
           <div class="flex-between bold" style="font-size: 14px; margin-top: 4px;"><span>Total:</span><span>&#8369;${Number(txn.amount).toFixed(2)}</span></div>
           <br/>
-          <div class="flex-between"><span>Payment Method:</span><span class="uppercase">${txn.payment_method}</span></div>
-          <div class="flex-between"><span>Receipt Number:</span><span>${txn.transaction_id}</span></div>
-          ${txn.reference_number ? `<div class="flex-between"><span>Ref/Trace:</span><span>${txn.reference_number}</span></div>` : ''}
+          <div class="flex-between"><span>Payment Method:</span><span class="uppercase">${esc(txn.payment_method)}</span></div>
+          <div class="flex-between"><span>Receipt Number:</span><span>${esc(txn.transaction_id)}</span></div>
+          ${txn.reference_number ? `<div class="flex-between"><span>Ref/Trace:</span><span>${esc(txn.reference_number)}</span></div>` : ''}
           <br/>
-          <div class="center"><div>Membership Valid Thru:</div><div class="bold">${validThru}</div></div>
+          <div class="center"><div>Membership Valid Thru:</div><div class="bold">${esc(validThru)}</div></div>
           <br/>
           <div class="center" style="margin-top: 8px;">
             <div class="bold uppercase">"BE THE BEST VERSION OF YOURSELF."</div>

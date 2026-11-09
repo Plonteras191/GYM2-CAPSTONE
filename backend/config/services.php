@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    // Shared secret the Python AI / Gesture Engine sends in the X-AI-Key header.
+    'ai_engine' => [
+        'key' => env('AI_SERVICE_KEY'),
+    ],
+
 ];

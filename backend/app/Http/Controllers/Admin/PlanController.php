@@ -18,9 +18,9 @@ class PlanController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'price' => 'required|numeric',
-            'duration_days' => 'required|integer'
+            'name' => 'required|string|max:100',
+            'price' => 'required|numeric|min:0|max:1000000',
+            'duration_days' => 'required|integer|min:1|max:3650'
         ]);
 
         $plan = Plan::create($validated);
@@ -40,7 +40,7 @@ class PlanController extends Controller
         $request->validate([
             'plans' => 'required|array',
             'plans.*.id' => 'required|exists:plans,id',
-            'plans.*.price' => 'required|numeric'
+            'plans.*.price' => 'required|numeric|min:0|max:1000000'
         ]);
 
         foreach ($request->plans as $planData) {

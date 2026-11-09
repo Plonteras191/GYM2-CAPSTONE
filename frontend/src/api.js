@@ -17,4 +17,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// If the token is missing, revoked or expired, the API answers 401.
+// Clear the stale session and send the admin back to the login page.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const isLoginRequest = error.config?.url?.includes('/auth/login');
+    if (error.response?.status === 401 && !isLoginRequest) {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_name');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
