@@ -1,6 +1,7 @@
 import sys
 import os
 import collections
+import queue
 
 if sys.platform == 'win32':
     try:
@@ -29,7 +30,14 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.vision.core.vision_task_running_mode import VisionTaskRunningMode
 from mediapipe.framework.formats import landmark_pb2
-from camera_tracking import update_pose_track_identity
+from camera_tracking import (
+    update_pose_track_identity,
+    face_track_needs_recognition,
+    apply_face_recognition_result,
+    select_member_match,
+)
+from pose_features import landmarks_to_features, model_feature_version
+from face_encoder_process import FaceEncoderProcess, encode_face_crop
 from workout_prediction import select_assigned_prediction
 
 app = Flask(__name__)
@@ -109,7 +117,39 @@ workout_cooldowns = {} # Prevents API spam!
 shared_faces = []
 tracked_faces = [] # Multi-person tracking state: list of active face tracks
 next_track_id = 1
-FACE_MATCH_THRESHOLD = 0.50 # Strict threshold: lower = harder to match (prevents wrong-person assignment)
+# Faces narrower than this (in pixels, full frame) are tracked but not sent to
+# face recognition: too few pixels to identify reliably, and encoding them
+# wastes CPU when many people are in view. Lower it if members far from the
+# camera are never recognised.
+MIN_RECOGNITION_FACE_PX = int(os.getenv('MIN_RECOGNITION_FACE_PX', '48'))
+
+# Frames wider than this are shrunk as soon as they arrive from the camera.
+# 1280 keeps the engine fast; raise to 1920 for better recognition of faces
+# far from the camera if the PC can keep up.
+MAX_FRAME_WIDTH = int(os.getenv('MAX_FRAME_WIDTH', '1280'))
+
+# Target frame rate and width of the browser video feeds. 960 px is about 40%
+# cheaper to JPEG-encode than 1280 and looks the same on a projector.
+VIDEO_FEED_FPS = 25
+VIDEO_FEED_WIDTH = int(os.getenv('VIDEO_FEED_WIDTH', '960'))
+VIDEO_FEED_JPEG_QUALITY = 70
+
+# Background face recognition (see face_recognition_worker). The face loop
+# hands over at most this many crops at a time and never waits for results.
+recognition_jobs = queue.Queue(maxsize=4)
+recognition_results = collections.deque()
+# A crop whose result never came back is retried after this long.
+RECOGNITION_STUCK_SECONDS = 5.0
+# Encode faces in a separate process so dlib cannot freeze the engine. Set
+# FACE_RECOGNITION_IN_PROCESS=false in .env to encode inside the engine.
+FACE_RECOGNITION_IN_PROCESS = os.getenv(
+    'FACE_RECOGNITION_IN_PROCESS', 'true'
+).strip().lower() not in ('false', '0', 'no', 'off')
+
+# How many browser tabs are watching each feed; feeds nobody watches are not
+# drawn or JPEG-encoded.
+feed_viewers = {'sec': 0, 'gest': 0}
+feed_viewers_lock = threading.Lock()
 shared_athletes = []
 pose_tracks = []
 next_pose_track_id = 1
@@ -181,6 +221,12 @@ if ml_model is not None:
     except Exception:
         pass
 
+# Feature format the model was trained with (see pose_features.py). Models
+# trained before body-size scaling report version 1 and keep working.
+ml_feature_version = model_feature_version(ml_model) if ml_model is not None else 1
+if ml_model is not None:
+    print(f"[MODEL] Workout model uses pose feature version {ml_feature_version}.")
+
 def load_registered_faces():
     global known_face_encodings, known_face_ids, known_face_names, known_face_workout_eligibility
     known_face_encodings.clear()
@@ -222,6 +268,15 @@ def load_registered_faces():
         print(f"[ERROR] Failed to connect to Laravel: {e}")
     print("="*50 + "\n")
 
+def best_member_match(distances):
+    """Closest enrolled member for one face encoding, or None."""
+    return select_member_match(
+        distances,
+        known_face_ids,
+        known_face_names,
+        known_face_workout_eligibility,
+    )
+
 def compute_iou(boxA, boxB):
     # Format: (top, right, bottom, left)
     topA, rightA, bottomA, leftA = boxA
@@ -237,16 +292,6 @@ def compute_iou(boxA, boxB):
     areaB = (bottomB - topB) * (rightB - leftB)
     return inter_area / float(areaA + areaB - inter_area)
 
-def prepare_face_crop(face_crop):
-    # Preserves natural 3D RGB color chroma required by dlib ResNet face descriptor
-    rgb_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
-    # FIX #8: Sample every 4th pixel — 16x faster brightness check, same result
-    if rgb_crop[::4, ::4].mean() < 65:
-        # Gentle brightening in HSV space without flattening grayscale contours
-        hsv = cv2.cvtColor(face_crop, cv2.COLOR_BGR2HSV)
-        hsv[:, :, 2] = cv2.convertScaleAbs(hsv[:, :, 2], alpha=1.2, beta=20)
-        rgb_crop = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-    return rgb_crop
 
 def log_attendance_to_laravel(member_id, name):
     current_time = time.time()
@@ -355,6 +400,12 @@ def camera_reader_thread():
         if success:
             success, frame = cap.retrieve()
             if success and frame is not None:
+                # Shrink large frames (e.g. the Reolink's 4K) once, here, so the
+                # face, pose and video loops never handle 8-megapixel images.
+                frame_width = frame.shape[1]
+                if frame_width > MAX_FRAME_WIDTH:
+                    new_height = int(frame.shape[0] * MAX_FRAME_WIDTH / frame_width)
+                    frame = cv2.resize(frame, (MAX_FRAME_WIDTH, new_height), interpolation=cv2.INTER_LINEAR)
                 # FIX #1: Write under lock, then signal stream_generator reactively
                 with frame_lock:
                     current_raw_frame = frame
@@ -383,6 +434,48 @@ def camera_reader_thread():
                 cap.release()
             cap = open_camera()
             fail_count = 0
+
+def face_recognition_worker():
+    """Identifies face crops queued by face_ai_worker, one at a time.
+
+    Encoding runs in a child process (face_encoder_process.py) so dlib cannot
+    freeze the engine; if that process cannot start, it falls back to
+    encoding here. Results go to recognition_results as
+    (track_id, outcome, match), where outcome is 'done' (match is a member
+    dict or None) or 'failed'.
+    """
+    encoder = None
+    if FACE_RECOGNITION_IN_PROCESS:
+        encoder = FaceEncoderProcess()
+        try:
+            encoder._start()
+            print("[FACE] Face recognition running in a separate process.")
+        except Exception as e:
+            print(f"[WARNING] Separate face recognition process failed ({e}); using in-engine fallback.")
+            encoder = None
+
+    while True:
+        track_id, face_crop = recognition_jobs.get()
+        try:
+            if encoder is not None:
+                try:
+                    encoding = encoder.encode(face_crop)
+                except Exception as e:
+                    print(f"[WARNING] Face encoder process error ({e}); using in-engine fallback.")
+                    encoder.close()
+                    encoder = None
+                    encoding = encode_face_crop(face_crop)
+            else:
+                encoding = encode_face_crop(face_crop)
+            if encoding is None:
+                recognition_results.append((track_id, 'failed', None))
+                continue
+            distances = face_recognition.face_distance(known_face_encodings, encoding)
+            recognition_results.append((track_id, 'done', best_member_match(distances)))
+        except Exception as e:
+            print(f"[ERROR] Face recognition failed: {e}")
+            recognition_results.append((track_id, 'failed', None))
+
 
 def face_ai_worker():
     global current_raw_frame, shared_faces, tracked_faces, next_track_id
@@ -484,76 +577,51 @@ def face_ai_worker():
             next_track_id += 1
             updated_tracks.append(new_track)
             
-        # 3. Perform Deep Face Recognition for tracks that are Unknown or due for re-check (every 4s)
-        # Longer interval = stable identity, prevents re-recognition confusion when people shift
-        for track in updated_tracks:
-            # FIX #5: Skip tracks that failed encoding recently — 2s cooldown prevents
-            # hammering dlib every frame when a crop returns no encodings.
-            if (now - track.get('last_recon_failed', 0.0)) < 2.0:
+        # 3. Face recognition runs in face_recognition_worker (a separate thread),
+        #    so slow encoding never freezes box tracking. Here we only:
+        #    a) apply results the worker has finished, and
+        #    b) hand over crops for tracks that are due (see camera_tracking.py:
+        #       unknown faces at most every 1s, recognised ones every 4s).
+        tracks_by_id = {track['id']: track for track in updated_tracks}
+        while recognition_results:
+            track_id, outcome, match = recognition_results.popleft()
+            track = tracks_by_id.get(track_id)
+            if track is None:
+                continue  # The person left before recognition finished.
+            track['recon_pending'] = False
+            if outcome != 'done':
+                track['last_recon_failed'] = now
                 continue
-            if track['name'] == 'Unknown' or (now - track['last_recon']) > 4.0:
-                top, right, bottom, left = track['box']
-                face_crop = frame[top:bottom, left:right]
-                if face_crop.size > 0 and known_face_encodings:
-                    try:
-                        prep_crop = prepare_face_crop(face_crop)
-                        crop_h, crop_w = prep_crop.shape[:2]
+            if apply_face_recognition_result(track, match, now):
+                threading.Thread(
+                    target=log_attendance_to_laravel,
+                    args=(track['member_id'], track['name']),
+                    daemon=True,
+                ).start()
+            track['color'] = (0, 255, 0) if track.get('member_id') is not None else (0, 0, 255)
 
-                        # FIX #4: Resize crop to max 160x160 before dlib ResNet encoding.
-                        # dlib internally resizes anyway — quality is identical but we avoid
-                        # feeding large 720p crops through the descriptor network.
-                        MAX_CROP = 160
-                        if crop_h > MAX_CROP or crop_w > MAX_CROP:
-                            scale = MAX_CROP / max(crop_h, crop_w)
-                            prep_crop = cv2.resize(prep_crop, (int(crop_w * scale), int(crop_h * scale)))
-                            crop_h, crop_w = prep_crop.shape[:2]
-                        
-                        # CRITICAL FIX: Pass explicit face location so face_recognition does NOT
-                        # run its own internal face detector on the crop. Without this, dlib may
-                        # detect the wrong face (e.g. a neighbor's face bleeding in from padding)
-                        # or return 0 encodings when the cropped face is too close to the edge.
-                        # Format: [(top, right, bottom, left)] in crop coordinates
-                        explicit_location = [(0, crop_w, crop_h, 0)]
-                        encs = face_recognition.face_encodings(prep_crop, known_face_locations=explicit_location, num_jitters=1)
-                        
-                        if encs and len(encs) > 0:
-                            distances = face_recognition.face_distance(known_face_encodings, encs[0])
-                            if len(distances) > 0:
-                                best_idx = int(np.argmin(distances))
-                                best_dist = float(distances[best_idx])
-                                
-                                # Strict threshold (0.50): lower = harder to match
-                                is_match = best_dist < FACE_MATCH_THRESHOLD
-                                
-                                # Margin check: require at least 0.06 gap between top-2 candidates.
-                                # Prevents "coin-flip" assignments when two people look similar.
-                                if is_match and len(distances) > 1:
-                                    sorted_dists = sorted(distances)
-                                    if (sorted_dists[1] - sorted_dists[0]) < 0.06:
-                                        is_match = False # Too ambiguous, treat as Unknown
-                                
-                                if is_match:
-                                    member_id = known_face_ids[best_idx]
-                                    name = known_face_names[best_idx]
-                                    workout_eligible = known_face_workout_eligibility[best_idx]
-                                    track['name'] = name
-                                    track['member_id'] = member_id
-                                    track['workout_eligible'] = workout_eligible
-                                    track['color'] = (0, 255, 0)
-                                    track['last_recon'] = now
-                                    threading.Thread(target=log_attendance_to_laravel, args=(member_id, name), daemon=True).start()
-                                else:
-                                    track['name'] = 'Unknown'
-                                    track['member_id'] = None
-                                    track['workout_eligible'] = False
-                                    track['color'] = (0, 0, 255)
-                                    track['last_recon'] = now
-                        else:
-                            # FIX #5: Mark failed recon so we don't retry every frame
-                            track['last_recon_failed'] = now
-                    except Exception:
-                        track['last_recon_failed'] = now
-                        
+        if known_face_encodings:
+            # Unknown faces first: naming someone matters more than re-confirming.
+            for track in sorted(updated_tracks, key=lambda t: t.get('member_id') is not None):
+                if track.get('recon_pending'):
+                    if now - track.get('recon_requested', now) < RECOGNITION_STUCK_SECONDS:
+                        continue
+                    track['recon_pending'] = False  # Result lost; allow a retry.
+                if not face_track_needs_recognition(track, now):
+                    continue
+                top, right, bottom, left = track['box']
+                if min(bottom - top, right - left) < MIN_RECOGNITION_FACE_PX:
+                    continue
+                face_crop = frame[top:bottom, left:right].copy()
+                if face_crop.size == 0:
+                    continue
+                try:
+                    recognition_jobs.put_nowait((track['id'], face_crop))
+                except queue.Full:
+                    break  # Worker is busy; the rest wait for the next frame.
+                track['recon_pending'] = True
+                track['recon_requested'] = now
+
         tracked_faces = updated_tracks
         # Update shared_faces for Security Monitor HUD and skeleton binding
         shared_faces = [
@@ -828,19 +896,7 @@ def gesture_ai_worker():
 
             if expected and ml_model is not None and infer_counter % 3 == 0:
                 try:
-                    landmarks = person['landmarks']
-                    origin_x = landmarks[0].x if landmarks[0].x is not None else 0.0
-                    origin_y = landmarks[0].y if landmarks[0].y is not None else 0.0
-                    origin_z = landmarks[0].z if landmarks[0].z is not None else 0.0
-                    pose_array = np.array(
-                        [[
-                            (point.x if point.x is not None else 0.0) - origin_x,
-                            (point.y if point.y is not None else 0.0) - origin_y,
-                            (point.z if point.z is not None else 0.0) - origin_z,
-                            point.visibility if point.visibility is not None else 0.0,
-                        ] for point in landmarks],
-                        dtype=np.float32,
-                    ).flatten().reshape(1, -1)
+                    pose_array = landmarks_to_features(person['landmarks'], ml_feature_version)
                     probabilities = ml_model.predict_proba(pose_array)[0]
                     prediction, confidence = select_assigned_prediction(
                         probabilities,
@@ -1016,40 +1072,48 @@ def video_stream_worker():
             time.sleep(0.005)
             continue
         last_processed_sequence = frame_sequence
+        work_started = time.monotonic()
 
-        # FIX #7: One copy per stream, only when we actually start drawing —
-        # removed 3x redundant frame.copy() calls from the old code.
+        # Only draw and encode the feeds a browser is actually watching.
+        with feed_viewers_lock:
+            want_security = feed_viewers['sec'] > 0
+            want_gesture = feed_viewers['gest'] > 0
+        if not want_security and not want_gesture:
+            time.sleep(0.05)
+            continue
+
+        # Frames are already shrunk to MAX_FRAME_WIDTH by camera_reader_thread.
         _, w = raw.shape[:2]
 
-        # --- SECURITY FEED: draw face boxes ---
-        sec_frame = raw.copy()
-        faces = shared_faces.copy()
-        athletes = shared_athletes.copy()
-        for face in faces:
-            (top, right, bottom, left) = face['box']
-            name, color = face['name'], face['color']
-            cv2.rectangle(sec_frame, (left, top), (right, bottom), color, 3)
-            cv2.rectangle(sec_frame, (left, max(0, top - 35)), (right, top), color, cv2.FILLED)
-            cv2.putText(sec_frame, name, (left + 6, max(20, top - 10)), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255, 255, 255), 1)
+        if want_security:
+            # --- SECURITY FEED: draw face boxes ---
+            sec_frame = raw.copy()
+            for face in shared_faces.copy():
+                (top, right, bottom, left) = face['box']
+                name, color = face['name'], face['color']
+                cv2.rectangle(sec_frame, (left, top), (right, bottom), color, 3)
+                cv2.rectangle(sec_frame, (left, max(0, top - 35)), (right, top), color, cv2.FILLED)
+                cv2.putText(sec_frame, name, (left + 6, max(20, top - 10)), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255, 255, 255), 1)
+            if w > VIDEO_FEED_WIDTH:
+                sec_frame = cv2.resize(sec_frame, (VIDEO_FEED_WIDTH, int(sec_frame.shape[0] * VIDEO_FEED_WIDTH / w)))
+            _, sec_buffer = cv2.imencode('.jpg', sec_frame, [cv2.IMWRITE_JPEG_QUALITY, VIDEO_FEED_JPEG_QUALITY])
+            latest_security_frame = sec_buffer.tobytes()
 
-        # --- GESTURE FEED: draw a separate identity and pose overlay per person ---
-        gest_frame = raw.copy()
-        for athlete in athletes:
-            draw_athlete_overlay(gest_frame, athlete)
+        if want_gesture:
+            # --- GESTURE FEED: draw a separate identity and pose overlay per person ---
+            gest_frame = raw.copy()
+            for athlete in shared_athletes.copy():
+                draw_athlete_overlay(gest_frame, athlete)
+            if w > VIDEO_FEED_WIDTH:
+                gest_frame = cv2.resize(gest_frame, (VIDEO_FEED_WIDTH, int(gest_frame.shape[0] * VIDEO_FEED_WIDTH / w)))
+            _, gest_buffer = cv2.imencode('.jpg', gest_frame, [cv2.IMWRITE_JPEG_QUALITY, VIDEO_FEED_JPEG_QUALITY])
+            latest_gesture_frame = gest_buffer.tobytes()
 
-        # FIX #6: Cap output at 1280x720 if source is larger, then encode at quality 75.
-        # Quality 75 vs 85 saves ~25% encode time with no perceptible difference in browser streaming.
-        if w > 1280:
-            sec_frame = cv2.resize(sec_frame, (1280, 720))
-            gest_frame = cv2.resize(gest_frame, (1280, 720))
-
-        _, sec_buffer = cv2.imencode('.jpg', sec_frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
-        _, gest_buffer = cv2.imencode('.jpg', gest_frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
-        latest_security_frame = sec_buffer.tobytes()
-        latest_gesture_frame = gest_buffer.tobytes()
-
-        # Smooth ~28-30 FPS output
-        time.sleep(0.033)
+        # Pace to VIDEO_FEED_FPS, counting the time already spent this frame
+        # (the old fixed 33 ms sleep came on top of the work and added lag).
+        remaining = (1.0 / VIDEO_FEED_FPS) - (time.monotonic() - work_started)
+        if remaining > 0:
+            time.sleep(remaining)
 
 
 _workers_started = False
@@ -1071,6 +1135,7 @@ def start_background_workers():
     load_registered_faces()
     threading.Thread(target=camera_reader_thread, daemon=True).start()
     threading.Thread(target=face_ai_worker, daemon=True).start()
+    threading.Thread(target=face_recognition_worker, daemon=True).start()
     threading.Thread(target=gesture_ai_worker, daemon=True).start()
     threading.Thread(target=video_stream_worker, daemon=True).start()
     threading.Thread(target=workout_plan_worker, daemon=True).start()
@@ -1086,14 +1151,21 @@ def stream_generator(feed_type):
     # Wakes up immediately when camera_reader_thread sets new_frame_event,
     # saving idle CPU cycles and reducing stream latency.
     last_sent = None
-    while True:
-        new_frame_event.wait(timeout=0.5)
-        new_frame_event.clear()
-        frame_data = latest_security_frame if feed_type == 'sec' else latest_gesture_frame
-        if frame_data is None or frame_data == last_sent:
-            continue
-        last_sent = frame_data
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_data + b'\r\n')
+    with feed_viewers_lock:
+        feed_viewers[feed_type] += 1
+    try:
+        while True:
+            new_frame_event.wait(timeout=0.5)
+            new_frame_event.clear()
+            frame_data = latest_security_frame if feed_type == 'sec' else latest_gesture_frame
+            if frame_data is None or frame_data is last_sent:
+                continue
+            last_sent = frame_data
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_data + b'\r\n')
+    finally:
+        # Runs when the browser tab closes or switches page.
+        with feed_viewers_lock:
+            feed_viewers[feed_type] -= 1
 
 @app.route('/security_feed')
 def security_feed():
@@ -1109,6 +1181,15 @@ def gesture_feed():
 # trip on every click. Video feeds stay open because <img> tags cannot send
 # headers.
 ADMIN_TOKEN_CACHE_SECONDS = 60
+
+# DEVELOPMENT ONLY: set REQUIRE_ADMIN_TO_SWITCH_CAMERA=false in
+# "Gesture Engine/.env" to let anyone who can reach the engine switch cameras
+# without logging in. Turn it back on (true) before real deployment.
+REQUIRE_ADMIN_TO_SWITCH_CAMERA = os.getenv(
+    'REQUIRE_ADMIN_TO_SWITCH_CAMERA', 'true'
+).strip().lower() not in ('false', '0', 'no', 'off')
+if not REQUIRE_ADMIN_TO_SWITCH_CAMERA:
+    print("[WARNING] Camera switching does NOT require admin login (development mode).")
 _admin_token_cache = {}
 _admin_token_cache_lock = threading.Lock()
 
@@ -1164,8 +1245,12 @@ def refresh_ai():
 def get_camera_status():
     return jsonify(camera_status)
 
+def _switch_camera_guard(view):
+    return require_admin(view) if REQUIRE_ADMIN_TO_SWITCH_CAMERA else view
+
+
 @app.route('/switch_camera', methods=['POST'])
-@require_admin
+@_switch_camera_guard
 def switch_camera():
     global camera_mode
     from flask import request

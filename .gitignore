@@ -36,5 +36,5 @@ backend/public/faces/
 backend/public/profiles/
 
 # Notes that contain camera passwords
-DOCUMENTATION/Updated Current Plan For Development/OpenSesami.md
-DOCUMENTATION/Updated Current Plan For Development/Reminder.md
+**/OpenSesami.md
+**/Reminder.md
