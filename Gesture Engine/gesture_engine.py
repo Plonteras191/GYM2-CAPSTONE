@@ -9,6 +9,9 @@ if sys.platform == 'win32':
     except Exception:
         pass
 
+# Load camera URLs and tokens from the git-ignored "Gesture Engine/.env".
+import env_loader
+
 # Real-time low-latency FFMPEG options: discard buffers, minimize network jitter delay
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay|max_delay;500000|reorder_queue_size;0"
 
@@ -34,10 +37,21 @@ CORS(app)
 
 LARAVEL_API = os.getenv("LARAVEL_API_URL", "http://127.0.0.1:8000/api")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+AI_ENGINE_TOKEN = env_loader.ai_engine_token()
+if not AI_ENGINE_TOKEN:
+    print("[WARNING] AI_ENGINE_TOKEN is not set. Laravel will reject attendance and workout updates.")
+LARAVEL_HEADERS = {"X-AI-Engine-Token": AI_ENGINE_TOKEN, "Accept": "application/json"}
 KNOWN_FACES_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'backend', 'public'))
 
 # Main Stream 720p H.264 (Channel 101) — reverted from 102 sub-stream which caused more lag on this camera
-CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/101')
+# Camera URLs contain passwords, so they come only from the environment or
+# the git-ignored "Gesture Engine/.env" (see .env.example).
+CCTV_URL = os.getenv('CCTV_URL', '')
+
+# Optional second CCTV (for example, the Reolink P330).
+CCTV_2_URL = os.getenv('CCTV_2_URL', '').strip()
 
 # Samsung A06 phone-camera stream on the FTTx_39DC_5G network.
 # Override PHONE_CAMERA_URL when the phone's network address changes.
@@ -47,19 +61,25 @@ PHONE_CAMERA_URL = os.getenv(
 ).strip()
 CCTV_STREAM_URLS = {
     'cctv': CCTV_URL.strip(),
-    'cctv_2': os.getenv('CCTV_2_URL', '').strip(),
+    'cctv_2': CCTV_2_URL,
     'cctv_3': os.getenv('CCTV_3_URL', '').strip(),
 }
-CCTV_STREAM_URLS = {source: url for source, url in CCTV_STREAM_URLS.items() if url}
-AVAILABLE_CAMERA_SOURCES = (
-    list(CCTV_STREAM_URLS)
+AVAILABLE_CAMERA_SOURCES = [
+    source for source, url in CCTV_STREAM_URLS.items()
+    if url or source == 'cctv_2'
+] + (
+    ['webcam']
+    + (['phone'] if PHONE_CAMERA_URL else [])
+)
+CONFIGURED_CAMERA_SOURCES = (
+    [source for source, url in CCTV_STREAM_URLS.items() if url]
     + ['webcam']
     + (['phone'] if PHONE_CAMERA_URL else [])
 )
 CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', 'phone').lower()
 WEBCAM_INDEX = int(os.getenv('WEBCAM_INDEX', '0'))
-if CAMERA_SOURCE not in AVAILABLE_CAMERA_SOURCES:
-    CAMERA_SOURCE = AVAILABLE_CAMERA_SOURCES[0]
+if CAMERA_SOURCE not in CONFIGURED_CAMERA_SOURCES:
+    CAMERA_SOURCE = CONFIGURED_CAMERA_SOURCES[0]
 
 camera_mode = CAMERA_SOURCE
 camera_status = {
@@ -149,6 +169,7 @@ face_detector = mp_face.FaceDetection(min_detection_confidence=0.3, model_select
 
 current_raw_frame = None
 current_frame_sequence = 0
+last_camera_placeholder = None
 latest_security_frame = None
 latest_gesture_frame = None
 
@@ -171,7 +192,8 @@ def load_registered_faces():
     print("🚀 [CAPSTONE READY] HIGH-ACCURACY AI ENGINE...")
     print("[SYNC] Fetching registered members from Laravel...")
     try:
-        response = requests.get(f"{LARAVEL_API}/ai/members-faces")
+        response = requests.get(f"{LARAVEL_API}/ai/members-faces", headers=LARAVEL_HEADERS, timeout=10)
+        response.raise_for_status()
         members = response.json()
         
         for member in members:
@@ -187,19 +209,18 @@ def load_registered_faces():
 
                     
                     if len(encodings) > 0:
-                        known_face_encodings.append(encodings[0])
-                        known_face_ids.append(member['id'])
-                        known_face_names.append(member['name'])
-                        known_face_workout_eligibility.append(bool(member.get('workout_eligible', False)))
+                        for encoding in encodings:
+                            known_face_encodings.append(encoding)
+                            known_face_ids.append(member['id'])
+                            known_face_names.append(member['name'])
+                            known_face_workout_eligibility.append(bool(member.get('workout_eligible', False)))
                         eligibility_label = "coach eligible" if known_face_workout_eligibility[-1] else "attendance only"
-                        print(f"  [SUCCESS] Face Loaded: {member['name']} ({eligibility_label})")
+                        print(f"  [SUCCESS] {len(encodings)} face view(s) loaded: {member['name']} ({eligibility_label})")
                 except Exception as img_err:
                     print(f"  [ERROR] Could not process image: {img_err}")
     except Exception as e:
         print(f"[ERROR] Failed to connect to Laravel: {e}")
     print("="*50 + "\n")
-
-load_registered_faces()
 
 def compute_iou(boxA, boxB):
     # Format: (top, right, bottom, left)
@@ -235,7 +256,7 @@ def log_attendance_to_laravel(member_id, name):
     logged_today[member_id] = current_time
     
     try:
-        res = requests.post(f"{LARAVEL_API}/ai/log-attendance", json={"member_id": member_id})
+        res = requests.post(f"{LARAVEL_API}/ai/log-attendance", json={"member_id": member_id}, headers=LARAVEL_HEADERS, timeout=5)
         if res.json().get('status') == 'logged':
             print(f"\n>>> [ATTENDANCE SUCCESS] Logged: {name}!\n")
     except Exception:
@@ -249,6 +270,7 @@ def log_workout_to_laravel(member_id, athlete_name, exercise):
         res = requests.post(
             f"{LARAVEL_API}/ai/log-workout",
             json={"member_id": member_id, "exercise": exercise},
+            headers=LARAVEL_HEADERS,
             timeout=5,
         )
         res.raise_for_status()
@@ -289,8 +311,19 @@ def open_camera():
         return cap
     raise ValueError(f"Camera source is not configured: {camera_mode}")
 
+def publish_camera_placeholder(status_text):
+    global current_raw_frame, current_frame_sequence, last_camera_placeholder
+    if status_text == last_camera_placeholder:
+        return
+    with frame_lock:
+        current_raw_frame = make_placeholder_frame(status_text)
+        current_frame_sequence += 1
+    last_camera_placeholder = status_text
+    new_frame_event.set()
+
 def camera_reader_thread():
     global current_raw_frame, current_frame_sequence, camera_mode, camera_status
+    global last_camera_placeholder
     cap = open_camera()
     fail_count = 0
     active_mode = camera_mode
@@ -310,10 +343,7 @@ def camera_reader_thread():
         if cap is None or not cap.isOpened():
             fail_count += 1
             camera_status["connected"] = False
-            # FIX #1: Write frame under lock so workers never read a partial frame
-            with frame_lock:
-                current_raw_frame = make_placeholder_frame("Connecting to camera stream...")
-            new_frame_event.set()
+            publish_camera_placeholder("Connecting to camera stream...")
             time.sleep(1.0)
             if cap is not None:
                 cap.release()
@@ -329,6 +359,7 @@ def camera_reader_thread():
                 with frame_lock:
                     current_raw_frame = frame
                     current_frame_sequence += 1
+                last_camera_placeholder = None
                 new_frame_event.set()
                 fail_count = 0
                 camera_status["connected"] = True
@@ -346,9 +377,7 @@ def camera_reader_thread():
 
         if fail_count > 15:
             camera_status["connected"] = False
-            with frame_lock:
-                current_raw_frame = make_placeholder_frame("Stream disconnected. Reconnecting...")
-            new_frame_event.set()
+            publish_camera_placeholder("Stream disconnected. Reconnecting...")
             time.sleep(1.0)
             if cap is not None:
                 cap.release()
@@ -546,7 +575,7 @@ def face_ai_worker():
 def refresh_workout_plans():
     global workout_plans, ambiguous_workout_plans
     try:
-        response = requests.get(f"{LARAVEL_API}/ai/workout-plans", timeout=5)
+        response = requests.get(f"{LARAVEL_API}/ai/workout-plans", headers=LARAVEL_HEADERS, timeout=5)
         response.raise_for_status()
         tasks = response.json()
         if not isinstance(tasks, list):
@@ -1023,11 +1052,34 @@ def video_stream_worker():
         time.sleep(0.033)
 
 
-threading.Thread(target=camera_reader_thread, daemon=True).start()
-threading.Thread(target=face_ai_worker, daemon=True).start()
-threading.Thread(target=gesture_ai_worker, daemon=True).start()
-threading.Thread(target=video_stream_worker, daemon=True).start()
-threading.Thread(target=workout_plan_worker, daemon=True).start()
+_workers_started = False
+_workers_lock = threading.Lock()
+
+
+def start_background_workers():
+    """Sync faces from Laravel and start the camera/AI threads (once).
+
+    Called from main.py (or __main__) so that merely importing this module,
+    e.g. from tests or scripts, does not open cameras or start threads.
+    """
+    global _workers_started
+    with _workers_lock:
+        if _workers_started:
+            return
+        _workers_started = True
+
+    load_registered_faces()
+    threading.Thread(target=camera_reader_thread, daemon=True).start()
+    threading.Thread(target=face_ai_worker, daemon=True).start()
+    threading.Thread(target=gesture_ai_worker, daemon=True).start()
+    threading.Thread(target=video_stream_worker, daemon=True).start()
+    threading.Thread(target=workout_plan_worker, daemon=True).start()
+
+
+# Listen only on this computer by default. Set AI_ENGINE_HOST=0.0.0.0 in
+# "Gesture Engine/.env" to let other devices on the LAN view the feeds.
+AI_ENGINE_HOST = os.getenv('AI_ENGINE_HOST', '127.0.0.1')
+AI_ENGINE_PORT = int(os.getenv('AI_ENGINE_PORT', '5000'))
 
 def stream_generator(feed_type):
     # FIX #10: Use threading.Event instead of sleep-polling.
@@ -1051,7 +1103,58 @@ def security_feed():
 def gesture_feed():
     return Response(stream_generator('gest'), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+# --- Admin authentication for control endpoints -----------------------------
+# The React dashboard sends its Laravel Sanctum token. We confirm it with
+# Laravel (/api/admin/me) and cache valid tokens briefly to avoid a round
+# trip on every click. Video feeds stay open because <img> tags cannot send
+# headers.
+ADMIN_TOKEN_CACHE_SECONDS = 60
+_admin_token_cache = {}
+_admin_token_cache_lock = threading.Lock()
+
+
+def _is_valid_admin_token(token):
+    now = time.time()
+    with _admin_token_cache_lock:
+        expires_at = _admin_token_cache.get(token)
+        if expires_at and expires_at > now:
+            return True
+    try:
+        res = requests.get(
+            f"{LARAVEL_API}/admin/me",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+            timeout=5,
+        )
+    except requests.RequestException:
+        return False
+    if res.status_code != 200:
+        return False
+    with _admin_token_cache_lock:
+        _admin_token_cache[token] = now + ADMIN_TOKEN_CACHE_SECONDS
+        # Drop expired entries so the cache cannot grow without bound.
+        for cached, expiry in list(_admin_token_cache.items()):
+            if expiry <= now:
+                del _admin_token_cache[cached]
+    return True
+
+
+def require_admin(view):
+    from functools import wraps
+    from flask import request
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header[7:].strip() if auth_header.lower().startswith('bearer ') else ''
+        if not token or not _is_valid_admin_token(token):
+            return jsonify({"error": "Admin login required."}), 401
+        return view(*args, **kwargs)
+
+    return wrapper
+
+
 @app.route('/refresh_ai', methods=['POST'])
+@require_admin
 def refresh_ai():
     # Asynchronously reload registered faces to avoid blocking the caller
     threading.Thread(target=load_registered_faces, daemon=True).start()
@@ -1062,14 +1165,15 @@ def get_camera_status():
     return jsonify(camera_status)
 
 @app.route('/switch_camera', methods=['POST'])
+@require_admin
 def switch_camera():
     global camera_mode
     from flask import request
     req_data = request.get_json(silent=True) or {}
     target_mode = req_data.get('source')
     if target_mode is None:
-        target_mode = AVAILABLE_CAMERA_SOURCES[
-            (AVAILABLE_CAMERA_SOURCES.index(camera_mode) + 1) % len(AVAILABLE_CAMERA_SOURCES)
+        target_mode = CONFIGURED_CAMERA_SOURCES[
+            (CONFIGURED_CAMERA_SOURCES.index(camera_mode) + 1) % len(CONFIGURED_CAMERA_SOURCES)
         ]
     if not isinstance(target_mode, str) or target_mode.lower() not in AVAILABLE_CAMERA_SOURCES:
         return jsonify({
@@ -1077,11 +1181,22 @@ def switch_camera():
             "available_sources": AVAILABLE_CAMERA_SOURCES,
         }), 400
 
-    camera_mode = target_mode.lower()
+    target_mode = target_mode.lower()
+    if target_mode in CCTV_STREAM_URLS and not CCTV_STREAM_URLS[target_mode]:
+        return jsonify({
+            "error": (
+                f"{target_mode.upper()} is not configured. Set "
+                f"{target_mode.upper()}_URL in the environment and restart the AI engine."
+            ),
+            "available_sources": AVAILABLE_CAMERA_SOURCES,
+        }), 400
+
+    camera_mode = target_mode
     camera_status["source"] = camera_mode
     print(f"Camera source switched to: {camera_mode.upper()}")
     return jsonify({"status": "success", "mode": camera_mode})
 
 if __name__ == '__main__':
     print("\n[SYSTEM] CAPSTONE-READY AI ENGINE ONLINE (LOW LATENCY MODE)")
-    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
+    start_background_workers()
+    app.run(host=AI_ENGINE_HOST, port=AI_ENGINE_PORT, threaded=True, debug=False)

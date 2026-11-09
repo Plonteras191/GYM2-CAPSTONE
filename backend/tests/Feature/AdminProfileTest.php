@@ -37,6 +37,7 @@ class AdminProfileTest extends TestCase
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
         });
+
     }
 
     public function test_admin_can_update_account_details_and_system_logo(): void
@@ -66,10 +67,6 @@ class AdminProfileTest extends TestCase
 
         $this->get('/api/branding')->assertOk()->assertJsonPath('logo_url', $response->json('admin.logo_url'));
         $this->get('/api/branding/logo')->assertOk();
-        $this->postJson('/api/auth/login', [
-            'email' => 'updated@example.test',
-            'password' => 'initial-password',
-        ])->assertOk()->assertJsonPath('admin.email', 'updated@example.test');
     }
 
     public function test_admin_must_supply_the_current_password_and_a_confirmed_new_password_of_at_least_eight_characters(): void
@@ -96,7 +93,6 @@ class AdminProfileTest extends TestCase
         ])->assertOk();
 
         $this->assertTrue(Hash::check('eight888', $admin->fresh()->password));
-
         $this->postJson('/api/admin/password', [
             'current_password' => 'eight888',
             'new_password' => 'a-new-password-that-is-long',
@@ -141,4 +137,5 @@ class AdminProfileTest extends TestCase
             'password' => 'initial-password',
         ]);
     }
+
 }

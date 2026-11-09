@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiX, FiSave, FiCalendar, FiClock, FiMapPin, FiTag, FiChevronDown, FiEdit2, FiTrash2, FiCheck } from 'react-icons/fi';
+import { FiX, FiSave, FiCalendar, FiChevronDown, FiEdit2, FiTrash2, FiCheck } from 'react-icons/fi';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 
 export default function CoachEventModal({
@@ -18,6 +18,7 @@ export default function CoachEventModal({
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [categoryRequired, setCategoryRequired] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState({ name: '', color: '#eab308' });
   const initialSnapshotRef = React.useRef('');
   const categorySnapshotRef = React.useRef('');
@@ -30,10 +31,12 @@ export default function CoachEventModal({
       setIsCategoryMenuOpen(false);
       setIsCreatingCategory(false);
       setEditingCategoryId(null);
+      setCategoryRequired(false);
     } else {
       setIsCategoryMenuOpen(false);
       setIsCreatingCategory(false);
       setEditingCategoryId(null);
+      setCategoryRequired(false);
     }
   }, [isOpen]);
   const unsavedChangesGuard = useUnsavedChangesGuard(
@@ -43,6 +46,15 @@ export default function CoachEventModal({
     )
   );
   const requestClose = () => unsavedChangesGuard.requestClose(onClose);
+  const handleSubmit = event => {
+    if (!eventForm.category?.trim()) {
+      event.preventDefault();
+      setCategoryRequired(true);
+      setIsCategoryMenuOpen(true);
+      return;
+    }
+    onSave(event);
+  };
 
   if (!isOpen) return null;
 
@@ -82,12 +94,10 @@ export default function CoachEventModal({
         </div>
         
         {/* Form */}
-        <form onSubmit={onSave} className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-100 p-4 dark:bg-[#191b22] sm:p-5">
+        <form onSubmit={handleSubmit} className="min-h-0 flex flex-1 flex-col bg-slate-100 dark:bg-[#191b22]">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
           <label className="block">
-            <span className={labelClass}>
-              <FiTag size={12} className="text-black dark:text-gray-400" />
-              Event Title
-            </span>
+            <span className={labelClass}>Event Title</span>
             <input 
               type="text" 
               required 
@@ -99,20 +109,17 @@ export default function CoachEventModal({
           </label>
 
           <label className="block">
-            <span className={labelClass}>
-              <FiTag size={12} className="text-black dark:text-gray-400" />
-              Category
-            </span>
+            <span className={labelClass}>Category</span>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setIsCategoryMenuOpen(open => !open)}
                 aria-label="Choose an event category"
                 aria-expanded={isCategoryMenuOpen}
-                className={`${inputClass} flex items-center justify-between gap-3 text-left`}
+                className={`${inputClass} flex items-center justify-between gap-3 text-left ${!isCreatingCategory && !existingCategory ? '!text-slate-400 dark:!text-gray-500' : ''}`}
               >
                 <span className="min-w-0 truncate">
-                  {isCreatingCategory ? 'Create New Category' : existingCategory?.name || 'Select Category'}
+                  {isCreatingCategory ? 'Create New Category' : existingCategory?.name || 'Select/Create Category'}
                 </span>
                 <FiChevronDown className={`shrink-0 text-slate-500 transition-transform dark:text-gray-400 ${isCategoryMenuOpen ? 'rotate-180' : ''}`} size={16} />
               </button>
@@ -236,14 +243,14 @@ export default function CoachEventModal({
                 className={`${inputClass} mt-2`}
               />
             )}
+            {categoryRequired && !eventForm.category?.trim() && (
+              <span role="alert" className="mt-1 block text-xs font-semibold text-orange-600 dark:text-orange-400">Select or create a category before saving.</span>
+            )}
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <label className="block">
-              <span className={labelClass}>
-                <FiCalendar size={12} className="text-black dark:text-gray-400" />
-                Start Date
-              </span>
+              <span className={labelClass}>Start Date</span>
               <input 
                 type="date" 
                 required 
@@ -257,10 +264,7 @@ export default function CoachEventModal({
               />
             </label>
             <label className="block">
-              <span className={labelClass}>
-                <FiCalendar size={12} className="text-black dark:text-gray-400" />
-                End Date
-              </span>
+              <span className={labelClass}>End Date</span>
               <input 
                 type="date" 
                 required 
@@ -279,10 +283,7 @@ export default function CoachEventModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <label className="block">
-              <span className={labelClass}>
-                <FiClock size={12} className="text-black dark:text-gray-400" />
-                Start Time
-              </span>
+              <span className={labelClass}>Start Time</span>
               <input 
                 type="time" 
                 required 
@@ -292,10 +293,7 @@ export default function CoachEventModal({
               />
             </label>
             <label className="block">
-              <span className={labelClass}>
-                <FiClock size={12} className="text-black dark:text-gray-300" />
-                End Time
-              </span>
+              <span className={labelClass}>End Time</span>
               <input 
                 type="time" 
                 required 
@@ -308,10 +306,7 @@ export default function CoachEventModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
             <label className="block">
-              <span className={labelClass}>
-                <FiMapPin size={12} className="text-black dark:text-gray-400" />
-                Location / Area
-              </span>
+              <span className={labelClass}>Location / Area</span>
               <input 
                 type="text" 
                 required 
@@ -323,10 +318,7 @@ export default function CoachEventModal({
             </label>
             
             <label className="block">
-              <span className={labelClass}>
-                <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: eventForm.color || '#f59e0b' }} />
-                Banner Color
-              </span>
+              <span className={labelClass}>Banner Color</span>
               <div className="flex gap-2 items-center h-[42px] px-2 bg-slate-50 dark:bg-[#191b22] border border-slate-300 dark:border-[#393e4f] rounded-xl">
                 <input 
                   type="color" 
@@ -360,9 +352,9 @@ export default function CoachEventModal({
               className={inputClass}
             />
           </label>
+          </div>
 
-          {/* Action Buttons */}
-          <div className="mt-auto flex items-center justify-end gap-3 rounded-xl border-2 border-gray-300 bg-white p-3 dark:border-gray-600 dark:bg-[#252830]">
+          <div className="sticky bottom-0 flex shrink-0 items-center justify-end gap-3 border-t-2 border-gray-300 bg-white p-3 dark:border-gray-600 dark:bg-[#252830]">
             <button 
               type="button" 
               onClick={requestClose}

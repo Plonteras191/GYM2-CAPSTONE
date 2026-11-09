@@ -1,12 +1,16 @@
 import React from 'react';
 import { FiX, FiTag, FiSave, FiLoader, FiPlus } from 'react-icons/fi';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
+import SearchableMemberSelect from '../../../components/ui/SearchableMemberSelect.jsx';
+import StyledSelect from '../../../components/ui/StyledSelect';
+import { formatNumber } from '../../../utils/numberFormat';
 
 export default function TransactionFormModal({
   isOpen,
   isSaving,
   formData,
   setFormData,
+  onAmountChange,
   membersList,
   plansList,
   onClose,
@@ -53,54 +57,58 @@ export default function TransactionFormModal({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className={labelClass}>Select Member</label>
-              <select 
+              <SearchableMemberSelect
                 required={formData.type !== 'Walk-In' && formData.type !== 'Packages'}
-                value={formData.member_id} 
-                onChange={(e) => setFormData({ ...formData, member_id: e.target.value })} 
-                className={inputClass}
-              >
-                <option value="">Select Member</option>
-                {membersList.map(m => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
-              </select>
+                members={membersList}
+                value={formData.member_id}
+                placeholder="Search Member Name"
+                onChange={memberId => setFormData({ ...formData, member_id: memberId })}
+              />
             </div>
 
             <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
               <label className={labelClass}><FiTag className="inline mr-1" /> Select Packages</label>
-              <select
+              <StyledSelect
                 required
-                value={formData.package_name || ''}
-                className={inputClass}
+                value={formData.package_id || ''}
+                className={`${inputClass} ${formData.package_name ? '' : '!text-slate-400 dark:!text-gray-500'}`}
                 onChange={event => onPlanSelection(event.target.value)}
+                aria-label="Select Packages"
               >
-                <option value="">Select Packages</option>
-                {plansList.map(plan => <option key={plan.id} value={plan.name}>{plan.name} (&#8369;{plan.price})</option>)}
-              </select>
+                <option value="" disabled>Select Packages</option>
+                {plansList.map(plan => <option key={plan.id} value={plan.id}>{plan.name} (&#8369;{formatNumber(plan.price)})</option>)}
+              </StyledSelect>
             </div>
 
             <div>
               <label className={labelClass}>Amount (&#8369;)</label>
               <input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
+                maxLength={10}
                 required
+                aria-label="Amount"
                 placeholder="0.00"
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onChange={(e) => onAmountChange(e.target.value)}
                 className={inputClass}
               />
             </div>
 
             <div>
               <label className={labelClass}>Payment Method</label>
-              <select
-                value={formData.payment_method}
+              <StyledSelect
+                required
+                value={formData.payment_method || ''}
                 onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                className={inputClass}
+                aria-label="Payment Method"
+                className={`${inputClass} ${formData.payment_method ? '' : '!text-slate-400 dark:!text-gray-500'}`}
               >
+                <option value="" disabled>Select Payment Method</option>
                 <option>Cash</option>
                 <option>Gcash</option>
-                <option>Card</option>
-              </select>
+                <option>Maya</option>
+              </StyledSelect>
             </div>
 
             <div>
@@ -114,16 +122,6 @@ export default function TransactionFormModal({
               />
             </div>
 
-            <div>
-              <label className={labelClass}>Description / Notes</label>
-              <input 
-                type="text" 
-                placeholder="Brief details about the transaction" 
-                value={formData.description} 
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
-                className={inputClass} 
-              />
-            </div>
             </div>
           </div>
           

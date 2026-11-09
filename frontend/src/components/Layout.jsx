@@ -1,5 +1,6 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { 
   FiHome, FiUsers, FiCheckSquare, FiCreditCard, 
@@ -31,6 +32,8 @@ export default function Layout() {
   const systemLogo = useSystemLogo();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [adminName, setAdminName] = useState(() => localStorage.getItem('admin_name') || 'Admin Profile');
+  const notificationButtonRef = useRef(null);
+  const [notificationPanelPosition, setNotificationPanelPosition] = useState(null);
 
   // Pre-fetch all pages' data in parallel on first load
   usePrefetch();
@@ -140,6 +143,44 @@ export default function Layout() {
 
   const visibleNotifications = notifications.filter(n => !dismissedIds.includes(n.id));
 
+  const updateNotificationPanelPosition = () => {
+    const button = notificationButtonRef.current;
+    if (!button) return;
+
+    const bounds = button.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const top = bounds.bottom + 8;
+    const isMobile = viewportWidth < 640;
+    const width = isMobile ? Math.max(0, viewportWidth - 24) : Math.min(384, viewportWidth - 24);
+
+    setNotificationPanelPosition({
+      top,
+      width,
+      ...(isMobile
+        ? { left: 12 }
+        : { right: Math.max(12, viewportWidth - bounds.right) }),
+      maxHeight: Math.max(0, viewportHeight - top - 12),
+    });
+  };
+
+  useEffect(() => {
+    if (!showNotifications) return undefined;
+
+    const repositionPanel = () => updateNotificationPanelPosition();
+    window.addEventListener('resize', repositionPanel);
+    window.addEventListener('scroll', repositionPanel, true);
+    return () => {
+      window.removeEventListener('resize', repositionPanel);
+      window.removeEventListener('scroll', repositionPanel, true);
+    };
+  }, [showNotifications]);
+
+  const toggleNotifications = () => {
+    if (!showNotifications) updateNotificationPanelPosition();
+    setShowNotifications(!showNotifications);
+  };
+
   const dismissAll = () => {
     const allIds = notifications.map(n => n.id);
     const updated = Array.from(new Set([...dismissedIds, ...allIds]));
@@ -179,6 +220,7 @@ export default function Layout() {
           console.error("Server logout failed, forcing local logout", error);
         } finally {
           localStorage.removeItem('admin_token');
+          sessionStorage.removeItem('admin_token');
           localStorage.removeItem('admin_name');
           window.location.href = '/login';
         }
@@ -305,39 +347,48 @@ export default function Layout() {
             
             <div className="relative order-3">
               <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                aria-label="Open notifications"
+                ref={notificationButtonRef}
+                onClick={toggleNotifications}
+                aria-label={`Open notifications${visibleNotifications.length ? `, ${visibleNotifications.length} unread` : ''}`}
+                aria-expanded={showNotifications}
+                aria-controls="notification-panel"
                 className="relative rounded-full border border-gray-500 bg-gray-200 p-2.5 text-black shadow-sm transition-colors hover:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus-visible:ring-offset-[#161616] sm:p-3"
               >
                 <FiBell size={21} strokeWidth={2.4} />
                 {visibleNotifications.length > 0 && (
-                  <span className="absolute top-1 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-100 dark:border-[#161616] animate-pulse"></span>
+                  <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-gray-200 bg-amber-500 px-1 text-[10px] font-extrabold leading-none tabular-nums text-slate-950 shadow-sm dark:border-gray-700 dark:bg-amber-400 dark:text-[#17191f]">
+                    {visibleNotifications.length > 99 ? '99+' : visibleNotifications.length}
+                  </span>
                 )}
               </button>
 
-              {showNotifications && (
-                <div className="fixed sm:absolute inset-x-3 sm:inset-x-auto sm:right-0 top-[4.5rem] sm:top-auto sm:mt-3 w-auto sm:w-96 bg-white dark:bg-[#161616] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+              {/* Portal layer: above sidebar (z-50), below logout (z-100) and alerts (z-120). */}
+              {showNotifications && notificationPanelPosition && createPortal(
+                <div
+                  id="notification-panel"
+                  style={notificationPanelPosition}
+                  className="fixed z-[90] flex flex-col overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 text-slate-800 shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 dark:border-[#3a3e49] dark:bg-[#1d2028] dark:text-gray-200 dark:shadow-[0_18px_44px_rgba(0,0,0,0.5)] dark:ring-white/5"
+                >
                   {/* Panel Header */}
-                  <div className="p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#121212] flex justify-between items-center">
+                  <div className="flex items-center justify-between border-b border-slate-300 bg-slate-200 px-4 py-3.5 dark:border-[#343843] dark:bg-[#232630]">
                     <div className="flex items-center gap-2">
-                      <FiBell size={16} className="text-black dark:text-gray-300" />
-                      <h4 className="font-bold text-black dark:text-gray-300 text-sm">Notifications</h4>
-                      {visibleNotifications.length > 0 && (
-                        <span className="text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400 px-2 py-0.5 rounded-full">{visibleNotifications.length}</span>
-                      )}
+                      <FiBell size={16} className="text-slate-500 dark:text-gray-400" />
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-gray-100">Notifications</h4>
                     </div>
                     {visibleNotifications.length > 0 && (
-                      <button onClick={dismissAll} className="text-[10px] font-bold text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors uppercase tracking-wide">Clear All</button>
+                      <button onClick={dismissAll} className="rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100">Clear All</button>
                     )}
                   </div>
 
                   {/* Notification List */}
-                  <div className="max-h-[360px] overflow-y-auto hidden-scrollbar divide-y divide-slate-100 dark:divide-white/5">
+                  <div className="max-h-[360px] min-h-0 flex-1 overflow-y-auto hidden-scrollbar divide-y divide-slate-200/80 dark:divide-[#343843]">
                     {visibleNotifications.length === 0 ? (
                       <div className="p-8 text-center">
-                        <FiCheckCircle size={32} className="mx-auto text-green-500 mb-3" />
-                        <p className="text-sm font-bold text-slate-700 dark:text-gray-300">All Clear!</p>
-                        <p className="text-xs text-slate-400 dark:text-gray-500 mt-1">No pending alerts at the moment.</p>
+                        <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                          <FiCheckCircle size={21} />
+                        </span>
+                        <p className="text-sm font-bold text-slate-800 dark:text-gray-200">All clear</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">No pending alerts right now.</p>
                       </div>
                     ) : (
                       visibleNotifications.map((alert, index) => {
@@ -345,58 +396,59 @@ export default function Layout() {
                         let icon, iconBg, iconColor, badge, badgeColor;
                         if (alert.type === 'expiring') {
                           icon = <FiClock size={15}/>;
-                          iconBg = 'bg-amber-100 dark:bg-amber-500/20';
-                          iconColor = 'text-amber-600 dark:text-amber-400';
+                          iconBg = 'bg-amber-50 dark:bg-amber-500/10';
+                          iconColor = 'text-amber-700 dark:text-amber-300';
                           badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d left`;
-                          badgeColor = alert.days_left === 0 ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400';
+                          badgeColor = alert.days_left === 0 ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-500/10 dark:text-red-300' : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700/50 dark:bg-amber-500/10 dark:text-amber-300';
                         } else if (alert.type === 'event') {
                           icon = <FiCalendar size={15}/>;
-                          iconBg = 'bg-emerald-100 dark:bg-emerald-500/20';
-                          iconColor = 'text-emerald-600 dark:text-emerald-400';
+                          iconBg = 'bg-emerald-50 dark:bg-emerald-500/10';
+                          iconColor = 'text-emerald-700 dark:text-emerald-300';
                           badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d event`;
-                          badgeColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400';
+                          badgeColor = 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300';
                         } else if (alert.type === 'no_sub') {
                           icon = <FiAlertCircle size={15}/>;
-                          iconBg = 'bg-red-100 dark:bg-red-500/20';
-                          iconColor = 'text-red-600 dark:text-red-400';
+                          iconBg = 'bg-rose-50 dark:bg-rose-500/10';
+                          iconColor = 'text-rose-700 dark:text-rose-300';
                           badge = 'No Sub';
-                          badgeColor = 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400';
+                          badgeColor = 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700/50 dark:bg-rose-500/10 dark:text-rose-300';
                         } else if (alert.type === 'login') {
                           icon = <FiLogIn size={15}/>;
-                          iconBg = 'bg-blue-100 dark:bg-blue-500/20';
-                          iconColor = 'text-blue-600 dark:text-blue-400';
+                          iconBg = 'bg-slate-100 dark:bg-slate-500/15';
+                          iconColor = 'text-slate-700 dark:text-slate-300';
                           badge = 'Login';
-                          badgeColor = 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400';
+                          badgeColor = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-500/15 dark:text-slate-300';
                         } else {
                           // task
                           icon = <FiCheckSquare size={15}/>;
-                          iconBg = 'bg-purple-100 dark:bg-purple-500/20';
-                          iconColor = 'text-purple-600 dark:text-purple-400';
+                          iconBg = 'bg-violet-50 dark:bg-violet-500/10';
+                          iconColor = 'text-violet-700 dark:text-violet-300';
                           badge = 'Task';
-                          badgeColor = 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400';
+                          badgeColor = 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-700/50 dark:bg-violet-500/10 dark:text-violet-300';
                         }
 
                         return (
                           <div
                             key={alert.id || index}
                             onClick={() => handleNotificationClick(alert)}
-                            className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group relative"
+                            className="group relative cursor-pointer px-4 py-3.5 transition-colors hover:bg-slate-200 dark:hover:bg-[#292d37]"
                           >
                             <div className="flex gap-3 items-start">
-                              <div className={`w-8 h-8 rounded-full ${iconBg} ${iconColor} flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform`}>
+                              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-black/5 ${iconBg} ${iconColor} dark:border-white/5`}>
                                 {icon}
                               </div>
                               <div className="flex-1 min-w-0 pr-4">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-bold text-black dark:text-gray-300 leading-tight">{alert.member_name}</p>
-                                  <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${badgeColor}`}>{badge}</span>
+                                  <p className="text-sm font-semibold leading-tight text-slate-900 dark:text-gray-100">{alert.member_name}</p>
+                                  <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${badgeColor}`}>{badge}</span>
                                 </div>
-                                <p className="text-xs font-medium text-slate-500 dark:text-gray-400 mt-0.5 leading-snug">{alert.message}</p>
+                                <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-400">{alert.message}</p>
                               </div>
                               <button
                                 onClick={(e) => dismissOne(alert.id, e)}
                                 title="Dismiss notification"
-                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity p-1 -mr-2 -mt-1 rounded"
+                                aria-label="Dismiss notification"
+                                className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-gray-500 dark:hover:bg-white/5 dark:hover:text-rose-300"
                               >
                                 <FiX size={13} />
                               </button>
@@ -409,8 +461,8 @@ export default function Layout() {
 
                   {/* Panel Footer */}
                   {visibleNotifications.length > 0 && (
-                    <div className="p-3 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-[#121212] text-center">
-                      <p className="text-[10px] text-slate-400 dark:text-gray-500 font-medium flex items-center justify-center gap-2 flex-wrap">
+                    <div className="border-t border-slate-300 bg-slate-200 px-3 py-2.5 text-center dark:border-[#343843] dark:bg-[#232630]">
+                      <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-medium text-slate-500 dark:text-gray-400">
                         {visibleNotifications.filter(n => n.type === 'expiring').length > 0 && (
                           <span>{visibleNotifications.filter(n => n.type === 'expiring').length} expiring</span>
                         )}
@@ -429,7 +481,8 @@ export default function Layout() {
                       </p>
                     </div>
                   )}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
 

@@ -16,7 +16,8 @@ WORKOUT_MODEL_PATH = os.path.join(MODELS_DIR, 'workout_model.pkl')
 DATASET_CSV_PATH = os.path.join(DATASETS_DIR, 'custom_workout_dataset.csv')
 
 # Camera Stream Configuration (Channels/102 is low-latency sub-stream for real-time AI)
-DEFAULT_CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102')
+# Contains the camera password: set CCTV_URL in the environment or "Gesture Engine/.env".
+DEFAULT_CCTV_URL = os.getenv('CCTV_URL', '')
 CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', 'CCTV') # 'CCTV' or 'WEBCAM'
 WEBCAM_INDEX = int(os.getenv('WEBCAM_INDEX', '0'))
 

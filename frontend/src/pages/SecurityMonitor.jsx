@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { FiMaximize, FiCamera, FiWifiOff, FiLoader, FiUserCheck, FiArrowRight, FiRefreshCw, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import { AI_BASE, aiEngineFetch } from '../utils/aiEngine';
 import { getCameraSourceLabel } from '../utils/cameraSourceLabel';
 import { getMediaUrl } from '../utils/mediaUrl';
+import { formatNumber } from '../utils/numberFormat';
 
 function AttendanceAvatar({ member }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -31,12 +33,13 @@ function AttendanceAvatar({ member }) {
 export default function SecurityMonitor() {
   const navigate = useNavigate();
   const [connectionState, setConnectionState] = useState('RECONNECTING'); 
-  const AI_BASE = import.meta.env.VITE_AI_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? `http://${window.location.hostname}:5000` : 'http://127.0.0.1:5000');
   const [activeStreamUrl, setActiveStreamUrl] = useState("");
   const [cameraSource, setCameraSource] = useState('cctv');
   const [availableCameraSources, setAvailableCameraSources] = useState(['cctv', 'webcam']);
   const [cameraFps, setCameraFps] = useState(null);
   const [cameraStatusError, setCameraStatusError] = useState(false);
+  const [engineOnline, setEngineOnline] = useState(null);
+  const cameraConnectedRef = useRef(false);
   
   const [liveLogs, setLiveLogs] = useState([]); 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -47,13 +50,13 @@ export default function SecurityMonitor() {
   const handleSyncAI = async () => {
     setIsSyncing(true);
     try {
-      const res = await fetch(`${AI_BASE}/refresh_ai`, { method: 'POST' });
+      const res = await aiEngineFetch('/refresh_ai', { method: 'POST' });
       if (res.ok) {
         setAlertDialog({ isOpen: true, title: 'Sync Complete', message: 'AI Memory successfully synced with the Database!', type: 'success' });
       } else {
         setAlertDialog({ isOpen: true, title: 'Sync Failed', message: 'AI Sync failed to respond correctly.', type: 'error' });
       }
-    } catch {
+    } catch (error) {
       setAlertDialog({ isOpen: true, title: 'Engine Offline', message: 'Could not connect to the Python AI Engine.', type: 'error' });
     }
     setIsSyncing(false);
@@ -62,7 +65,7 @@ export default function SecurityMonitor() {
   const handleCameraChange = async (event) => {
     const nextSource = event.target.value;
     try {
-      const res = await fetch(`${AI_BASE}/switch_camera`, {
+      const res = await aiEngineFetch('/switch_camera', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: nextSource })
@@ -86,31 +89,42 @@ export default function SecurityMonitor() {
     setConnectionState('RECONNECTING');
 
     const fetchCameraStatus = async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
       try {
-        const response = await fetch(`${AI_BASE}/camera_status`);
+        const response = await fetch(`${AI_BASE}/camera_status`, { signal: controller.signal });
         if (!response.ok) throw new Error('Camera status request failed.');
         const data = await response.json();
         if (data.source) setCameraSource(data.source);
         if (Array.isArray(data.available_sources)) setAvailableCameraSources(data.available_sources);
         setCameraFps(Number.isFinite(data.fps) ? data.fps : null);
+        cameraConnectedRef.current = Boolean(data.connected);
+        setEngineOnline(true);
+        setConnectionState(data.connected ? 'LIVE' : 'DISCONNECTED');
         setCameraStatusError(false);
       } catch (error) {
+        cameraConnectedRef.current = false;
+        setEngineOnline(false);
+        setCameraFps(null);
         console.error('Failed to read camera status:', error);
         setCameraStatusError(true);
+        setConnectionState('DISCONNECTED');
+      } finally {
+        clearTimeout(timeout);
       }
     };
     fetchCameraStatus();
-    const statusInterval = setInterval(fetchCameraStatus, 2000);
+    const statusInterval = setInterval(fetchCameraStatus, 3000);
 
     const logInterval = setInterval(async () => {
       try {
         const res = await api.get('/attendance/today');
         setLiveLogs(res.data); 
       } catch (error) { console.error("Failed to refresh today's attendance logs:", error); }
-    }, 1000);
+    }, 3000);
 
     return () => { clearInterval(logInterval); clearInterval(statusInterval); };
-  }, [AI_BASE]);
+  }, []);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -156,7 +170,7 @@ export default function SecurityMonitor() {
               <img 
                 src={activeStreamUrl} 
                 alt="Live CCTV" 
-                onLoad={() => setConnectionState('LIVE')}
+                onLoad={() => setConnectionState(cameraConnectedRef.current ? 'LIVE' : 'DISCONNECTED')}
                 onError={() => {
                   setConnectionState('DISCONNECTED');
                   setTimeout(() => {
@@ -174,13 +188,29 @@ export default function SecurityMonitor() {
               {connectionState === 'RECONNECTING' ? (
                <div className="z-10 flex flex-col items-center justify-center text-slate-400">
                  <FiLoader size={40} md:size={56} className="mb-2 md:mb-4 text-yellow-500 animate-spin" />
-                 <p className="text-sm md:text-lg font-bold uppercase tracking-widest text-slate-300">Handshake...</p>
+                  <p className="text-sm md:text-lg font-bold uppercase tracking-widest text-slate-300">Connecting to camera...</p>
                </div>
               ) : connectionState === 'DISCONNECTED' ? (
                   <div className="z-10 text-center text-slate-400 bg-black/40 p-4 md:p-8 rounded-2xl border border-white/5">
                     <FiWifiOff size={40} md:size={56} className="mx-auto text-slate-600 mb-2 md:mb-4 opacity-90" />
-                    <p className="text-sm md:text-lg font-bold text-slate-200">Stream Offline</p>
-                    <p className="text-xs font-medium mt-1">Check camera connection...</p>
+                     <p className="text-sm md:text-lg font-bold text-slate-200">
+                       {engineOnline === false ? 'Python Engine Offline' : 'Camera Not Connected'}
+                     </p>
+                     <p className="text-xs font-medium mt-1">
+                       {engineOnline === false
+                         ? 'Start gesture_engine.py and wait for it to finish loading.'
+                         : 'Check the camera stream URL, credentials, and network.'}
+                     </p>
+                     <button
+                       type="button"
+                       onClick={() => {
+                         setConnectionState('RECONNECTING');
+                         setActiveStreamUrl(`${AI_BASE}/security_feed?t=${Date.now()}`);
+                       }}
+                       className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20"
+                     >
+                       <FiRefreshCw size={14} /> Retry now
+                     </button>
                   </div>
               ) : null}
           </div>
@@ -227,7 +257,7 @@ export default function SecurityMonitor() {
                      <div key={index} className="flex gap-3 items-center border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
                         <AttendanceAvatar member={log.member} />
                         <div className="min-w-0 flex-1">
-                         <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-gray-200 leading-tight truncate">{memberName}</p>
+                         <button type="button" onClick={() => log.member?.id && navigate('/members', { state: { memberId: log.member.id } })} className="truncate text-left text-xs font-bold leading-tight text-slate-800 dark:text-gray-200 md:text-sm">{memberName}</button>
                          <p className="text-[9px] md:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5 truncate">
                            {log.time_in}
                          </p>
@@ -240,10 +270,18 @@ export default function SecurityMonitor() {
             <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
               <div className="mb-3 grid grid-cols-2 gap-2 text-[10px] font-semibold text-slate-500 dark:text-gray-400">
                 <span>Source: <span className="text-slate-800 dark:text-gray-200">{getCameraSourceLabel(cameraSource)}</span></span>
-                <span>FPS: <span className="text-slate-800 dark:text-gray-200">{cameraFps === null ? '--' : cameraFps.toFixed(1)}</span></span>
-                <span className="col-span-2">{cameraStatusError ? 'Camera status unavailable' : 'Camera status connected'}</span>
+                <span>FPS: <span className="text-slate-800 dark:text-gray-200">{cameraFps === null ? '--' : formatNumber(cameraFps, { maximumFractionDigits: 1 })}</span></span>
+                <span className={`col-span-2 ${engineOnline ? 'text-green-600' : 'text-red-600'}`}>
+                  {engineOnline === false
+                    ? 'Python engine offline'
+                    : cameraStatusError
+                      ? 'Camera status unavailable'
+                      : cameraConnectedRef.current
+                        ? 'Camera connected'
+                        : 'Camera connecting / unavailable'}
+                </span>
               </div>
-              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-gray-200 dark:hover:bg-[#252830] rounded-xl transition-all">
+              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Memberships' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-gray-200 dark:hover:bg-[#252833] rounded-xl transition-all">
                 Full Log <FiArrowRight />
               </button>
             </div>

@@ -9,6 +9,7 @@ import AlertDialog from '../components/ui/AlertDialog';
 
 export default function Members() {
   const location = useLocation();
+  const openedMemberIdRef = React.useRef(null);
   const {
     filteredMembers,
     isLoading,
@@ -35,6 +36,16 @@ export default function Members() {
     handleDeleteMember,
     showAlert
   } = useMembers();
+
+  React.useEffect(() => {
+    const requestedMemberId = location.state?.memberId;
+    if (!requestedMemberId || openedMemberIdRef.current === requestedMemberId) return;
+    const member = filteredMembers.find(item => String(item.id) === String(requestedMemberId));
+    if (member) {
+      openedMemberIdRef.current = requestedMemberId;
+      handleViewProfile(member);
+    }
+  }, [location.state?.memberId, filteredMembers, handleViewProfile]);
 
   React.useEffect(() => {
     if (location.state?.searchTerm) setSearchTerm(location.state.searchTerm);

@@ -27,8 +27,8 @@ export default function Transactions() {
     totalIncome,
     totalRefunds,
     netRevenue,
-    pendingAmount,
     handlePlanSelection,
+    handleAmountChange,
     handleOpenAddModal,
     handleRefundTransaction,
     handleSaveTransaction,
@@ -57,7 +57,6 @@ export default function Transactions() {
             totalIncome={totalIncome}
             totalRefunds={totalRefunds}
             netRevenue={netRevenue}
-            pendingAmount={pendingAmount}
           />
 
           <TransactionTable
@@ -85,6 +84,7 @@ export default function Transactions() {
             onClose={() => setIsModalOpen(false)}
             onSave={handleSaveTransaction}
             onPlanSelection={handlePlanSelection}
+            onAmountChange={handleAmountChange}
           />
 
           <ConfirmDialog

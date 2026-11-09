@@ -11,6 +11,7 @@ class PackageCategoryManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsAdmin();
 
         Schema::create('plans', function (Blueprint $table) {
             $table->id();

@@ -3,7 +3,12 @@ import mediapipe as mp
 import numpy as np
 import pandas as pd
 import os
+import sys
 import time
+
+# Load CCTV_COLLECT_URL / CCTV_URL from the git-ignored "Gesture Engine/.env".
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import env_loader  # noqa: E402,F401
 
 # Force TCP for CCTV
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay"
@@ -12,7 +17,9 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffe
 # Change this variable to the name of the exercise you are about to perform!
 EXERCISE_NAME = "IDLE"  
 FRAMES_TO_COLLECT = 300 # It will record 300 frames of you doing the exercise
-CCTV_URL = 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102'
+# Low-latency sub-stream (Channels/102). Contains the camera password, so it
+# comes from the environment / .env only.
+CCTV_URL = os.getenv('CCTV_COLLECT_URL') or os.getenv('CCTV_URL', '')
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
@@ -24,9 +31,9 @@ print(f"⚠️ GET READY! Starting data collection for {EXERCISE_NAME} in 5 seco
 time.sleep(5)
 
 # Open the Camera (Try CCTV Sub-stream first, fallback to Webcam)
-print(f"Connecting to CCTV ({CCTV_URL})...")
-cap = cv2.VideoCapture(CCTV_URL, cv2.CAP_FFMPEG)
-if not cap.isOpened():
+print("Connecting to CCTV...")
+cap = cv2.VideoCapture(CCTV_URL, cv2.CAP_FFMPEG) if CCTV_URL else None
+if cap is None or not cap.isOpened():
     print("⚠️ CCTV not accessible. Falling back to local Webcam (Index 0)...")
     cap = cv2.VideoCapture(0)
 

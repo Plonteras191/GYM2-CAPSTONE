@@ -4,6 +4,41 @@ import {
   FiPrinter, FiUser, FiLoader, FiX
 } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
+import { getMediaUrl } from '../../../utils/mediaUrl';
+import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
+import { useNavigate } from 'react-router-dom';
+import { getPackageDetails } from '../../../utils/packageDisplay';
+import { formatNumber } from '../../../utils/numberFormat';
+import StyledSelect from '../../../components/ui/StyledSelect';
+
+const getMemberInitials = (member) => `${member?.first_name?.[0] || ''}${member?.last_name?.[0] || ''}`.toUpperCase();
+
+function MemberDetails({ member, snapshot, profilePicSnapshot, emailSnapshot }) {
+  const navigate = useNavigate();
+  const memberName = member ? `${member.first_name} ${member.last_name}` : snapshot;
+  const profilePic = member?.profile_pic || profilePicSnapshot;
+  const initials = (memberName || '?').trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
+  const content = (
+    <>
+      {profilePic ? (
+        <img src={getMediaUrl(profilePic)} alt="" className="h-10 w-10 shrink-0 rounded-full border-2 border-gray-300 object-cover dark:border-gray-600" />
+      ) : (
+        <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-xs font-bold text-slate-700 dark:border-gray-600 dark:bg-[#191b22] dark:text-gray-300">
+          {memberName ? initials : <FiUser size={15} />}
+        </div>
+      )}
+      <div className="min-w-0">
+        <span className={`block truncate font-semibold ${memberName ? 'text-slate-800 dark:text-gray-300' : 'italic text-amber-600 dark:text-amber-500'}`}>
+          {memberName || 'Walk-in Guest'}
+        </span>
+        {(member?.email || emailSnapshot) && <span className="mt-0.5 block truncate text-xs font-normal text-slate-500 dark:text-gray-400">{member?.email || emailSnapshot}</span>}
+      </div>
+    </>
+  );
+  return member?.id
+    ? <button type="button" onClick={() => navigate('/members', { state: { memberId: member.id } })} className="flex min-w-0 items-center gap-3 text-left">{content}</button>
+    : <div className="flex min-w-0 items-center gap-3">{content}</div>;
+}
 
 export default function TransactionTable({
   transactions,
@@ -39,7 +74,7 @@ export default function TransactionTable({
     switch (status) {
       case 'Complete': return `${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`;
       case 'Pending': return `${base} bg-amber-50 text-amber-700 border-amber-500 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/50`;
-      case 'Refunded': return `${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`;
+      case 'Refunded': return `${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`;
       case 'Failed': return `${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`;
       default: return `${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`;
     }
@@ -79,17 +114,17 @@ export default function TransactionTable({
               </button>
             )}
           </div>
-          <select
+          <StyledSelect
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               aria-label="Filter transactions"
-              className="w-full sm:w-auto px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
+              className="w-full sm:min-w-[10rem] sm:w-auto px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
             >
-              <option value="All">All Packages</option>
+              <option value="All">All Transactions</option>
               <option value="Subscription">Subscriptions</option>
               <option value="Walk-In">Walk-Ins</option>
               <option value="Refund">Refunds</option>
-            </select>
+            </StyledSelect>
         </div>
 
         <div className="grid w-full grid-cols-3 gap-2 lg:w-[34rem]">
@@ -113,18 +148,18 @@ export default function TransactionTable({
       <div className="bg-white dark:bg-[#252833] rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm overflow-hidden flex flex-col">
         <div className="flex min-w-0 items-center gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-600 dark:bg-[#191b22]/50">
           <FiList size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
-          <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Recent Transactions</h3>
+          <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Total Transactions</h3>
           <span className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
             {transactions.length.toLocaleString()}
           </span>
         </div>
 
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[1100px] table-fixed border-collapse text-left">
+        <div className="hidden overflow-hidden xl:block">
+          <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
               <col className="w-[15%]" />
-              <col className="w-[17%]" />
-              <col className="w-[21%]" />
+              <col className="w-[20%]" />
+              <col className="w-[18%]" />
               <col className="w-[10%]" />
               <col className="w-[11%]" />
               <col className="w-[11%]" />
@@ -132,13 +167,13 @@ export default function TransactionTable({
             </colgroup>
             <thead>
               <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
-                <th className="px-3.5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Txn ID & Date</th>
-                <th className="px-3.5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member</th>
-                <th className="px-3.5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Details</th>
-                <th className="px-3.5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Method</th>
-                <th className="px-3.5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Amount</th>
-                <th className="px-3.5 py-3.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Status</th>
-                <th className="px-3.5 py-3.5 text-right text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Actions</th>
+                <th className="whitespace-nowrap px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Txn ID & Date</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member Details</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Details</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Method</th>
+                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Amount</th>
+                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Payment Status</th>
+                <th className="px-3 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
@@ -161,29 +196,34 @@ export default function TransactionTable({
               ) : (
                 currentTxns.map((txn) => (
                   <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group">
-                    <td className="overflow-hidden px-3.5 py-3.5 whitespace-nowrap">
-                      <div className="font-bold text-slate-900 dark:text-gray-300">{txn.transaction_id}</div>
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">{txn.transaction_date}</div>
+                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
+                      <div className="truncate text-sm font-bold text-slate-900 dark:text-gray-300">{txn.transaction_id}</div>
+                      <div className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-gray-400">{txn.transaction_date}</div>
                     </td>
-                    <td className="overflow-hidden px-3.5 py-3.5 font-semibold text-slate-800 dark:text-gray-300 whitespace-nowrap truncate">
-                      {txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : <span className="flex items-center gap-1 text-amber-600 dark:text-amber-500 italic"><FiUser size={14} /> Walk-in Guest</span>}
+                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
+                      <MemberDetails
+                        member={txn.member}
+                        snapshot={txn.member_name_snapshot}
+                        profilePicSnapshot={txn.member_profile_pic_snapshot}
+                        emailSnapshot={txn.member_email_snapshot}
+                      />
                     </td>
-                    <td className="overflow-hidden px-3.5 py-3.5 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-slate-800 dark:text-gray-300">{txn.type}</div>
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">{txn.description || '-'}</div>
+                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
+                      <div className="truncate text-sm font-bold text-black dark:text-gray-300">{getPackageDetails(txn).title}</div>
+                      <div className="mt-0.5 truncate text-xs font-semibold text-slate-500 dark:text-gray-400">{getPackageDetails(txn).category}</div>
                     </td>
-                    <td className="overflow-hidden px-3.5 py-3.5 whitespace-nowrap">
-                      <span className={getMethodBadge(txn.payment_method)}>{txn.payment_method}</span>
+                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
+                      <span className={getMethodBadge(txn.payment_method)}>{getPaymentMethodLabel(txn.payment_method)}</span>
                     </td>
-                    <td className="overflow-hidden px-3.5 py-3.5 whitespace-nowrap">
-                      <div className={`font-normal text-lg tracking-tight ${Number(txn.amount) > 0 ? 'text-slate-800 dark:text-gray-300' : 'text-red-500'}`}>
-                        {Number(txn.amount) > 0 ? `\u20B1 ${Number(txn.amount).toLocaleString()}` : `-\u20B1 ${Math.abs(Number(txn.amount)).toLocaleString()}`}
+                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
+                      <div className={`font-normal text-lg tracking-tight ${txn.status === 'Refunded' || Number(txn.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-gray-300'}`}>
+                        {Number(txn.amount) > 0 ? `\u20B1 ${formatNumber(Number(txn.amount))}` : `-\u20B1 ${formatNumber(Math.abs(Number(txn.amount)))}`}
                       </div>
                     </td>
-                    <td className="overflow-hidden px-3.5 py-3.5 whitespace-nowrap">
+                    <td className="overflow-hidden px-3 py-3 text-center whitespace-nowrap">
                       <span className={getStatusBadge(txn.status)}>{txn.status}</span>
                     </td>
-                    <td className="overflow-hidden space-x-2 px-3.5 py-3.5 text-right whitespace-nowrap">
+                    <td className="overflow-hidden space-x-2 px-3 py-3 text-right whitespace-nowrap">
                       {txn.status === 'Complete' && txn.type !== 'Refund' && (
                         <button
                           onClick={() => onRefundTransaction(txn)}
@@ -209,7 +249,7 @@ export default function TransactionTable({
           </table>
         </div>
 
-        <div className="space-y-3 p-3 md:hidden">
+        <div className="space-y-3 p-3 xl:hidden">
           {isLoading ? (
             <p role="status" className="py-8 text-center text-sm font-semibold text-slate-500 dark:text-gray-400">Loading transactions…</p>
           ) : currentTxns.length === 0 ? (
@@ -218,17 +258,40 @@ export default function TransactionTable({
             <article key={txn.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#393e4f] dark:bg-[#1b1e26]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-bold text-slate-900 dark:text-gray-200">{txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-in Guest'}</p>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-gray-400">{txn.transaction_id} · {txn.transaction_date}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    {(txn.member?.profile_pic || txn.member_profile_pic_snapshot) ? (
+                      <img src={getMediaUrl(txn.member?.profile_pic || txn.member_profile_pic_snapshot)} alt="" className="h-10 w-10 shrink-0 rounded-full border border-slate-300 object-cover dark:border-[#393e4f]" />
+                    ) : txn.member ? (
+                      <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-xs font-bold text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">{getMemberInitials(txn.member)}</div>
+                    ) : (
+                      <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-500/10 dark:text-amber-400"><FiUser size={16} /></div>
+                    )}
+                    <div className="min-w-0">
+                      {txn.member?.id ? (
+                        <button type="button" onClick={() => navigate('/members', { state: { memberId: txn.member.id } })} className="truncate text-left font-semibold text-slate-900 dark:text-gray-200">
+                          {txn.member.first_name} {txn.member.last_name}
+                        </button>
+                      ) : (
+                        <p className="truncate font-semibold text-slate-900 dark:text-gray-200">
+                          {txn.member_name_snapshot || (txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-in Guest')}
+                        </p>
+                      )}
+                      {(txn.member?.email || txn.member_email_snapshot) && <p className="truncate text-xs text-slate-500 dark:text-gray-400">{txn.member?.email || txn.member_email_snapshot}</p>}
+                    </div>
+                  </div>
+                  <div className="mt-1 min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900 dark:text-gray-300">{txn.transaction_id}</p>
+                    <p className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-gray-400">{txn.transaction_date}</p>
+                  </div>
                 </div>
-                <span className={`shrink-0 font-bold ${Number(txn.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-gray-200'}`}>
-                  {Number(txn.amount) < 0 ? '-' : ''}₱{Math.abs(Number(txn.amount)).toLocaleString()}
+                <span className={`shrink-0 font-bold ${txn.status === 'Refunded' || Number(txn.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-gray-200'}`}>
+                  {Number(txn.amount) < 0 ? '-' : ''}₱{formatNumber(Math.abs(Number(txn.amount)))}
                 </span>
               </div>
-              <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-gray-300">{txn.type}</p>
-              {txn.description && <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">{txn.description}</p>}
+              <p className="mt-2 text-sm font-bold text-black dark:text-gray-300">{getPackageDetails(txn).title}</p>
+              <p className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-gray-400">{getPackageDetails(txn).category}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className={getMethodBadge(txn.payment_method)}>{txn.payment_method}</span>
+                <span className={getMethodBadge(txn.payment_method)}>{getPaymentMethodLabel(txn.payment_method)}</span>
                 <span className={getStatusBadge(txn.status)}>{txn.status}</span>
               </div>
               <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-[#393e4f]">

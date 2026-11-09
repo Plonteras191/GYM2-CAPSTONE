@@ -12,17 +12,22 @@ class TransactionRefundTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsAdmin();
 
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->string('transaction_id')->unique();
             $table->date('transaction_date');
             $table->unsignedBigInteger('member_id')->nullable();
+            $table->string('member_name_snapshot')->nullable();
+            $table->string('member_profile_pic_snapshot')->nullable();
             $table->unsignedBigInteger('membership_id')->nullable();
             $table->string('type');
             $table->string('description')->nullable();
             $table->string('payment_method');
             $table->decimal('amount', 10, 2);
+            $table->string('package_name_snapshot')->nullable();
+            $table->string('package_category_snapshot')->nullable();
             $table->string('status')->default('Complete');
             $table->string('reference_number')->nullable();
             $table->timestamps();
@@ -71,6 +76,8 @@ class TransactionRefundTest extends TestCase
             'transaction_id' => 'TXN-002',
             'type' => 'Refund',
             'description' => 'Refund for TXN-001',
+            'package_name_snapshot' => null,
+            'package_category_snapshot' => null,
             'amount' => '-1250.00',
             'status' => 'Complete',
         ]);
@@ -123,5 +130,32 @@ class TransactionRefundTest extends TestCase
         $this->assertDatabaseCount('transactions', 3);
         $this->assertDatabaseMissing('transactions', ['status' => 'Pending']);
         $this->assertDatabaseMissing('transactions', ['status' => 'Failed']);
+    }
+
+    public function test_transaction_amount_must_be_within_the_package_price_limit(): void
+    {
+        $planId = \Illuminate\Support\Facades\DB::table('plans')->insertGetId([
+            'name' => 'Monthly',
+            'price' => 150,
+            'duration_days' => 30,
+            'category' => 'normal',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $transactionData = [
+            'plan_id' => $planId,
+            'payment_method' => 'Cash',
+        ];
+
+        $this->postJson('/api/transactions', [...$transactionData, 'amount' => -1])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('amount');
+        $this->postJson('/api/transactions', [...$transactionData, 'amount' => 10000000])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('amount');
+
+        $response = $this->postJson('/api/transactions', [...$transactionData, 'amount' => 9999999.99])
+            ->assertCreated();
+        $this->assertSame(9999999.99, (float) $response->json('transaction.amount'));
     }
 }

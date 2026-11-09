@@ -13,6 +13,9 @@ class Membership extends Model
 
     protected $fillable = [
         'member_id',
+        'member_name_snapshot',
+        'member_profile_pic_snapshot',
+        'member_email_snapshot',
         'plan_id',
         'plan_type',
         'start_date',
@@ -32,6 +35,11 @@ class Membership extends Model
     public function plan()
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 
     public function scopeActiveWithCoach(Builder $query): Builder

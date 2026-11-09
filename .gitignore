@@ -30,3 +30,11 @@ Gesture Engine/__pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Member photos and biometric face images (personal data - never commit)
+backend/public/faces/
+backend/public/profiles/
+
+# Notes that contain camera passwords
+DOCUMENTATION/Updated Current Plan For Development/OpenSesami.md
+DOCUMENTATION/Updated Current Plan For Development/Reminder.md

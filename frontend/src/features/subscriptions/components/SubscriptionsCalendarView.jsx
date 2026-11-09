@@ -11,6 +11,7 @@ import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 import CalendarCategoryFilters from './CalendarCategoryFilters';
 import { getActivePackageCategoryOptions, getCoachEventCategoryOptions, getPackageColor } from '../packageCategories';
 import { getCalendarEventTextColor } from '../../../utils/calendarContrast';
+import { getLocalDateString } from '../../../utils/dateFormat';
 
 export default function SubscriptionsCalendarView({
   subscriptions,
@@ -30,7 +31,8 @@ export default function SubscriptionsCalendarView({
   onDeleteCoachEvent,
   deletingEventId,
   onDateClick,
-  calendarOnly = false
+  calendarOnly = false,
+  readOnly = false
 }) {
   const calendarRef = React.useRef(null);
   const [calendarTitle, setCalendarTitle] = React.useState('');
@@ -39,7 +41,7 @@ export default function SubscriptionsCalendarView({
   const [selectedDay, setSelectedDay] = React.useState(null);
   const [selectedDayEvents, setSelectedDayEvents] = React.useState([]);
   const [openActionsEventId, setOpenActionsEventId] = React.useState(null);
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const allCalendarEvents = [];
   const categoryIsVisible = (category, selected) =>
     selected === null || selected.includes(category);
@@ -92,16 +94,13 @@ export default function SubscriptionsCalendarView({
 
   if (showCoachEvents) {
     coachEvents.forEach(event => {
-      const endDate = new Date(event.end_date || event.start_date);
-      endDate.setDate(endDate.getDate() + 1);
       const color = event.category?.color || event.color || '#3b82f6';
       if (!categoryIsVisible(event.category?.name || 'General', selectedCoachCategories)) return;
       allCalendarEvents.push({
         id: `coach-${event.id}`,
         title: event.title,
         start: event.start_date,
-        end: event.start_date !== event.end_date ? endDate.toISOString().split('T')[0] : undefined,
-        date: event.start_date === event.end_date ? event.start_date : undefined,
+        date: event.start_date,
         allDay: true,
         backgroundColor: color,
         borderColor: color,
@@ -124,7 +123,8 @@ export default function SubscriptionsCalendarView({
 
   const getEventsForDate = (date) => allCalendarEvents.filter(event => {
     const start = event.start || event.date;
-    return start && start <= date && (!event.end || date < event.end);
+    if (!start) return false;
+    return event.end ? start <= date && date < event.end : start === date;
   });
 
   const toDaySheetEvent = (event) => {
@@ -196,7 +196,7 @@ export default function SubscriptionsCalendarView({
       openDayDetails(info.dateStr, dayEvents);
       return;
     }
-    onDateClick(info);
+    if (!readOnly) onDateClick?.(info);
   };
 
   return (
@@ -362,9 +362,9 @@ export default function SubscriptionsCalendarView({
           title={calendarTitle}
           onPrevious={() => calendarRef.current?.getApi().prev()}
           onNext={() => calendarRef.current?.getApi().next()}
-          actionLabel={calendarOnly ? undefined : 'Add Event'}
-          actionIcon={calendarOnly ? undefined : <FiPlus size={20} />}
-          onAction={calendarOnly ? undefined : onOpenEventModal}
+          actionLabel={calendarOnly || readOnly ? undefined : 'Add Event'}
+          actionIcon={calendarOnly || readOnly ? undefined : <FiPlus size={20} />}
+          onAction={calendarOnly || readOnly ? undefined : onOpenEventModal}
           views={[{ id: 'dayGridMonth', label: 'Month' }, { id: 'listWeek', label: 'List' }]}
           activeView={calendarView}
           onViewChange={view => calendarRef.current?.getApi().changeView(view)}
@@ -436,9 +436,9 @@ export default function SubscriptionsCalendarView({
               <FiCalendar size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
               <span className="truncate">Coach Events</span>
             </h3>
-            <button onClick={onOpenEventModal} aria-label="Add Event" title="Add Event" className="flex min-h-[36px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed">
+            {!readOnly && <button onClick={onOpenEventModal} aria-label="Add Event" title="Add Event" className="flex min-h-[36px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed">
               <FiPlus size={16} strokeWidth={3} /> <span className="sr-only sm:not-sr-only">Add Event</span>
-            </button>
+            </button>}
           </div>
           <div
             aria-label="Upcoming coach events"
@@ -479,7 +479,7 @@ export default function SubscriptionsCalendarView({
                     <span className="mt-1.5 rounded-md bg-slate-100 px-1.5 py-1 text-[8px] font-bold text-slate-600 dark:bg-slate-800 dark:text-gray-400">{formatTime(event.start_time)}</span>
                   </div>
                   <div className="relative shrink-0 border-l border-slate-100 pl-2 dark:border-[#2d3240]">
-                    <button
+                    {!readOnly && <button
                       type="button"
                       onClick={() => setOpenActionsEventId(openActionsEventId === event.id ? null : event.id)}
                       title="Event actions"
@@ -488,7 +488,7 @@ export default function SubscriptionsCalendarView({
                       className="inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-slate-700 shadow-sm transition-colors hover:border-amber-500 hover:bg-amber-50 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-gray-200 dark:hover:bg-amber-500/10"
                     >
                       <FiMoreVertical size={18} />
-                    </button>
+                    </button>}
                     {openActionsEventId === event.id && (
                       <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1 rounded-xl border-2 border-gray-300 bg-white p-1.5 shadow-xl dark:border-gray-600 dark:bg-[#191b22]">
                         <button
@@ -499,11 +499,11 @@ export default function SubscriptionsCalendarView({
                           }}
                           title="View event"
                           aria-label={`View ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-blue-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-500 hover:bg-blue-50 dark:border-[#393e4f] dark:bg-[#252830] dark:text-blue-300 dark:hover:bg-blue-500/10"
                         >
                           <FiEye size={16} />
                         </button>
-                        <button
+                        {!readOnly && <button
                           type="button"
                           onClick={() => {
                             onEditCoachEvent(event);
@@ -511,11 +511,11 @@ export default function SubscriptionsCalendarView({
                           }}
                           title="Edit event"
                           aria-label={`Edit ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-amber-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-500 hover:bg-amber-50 dark:border-[#393e4f] dark:bg-[#252830] dark:text-amber-300 dark:hover:bg-amber-500/10"
                         >
                           <FiEdit2 size={16} />
-                        </button>
-                        <button
+                        </button>}
+                        {!readOnly && <button
                           type="button"
                           onClick={() => {
                             onDeleteCoachEvent(event.id);
@@ -524,10 +524,10 @@ export default function SubscriptionsCalendarView({
                           disabled={deletingEventId === event.id}
                           title="Delete event"
                           aria-label={`Delete ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-red-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-red-500 hover:bg-red-50 disabled:opacity-50 dark:border-[#393e4f] dark:bg-[#252830] dark:text-red-300 dark:hover:bg-red-500/10"
                         >
                           {deletingEventId === event.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} />}
-                        </button>
+                        </button>}
                       </div>
                     )}
                   </div>
@@ -541,14 +541,14 @@ export default function SubscriptionsCalendarView({
         date={selectedDay}
         events={selectedDayEvents}
         onClose={() => setSelectedDay(null)}
-        onEditCoachEvent={event => {
+        onEditCoachEvent={!readOnly ? event => {
           const coachEvent = coachEvents.find(item => String(item.id) === String(event.id));
           if (coachEvent) {
             setSelectedDay(null);
             onEditCoachEvent(coachEvent);
           }
-        }}
-        onDeleteCoachEvent={onDeleteCoachEvent}
+        } : undefined}
+        onDeleteCoachEvent={!readOnly ? onDeleteCoachEvent : undefined}
         deletingEventId={deletingEventId}
       />
       <CalendarHoverPopover

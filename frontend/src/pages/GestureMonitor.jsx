@@ -1,23 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { FiMaximize, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiCamera } from 'react-icons/fi';
 import api from '../api';
+import { AI_BASE, aiEngineFetch } from '../utils/aiEngine';
 import { getCameraSourceLabel } from '../utils/cameraSourceLabel';
+import { useNavigate } from 'react-router-dom';
+import { formatNumber } from '../utils/numberFormat';
 
 export default function GestureMonitor() {
+  const navigate = useNavigate();
   const [connectionState, setConnectionState] = useState('CONNECTING'); 
-  const AI_BASE = import.meta.env.VITE_AI_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? `http://${window.location.hostname}:5000` : 'http://127.0.0.1:5000');
   const [activeStreamUrl, setActiveStreamUrl] = useState(`${AI_BASE}/gesture_feed?t=${new Date().getTime()}`);
   const [cameraSource, setCameraSource] = useState('cctv');
   const [availableCameraSources, setAvailableCameraSources] = useState(['cctv', 'webcam']);
   
   const [cameraFps, setCameraFps] = useState(null);
   const [cameraStatusError, setCameraStatusError] = useState(false);
+  const [engineOnline, setEngineOnline] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
   
   // --- NEW: Custom Alert Modal ---
   const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'success' });
 
   const containerRef = useRef(null);
+  const cameraConnectedRef = useRef(false);
   const reconnectCamera = () => {
     setConnectionState('CONNECTING');
     setActiveStreamUrl(`${AI_BASE}/gesture_feed?t=${Date.now()}`);
@@ -40,7 +45,7 @@ export default function GestureMonitor() {
 
   const handleSyncAI = async () => {
     try {
-      const res = await fetch(`${AI_BASE}/refresh_ai`, { method: 'POST' });
+      const res = await aiEngineFetch('/refresh_ai', { method: 'POST' });
       if (res.ok) {
         setAlertDialog({ isOpen: true, title: 'Sync Complete', message: 'AI Memory successfully synced with the Database!', type: 'success' });
       } else {
@@ -54,7 +59,7 @@ export default function GestureMonitor() {
   const handleCameraChange = async (event) => {
     const nextSource = event.target.value;
     try {
-      const res = await fetch(`${AI_BASE}/switch_camera`, {
+      const res = await aiEngineFetch('/switch_camera', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: nextSource })
@@ -74,24 +79,34 @@ export default function GestureMonitor() {
 
   useEffect(() => {
     const fetchCameraStatus = async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
       try {
-        const response = await fetch(`${AI_BASE}/camera_status`);
+        const response = await fetch(`${AI_BASE}/camera_status`, { signal: controller.signal });
         if (!response.ok) throw new Error('Camera status request failed.');
         const d = await response.json();
         if (d.source) setCameraSource(d.source);
         if (Array.isArray(d.available_sources)) setAvailableCameraSources(d.available_sources);
         setCameraFps(Number.isFinite(d.fps) ? d.fps : null);
+        cameraConnectedRef.current = Boolean(d.connected);
+        setEngineOnline(true);
+        setConnectionState(d.connected ? 'LIVE' : 'DISCONNECTED');
         setCameraStatusError(false);
       } catch {
+        cameraConnectedRef.current = false;
+        setEngineOnline(false);
         setCameraFps(null);
         setCameraStatusError(true);
+        setConnectionState('DISCONNECTED');
+      } finally {
+        clearTimeout(timeout);
       }
     };
 
     fetchCameraStatus();
-    const statusInterval = setInterval(fetchCameraStatus, 2000);
+    const statusInterval = setInterval(fetchCameraStatus, 3000);
     return () => clearInterval(statusInterval);
-  }, [AI_BASE]);
+  }, []);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -137,7 +152,7 @@ export default function GestureMonitor() {
             <img 
               src={activeStreamUrl} 
               alt="Live AI Gesture Feed"
-              onLoad={() => setConnectionState('LIVE')}
+              onLoad={() => setConnectionState(cameraConnectedRef.current ? 'LIVE' : 'DISCONNECTED')}
               onError={() => {
                 setConnectionState('DISCONNECTED');
                 setTimeout(() => {
@@ -151,13 +166,19 @@ export default function GestureMonitor() {
             {connectionState === 'CONNECTING' ? (
               <div className="z-10 flex flex-col items-center justify-center gap-4 text-slate-400">
                 <FiLoader size={48} className="text-amber-500 animate-spin" />
-                <p className="font-bold uppercase tracking-widest text-xs">Waiting for Python Engine...</p>
+                <p className="font-bold uppercase tracking-widest text-xs">Connecting to camera...</p>
               </div>
             ) : connectionState === 'DISCONNECTED' ? (
               <div className="z-10 text-center text-slate-400 bg-black/40 p-4 md:p-8 rounded-2xl border border-white/5">
                 <FiWifiOff size={40} md:size={56} className="mx-auto text-slate-600 mb-2 md:mb-4 opacity-90" />
-                <p className="text-sm md:text-lg font-bold text-slate-200">Connection Lost</p>
-                <p className="text-xs font-medium mt-1">Auto-reconnecting...</p>
+                <p className="text-sm md:text-lg font-bold text-slate-200">
+                  {engineOnline === false ? 'Python Engine Offline' : 'Camera Not Connected'}
+                </p>
+                <p className="text-xs font-medium mt-1">
+                  {engineOnline === false
+                    ? 'Start gesture_engine.py and wait for it to finish loading.'
+                    : 'Check the camera stream URL, credentials, and network.'}
+                </p>
                 <button type="button" onClick={reconnectCamera} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20">
                   <FiRefreshCw size={14} /> Retry now
                 </button>
@@ -202,7 +223,7 @@ export default function GestureMonitor() {
                   <div key={log.id} className="flex gap-4 items-start relative pb-4 border-b border-gray-200 dark:border-gray-700 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
                     <div className="text-[10px] md:text-[11px] font-mono font-bold text-gray-600 dark:text-gray-400 mt-0.5 w-[65px] md:w-[72px] flex-shrink-0">{log.time}</div>
                     <div>
-                      <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-gray-200 leading-tight">{log.name}</p>
+                      <button type="button" onClick={() => log.member_id && navigate('/members', { state: { memberId: log.member_id } })} className="text-left text-xs font-bold leading-tight text-gray-900 dark:text-gray-200 md:text-sm">{log.name}</button>
                       <p className={`text-[10px] md:text-xs font-medium mt-1 ${log.event.includes('Pending') ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`}>
                         {log.event}
                       </p>
@@ -214,12 +235,20 @@ export default function GestureMonitor() {
             
             <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
               <div className="flex justify-between items-center text-[10px] md:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-2">Camera FPS: <span className={`${connectionState === 'LIVE' ? 'text-slate-800 dark:text-gray-300' : 'text-slate-400'}`}>{connectionState === 'LIVE' && cameraFps !== null ? cameraFps.toFixed(1) : '--'}</span></span>
-                <span className={`${connectionState === 'LIVE' ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'} flex items-center gap-1.5`}>API Status: {connectionState === 'LIVE' ? 'OK' : 'OFFLINE'}</span>
+                <span className="flex items-center gap-2">Camera FPS: <span className={`${connectionState === 'LIVE' ? 'text-slate-800 dark:text-gray-300' : 'text-slate-400'}`}>{connectionState === 'LIVE' && cameraFps !== null ? formatNumber(cameraFps, { maximumFractionDigits: 1 }) : '--'}</span></span>
+                <span className={`${engineOnline ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'} flex items-center gap-1.5`}>
+                  API: {engineOnline === null ? 'CHECKING' : engineOnline ? 'ONLINE' : 'OFFLINE'}
+                </span>
               </div>
               <div className="mt-2 flex flex-wrap justify-between gap-1 text-[10px] font-semibold text-slate-500 dark:text-gray-400">
                 <span>Source: {getCameraSourceLabel(cameraSource)}</span>
-                <span>{cameraStatusError ? 'Status unavailable' : 'Status connected'}</span>
+                <span>
+                  {cameraStatusError
+                    ? 'Camera status unavailable'
+                    : cameraConnectedRef.current
+                      ? 'Camera connected'
+                      : 'Camera connecting / unavailable'}
+                </span>
               </div>
             </div>
           </div>

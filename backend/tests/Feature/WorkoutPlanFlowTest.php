@@ -13,6 +13,7 @@ class WorkoutPlanFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsAdmin()->withAiEngineToken();
 
         Schema::create('members', function (Blueprint $table) {
             $table->id();

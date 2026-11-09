@@ -20,21 +20,30 @@ class DashboardController extends Controller
         $netRevenue = $totalIncome - abs($totalRefunds);
 
         $totalMembers = Member::count();
-        $activeSubs = Membership::where('status', 'Active')->count();
+        $activeSubs = Membership::where('status', 'Active')
+            ->whereNotNull('member_id')
+            ->count();
 
         // 2. Recent Activity (Middle Grid)
         $recentMembers = Member::orderBy('created_at', 'desc')->take(8)->get();
-        $recentTxns = Transaction::with('member:id,first_name,last_name')->orderBy('created_at', 'desc')->take(5)->get();
+        $recentTxns = Transaction::with([
+            'member:id,first_name,last_name',
+            'membership:id,plan_type,plan_id',
+            'membership.plan:id,name,category,category_detail',
+        ])->orderBy('created_at', 'desc')->take(5)->get();
 
         // 3. Expiring Soon Alerts
         $expiringSoon = Membership::with('member:id,first_name,last_name')
             ->where('status', 'Active')
+            ->whereNotNull('member_id')
             ->whereBetween('end_date', [Carbon::now(), Carbon::now()->addDays(7)])
             ->orderBy('end_date', 'asc')
             ->get();
 
         // 4. Calendar Events (Pulling directly from Subscriptions)
-        $calendarEvents = Membership::with('member:id,first_name,last_name')->get();
+        $calendarEvents = Membership::with('member:id,first_name,last_name')
+            ->whereNotNull('member_id')
+            ->get();
 
         // 5. Dynamic Sales Chart (Last 6 Months of Revenue)
         $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
@@ -81,6 +90,7 @@ class DashboardController extends Controller
         // ── ALERT TYPE 1: Subscriptions Expiring Within 7 Days ──────────────
         $expiringSoon = Membership::with('member:id,first_name,last_name')
             ->where('status', 'Active')
+            ->whereNotNull('member_id')
             ->whereBetween('end_date', [$today->toDateString(), $today->copy()->addDays(7)->toDateString()])
             ->orderBy('end_date', 'asc')
             ->get();
@@ -102,11 +112,12 @@ class DashboardController extends Controller
         // ── ALERT TYPE 2: Active Members With No Valid Subscription ──────────
         $activeMembers = Member::where('status', 'Active')->get();
         $activeSubMemberIds = Membership::where('status', 'Active')
+            ->whereNotNull('member_id')
             ->where('end_date', '>=', $today->toDateString())
             ->pluck('member_id')
             ->toArray();
 
-        $oneMonthAgo = Carbon::now()->subDays(30);
+        $oneMonthAgo = Carbon::now()->subMonth();
         foreach ($activeMembers as $member) {
             if (!in_array($member->id, $activeSubMemberIds)) {
                 if ($member->created_at < $oneMonthAgo) {

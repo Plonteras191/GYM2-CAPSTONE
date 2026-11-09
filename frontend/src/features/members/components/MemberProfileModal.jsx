@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  FiX, FiMapPin, FiPhone, FiActivity, FiChevronLeft, FiChevronRight,
+  FiX, FiMapPin, FiPhone, FiCalendar, FiActivity, FiChevronLeft, FiChevronRight,
   FiChevronDown, FiChevronUp, FiLock
 } from 'react-icons/fi';
 import FullCalendar from '@fullcalendar/react';
@@ -8,14 +8,15 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import api from '../../../api';
-import MobileCalendarToolbar from '../../../components/ui/MobileCalendarToolbar';
 import MobileCalendarDaySheet from '../../../components/ui/MobileCalendarDaySheet';
 import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 import Pagination from '../../../components/ui/Pagination';
+import StyledSelect from '../../../components/ui/StyledSelect';
+import { formatNumber } from '../../../utils/numberFormat';
 
 const getBmiInfo = (height, weight) => {
   if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500' };
-  const bmi = (weight / Math.pow(height / 100, 2)).toFixed(1);
+  const bmi = formatNumber(weight / Math.pow(height / 100, 2), { maximumFractionDigits: 1 });
   const n = parseFloat(bmi);
   if (n < 16) return { value: bmi, label: 'Severe Thinness', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
   if (n < 17) return { value: bmi, label: 'Moderate Thin', color: 'bg-orange-50 text-orange-700 border-orange-500 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/50' };
@@ -362,8 +363,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                   )}
                 </div>
                 <div className="min-w-0 text-left lg:text-center">
-                  <h2 className="text-lg lg:text-2xl font-black text-slate-900 dark:text-gray-300 tracking-tight">{member.firstName} {member.lastName}</h2>
-                  <p className="mt-0.5 border-b-2 border-gray-300 pb-3 text-[10px] font-black uppercase tracking-widest text-amber-600 dark:border-gray-600 dark:text-amber-500 lg:mt-1 lg:text-xs">{member.plan}</p>
+                  <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-gray-300 lg:text-2xl">{member.firstName} {member.lastName}</h2>
+                  <p className="mt-0.5 border-b-2 border-gray-300 pb-3 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:border-gray-600 dark:text-amber-500 lg:mt-1 lg:text-xs">{member.plan}</p>
                 </div>
               </div>
             </div>
@@ -378,6 +379,15 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                 <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
                   <FiPhone className="text-black dark:text-gray-300 flex-shrink-0" size={16} />
                   <span>{member.phone}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
+                  <FiCalendar className="text-black dark:text-gray-300 flex-shrink-0" size={16} />
+                  <span>
+                    <span className="mr-2 text-xs font-semibold text-slate-500 dark:text-gray-400">Birthday</span>
+                    {member.dob
+                      ? new Date(`${member.dob.slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                      : 'Not provided'}
+                  </span>
                 </div>
               </div>
 
@@ -563,7 +573,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .fc-theme-standard th, .fc-theme-standard td { border: none !important; border-bottom: 1px solid var(--fc-border-color) !important; }
                       .fc-theme-standard td { border-right: 1px solid var(--fc-border-color) !important; }
                       .fc-theme-standard td:last-child { border-right: none !important; }
-                      .fc-col-header-cell-cushion { font-weight: 700 !important; font-size: 0.8rem !important; text-decoration: none !important; }
+                      .fc-col-header-cell-cushion { font-weight: 700 !important; font-size: .73rem !important; letter-spacing: .06em !important; color: #64748b !important; text-transform: uppercase; text-decoration: none !important; }
+                      .dark .fc-col-header-cell-cushion { color: #aab3c2 !important; }
                       .fc-daygrid-day-number { font-weight: 800; font-size: 0.8rem; padding: 8px !important; text-decoration: none !important; color: #475569 !important; }
                       .dark .fc-daygrid-day-number { color: #cbd5e1 !important; }
                       
@@ -822,14 +833,15 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         </div>
                         <label className="block mt-2">
                           <span className="sr-only">Filter exercises by body part</span>
-                          <select 
+                          <StyledSelect
                             value={selectedBodyPart} 
                             onChange={e => { setSelectedBodyPart(e.target.value); setExercisePage(1); }} 
-                            className="w-full p-2 text-xs bg-gray-50 dark:bg-[#191b22] border border-gray-300 dark:border-[#393e4f] rounded-lg outline-none text-slate-800 dark:text-gray-100 font-medium shadow-sm focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                            aria-label="Filter exercises by body part"
+                            className="w-full rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm outline-none transition-colors hover:border-amber-400 focus:ring-2 focus:ring-amber-500 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-gray-100 dark:hover:border-amber-500"
                           >
-                            <option value="all">All body parts</option>
+                            <option value="all">All Body Parts</option>
                             {bodyPartOptions.map(bodyPart => <option key={bodyPart} value={bodyPart}>{formatExerciseName(bodyPart)}</option>)}
-                          </select>
+                          </StyledSelect>
                         </label>
                       </div>
                       <div className="p-3 flex-1 overflow-y-auto space-y-2">

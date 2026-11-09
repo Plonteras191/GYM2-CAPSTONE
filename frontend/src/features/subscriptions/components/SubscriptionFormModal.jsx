@@ -1,6 +1,10 @@
 import React from 'react';
 import { FiX, FiCheckCircle, FiSave, FiLoader, FiPlus, FiEdit2 } from 'react-icons/fi';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
+import SearchableMemberSelect from '../../../components/ui/SearchableMemberSelect.jsx';
+import StyledSelect from '../../../components/ui/StyledSelect';
+import { formatNumber } from '../../../utils/numberFormat';
+import { getLocalDateString } from '../../../utils/dateFormat';
 
 export default function SubscriptionFormModal({
   isOpen,
@@ -9,6 +13,7 @@ export default function SubscriptionFormModal({
   formData,
   setFormData,
   membersList,
+  subscriptions,
   plans,
   loyalDiscount,
   calculatedPrice,
@@ -31,6 +36,30 @@ export default function SubscriptionFormModal({
     && !p.name.toLowerCase().includes('daily')
     && !p.name.toLowerCase().includes('walk')
   );
+  const existingActiveSubscription = subscriptions.find(subscription =>
+    String(subscription.id) === String(formData.id || '')
+    || (!isEditing && String(subscription.member_id) === String(formData.member_id))
+  );
+  const activeMembership = existingActiveSubscription?.status === 'Active'
+    && (!existingActiveSubscription.start_date || existingActiveSubscription.start_date <= getLocalDateString())
+    && (!existingActiveSubscription.end_date || existingActiveSubscription.end_date >= getLocalDateString())
+    ? existingActiveSubscription
+    : null;
+  const fallbackMember = isEditing
+    ? subscriptions.find(subscription => String(subscription.id) === String(formData.id || ''))?.member
+    : null;
+  const selectedMemberLabel = fallbackMember
+    ? `${fallbackMember.first_name || ''} ${fallbackMember.last_name || ''}`.trim()
+    : isEditing
+      ? subscriptions.find(subscription => String(subscription.id) === String(formData.id || ''))?.member_name_snapshot || ''
+      : '';
+  const selectedPlan = plans.find(plan => plan.name === formData.plan_type);
+  const isUpgrade = activeMembership
+    && selectedPlan
+    && String(activeMembership.plan_id) !== String(selectedPlan.id);
+  const amountDue = isUpgrade
+    ? Math.max(0, Number(selectedPlan.price || 0) - Number(activeMembership.amount_paid || 0))
+    : calculatedPrice;
   const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm";
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-2";
   const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
@@ -42,7 +71,7 @@ export default function SubscriptionFormModal({
         <div className="flex items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
           <h3 className="flex items-center gap-2 text-xl font-bold text-black dark:text-gray-300">
             {isEditing ? <FiEdit2 size={19} /> : <FiPlus size={20} />}
-            {isEditing ? 'Edit Subscription' : 'Add Subscription'}
+            {isEditing ? 'Edit Subscriber' : 'Add Subscriber'}
           </h3>
           <button
             type="button"
@@ -58,39 +87,48 @@ export default function SubscriptionFormModal({
           <form id="subForm" className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onSave}>
               <label className="block">
                 <span className={labelClass}>Select Member</span>
-                <select 
-                  required 
-                  value={formData.member_id} 
-                  onChange={(e) => setFormData({ ...formData, member_id: e.target.value })} 
-                  className={inputClass}
-                >
-                  <option value="">Choose Member</option>
-                  {membersList.map(m => <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>)}
-                </select>
+                <SearchableMemberSelect
+                  required
+                  members={membersList}
+                  fallbackMember={fallbackMember}
+                  selectedLabel={selectedMemberLabel}
+                  value={formData.member_id}
+                  placeholder="Search Member Name"
+                  onChange={memberId => setFormData({ ...formData, member_id: memberId })}
+                />
               </label>
               <label className="block">
                 <span className={labelClass}>Subscription Type</span>
-                <select 
+                <StyledSelect
                   required 
                   value={formData.plan_type} 
                   onChange={(e) => setFormData({ ...formData, plan_type: e.target.value })} 
-                  className={inputClass}
+                  aria-label="Subscription Type"
+                  className={`${inputClass} ${formData.plan_type ? '' : '!text-slate-400 dark:!text-gray-500'}`}
                 >
-                  <option value="">Select Subscription Type</option>
-                  {filteredDropdownPlans.map(p => <option key={p.id} value={p.name}>{p.name} (&#8369;{p.price})</option>)}
-                </select>
+                  <option className="bg-white text-slate-900 dark:bg-[#1e1e1e] dark:text-gray-200" value="" disabled>Select Subscription Type</option>
+                  {filteredDropdownPlans.map(p => <option className="bg-white text-slate-900 dark:bg-[#1e1e1e] dark:text-gray-200" key={p.id} value={p.name}>{p.name} (₱{formatNumber(p.price)})</option>)}
+                </StyledSelect>
+                {activeMembership && !isUpgrade && (
+                  <span className="mt-1 block text-xs font-medium text-slate-500 dark:text-gray-400">
+                    Active subscription through {activeMembership.end_date || 'the current period'}.
+                  </span>
+                )}
               </label>
               <label className="block">
                 <span className={labelClass}>Payment Method</span>
-                <select 
-                  value={formData.payment_method} 
+                <StyledSelect
+                  required
+                  value={formData.payment_method || ''}
                   onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })} 
-                  className={inputClass}
+                  aria-label="Payment Method"
+                  className={`${inputClass} ${formData.payment_method ? '' : '!text-slate-400 dark:!text-gray-500'}`}
                 >
-                  <option value="Cash">Cash</option>
-                  <option value="Gcash">Gcash</option>
-                  <option value="Card">Card</option>
-                </select>
+                  <option className="bg-white text-slate-900 dark:bg-[#1e1e1e] dark:text-gray-200" value="" disabled>Select Payment Method</option>
+                  <option className="bg-white text-slate-900 dark:bg-[#1e1e1e] dark:text-gray-200" value="Cash">Cash</option>
+                  <option className="bg-white text-slate-900 dark:bg-[#1e1e1e] dark:text-gray-200" value="Gcash">Gcash</option>
+                  <option className="bg-white text-slate-900 dark:bg-[#1e1e1e] dark:text-gray-200" value="Maya">Maya</option>
+                </StyledSelect>
               </label>
               <label className="block">
               <span className={labelClass}>Reference Number</span>
@@ -103,10 +141,15 @@ export default function SubscriptionFormModal({
               />
             </label>
 
-            {loyalDiscount > 0 && (
+            {!activeMembership && loyalDiscount > 0 && (
               <div className="md:col-span-2 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-bold text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
                 <FiCheckCircle size={18} />
-                Loyal Client Detected! A &#8369;{loyalDiscount} discount has been applied. Final Auto-Billed Price: &#8369;{calculatedPrice}
+                Loyal Client Detected! A &#8369;{formatNumber(loyalDiscount)} discount has been applied. Final Auto-Billed Price: &#8369;{formatNumber(calculatedPrice)}
+              </div>
+            )}
+            {isUpgrade && (
+              <div className="md:col-span-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm font-semibold text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200">
+                Upgrade price: &#8369;{formatNumber(selectedPlan.price)} minus &#8369;{formatNumber(activeMembership.amount_paid || 0)} already paid = &#8369;{formatNumber(amountDue)} due.
               </div>
             )}
 

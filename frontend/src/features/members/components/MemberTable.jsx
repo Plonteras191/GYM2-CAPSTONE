@@ -3,6 +3,7 @@ import {
   FiSearch, FiPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiX, FiList
 } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
+import StyledSelect from '../../../components/ui/StyledSelect';
 
 const getStatusBadge = (status) => {
   const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
@@ -12,6 +13,10 @@ const getStatusBadge = (status) => {
 };
 
 const getInitials = (first, last) => `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase();
+const getActivePackageName = (member) => {
+  const membership = member.activeMembership || member.active_membership;
+  return membership?.plan?.name || membership?.plan_type || 'None';
+};
 
 export default function MemberTable({
   members,
@@ -65,15 +70,16 @@ export default function MemberTable({
           )}
         </div>
         <div className="min-w-0 sm:w-40">
-          <select
+          <StyledSelect
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
+            aria-label="Filter members by status"
             className="w-full min-w-0 px-3 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
           >
-            <option value="All">All Status</option>
+            <option value="All">All Statuses</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
-          </select>
+          </StyledSelect>
         </div>
         <button onClick={onAddMember} className={`${primaryBtn} w-full whitespace-nowrap sm:w-auto`}>
           <FiPlus size={18} strokeWidth={3} /> Add Member
@@ -92,28 +98,29 @@ export default function MemberTable({
           </div>
         </div>
 
-        <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[1050px] table-fixed border-collapse text-left">
+        <div className="hidden overflow-hidden xl:block">
+          <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
-              <col className="w-[24%]" />
+              <col className="w-[8%]" />
+              <col className="w-[22%]" />
               <col className="w-[12%]" />
-              <col className="w-[14%]" />
-              <col className="w-[14%]" />
-              <col className="w-[12%]" />
-              <col className="w-[9%]" />
+              <col className="w-[13%]" />
+              <col className="w-[11%]" />
+              <col className="w-[11%]" />
+              <col className="w-[8%]" />
               <col className="w-[15%]" />
             </colgroup>
             <thead>
               <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
-                {['Member Details', 'Phone Number', 'Address', 'Package Type', 'Customer Since', 'Status', 'Actions'].map((h, i) => (
-                  <th key={h} scope="col" className={`px-3.5 py-4 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest${i === 6 ? ' text-right' : ''}`}>{h}</th>
+                {['Member ID', 'Member Details', 'Phone Number', 'Address', 'Package Type', 'Customer Since', 'Attendance Status', 'Actions'].map((h, i) => (
+                  <th key={h} scope="col" className={`whitespace-nowrap px-3 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest${i === 0 || i === 6 ? ' text-center' : i === 7 ? ' text-right' : ' text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-24 text-center">
+                  <td colSpan="8" className="px-6 py-24 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="relative w-16 h-16">
                         <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full" />
@@ -125,34 +132,35 @@ export default function MemberTable({
                 </tr>
               ) : currentMembers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">
+                  <td colSpan="8" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">
                     No members found in the database.
                   </td>
                 </tr>
               ) : (
                 currentMembers.map((member) => (
                   <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group border-b border-gray-200 dark:border-[#393e4f]">
-                    <td className="overflow-hidden px-3.5 py-3.5 whitespace-nowrap">
+                    <td className="px-3 py-3 text-center text-sm font-bold tabular-nums text-slate-600 dark:text-gray-400">{member.id}</td>
+                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-3 sm:gap-4">
                         {member.profilePicUrl ? (
-                          <img src={member.profilePicUrl} alt="Avatar" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-gray-300 dark:border-[#393e4f] flex-shrink-0 shadow-sm" />
+                          <img src={member.profilePicUrl} alt="Avatar" className="h-10 w-10 shrink-0 rounded-full border-2 border-gray-300 object-cover dark:border-gray-600" />
                         ) : (
-                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-200 dark:bg-[#191b22] flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm border-2 border-gray-300 dark:border-[#393e4f] flex-shrink-0 shadow-sm">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-xs font-bold text-slate-700 dark:border-gray-600 dark:bg-[#191b22] dark:text-gray-300">
                             {getInitials(member.firstName, member.lastName)}
                           </div>
                         )}
-                        <div>
-                          <div className="font-semibold text-slate-900 dark:text-gray-300">{member.firstName} {member.lastName}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{member.email}</div>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-black dark:text-gray-300">{member.firstName} {member.lastName}</div>
+                          <div className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">{member.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="overflow-hidden px-3.5 py-3.5 text-sm font-normal text-slate-700 dark:text-gray-300 whitespace-nowrap">{member.phone}</td>
-                    <td className="overflow-hidden px-3.5 py-3.5 text-sm font-normal text-slate-700 dark:text-gray-300 truncate">{member.address || '-'}</td>
-                    <td className="overflow-hidden px-3.5 py-3.5 text-sm font-bold text-slate-900 dark:text-gray-400 whitespace-nowrap truncate">{member.plan}</td>
-                    <td className="overflow-hidden px-3.5 py-3.5 text-sm font-normal text-slate-500 dark:text-gray-400 whitespace-nowrap">{member.customerSince}</td>
-                    <td className="overflow-hidden px-3.5 py-3.5 whitespace-nowrap">{getStatusBadge(member.status)}</td>
-                    <td className="overflow-hidden px-3.5 py-3.5 text-right whitespace-nowrap">
+                    <td className="overflow-hidden px-3 py-3 text-sm font-normal tabular-nums text-slate-700 dark:text-gray-300 whitespace-nowrap">{member.phone}</td>
+                    <td className="overflow-hidden px-3 py-3 text-sm font-normal text-slate-700 dark:text-gray-300 truncate">{member.address || '-'}</td>
+                    <td className="overflow-hidden px-3 py-3 text-sm font-bold text-slate-900 dark:text-gray-400 whitespace-nowrap truncate">{getActivePackageName(member)}</td>
+                    <td className="overflow-hidden px-3 py-3 text-sm font-normal text-slate-500 dark:text-gray-400 whitespace-nowrap">{member.customerSince}</td>
+                    <td className="overflow-hidden px-3 py-3 text-center whitespace-nowrap">{getStatusBadge(member.status)}</td>
+                    <td className="overflow-hidden px-3 py-3 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-2">
                       <button onClick={() => onViewProfile(member)} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-blue-600 dark:text-blue-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm">
                         <FiEye size={16} strokeWidth={2.5} />
@@ -172,7 +180,7 @@ export default function MemberTable({
           </table>
         </div>
 
-        <div className="space-y-3 p-3 md:hidden">
+        <div className="space-y-3 p-3 xl:hidden">
           {isLoading ? (
             <p role="status" className="py-8 text-center text-sm font-semibold text-slate-500 dark:text-gray-400">Loading members…</p>
           ) : currentMembers.length === 0 ? (
@@ -189,10 +197,11 @@ export default function MemberTable({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold text-slate-900 dark:text-gray-200">{member.firstName} {member.lastName}</p>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-gray-400">Member ID: {member.id}</p>
                   <p className="truncate text-xs text-slate-500 dark:text-gray-400">{member.email}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-gray-300">
                     <span>{member.phone || 'No phone'}</span>
-                    <span>{member.plan || 'No package'}</span>
+                    <span>{getActivePackageName(member)}</span>
                     {getStatusBadge(member.status)}
                   </div>
                 </div>

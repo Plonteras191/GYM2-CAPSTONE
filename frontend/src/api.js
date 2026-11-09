@@ -10,7 +10,7 @@ const api = axios.create({
 
 // Automatically attach the Sanctum token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('admin_token');
+  const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -22,6 +22,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('admin_token');
+      sessionStorage.removeItem('admin_token');
       localStorage.removeItem('admin_name');
       if (window.location.pathname !== '/login') {
         window.location.assign('/login');

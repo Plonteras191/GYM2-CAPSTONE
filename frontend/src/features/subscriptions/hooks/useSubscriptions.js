@@ -3,9 +3,12 @@ import api from '../../../api';
 import { useDataCache } from '../../../context/DataCacheContext';
 import { isValidPackagePrice } from '../../../utils/priceInput';
 import { getPackageColor } from '../packageCategories';
+import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
+import { getLocalDateString } from '../../../utils/dateFormat';
+import { formatNumber } from '../../../utils/numberFormat';
 
 export function useSubscriptions() {
-  const { getCache, setCache, invalidateCache } = useDataCache();
+  const { getCache, setCache, invalidateCache, invalidateCachePrefix } = useDataCache();
 
   const cachedData = getCache('subscriptions_data');
   const [activeView, setActiveView] = useState('calendar');
@@ -52,7 +55,7 @@ export function useSubscriptions() {
     end_time: '19:00', 
     location: 'Main Gym Floor', 
     description: '',
-    category: 'General',
+    category: '',
     color: '#eab308',
   };
   const [eventForm, setEventForm] = useState(defaultEventForm);
@@ -167,14 +170,14 @@ export function useSubscriptions() {
   // Cleaned default form fields
   const defaultForm = {
     id: '', member_id: '', plan_type: '', start_date: new Date().toISOString().split('T')[0], 
-    end_date: '', payment_method: 'Cash', reference_number: ''
+    end_date: '', payment_method: '', reference_number: ''
   };
   const [formData, setFormData] = useState(defaultForm);
   const [newPlan, setNewPlan] = useState({
     name: '',
     price: '',
     duration_days: 30,
-    category: 'normal',
+    category: '',
     category_detail: '',
     color: '#10b981',
   });
@@ -227,10 +230,22 @@ export function useSubscriptions() {
     const selectedPlan = plans.find(p => p.name === formData.plan_type);
     if (!selectedPlan) return;
 
+    const activeMembership = subscriptions.find(subscription =>
+      String(subscription.member_id) === String(formData.member_id)
+      && subscription.status === 'Active'
+      && (!subscription.start_date || subscription.start_date <= getLocalDateString())
+      && (!subscription.end_date || subscription.end_date >= getLocalDateString())
+    );
+    if (activeMembership && String(activeMembership.plan_id) !== String(selectedPlan.id)) {
+      setLoyalDiscount(0);
+      setCalculatedPrice(Math.max(0, Number(selectedPlan.price || 0) - Number(activeMembership.amount_paid || 0)));
+      return;
+    }
+
     let finalPrice = Number(selectedPlan.price);
     let discount = 0;
 
-    if (finalPrice > 300) {
+    if (!activeMembership && finalPrice > 300) {
       const pastSubs = subscriptions.filter(s => s.member_id === parseInt(formData.member_id, 10)).length;
       discount = pastSubs * 20;
       finalPrice = finalPrice - discount;
@@ -247,7 +262,7 @@ export function useSubscriptions() {
     setFormData({ 
       ...defaultForm, 
       start_date: defaultDate || new Date().toISOString().split('T')[0],
-      plan_type: plans.length > 0 ? plans[0].name : '' 
+      plan_type: ''
     });
     setIsEditing(false);
     setIsModalOpen(true);
@@ -255,8 +270,8 @@ export function useSubscriptions() {
 
   const handleOpenEditModal = (sub) => {
     setFormData({
-      id: sub.id, member_id: sub.member_id, plan_type: sub.plan_type, start_date: sub.start_date,
-      end_date: sub.end_date, payment_method: sub.payment_method, reference_number: sub.reference_number || ''
+      id: sub.id, member_id: sub.member?.id ?? sub.member_id ?? '', plan_type: sub.plan_type, start_date: sub.start_date,
+      end_date: sub.end_date, payment_method: getPaymentMethodLabel(sub.payment_method), reference_number: sub.reference_number || ''
     });
     setIsEditing(true);
     setIsModalOpen(true);
@@ -301,54 +316,78 @@ export function useSubscriptions() {
       const memberId = formData.member_id ? parseInt(formData.member_id, 10) : null;
       const amt = parseFloat(calculatedPrice) || 0;
       const selectedPlan = plans.find(plan => plan.name === formData.plan_type);
+      if (!memberId) {
+        setAlertDialog({ isOpen: true, title: 'Select a Member', message: 'Choose a member before saving a subscription.', type: 'error' });
+        return;
+      }
+      if (!selectedPlan) {
+        setAlertDialog({ isOpen: true, title: 'Select a Package', message: 'Choose a valid package before saving the subscription.', type: 'error' });
+        return;
+      }
+      const activeMembership = subscriptions.find(subscription =>
+        String(subscription.member_id) === String(memberId)
+        && subscription.status === 'Active'
+        && (!subscription.start_date || subscription.start_date <= getLocalDateString())
+        && (!subscription.end_date || subscription.end_date >= getLocalDateString())
+      );
+      const membershipToUpdate = isEditing
+        ? subscriptions.find(subscription => String(subscription.id) === String(formData.id))
+        : activeMembership;
+      const isUpgrade = membershipToUpdate?.status === 'Active'
+        && String(membershipToUpdate.plan_id) !== String(selectedPlan.id);
+      if (!isEditing && activeMembership && !isUpgrade) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Subscription Already Active',
+          message: 'This member already has this active package. Choose a higher-priced package to upgrade it.',
+          type: 'error'
+        });
+        return;
+      }
+      const amountDue = isUpgrade
+        ? Math.max(0, Number(selectedPlan.price || 0) - Number(membershipToUpdate.amount_paid || 0))
+        : amt;
 
       const payload = { 
         member_id: memberId,
+        plan_id: selectedPlan?.id || null,
         plan_type: formData.plan_type,
         start_date: formData.start_date,
         end_date: formData.end_date,
         payment_method: formData.payment_method,
         reference_number: cleanRef,
-        amount: amt,
+        amount: amountDue,
         color: getPackageColor(selectedPlan),
         status: 'Active',
         auto_renew: 0,
         notes: cleanNotes
       };
       
-      let membershipId = formData.id || null;
-
-      if (isEditing) {
-        await api.put(`/memberships/${formData.id}`, payload);
+      let successMessage = 'Subscription saved successfully!';
+      if (isEditing || isUpgrade) {
+        const response = await api.put(`/memberships/${membershipToUpdate?.id || formData.id}`, payload);
+        if (response.data?.amount_charged !== undefined) {
+          successMessage = `${response.data.message} Amount charged: ₱${formatNumber(response.data.amount_charged)}.`;
+        }
       } else {
-        // Capture the newly created membership's ID so we can link the transaction
-        const membershipResponse = await api.post('/memberships', payload);
-        membershipId = membershipResponse.data?.membership?.id || membershipResponse.data?.id || null;
+        await api.post('/memberships', payload);
       }
 
-      // The backend auto-creates a linked transaction with membership_id on store().
-      // Just invalidate the cache so the Transactions page shows the new entry.
-      if (!isEditing) {
-        invalidateCache('transactions_data');
-      }
-
-      if (memberId && formData.plan_type) {
-        const memberData = new FormData();
-        memberData.append('plan', formData.plan_type);
-        memberData.append('status', 'Active');
-        memberData.append('_method', 'PUT');
-        await api.post(`/members/${memberId}`, memberData).catch(() => {});
-      }
+      invalidateCache('transactions_data');
+      invalidateCachePrefix('reports_v2_');
       
       invalidateCache('subscriptions_data');
       invalidateCache('members');
       invalidateCache('dashboard');
       await fetchData(false); 
       setIsModalOpen(false);
-      setAlertDialog({ isOpen: true, title: 'Success', message: 'Subscription saved successfully!', type: 'success' });
+      setAlertDialog({ isOpen: true, title: isUpgrade ? 'Subscription upgraded' : 'Success', message: successMessage, type: 'success' });
     } catch (error) { 
       console.error("Failed to save:", error); 
-      const errorMsg = error.response?.data?.message || 'Failed to save subscription. Ensure fields are formatted correctly.';
+      const errorMsg = error.response?.data?.errors?.plan_id?.[0]
+        || error.response?.data?.errors?.member_id?.[0]
+        || error.response?.data?.message
+        || 'Failed to save subscription. Ensure fields are formatted correctly.';
       setAlertDialog({ isOpen: true, title: 'Error', message: errorMsg, type: 'error' });
     } finally { 
       isSavingRef.current = false;
@@ -475,7 +514,7 @@ export function useSubscriptions() {
     setConfirmDialog({
       isOpen: true,
       title: 'Delete Coach Event Category',
-      message: `Delete "${category.name}"? Categories assigned to coach events cannot be deleted. Reassign or delete those events first.`,
+      message: `Delete "${category.name}" and all coach events inside it? This cannot be undone.`,
       onConfirm: async () => {
         setConfirmDialog(prev => ({ ...prev, isOpen: false }));
         setIsSavingCategory(true);
@@ -555,6 +594,10 @@ export function useSubscriptions() {
       setAlertDialog({ isOpen: true, title: 'Incomplete Data', message: 'Please fill out all plan fields.', type: 'error' });
       return;
     }
+    if (!newPlan.category) {
+      setAlertDialog({ isOpen: true, title: 'Select a Package Category', message: 'Choose a category before creating the package.', type: 'error' });
+      return;
+    }
     if (!isValidPackagePrice(newPlan.price)) {
       setAlertDialog({
         isOpen: true,
@@ -576,7 +619,7 @@ export function useSubscriptions() {
         name: '',
         price: '',
         duration_days: 30,
-        category: 'normal',
+        category: '',
         category_detail: '',
         color: '#10b981',
       });

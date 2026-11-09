@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api'; 
+import { getPaymentMethodLabel } from '../utils/paymentMethod';
+import { formatNumber } from '../utils/numberFormat';
+import { getPackageDetails } from '../utils/packageDisplay';
 import { useDataCache } from '../context/DataCacheContext';
 import { useSubscriptions } from '../features/subscriptions/hooks/useSubscriptions';
 import SubscriptionsCalendarView from '../features/subscriptions/components/SubscriptionsCalendarView';
@@ -66,9 +69,10 @@ export default function Dashboard() {
       const newRecentTxns = data.recentTxns.map(t => ({
         id: t.id,
         transactionId: t.transaction_id,
-        type: t.type,
+        packageDetails: getPackageDetails(t),
         amount: t.amount,
-        method: t.payment_method,
+        status: t.status,
+        method: getPaymentMethodLabel(t.payment_method),
         memberName: t.member ? `${t.member.first_name} ${t.member.last_name}` : 'Walk-in Guest'
       }));
       const newExpiringSoon = data.expiringSoon.map(sub => {
@@ -128,7 +132,7 @@ export default function Dashboard() {
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        <Link to="/transactions"><StatCard title="Total Revenue" value={`₱ ${stats.revenue.toLocaleString()}`} icon={<FiDollarSign size={28} strokeWidth={2.5} />} colorClass="bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none" /></Link>
+        <Link to="/transactions"><StatCard title="Total Revenue" value={`₱ ${formatNumber(stats.revenue)}`} icon={<FiDollarSign size={28} strokeWidth={2.5} />} colorClass="bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none" /></Link>
         <Link to="/members"><StatCard title="Total Members" value={stats.members} icon={<FiUsers size={28} strokeWidth={2.5} />} colorClass="bg-blue-800 text-white shadow-lg shadow-blue-700/40 dark:shadow-none" /></Link>
         <Link to="/subscriptions"><StatCard title="Active Subs" value={stats.activeSubs} icon={<FiCheckCircle size={28} strokeWidth={2.5} />} colorClass="bg-purple-800 text-white shadow-lg shadow-purple-700/40 dark:shadow-none" /></Link>
         <Link to="/reports"><StatCard title="Transactions" value={stats.reports} icon={<FiFileText size={28} strokeWidth={2.5} />} colorClass="bg-amber-700 text-white shadow-lg shadow-amber-600/40 dark:shadow-none" /></Link>
@@ -168,7 +172,7 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col">
           <div className="mb-3 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
             <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-300">
-              <FiClock size={18} className="shrink-0" /> Expiring within 7 Days
+              <FiClock size={18} className="shrink-0" /> Expiring Subscription within 7 Days
             </h3>
           </div>
           <div className="flex-1 overflow-y-auto space-y-3">
@@ -224,17 +228,16 @@ export default function Dashboard() {
               <div className="text-center text-gray-500 dark:text-gray-400 py-4">No transactions found.</div>
             ) : (
               recentTxns.map((txn, i) => (
-                <li key={txn.id || i} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700/50 last:border-0 animate-in fade-in slide-in-from-top-2">
-                  <div className="min-w-0 flex-1 pr-4">
+                <li key={txn.id || i} className="grid grid-cols-[minmax(0,1fr)_5rem_6rem] items-center gap-3 border-b border-gray-100 py-3 last:border-0 animate-in fade-in slide-in-from-top-2 dark:border-gray-700/50">
+                  <div className="min-w-0">
                     <Link to="/transactions" state={{ searchTerm: txn.transactionId || txn.memberName }} className="block truncate text-sm font-semibold text-slate-800 hover:text-amber-700 dark:text-gray-300 dark:hover:text-amber-400">{txn.memberName}</Link>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{txn.type}</span>
-                      <span className={getMethodBadge(txn.method)}>
-                        {txn.method}
-                      </span>
+                    <div className="mt-1 min-w-0">
+                      <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{txn.packageDetails?.title || 'Package Payment'}</span>
+                      <span className="block truncate text-[10px] font-semibold text-gray-500 dark:text-gray-400">{txn.packageDetails?.category}</span>
                     </div>
                   </div>
-                  <span className="font-semibold text-green-600 dark:text-green-500 whitespace-nowrap">{Number(txn.amount) > 0 ? '+' : '-'} ₱{Math.abs(txn.amount)}</span>
+                  <span className={`${getMethodBadge(txn.method)} w-full justify-center`}>{txn.method}</span>
+                  <span className={`text-right font-semibold whitespace-nowrap ${txn.status === 'Refunded' || Number(txn.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-500'}`}>{Number(txn.amount) > 0 ? '+' : '-'} ₱{formatNumber(Math.abs(txn.amount))}</span>
                 </li>
               ))
             )}
@@ -259,6 +262,7 @@ export default function Dashboard() {
           deletingEventId={deletingEventId}
           onDateClick={info => handleOpenNewCoachEvent(info.dateStr)}
           calendarOnly
+          readOnly
         />
         <CoachEventModal
           isOpen={isEventModalOpen}

@@ -91,11 +91,43 @@ $env:CCTV_3_URL = 'rtsp://<camera-3-ip>:<port>/<stream-path>'
 python main.py
 ```
 
+For a standalone Reolink P330, enable RTSP through the Reolink mobile app (the
+web or desktop interface may not expose this setting). The RTSP port shown in
+the app is 554. Reolink's documented stream paths are `Preview_01_main` for the
+main stream and `Preview_01_sub` for the sub-stream. Confirm these if using an
+NVR or Home Hub, where channel numbering may differ.
+Use the main stream to evaluate detail, keeping in mind that decoding a 4K stream
+can reduce capture FPS on the engine PC. To test the P330 as CCTV 2 and select it
+at startup:
+
+```powershell
+$p330Ip = Read-Host 'P330 IP address'
+$cameraUser = Read-Host 'P330 username'
+$securePassword = Read-Host 'P330 password' -AsSecureString
+$plainPassword = [System.Net.NetworkCredential]::new('', $securePassword).Password
+$encodedUser = [uri]::EscapeDataString($cameraUser)
+$encodedPassword = [uri]::EscapeDataString($plainPassword)
+$env:CCTV_2_URL = "rtsp://${encodedUser}:${encodedPassword}@${p330Ip}:554/Preview_01_main"
+$env:CAMERA_SOURCE = 'cctv_2'
+Remove-Variable securePassword, plainPassword, encodedPassword, cameraUser, encodedUser
+python scripts/test_cam.py
+# After pressing q to close the test window:
+python main.py
+```
+
+The test script shows received frames without printing the stream URL. Set the
+same variables before `python main.py` to use the P330 in the Gesture and
+Security Monitors. If a username or password contains URL-reserved characters,
+URL-encode them. Do not commit or share the RTSP URL; it contains the camera
+credentials.
+
 Set `CCTV_URL` as well if CCTV 1 does not use the existing default. Keep stream
-credentials in environment variables rather than source code. Optional sources
-appear in both monitors only when their URL is configured. If a selected source
-is unreachable, its feed reports a connection problem; the engine does not
-silently switch to another camera. Wired Ethernet/PoE cameras connected through
+credentials in environment variables rather than source code. CCTV 2 is listed
+in both monitors even before it is configured; selecting it without `CCTV_2_URL`
+will show a configuration error. Other optional sources appear only when their
+URL is configured. If a configured source is unreachable, its feed reports a
+connection problem; the engine does not silently switch to another camera.
+Wired Ethernet/PoE cameras connected through
 a router or network switch are generally more reliable than Wi-Fi for fixed
 gym CCTV, while the phone hotspot is suitable as a temporary demo network.
 

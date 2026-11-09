@@ -4,6 +4,8 @@ use App\Models\User;
 
 return [
 
+    'verification_mode' => env('AUTH_VERIFICATION_MODE'),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Defaults

@@ -14,6 +14,10 @@ class AttendanceController extends Controller
      */
     public function logAttendance(Request $request)
     {
+        $request->validate([
+            'member_id' => 'required|integer|exists:members,id',
+        ]);
+
         $now = Carbon::now();
         $today = $now->toDateString();
 

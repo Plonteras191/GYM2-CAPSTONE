@@ -11,6 +11,7 @@ class CoachEventManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->actingAsAdmin();
 
         Schema::create('coach_event_categories', function (Blueprint $table) {
             $table->id();

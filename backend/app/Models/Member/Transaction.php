@@ -11,8 +11,10 @@ class Transaction extends Model
     use HasFactory;
 
     protected $fillable = [
-        'transaction_id', 'transaction_date', 'member_id', 'membership_id', 'type', 
-        'description', 'payment_method', 'amount', 'status', 'reference_number'
+        'transaction_id', 'transaction_date', 'member_id', 'membership_id', 'type',
+        'description', 'payment_method', 'amount', 'status', 'reference_number',
+        'member_name_snapshot', 'member_profile_pic_snapshot', 'member_email_snapshot',
+        'package_name_snapshot', 'package_category_snapshot'
     ];
 
     public function member()

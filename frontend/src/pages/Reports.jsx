@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FiCalendar, FiDownload, FiPrinter, FiFileText, FiList,
+  FiDownload, FiPrinter, FiList,
   FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock, FiActivity, FiLoader,
 } from 'react-icons/fi';
 import api from '../api';
@@ -8,10 +8,21 @@ import { useLocation } from 'react-router-dom';
 import { useDataCache } from '../context/DataCacheContext';
 import Pagination from '../components/ui/Pagination';
 import { downloadCsv } from '../utils/csvExport';
+import { getMediaUrl } from '../utils/mediaUrl';
+import { getPaymentMethodLabel } from '../utils/paymentMethod';
+import { useNavigate } from 'react-router-dom';
+import { formatNumber } from '../utils/numberFormat';
+import StyledSelect from '../components/ui/StyledSelect';
+
+const reportTypeOptions = [
+  { value: 'Payments', label: 'Payment Transactions' },
+  { value: 'Memberships', label: 'Membership & Attendance Status' },
+];
 
 export default function Reports() {
   const { getCache, setCache } = useDataCache();
   const location = useLocation();
+  const navigate = useNavigate();
   const [reportType, setReportType] = useState(location.state?.defaultTab || 'Payments');
 
   const now = new Date();
@@ -27,7 +38,7 @@ export default function Reports() {
 
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
-  const cacheKey = `reports_${startDate}_${endDate}`;
+  const cacheKey = `reports_v2_${startDate}_${endDate}`;
   const [isLoading, setIsLoading] = useState(() => !getCache(cacheKey));
   const [loadError, setLoadError] = useState('');
   const requestId = useRef(0);
@@ -76,7 +87,7 @@ export default function Reports() {
       const currentData = reportData[reportType];
       downloadCsv(
         `${reportType}_Report_${startDate}_to_${endDate}.csv`,
-        [currentData.columns, ...filteredRows]
+        [currentData.columns, ...filteredRows.map(row => row.map(getReportCellText))]
       );
     } catch (error) {
       console.error('Failed to export report CSV:', error);
@@ -89,7 +100,27 @@ export default function Reports() {
   const handlePrint = () => window.print();
 
   const currentData = reportData?.[reportType];
-  const reportColumnWeights = currentData?.columns.map(column => {
+  const getReportCellText = cell => {
+    if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
+      if ('title' in cell || 'category' in cell) {
+        return [cell.title, cell.category].filter(Boolean).join(' — ');
+      }
+      return [cell.name, cell.email].filter(Boolean).join(' — ');
+    }
+    return String(cell ?? '');
+  };
+  const isPaymentTransactionReport = reportType === 'Payments'
+    && currentData?.columns[0] === 'Txn ID'
+    && currentData?.columns[1] === 'Date';
+  const reportDisplayColumns = currentData
+    ? isPaymentTransactionReport
+      ? ['Txn ID & Date', ...currentData.columns.slice(2)]
+      : currentData.columns
+    : [];
+  const getDisplayRow = row => isPaymentTransactionReport
+    ? [[row[0], row[1]], ...row.slice(2).map(value => [value])]
+    : row.map(value => [value]);
+  const reportColumnWeights = reportDisplayColumns.map(column => {
     const name = column.toLowerCase();
     if (name.includes('detail') || name.includes('description') || name.includes('plan')) return 2;
     if (name.includes('member') || name.includes('name')) return 1.5;
@@ -98,7 +129,7 @@ export default function Reports() {
   }) || [];
   const reportColumnWeightTotal = reportColumnWeights.reduce((total, weight) => total + weight, 0);
   const filteredRows = currentData?.rows.filter(row =>
-    row.some(cell => String(cell).toLowerCase().includes(searchTerm.toLowerCase()))
+    row.some(cell => getReportCellText(cell).toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
   const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
   const pageRows = filteredRows.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -134,21 +165,49 @@ export default function Reports() {
     );
   }
 
-  const renderCellContent = (cell) => {
-    const val = String(cell);
+  const renderCellContent = (cell, column, rowStatus) => {
+    if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
+      if ('title' in cell || 'category' in cell) {
+        return (
+          <div className="min-w-0">
+            <span className="block truncate text-sm font-bold text-black dark:text-gray-300">{cell.title}</span>
+            <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500 dark:text-gray-400">{cell.category || 'No additional details'}</span>
+          </div>
+        );
+      }
+      const initials = `${cell.name?.trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('') || '?'}`.toUpperCase();
+      return (
+        <button type="button" onClick={() => cell.id && navigate('/members', { state: { memberId: cell.id } })} className="flex min-w-0 items-center gap-2.5 text-left">
+          {cell.profile_pic ? (
+            <img src={getMediaUrl(cell.profile_pic)} alt="" className="h-10 w-10 shrink-0 rounded-full border-2 border-gray-300 object-cover dark:border-gray-600" />
+          ) : (
+            <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-xs font-bold text-slate-700 dark:border-gray-600 dark:bg-[#191b22] dark:text-gray-300">{initials}</div>
+          )}
+          <div className="min-w-0">
+            <span className="block truncate font-semibold text-slate-800 dark:text-gray-300">{cell.name}</span>
+            {cell.email && <span className="mt-0.5 block truncate text-xs font-normal text-slate-500 dark:text-gray-400">{cell.email}</span>}
+        </div>
+        </button>
+      );
+    }
+    if (column?.toLowerCase().includes('amount') && typeof cell === 'number') {
+      const isRefunded = rowStatus === 'Refunded' || cell < 0;
+      return <span className={`text-lg font-normal tracking-tight ${isRefunded ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-gray-300'}`}>{cell < 0 ? '-' : ''}₱ {formatNumber(Math.abs(cell))}</span>;
+    }
+    const val = getPaymentMethodLabel(cell);
     const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
 
     if (val === 'Active' || val === 'Checked In' || val === 'Complete' || val === 'Cash') return <span className={`${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`}>{val}</span>;
     if (val === 'Expired' || val === 'Failed') return <span className={`${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`}>{val}</span>;
+    if (val === 'Refunded') return <span className={`${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`}>{val}</span>;
     if (val === 'Gcash' || val === 'Pending') return <span className={`${base} bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50`}>{val}</span>;
-    if (val === 'Card' || val === 'Other') return <span className={`${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`}>{val}</span>;
+    if (val === 'Maya' || val === 'Other') return <span className={`${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`}>{val}</span>;
 
     return val;
   };
 
-  const inputClass = "w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#1e1e1e] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium shadow-sm transition-all outline-none";
+  const inputClass = "w-full px-4 py-2.5 bg-slate-50 dark:bg-[#1e1e1e] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium shadow-sm transition-all outline-none";
   const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2";
-  const iconClass = "absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-900 dark:text-gray-300 text-lg pointer-events-none";
   const primaryButtonClass = "flex min-h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-4 py-2 font-sans text-sm font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70";
   const exportButtonClass = "flex min-h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-black px-4 py-2 font-sans text-sm font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
 
@@ -222,7 +281,7 @@ export default function Reports() {
           <thead>
             <tr style={{ borderTop: '2px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f3f3f3', breakInside: 'avoid' }}>
               {currentData.columns.map((col, idx) => (
-                <th key={idx} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '0.5px', color: '#333' }}>
+                <th key={idx} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '1px', color: '#333' }}>
                   {col}
                 </th>
               ))}
@@ -232,8 +291,20 @@ export default function Reports() {
             {filteredRows.map((row, rowIndex) => (
               <tr key={rowIndex} style={{ borderBottom: '1px solid #e0e0e0', backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#fafafa' }}>
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} style={{ padding: '5px 10px', color: '#111' }}>
-                    {String(cell)}
+                  <td key={cellIndex} style={{ padding: '5px 10px', color: row[6] === 'Refunded' && (currentData.columns[cellIndex] === 'Amount' || currentData.columns[cellIndex] === 'Payment Status') ? '#b91c1c' : '#111' }}>
+                    {cell && typeof cell === 'object' && !Array.isArray(cell) && ('title' in cell || 'category' in cell) ? (
+                      <>
+                        <div style={{ fontWeight: 'bold' }}>{cell.title}</div>
+                        <div style={{ marginTop: '2px', fontWeight: '600', color: '#666' }}>{cell.category || 'No additional details'}</div>
+                      </>
+                    ) : cell && typeof cell === 'object' && !Array.isArray(cell) ? (
+                      <>
+                        <div style={{ fontWeight: '600' }}>{cell.name}</div>
+                        {cell.email && <div style={{ marginTop: '2px', fontSize: '9px', color: '#666' }}>{cell.email}</div>}
+                      </>
+                    ) : currentData.columns[cellIndex] === 'Amount' && typeof cell === 'number'
+                      ? `${cell < 0 ? '-' : ''}₱ ${formatNumber(Math.abs(cell))}`
+                      : String(cell)}
                   </td>
                 ))}
               </tr>
@@ -271,26 +342,26 @@ export default function Reports() {
           <div className="order-2 grid grid-cols-1 items-end gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-[#252830] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.5fr)_repeat(5,minmax(0,1fr))]">
             <div className="relative w-full min-w-0">
               <label className={labelClass}>Report Type</label>
-              <div className="relative">
-                <FiFileText className={iconClass} />
-                <select value={reportType} onChange={(e) => setReportType(e.target.value)} className={`${inputClass} min-w-0`}>
-                  <option value="Payments">Payment Transactions</option>
-                  <option value="Memberships">Membership Status</option>
-                  <option value="Attendance">Attendance & Entry Logs</option>
-                </select>
-              </div>
+              <StyledSelect
+                value={reportType}
+                onChange={event => setReportType(event.target.value)}
+                aria-label="Report type"
+                className={`${inputClass} min-w-0 font-semibold text-slate-800 hover:border-slate-400 focus:border-amber-500 focus:ring-amber-500/30 dark:text-gray-200`}
+              >
+                {reportTypeOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </StyledSelect>
             </div>
             <div className="relative w-full min-w-0">
               <label className={labelClass}>Start Date</label>
               <div className="relative">
-                <FiCalendar className={iconClass} />
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
               </div>
             </div>
             <div className="relative w-full min-w-0">
               <label className={labelClass}>End Date</label>
               <div className="relative">
-                <FiCalendar className={iconClass} />
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
               </div>
             </div>
@@ -343,7 +414,7 @@ export default function Reports() {
                   </div>
                   <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
                     <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{kpi.label}</p>
-                    <h3 className="text-lg leading-tight sm:text-2xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{kpi.value}</h3>
+                    <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{kpi.value}</h3>
                   </div>
                 </div>
               );
@@ -354,7 +425,7 @@ export default function Reports() {
             <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-700/50 dark:bg-[#1e1e1e] sm:flex-row sm:items-center">
               <div className="flex min-w-0 items-center gap-2">
                 <FiList size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
-                <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Recent Reports</h3>
+                <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Total Reports</h3>
                 <span className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
                   {filteredRows.length.toLocaleString()}
                 </span>
@@ -362,17 +433,17 @@ export default function Reports() {
               <input type="text" placeholder={`Search ${reportType}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 transition-all shadow-sm" />
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] table-fixed border-collapse text-left">
+            <div className="hidden overflow-hidden xl:block">
+              <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
                 <colgroup>
                   {reportColumnWeights.map((weight, index) => (
-                    <col key={currentData.columns[index]} style={{ width: `${(weight / reportColumnWeightTotal) * 100}%` }} />
+                    <col key={reportDisplayColumns[index]} style={{ width: `${(weight / reportColumnWeightTotal) * 100}%` }} />
                   ))}
                 </colgroup>
                 <thead>
                   <tr className="bg-slate-100/50 dark:bg-[#1a1c23] border-b-2 border-slate-200 dark:border-slate-700/50">
-                    {currentData.columns.map((col, i) => (
-                      <th key={i} className="overflow-hidden px-4 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                    {reportDisplayColumns.map((col, i) => (
+                      <th key={i} className={`overflow-hidden px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400${col.toLowerCase().includes('status') ? ' text-center' : ' text-left'}`}>
                         {col}
                       </th>
                     ))}
@@ -381,22 +452,57 @@ export default function Reports() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {pageRows.map((row, rowIndex) => (
                     <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#1e1e1e] transition-colors group">
-                      {row.map((cell, cellIndex) => (
-                        <td key={cellIndex} className="overflow-hidden px-4 py-4 text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap text-ellipsis">
-                          {renderCellContent(cell)}
+                      {getDisplayRow(row).map((values, cellIndex) => (
+                        <td key={cellIndex} className={`overflow-hidden px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-300${reportDisplayColumns[cellIndex].toLowerCase().includes('status') ? ' text-center' : ' text-left'}`}>
+                          {values.length === 2 ? (
+                            <>
+                              <div className="truncate font-bold text-slate-900 dark:text-gray-300">{values[0]}</div>
+                              <div className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-gray-400">{values[1]}</div>
+                            </>
+                          ) : (
+                            <div className="min-w-0">{renderCellContent(values[0], reportDisplayColumns[cellIndex], row[6])}</div>
+                          )}
                         </td>
                       ))}
                     </tr>
                   ))}
                   {filteredRows.length === 0 && (
                     <tr>
-                      <td colSpan={currentData.columns.length} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400 font-medium">
+                      <td colSpan={reportDisplayColumns.length} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400 font-medium">
                         No matching records found in the database.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="space-y-3 p-3 xl:hidden">
+              {pageRows.map((row, rowIndex) => (
+                <article key={rowIndex} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-[#1b1e26]">
+                  <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                    {getDisplayRow(row).map((values, cellIndex) => {
+                      const column = reportDisplayColumns[cellIndex];
+                      const isStatus = column.toLowerCase().includes('status');
+                      return (
+                        <div key={column} className="min-w-0">
+                          <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{column}</dt>
+                          <dd className={`break-words text-sm font-medium text-slate-700 dark:text-slate-300${isStatus ? ' flex justify-start' : ''}`}>
+                            {values.length === 2 ? (
+                              <>
+                                <span className="block font-bold text-slate-900 dark:text-gray-300">{values[0]}</span>
+                                <span className="mt-0.5 block text-xs font-medium text-slate-500 dark:text-gray-400">{values[1]}</span>
+                              </>
+                            ) : renderCellContent(values[0], column, row[6])}
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                </article>
+              ))}
+              {filteredRows.length === 0 && (
+                <p className="py-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">No matching records found in the database.</p>
+              )}
             </div>
             <Pagination
               currentPage={currentPage}

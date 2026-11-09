@@ -42,15 +42,12 @@ class CoachEventController extends Controller
     public function destroyCategory($id)
     {
         $category = CoachEventCategory::findOrFail($id);
-        if ($category->events()->exists()) {
-            return response()->json([
-                'message' => 'This category is assigned to coach events. Reassign or delete those events before deleting the category.',
-            ], 409);
-        }
+        DB::transaction(function () use ($category) {
+            $category->events()->delete();
+            $category->delete();
+        });
 
-        $category->delete();
-
-        return response()->json(['message' => 'Coach event category deleted successfully.']);
+        return response()->json(['message' => 'Coach event category and its coach events were deleted successfully.']);
     }
 
     public function store(Request $request)

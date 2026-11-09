@@ -13,6 +13,7 @@ export const memberService = {
       phone: dbMember.phone,
       address: dbMember.address || '',
       plan: dbMember.plan,
+      activeMembership: dbMember.active_membership || null,
       status: dbMember.status,
       enrolledFaceId: dbMember.enrolled_face_id,
       profilePicUrl: getMediaUrl(dbMember.profile_pic || dbMember.enrolled_face_id),

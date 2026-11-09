@@ -10,6 +10,7 @@ import PricingCatalogModal from '../features/subscriptions/components/PricingCat
 import CalendarCategoryFilters from '../features/subscriptions/components/CalendarCategoryFilters';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
+import { getLocalDateString } from '../utils/dateFormat';
 
 export default function Subscriptions() {
   const {
@@ -63,12 +64,12 @@ export default function Subscriptions() {
     handleAddNewPlan,
     handleDeletePlan
   } = useSubscriptions();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
 
   const secondaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-black px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
 
   return (
-    <div className="p-6 max-w-screen-2xl mx-auto space-y-6">
+    <div className={`${activeView === 'list' ? 'max-w-7xl' : 'max-w-screen-2xl'} mx-auto space-y-6 p-6`}>
       
       {/* Top Header Actions */}
       <div className="flex w-full flex-col items-stretch gap-3">
@@ -188,6 +189,7 @@ export default function Subscriptions() {
         formData={formData}
         setFormData={setFormData}
         membersList={membersList}
+        subscriptions={subscriptions}
         plans={plans}
         recentColors={recentColors}
         loyalDiscount={loyalDiscount}

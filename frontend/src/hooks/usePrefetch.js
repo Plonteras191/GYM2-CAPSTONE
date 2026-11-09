@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import api from '../api';
+import { getPaymentMethodLabel } from '../utils/paymentMethod';
 import { useDataCache } from '../context/DataCacheContext';
 
 /**
@@ -59,7 +60,7 @@ export function usePrefetch() {
               recentTxns: data.recentTxns.map(t => ({
                 type: t.type,
                 amount: t.amount,
-                method: t.payment_method,
+                method: getPaymentMethodLabel(t.payment_method),
                 memberName: t.member
                   ? `${t.member.first_name} ${t.member.last_name}`
                   : 'Walk-in Guest',
