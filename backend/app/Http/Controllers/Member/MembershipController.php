@@ -32,8 +32,11 @@ class MembershipController extends Controller
             'auto_renew' => 'boolean',
             'payment_method' => 'required|string',
             'color' => 'required|string',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string|max:1000',
+            'amount' => 'nullable|numeric|min:0|max:1000000',
+            'reference_number' => 'nullable|string|max:100'
         ]);
+        unset($validatedData['amount'], $validatedData['reference_number']); // transaction-only fields
 
         // If plan_id is provided, resolve Plan catalog entity & auto-calculate end_date if missing
         $plan = null;
@@ -104,7 +107,7 @@ class MembershipController extends Controller
             'auto_renew' => 'boolean',
             'payment_method' => 'sometimes|required|string',
             'color' => 'sometimes|required|string',
-            'notes' => 'nullable|string'
+            'notes' => 'nullable|string|max:1000'
         ]);
 
         if (!empty($request->plan_id)) {

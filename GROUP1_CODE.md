@@ -13268,7 +13268,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@example.com'],
             [
                 'name' => 'System Admin',
-                'password' => Hash::make('admin123'),
+                'password' => Hash::make('<ADMIN_PASSWORD>'),
             ]
         );
 
@@ -14108,7 +14108,7 @@ WORKOUT_MODEL_PATH = os.path.join(MODELS_DIR, 'workout_model.pkl')
 DATASET_CSV_PATH = os.path.join(DATASETS_DIR, 'custom_workout_dataset.csv')
 
 # Camera Stream Configuration (Channels/102 is low-latency sub-stream for real-time AI)
-DEFAULT_CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102')
+DEFAULT_CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:<CCTV_PASSWORD>@192.168.1.45:554/Streaming/Channels/102')
 CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', 'CCTV') # 'CCTV' or 'WEBCAM'
 WEBCAM_INDEX = int(os.getenv('WEBCAM_INDEX', '0'))
 
@@ -14223,7 +14223,7 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffe
 # Change this variable to the name of the exercise you are about to perform!
 EXERCISE_NAME = "IDLE"  
 FRAMES_TO_COLLECT = 300 # It will record 300 frames of you doing the exercise
-CCTV_URL = 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102'
+CCTV_URL = 'rtsp://admin:<CCTV_PASSWORD>@192.168.1.45:554/Streaming/Channels/102'
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
@@ -14324,7 +14324,7 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 import cv2
 
 # Your specific Hikvision Camera
-CCTV_URL = 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102'
+CCTV_URL = 'rtsp://admin:<CCTV_PASSWORD>@192.168.1.45:554/Streaming/Channels/102'
 
 print("Attempting to connect to HIKVISION camera via Python...")
 cap = cv2.VideoCapture(CCTV_URL, cv2.CAP_FFMPEG)
@@ -14450,7 +14450,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 KNOWN_FACES_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'backend', 'public'))
 
 # Main Stream 720p H.264 (Channel 101) â€” reverted from 102 sub-stream which caused more lag on this camera
-CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/101')
+CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:<CCTV_PASSWORD>@192.168.1.45:554/Streaming/Channels/101')
 
 CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', 'cctv').lower() # 'cctv' or 'webcam'
 WEBCAM_INDEX = int(os.getenv('WEBCAM_INDEX', '0'))

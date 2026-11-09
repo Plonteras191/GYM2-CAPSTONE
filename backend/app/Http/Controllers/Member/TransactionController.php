@@ -31,12 +31,12 @@ class TransactionController extends Controller
             'transaction_date' => 'required|date',
             'member_id' => 'nullable|exists:members,id',
             'membership_id' => 'nullable|exists:memberships,id',
-            'type' => 'required|string',
-            'description' => 'nullable|string',
-            'payment_method' => 'required|string',
-            'amount' => 'required|numeric',
-            'status' => 'required|string',
-            'reference_number' => 'nullable|string'
+            'type' => 'required|string|max:100',
+            'description' => 'nullable|string|max:500',
+            'payment_method' => 'required|string|max:50',
+            'amount' => 'required|numeric|min:0|max:1000000',
+            'status' => 'required|string|max:50',
+            'reference_number' => 'nullable|string|max:100'
         ]);
 
         // Auto-generate the TXN-001 format
@@ -55,12 +55,12 @@ class TransactionController extends Controller
             'transaction_date' => 'required|date',
             'member_id' => 'nullable|exists:members,id',
             'membership_id' => 'nullable|exists:memberships,id',
-            'type' => 'required|string',
-            'description' => 'nullable|string',
-            'payment_method' => 'required|string',
-            'amount' => 'required|numeric',
-            'status' => 'required|string',
-            'reference_number' => 'nullable|string'
+            'type' => 'required|string|max:100',
+            'description' => 'nullable|string|max:500',
+            'payment_method' => 'required|string|max:50',
+            'amount' => 'required|numeric|min:0|max:1000000',
+            'status' => 'required|string|max:50',
+            'reference_number' => 'nullable|string|max:100'
         ]);
 
         $transaction->update($validatedData);

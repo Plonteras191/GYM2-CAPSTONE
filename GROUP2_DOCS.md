@@ -13994,13 +13994,13 @@ The proponents will also handle minor feature enhancements within the approved s
 === Updated Current Plan For Development\OpenSesami.md ===
 Admin Dashboard Login
     Email: admin@example.com
-    Password: admin123
+    Password: (set via ADMIN_PASSWORD in backend/.env — never commit it)
 
 Hikvision CCTV Hardware
     Web Portal: `[http://192.168.1.84](http://192.168.1.84)`
     Username: admin
-    Password: Jheval07012004
-    CCTV_URL = 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/101
+    Password: <CCTV_PASSWORD>
+    CCTV_URL = 'rtsp://admin:<CCTV_PASSWORD>@192.168.1.45:554/Streaming/Channels/101
 
 =======================================================================================================================================
 
@@ -14046,7 +14046,7 @@ Getting the code in https://github.com/Plonteras191/GYM2-CAPSTONE
 
 
 === Updated Current Plan For Development\Reminder.md ===
-1. CCTV_URL = 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/102'
+1. CCTV_URL = 'rtsp://admin:<CCTV_PASSWORD>@192.168.1.45:554/Streaming/Channels/102'
     - This 192.168.1.45:554 will depend on your wifi IP when the UTP cable is connected to it
     - Must double check this before presenting
 

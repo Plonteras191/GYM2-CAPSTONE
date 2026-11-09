@@ -7,10 +7,16 @@ use App\Models\Member\Member;
 use App\Models\Tracking\Attendance;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class MemberController extends Controller
 {
+    private const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+    private const MAX_FACE_BYTES = 5 * 1024 * 1024; // 5 MB
+
     public function index()
     {
         $members = Member::orderBy('created_at', 'desc')->get();
@@ -46,30 +52,22 @@ class MemberController extends Controller
             'phone' => 'required|string|max:15',
             'plan' => 'required|string',
             'status' => 'required|string',
-            'profile_pic' => 'nullable|image|max:51200',
-            'enrolled_face_id' => 'nullable',
+            'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
+            'enrolled_face_id' => 'nullable|string',
             'dob' => 'nullable|date',
             'height' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
-            'address' => 'nullable|string'
+            'address' => 'nullable|string|max:500'
         ]);
 
         if ($request->hasFile('profile_pic')) {
-            $file = $request->file('profile_pic');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('profiles'), $filename);
-            $validatedData['profile_pic'] = '/profiles/' . $filename;
+            $validatedData['profile_pic'] = $this->storeProfilePicture($request->file('profile_pic'));
         }
 
-        if ($request->filled('enrolled_face_id') && strpos($request->enrolled_face_id, 'data:image') === 0) {
-            if (!File::exists(public_path('faces'))) {
-                File::makeDirectory(public_path('faces'), 0755, true);
-            }
-            $imageParts = explode(";base64,", $request->enrolled_face_id);
-            $imageBase64 = base64_decode($imageParts[1]);
-            $faceFilename = time() . '_face_' . uniqid() . '.png';
-            file_put_contents(public_path('faces/' . $faceFilename), $imageBase64);
-            $validatedData['enrolled_face_id'] = '/faces/' . $faceFilename;
+        // Never trust a client-supplied path: only a freshly captured image is accepted.
+        unset($validatedData['enrolled_face_id']);
+        if ($request->filled('enrolled_face_id')) {
+            $validatedData['enrolled_face_id'] = $this->storeFaceImage($request->enrolled_face_id);
         }
 
         $member = Member::create($validatedData);
@@ -88,42 +86,25 @@ class MemberController extends Controller
             'phone' => 'sometimes|required|string|max:15',
             'plan' => 'sometimes|required|string',
             'status' => 'sometimes|required|string',
-            'profile_pic' => 'nullable|image|max:51200',
-            'enrolled_face_id' => 'nullable',
+            'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
+            'enrolled_face_id' => 'nullable|string',
             'dob' => 'nullable|date',
             'height' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
-            'address' => 'nullable|string'
+            'address' => 'nullable|string|max:500'
         ]);
 
         if ($request->hasFile('profile_pic')) {
-            if ($member->profile_pic) {
-                $oldPath = public_path($member->profile_pic);
-                if (File::exists($oldPath)) {
-                    File::delete($oldPath);
-                }
-            }
-            $file = $request->file('profile_pic');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('profiles'), $filename);
-            $validatedData['profile_pic'] = '/profiles/' . $filename;
+            $this->deletePublicFile($member->profile_pic, 'profiles');
+            $validatedData['profile_pic'] = $this->storeProfilePicture($request->file('profile_pic'));
         }
 
-        if ($request->filled('enrolled_face_id') && strpos($request->enrolled_face_id, 'data:image') === 0) {
-            if ($member->enrolled_face_id) {
-                $oldFacePath = public_path($member->enrolled_face_id);
-                if (File::exists($oldFacePath)) {
-                    File::delete($oldFacePath);
-                }
-            }
-            if (!File::exists(public_path('faces'))) {
-                File::makeDirectory(public_path('faces'), 0755, true);
-            }
-            $imageParts = explode(";base64,", $request->enrolled_face_id);
-            $imageBase64 = base64_decode($imageParts[1]);
-            $faceFilename = time() . '_face_' . uniqid() . '.png';
-            file_put_contents(public_path('faces/' . $faceFilename), $imageBase64);
-            $validatedData['enrolled_face_id'] = '/faces/' . $faceFilename;
+        // Never trust a client-supplied path: only a freshly captured image is accepted.
+        unset($validatedData['enrolled_face_id']);
+        if ($request->filled('enrolled_face_id')) {
+            $newFace = $this->storeFaceImage($request->enrolled_face_id);
+            $this->deletePublicFile($member->enrolled_face_id, 'faces');
+            $validatedData['enrolled_face_id'] = $newFace;
         }
 
         $member->update($validatedData);
@@ -136,21 +117,11 @@ class MemberController extends Controller
         try {
             $member = Member::findOrFail($id);
 
-            if ($member->profile_pic) {
-                $picPath = public_path($member->profile_pic);
-                if (File::exists($picPath)) {
-                    File::delete($picPath);
-                }
-            }
-
-            if ($member->enrolled_face_id) {
-                $facePath = public_path($member->enrolled_face_id);
-                if (File::exists($facePath)) {
-                    File::delete($facePath);
-                }
-            }
-
             $member->delete();
+
+            // Remove files only after the database row is really gone.
+            $this->deletePublicFile($member->profile_pic, 'profiles');
+            $this->deletePublicFile($member->enrolled_face_id, 'faces');
 
             return response()->json(['message' => 'Member and associated files deleted successfully.']);
 
@@ -162,6 +133,74 @@ class MemberController extends Controller
             }
             
             return response()->json(['message' => 'A database error occurred while trying to delete.'], 500);
+        }
+    }
+
+    /**
+     * Save an uploaded profile picture under a random server-generated name.
+     * The client's original filename (which could be "shell.php") is never used.
+     */
+    private function storeProfilePicture(UploadedFile $file): string
+    {
+        $extension = $file->guessExtension();
+        if (!in_array($extension, self::ALLOWED_IMAGE_EXTENSIONS, true)) {
+            throw ValidationException::withMessages(['profile_pic' => ['Profile picture must be a JPG, PNG or WEBP image.']]);
+        }
+
+        $filename = Str::random(40) . '.' . $extension;
+        $file->move(public_path('profiles'), $filename);
+
+        return '/profiles/' . $filename;
+    }
+
+    /**
+     * Decode a base64 data-URI face capture, verify it is a real JPEG/PNG
+     * image of a sane size, and store it under a random name.
+     */
+    private function storeFaceImage(string $dataUri): string
+    {
+        $fail = fn () => throw ValidationException::withMessages(['enrolled_face_id' => ['Invalid face image.']]);
+
+        if (!preg_match('/^data:image\/(png|jpe?g);base64,/', $dataUri)) {
+            $fail();
+        }
+
+        $binary = base64_decode(substr($dataUri, strpos($dataUri, ',') + 1), true);
+        if ($binary === false || strlen($binary) === 0 || strlen($binary) > self::MAX_FACE_BYTES) {
+            $fail();
+        }
+
+        $info = @getimagesizefromstring($binary);
+        $extensions = [IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg'];
+        if ($info === false || !isset($extensions[$info[2]])) {
+            $fail();
+        }
+
+        if (!File::exists(public_path('faces'))) {
+            File::makeDirectory(public_path('faces'), 0755, true);
+        }
+
+        $filename = Str::random(40) . '.' . $extensions[$info[2]];
+        file_put_contents(public_path('faces/' . $filename), $binary);
+
+        return '/faces/' . $filename;
+    }
+
+    /**
+     * Delete a stored member file, but only if it really lives inside the
+     * expected public sub-folder (prevents "../../.env" style path traversal).
+     */
+    private function deletePublicFile(?string $relativePath, string $folder): void
+    {
+        if (!$relativePath) {
+            return;
+        }
+
+        $baseDir = realpath(public_path($folder));
+        $target = realpath(public_path(ltrim($relativePath, '/')));
+
+        if ($baseDir && $target && str_starts_with($target, $baseDir . DIRECTORY_SEPARATOR) && is_file($target)) {
+            File::delete($target);
         }
     }
 }

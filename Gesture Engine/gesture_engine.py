@@ -25,21 +25,25 @@ import numpy as np
 import requests
 # pandas removed from hot path — sklearn predict() accepts numpy arrays directly (FIX #3)
 
-app = Flask(__name__)
-CORS(app)
+# All secrets/config come from config/settings.py, which reads the git-ignored .env file.
+from config.settings import (
+    LARAVEL_API, AI_HEADERS, AI_SERVICE_KEY, BASE_DIR, KNOWN_FACES_DIR,
+    CAMERA_SOURCE, WEBCAM_INDEX, CORS_ORIGINS, DEFAULT_CCTV_URL, mask_url,
+)
 
-LARAVEL_API = os.getenv("LARAVEL_API_URL", "http://127.0.0.1:8000/api")
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-KNOWN_FACES_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'backend', 'public'))
+app = Flask(__name__)
+import re as _re
+CORS(app, origins=_re.compile(CORS_ORIGINS))
+
+if not AI_SERVICE_KEY:
+    print("⚠️ [CONFIG] AI_SERVICE_KEY is not set — Laravel will reject attendance/workout logs. See .env.example")
 
 # Main Stream 720p H.264 (Channel 101) — reverted from 102 sub-stream which caused more lag on this camera
-CCTV_URL = os.getenv('CCTV_URL', 'rtsp://admin:Jheval07012004@192.168.1.45:554/Streaming/Channels/101')
-
-CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', 'cctv').lower() # 'cctv' or 'webcam'
-WEBCAM_INDEX = int(os.getenv('WEBCAM_INDEX', '0'))
+CCTV_URL = DEFAULT_CCTV_URL
 
 camera_mode = CAMERA_SOURCE
-camera_status = {"connected": False, "source": camera_mode, "url": CCTV_URL}
+# Never expose the camera password through the public /camera_status endpoint.
+camera_status = {"connected": False, "source": camera_mode, "url": mask_url(CCTV_URL)}
 
 def make_placeholder_frame(status_text="Connecting to Camera..."):
     # Generate clean 640x360 dark banner with timestamp
@@ -124,13 +128,22 @@ def load_registered_faces():
     print("🚀 [CAPSTONE READY] HIGH-ACCURACY AI ENGINE...")
     print("[SYNC] Fetching registered members from Laravel...")
     try:
-        response = requests.get(f"{LARAVEL_API}/ai/members-faces")
+        response = requests.get(f"{LARAVEL_API}/ai/members-faces", headers=AI_HEADERS, timeout=10)
+        if response.status_code == 401:
+            print("❌ [SYNC] Laravel rejected the AI key. Make sure AI_SERVICE_KEY matches in both .env files.")
+            return
+        response.raise_for_status()
         members = response.json()
+        faces_root = os.path.realpath(os.path.join(KNOWN_FACES_DIR, 'faces'))
         
         for member in members:
             raw_path = member['image_file']
             if raw_path.startswith('/'): raw_path = raw_path[1:] 
-            filepath = os.path.normpath(os.path.join(KNOWN_FACES_DIR, raw_path)) 
+            filepath = os.path.realpath(os.path.join(KNOWN_FACES_DIR, raw_path))
+            # Only ever read face images from backend/public/faces (blocks ../ path tricks).
+            if not filepath.startswith(faces_root + os.sep):
+                print(f"⚠️ [SYNC] Skipping unsafe face path for member {member.get('id')}")
+                continue
             
             if os.path.exists(filepath):
                 try:
@@ -186,7 +199,7 @@ def log_attendance_to_laravel(member_id, name):
     logged_today[member_id] = current_time
     
     try:
-        res = requests.post(f"{LARAVEL_API}/ai/log-attendance", json={"member_id": member_id})
+        res = requests.post(f"{LARAVEL_API}/ai/log-attendance", json={"member_id": member_id}, headers=AI_HEADERS, timeout=5)
         if res.json().get('status') == 'logged':
             print(f"\n>>> [ATTENDANCE SUCCESS] Logged: {name}!\n")
     except Exception:
@@ -208,7 +221,7 @@ def log_workout_to_laravel(athlete_name, exercise):
     workout_cooldowns[key] = time.time()
     
     try:
-        res = requests.post(f"{LARAVEL_API}/ai/log-workout", json={"member_id": member_id, "exercise": exercise})
+        res = requests.post(f"{LARAVEL_API}/ai/log-workout", json={"member_id": member_id, "exercise": exercise}, headers=AI_HEADERS, timeout=5)
         if res.json().get('status') == 'logged':
             print(f"\n💪 [WORKOUT VERIFIED IN DATABASE] {athlete_name} performed {exercise}!\n")
     except Exception:
@@ -224,7 +237,7 @@ def open_camera():
         cap.set(cv2.CAP_PROP_FPS, 30)
         return cap
     else:
-        print(f"📹 [CAMERA] Initializing Low-Latency CCTV Stream ({CCTV_URL})...")
+        print(f"📹 [CAMERA] Initializing Low-Latency CCTV Stream ({mask_url(CCTV_URL)})...")
         cap = cv2.VideoCapture(CCTV_URL, cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         return cap
@@ -668,4 +681,4 @@ def switch_camera():
 
 if __name__ == '__main__':
     print("\n[SYSTEM] CAPSTONE-READY AI ENGINE ONLINE (LOW LATENCY MODE)")
-    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
+    app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)
