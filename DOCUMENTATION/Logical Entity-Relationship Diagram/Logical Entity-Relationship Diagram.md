@@ -7,71 +7,100 @@ This section presents the **Logical Entity-Relationship Diagram (ERD)** for the 
 ## 1. Logical Entity-Relationship Diagram (PRESENT)
 
 ```mermaid
-flowchart TD
-    %% Entity Definitions with Logical Business Attributes
-    Admin["ADMIN\n- name\n- email\n- password"]
-    
-    Member["MEMBER\n- first_name\n- last_name\n- email\n- phone\n- address\n- dob\n- height\n- weight\n- status"]
-    
-    FaceEncoding["FACE_ENCODING\n- encoding_blob\n- enrolled_at"]
-    
-    Plan["PLAN\n- name\n- price\n- duration_days"]
-    
-    Membership["MEMBERSHIP\n- plan_type\n- start_date\n- end_date\n- status\n- payment_method"]
-    
-    Transaction["TRANSACTION\n- transaction_id\n- transaction_date\n- amount\n- payment_method\n- reference_number\n- status"]
-    
-    Attendance["ATTENDANCE\n- date\n- time_in"]
-    
-    WorkoutLog["WORKOUT_LOG\n- exercise_name\n- date"]
-    
-    Exercise["EXERCISE\n- exercise_id\n- name\n- category\n- body_part\n- gif_path"]
+erDiagram
+    ADMIN {
+        text name
+        text email
+        text password
+        text logo
+    }
+    LOGIN_PIN {
+        text purpose
+        text pin
+        datetime expires_at
+        number attempts
+    }
+    MEMBER {
+        text first_name
+        text last_name
+        text email
+        text phone
+        text address
+        date date_of_birth
+        number height
+        number weight
+        text status
+        text current_plan
+        image profile_photo
+        image face_photo
+    }
+    PACKAGE_CATEGORY {
+        text name
+        text color
+    }
+    PLAN {
+        text name
+        number price
+        number duration_days
+        text category
+        text color
+    }
+    MEMBERSHIP {
+        text plan_type
+        date start_date
+        date end_date
+        text status
+        text payment_method
+        text notes
+    }
+    TRANSACTION {
+        text transaction_id
+        date transaction_date
+        text type
+        text description
+        number amount
+        text payment_method
+        text reference_number
+        text status
+    }
+    ATTENDANCE {
+        date date
+        time time_in
+    }
+    WORKOUT_LOG {
+        text exercise
+        date date
+        number sets
+        number reps
+        text gesture_class
+    }
+    COACH_EVENT_CATEGORY {
+        text name
+        text color
+    }
+    COACH_EVENT {
+        text title
+        text description
+        date start_date
+        date end_date
+        time start_time
+        time end_time
+        text location
+    }
 
-    %% Relationship Diamonds (Chen / Crow's Foot Hybrid Notation)
-    Rel_Admin_Member{"Manages"}
-    Rel_Admin_Plan{"Configures"}
-    Rel_Member_Face{"Enrolls"}
-    Rel_Member_Membership{"Avails"}
-    Rel_Plan_Membership{"Classifies"}
-    Rel_Membership_Txn{"Generates"}
-    Rel_Member_Txn{"Remits"}
-    Rel_Member_Attendance{"Records"}
-    Rel_Member_Workout{"Logs"}
-    Rel_Exercise_Workout{"Prescribes"}
-
-    %% Administrative Management Flows
-    Admin ---|1| Rel_Admin_Member
-    Rel_Admin_Member ---|1..N| Member
-    
-    Admin ---|1| Rel_Admin_Plan
-    Rel_Admin_Plan ---|1..N| Plan
-
-    %% Member Core Relational Links
-    Member ---|1| Rel_Member_Face
-    Rel_Member_Face ---|1..1| FaceEncoding
-
-    Member ---|1| Rel_Member_Membership
-    Rel_Member_Membership ---|1..N| Membership
-
-    Plan ---|1| Rel_Plan_Membership
-    Rel_Plan_Membership ---|1..N| Membership
-
-    Membership ---|1| Rel_Membership_Txn
-    Rel_Membership_Txn ---|1..N| Transaction
-
-    Member ---|1| Rel_Member_Txn
-    Rel_Member_Txn ---|1..N| Transaction
-
-    %% Member Tracking & IoT Activities
-    Member ---|1| Rel_Member_Attendance
-    Rel_Member_Attendance ---|1..N| Attendance
-
-    Member ---|1| Rel_Member_Workout
-    Rel_Member_Workout ---|1..N| WorkoutLog
-
-    Exercise ---|1| Rel_Exercise_Workout
-    Rel_Exercise_Workout ---|1..N| WorkoutLog
+    ADMIN ||--o{ LOGIN_PIN : "verifies with"
+    MEMBER ||--o{ MEMBERSHIP : "subscribes to"
+    PLAN ||--o{ MEMBERSHIP : "is sold as"
+    PACKAGE_CATEGORY |o--o{ PLAN : "groups"
+    MEMBERSHIP ||--o{ TRANSACTION : "is paid by"
+    MEMBER |o--o{ TRANSACTION : "pays"
+    MEMBER ||--o{ ATTENDANCE : "checks in"
+    MEMBER ||--o{ WORKOUT_LOG : "is assigned"
+    COACH_EVENT_CATEGORY ||--o{ COACH_EVENT : "classifies"
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 **Figure 4.4.** Logical Entity-Relationship Diagram for Double Alpha Fitness Gym.
 

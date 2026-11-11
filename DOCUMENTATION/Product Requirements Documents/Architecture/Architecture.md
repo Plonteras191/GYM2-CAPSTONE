@@ -42,7 +42,7 @@ flowchart TB
         FACE_REC["Biometric Face Recognition Engine (face_recognition / dlib)"]
         MEDIAPIPE["MediaPipe Pose Landmark Tracking"]
         ML_MODEL["Scikit-Learn Classifier (workout_model.pkl)"]
-        REP_COUNTER["Repetition State Machine"]
+        REP_COUNTER["Exercise Classifier (Random Forest)"]
     end
 
     subgraph Application_Layer ["⚙️ Application Layer (Laravel 11/12 REST API)"]
@@ -79,6 +79,9 @@ flowchart TB
     CTRL_MEMBERS & CTRL_ATTENDANCE & CTRL_WORKOUTS & CTRL_PAYMENTS & CTRL_REPORTS --> MYSQL
     CTRL_MEMBERS --> STORAGE
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 ---
 
@@ -140,15 +143,18 @@ flowchart LR
         
         GESTURE_ENGINE -->|1. Pose Estimation| MP["MediaPipe Pose (33 Landmarks)"]
         MP -->|2. Feature Vector Extraction| SK["Scikit-Learn Classifier"]
-        SK -->|3. Movement Angle & State| SM["State Machine (UP/DOWN State)"]
-        SM -->|4. Repetition Increment| RC["Validated Rep Count"]
+        SK -->|3. 33 Landmark Coordinates| SM["Random Forest Exercise Classifier"]
+        SM -->|4. Assigned Exercise Confirmed| RC["Verified Workout Task"]
     end
 
     subgraph Backend_Bridge ["Laravel API Integration"]
-        FM -->|POST /api/attendance/checkin| ATTENDANCE_API["Attendance API"]
-        RC -->|POST /api/workouts/verify-task| WORKOUT_API["Workout Task API"]
+        FM -->|POST /api/ai/log-attendance| ATTENDANCE_API["Attendance API"]
+        RC -->|POST /api/ai/log-workout| WORKOUT_API["Workout Task API"]
     end
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 * **Biometric Facial Recognition Sub-Engine**:
   * Uses `face_recognition` (built on `dlib`) for real-time facial landmark detection and 128-dimensional vector encoding.
@@ -171,86 +177,176 @@ Centralized relational data store organizing all gym entity records and relation
 
 ```mermaid
 erDiagram
-    USERS ||--o{ MEMBERS : "manages"
-    MEMBERS ||--o{ ATTENDANCE_LOGS : "has"
-    MEMBERS ||--o{ SUBSCRIPTIONS : "subscribes"
-    MEMBERS ||--o{ PAYMENTS : "makes"
-    MEMBERS ||--o{ WORKOUT_TASKS : "assigned"
-    MEMBERS ||--|| FACE_EMBEDDINGS : "enrolls"
-    SUBSCRIPTIONS ||--o{ PAYMENTS : "settles"
-
-    USERS {
-        uint id PK
-        string name
-        string email
-        string password
-        string role "admin | coach"
-        datetime created_at
+    admins {
+        bigint id PK
+        varchar name
+        varchar email UK
+        varchar password
+        varchar logo_path "nullable"
+        timestamp created_at
+        timestamp updated_at
     }
-
-    MEMBERS {
-        uint id PK
-        string member_code UK
-        string first_name
-        string last_name
-        string phone
-        float height_cm
-        float weight_kg
-        string body_type
-        string status "active | inactive | expiring | expired"
-        datetime created_at
+    auth_verification_codes {
+        bigint id PK
+        bigint admin_id FK
+        varchar email
+        varchar purpose
+        varchar code_hash
+        timestamp expires_at
+        tinyint attempts
+        timestamp created_at
+        timestamp updated_at
     }
-
-    FACE_EMBEDDINGS {
-        uint id PK
-        uint member_id FK
-        text embedding_vector "128-d floating vector"
-        string image_path
-        datetime enrolled_at
+    password_reset_pins {
+        bigint id PK
+        varchar email
+        varchar pin_hash
+        tinyint attempts
+        timestamp expires_at
+        timestamp verified_at "nullable"
+        timestamp created_at
+        timestamp updated_at
     }
-
-    ATTENDANCE_LOGS {
-        uint id PK
-        uint member_id FK
-        date checkin_date
-        time checkin_time
-        string verification_method "facial_recognition | manual_override"
-        string status "approved | rejected"
-        datetime created_at
+    personal_access_tokens {
+        bigint id PK
+        varchar tokenable_type
+        bigint tokenable_id
+        text name
+        varchar token UK
+        text abilities "nullable"
+        timestamp last_used_at "nullable"
+        timestamp expires_at "nullable"
+        timestamp created_at
+        timestamp updated_at
     }
-
-    SUBSCRIPTIONS {
-        uint id PK
-        uint member_id FK
-        string plan_name
+    members {
+        bigint id PK
+        varchar first_name
+        varchar last_name
+        varchar email UK
+        varchar phone
+        varchar plan
+        varchar status
+        longtext enrolled_face_id "nullable, face photo path"
+        varchar profile_pic "nullable"
+        date dob "nullable"
+        decimal height "nullable"
+        decimal weight "nullable"
+        text address "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    package_categories {
+        bigint id PK
+        varchar name UK
+        varchar color
+        timestamp created_at
+        timestamp updated_at
+    }
+    plans {
+        bigint id PK
+        varchar name
         decimal price
+        int duration_days
+        varchar category
+        varchar category_detail "nullable"
+        varchar color "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    memberships {
+        bigint id PK
+        bigint member_id FK "nullable"
+        varchar member_name_snapshot "nullable"
+        varchar member_email_snapshot "nullable"
+        varchar member_profile_pic_snapshot "nullable"
+        bigint plan_id FK "nullable"
+        varchar plan_type
         date start_date
         date end_date
-        string status "active | expiring_soon | expired"
+        varchar status
+        boolean auto_renew
+        varchar payment_method
+        varchar color
+        text notes "nullable"
+        timestamp created_at
+        timestamp updated_at
     }
-
-    PAYMENTS {
-        uint id PK
-        uint member_id FK
-        uint subscription_id FK
+    transactions {
+        bigint id PK
+        varchar transaction_id UK
+        date transaction_date
+        bigint member_id FK "nullable"
+        varchar member_name_snapshot "nullable"
+        varchar member_email_snapshot "nullable"
+        varchar member_profile_pic_snapshot "nullable"
+        bigint membership_id FK "nullable"
+        varchar type
+        varchar description "nullable"
+        varchar payment_method
         decimal amount
-        string payment_method "cash | gcash | maya"
-        string reference_number
-        string status "confirmed | pending"
-        datetime paid_at
+        varchar status
+        varchar reference_number "nullable"
+        varchar package_name_snapshot "nullable"
+        varchar package_category_snapshot "nullable"
+        timestamp created_at
+        timestamp updated_at
     }
-
-    WORKOUT_LOGS {
+    attendances {
         bigint id PK
         bigint member_id FK
-        string exercise "ASSIGNED: name while pending; exercise name when detected"
         date date
-        unsignedSmallint sets "nullable target"
-        unsignedSmallint reps "nullable target"
-        string gesture_class "nullable engine class"
-        timestamps created_at updated_at
+        time time_in
+        timestamp created_at
+        timestamp updated_at
     }
+    workout_logs {
+        bigint id PK
+        bigint member_id FK
+        varchar exercise
+        date date
+        smallint sets "nullable"
+        smallint reps "nullable"
+        varchar gesture_class "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    coach_event_categories {
+        bigint id PK
+        varchar name UK
+        varchar color
+        timestamp created_at
+        timestamp updated_at
+    }
+    coach_events {
+        bigint id PK
+        bigint category_id FK
+        varchar title
+        text description "nullable"
+        date start_date
+        date end_date
+        time start_time
+        time end_time
+        varchar location
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    admins ||--o{ auth_verification_codes : "admin_id"
+    admins ||..o{ personal_access_tokens : "tokenable_id (no FK)"
+    admins ||..o{ password_reset_pins : "email (no FK)"
+    members |o--o{ memberships : "member_id"
+    plans |o--o{ memberships : "plan_id"
+    package_categories |o..o{ plans : "category_detail = name (no FK)"
+    members |o--o{ transactions : "member_id"
+    memberships |o--o{ transactions : "membership_id"
+    members ||--o{ attendances : "member_id"
+    members ||--o{ workout_logs : "member_id"
+    coach_event_categories ||--o{ coach_events : "category_id"
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 ---
 
@@ -284,7 +380,7 @@ sequenceDiagram
     Py->>Py: Compares Vector with Stored Embeddings
     
     alt Confidence Match Found (< 0.6 distance threshold)
-        Py->>LV: POST /api/attendance/checkin (member_id, timestamp)
+        Py->>LV: POST /api/ai/log-attendance (member_id)
         LV->>LV: Validate Operating Hours (9:00 AM - 9:30 PM)
         LV->>LV: Check Single Daily Check-in Rule
         
@@ -300,9 +396,12 @@ sequenceDiagram
     end
 ```
 
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
+
 ---
 
-### 4.2. AI Gesture Workout Verification & Rep Counting Flow
+### 4.2. AI Gesture Workout Verification Flow
 
 ```mermaid
 sequenceDiagram
@@ -332,7 +431,7 @@ sequenceDiagram
     Py->>LV: POST /api/ai/log-workout (member_id, exercise label)
     LV->>DB: Match label to that member's task scheduled for today
     alt Matching assigned task exists
-        LV->>DB: Mark assigned exercise log performed; retain sets/reps targets
+        LV->>DB: Mark assigned exercise log performed, retain sets/reps targets
     else No matching assigned task
         LV->>DB: Save an unassigned exercise log (anti-spam guarded)
     end

@@ -7,52 +7,49 @@ This document presents the corrected and verified **Manual Process Flow Diagram*
 ## 1. Updated Manual Process Flow Diagram (Mermaid)
 
 ```mermaid
-flowchart TD
-    %% Stage 1: Member Registration & Payment
-    subgraph S1 ["Stage 1: Member Registration & Payment"]
-        Start([Start]) --> M_FillForm["Member fills out membership form\n(in person / paper)"]
-        M_FillForm --> M_SubmitInfo["Submit personal, contact, and\nanthropometric information"]
-        M_SubmitInfo --> Admin_Review["Gym owner / admin receives\nand reviews information"]
-        Admin_Review --> InfoComplete{"Is the\ninformation\ncomplete?"}
-        
-        InfoComplete -- "No" --> ReturnMember["Return to member for correction"]
-        ReturnMember --> M_SubmitInfo
-        
-        InfoComplete -- "Yes" --> Admin_RecordMan["Admin records member information manually\n(logbook / spreadsheet)"]
-        Admin_RecordMan --> Admin_RecordPay["Admin records membership and payment details\n(Cash / GCash / Maya)"]
-        Admin_RecordPay --> ConfirmMem["Confirm membership to the member"]
+flowchart LR
+    subgraph S1 ["Stage 1: Registration"]
+        direction TB
+        Start([Start]) --> A1["Member fills out the<br/>membership form on paper"]
+        A1 --> A2["Member submits personal<br/>and membership information"]
+        A2 --> A3["Admin receives and<br/>reviews the information"]
+        A3 --> A4{"Is the information<br/>complete?"}
+        A4 -- No --> A5["Return to member<br/>for correction"]
+        A5 --> A2
+        A4 -- Yes --> A6["Admin records member<br/>information in the<br/>logbook or spreadsheet"]
+        A6 --> A7["Admin records membership<br/>and payment<br/>(Cash, GCash or Maya)"]
+        A7 --> A8["Admin confirms the<br/>membership to the member"]
     end
 
-    %% Stage 2: Attendance & Membership Verification
-    subgraph S2 ["Stage 2: Attendance & Membership Verification"]
-        ConfirmMem --> VisitGym["Member visits the gym\n(checks in)"]
-        VisitGym --> CheckActive{"Is the\nmembership\nactive?"}
-        
-        CheckActive -- "No" --> RenewMem["Member renews membership"]
-        RenewMem --> ProcessRenewal["Admin processes renewal\nand updates membership status"]
-        ProcessRenewal --> RecordAtt["Admin records attendance in the logbook"]
-        
-        CheckActive -- "Yes" --> RecordAtt
-        RecordAtt --> ProceedGym["Member proceeds with gym activities"]
+    subgraph S2 ["Stage 2: Attendance"]
+        direction TB
+        B1["Member visits the gym"] --> B2["Admin records attendance<br/>in the logbook"]
+        B2 --> B3{"Is the membership<br/>active?"}
+        B3 -- No --> B4["Member renews<br/>the membership"]
+        B4 --> B5["Admin processes the<br/>renewal and updates the<br/>membership status"]
+        B5 --> B6["Member proceeds with<br/>gym activities"]
+        B3 -- Yes --> B6
     end
 
-    %% Stage 3: Fitness Program Monitoring
-    subgraph S3 ["Stage 3: Fitness Program Monitoring"]
-        ProceedGym --> AssessMem["Admin assesses member body type\n(Ectomorph / Mesomorph / Endomorph)"]
-        AssessMem --> AssignProg["Admin assigns fitness program to member\n(new member or new program)"]
-        AssignProg --> ExplainEx["Admin explains exercises and proper techniques"]
-        ExplainEx --> ObserveMem["Admin manually observes and monitors the member"]
-        ObserveMem --> RecordProg["Admin records progress manually\n(paper progress notes / logbook)"]
+    subgraph S3 ["Stage 3: Fitness Program"]
+        direction TB
+        C1["Admin assigns a fitness<br/>program (new member<br/>or new program)"] --> C2["Admin explains the<br/>exercises and proper<br/>techniques"]
+        C2 --> C3["Admin observes and<br/>monitors the member"]
+        C3 --> C4["Admin records progress<br/>in the logbook"]
     end
 
-    %% Stage 4: Record Maintenance & Reporting
-    subgraph S4 ["Stage 4: Record Maintenance & Reporting"]
-        RecordProg --> MaintainRec["Admin maintains attendance, membership,\npayment, and member records"]
-        MaintainRec --> PrepareRep["Admin prepares reports\n(attendance, payments, member list,\nand other available records)"]
-        PrepareRep --> FileRec["Admin files and stores records\n(physical filing / logbooks)"]
-        FileRec --> EndNode([End])
+    subgraph S4 ["Stage 4: Reports"]
+        direction TB
+        D1["Admin maintains attendance,<br/>membership, payment<br/>and member records"] --> D2["Admin prepares reports<br/>(attendance, payments,<br/>member list)"]
+        D2 --> D3["Admin files and stores<br/>the records on paper<br/>and in logbooks"]
+        D3 --> End([End])
     end
+
+    S1 --> S2 --> S3 --> S4
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 **Figure 4.1.** Corrected Manual Process Flow Diagram for Double Alpha Fitness Gym.
 

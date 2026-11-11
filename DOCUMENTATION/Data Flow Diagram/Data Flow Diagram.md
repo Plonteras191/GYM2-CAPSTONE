@@ -20,94 +20,99 @@ Following the role-based DFD structure, Figure 4.3 illustrates the Level 1 Data 
 
 ```mermaid
 flowchart LR
-    %% Left Entity
-    Admin["Gym Owner, Admin, or Coach"]
-    GestureEngine["Python Gesture Engine"]
+    Admin["Gym Owner / Admin"]
+    Camera["Camera"]
+    P1(["1.0<br/>Log In"])
+    P2(["2.0<br/>View Dashboard"])
+    P3(["3.0<br/>Manage Members"])
+    P4(["4.0<br/>Attendance Monitoring"])
+    P5(["5.0<br/>Program Monitoring"])
+    P6(["6.0<br/>Packages and Subscriptions"])
+    P7(["7.0<br/>Payment Transactions"])
+    P8(["8.0<br/>Reports"])
 
-    %% Middle Processes
-    subgraph Processes ["Operational System Processes"]
-        P1(["1.0 Login Account"])
-        P2(["2.0 Dashboard Overview"])
-        P3(["3.0 Manage Members"])
-        P4(["4.0 Attendance Monitoring"])
-        P5(["5.0 Program Monitoring"])
-        P6(["6.0 Subscription Management"])
-        P7(["7.0 Payment Transactions"])
-        P8(["8.0 System Reports"])
-    end
+    Admin -->|"Email, password, PIN"| P1
+    P1 -->|"Login result, session token"| Admin
+    S10[("D1 admins")]
+    P1 <-->|"Admin account"| S10
+    S11[("D9 auth_verification_codes")]
+    P1 <-->|"Login PIN"| S11
+    S12[("D10 personal_access_tokens")]
+    P1 -->|"Session token"| S12
 
-    %% Right Data Stores
-    subgraph DataStores ["Database Stores (MySQL)"]
-        D1[("D1 admins")]
-        D2[("D2 members")]
-        D3[("D3 face_encodings")]
-        D4[("D4 attendances")]
-        D5[("D5 workout_logs")]
-        D6[("D6 plans")]
-        D7[("D7 memberships")]
-        D8[("D8 transactions")]
-    end
+    Admin -->|"Dashboard request"| P2
+    P2 -->|"Totals, sales chart, notifications"| Admin
+    S20[("D2 members")]
+    P2 ~~~ S20
+    S20 -->|"Member count"| P2
+    S21[("D7 memberships")]
+    P2 ~~~ S21
+    S21 -->|"Active and expiring subscriptions"| P2
+    S22[("D8 transactions")]
+    P2 ~~~ S22
+    S22 -->|"Revenue"| P2
 
-    %% Process 1.0: Login
-    Admin -->|Login credentials| P1
-    P1 -->|Verify admin credentials| D1
-    D1 -->|Account validation and token| P1
-    P1 -->|Login status and session token| Admin
+    Admin -->|"Member details, face capture"| P3
+    P3 -->|"Member list and profiles"| Admin
+    S30[("D2 members")]
+    P3 <-->|"Member records"| S30
+    S31[("D3 face photo files")]
+    P3 -->|"Face photo"| S31
 
-    %% Process 2.0: Dashboard
-    Admin -->|Dashboard view request| P2
-    D2 -->|Active member counts| P2
-    D4 -->|Daily attendance count| P2
-    D7 -->|Expiring subscription alerts| P2
-    D8 -->|Revenue and transaction summary| P2
-    P2 -->|Summary KPIs and statistics| Admin
+    Admin -->|"Camera selection"| P4
+    P4 -->|"Live feed, today's check-ins"| Admin
+    S40[("D2 members")]
+    P4 ~~~ S40
+    S40 -->|"Enrolled members"| P4
+    S41[("D3 face photo files")]
+    P4 ~~~ S41
+    S41 -->|"Face photos"| P4
+    S42[("D4 attendances")]
+    P4 <-->|"Member, date, time in"| S42
 
-    %% Process 3.0: Manage Members
-    Admin -->|Member info, anthropometrics and photo| P3
-    P3 -->|Save member profile and body metrics| D2
-    P3 -->|Save 128-d face encodings| D3
-    D2 -->|Retrieve member list and profiles| P3
-    P3 -->|Member records and enrollment status| Admin
+    Admin -->|"7-day workout plan, manual verification"| P5
+    P5 -->|"Task status, workout history"| Admin
+    S50[("D5 workout_logs")]
+    P5 <-->|"Assigned and verified tasks"| S50
+    S51[("D7 memberships")]
+    P5 ~~~ S51
+    S51 -->|"Active With Coach subscription"| P5
 
-    %% Process 4.0: Attendance Monitoring
-    Admin -->|Attendance monitor request| P4
-    D3 -->|Retrieve enrolled face encodings| P4
-    P4 -->|Record attendance entry and timestamp| D4
-    D4 -->|Retrieve today's attendance logs| P4
-    P4 -->|Live attendance logs and recognition alerts| Admin
+    Admin -->|"Packages, subscriptions, upgrades"| P6
+    P6 -->|"Package list, subscription status"| Admin
+    S60[("D6 plans")]
+    P6 <-->|"Packages"| S60
+    S61[("D7 memberships")]
+    P6 <-->|"Subscriptions"| S61
+    S62[("D8 transactions")]
+    P6 -->|"Automatic payment record"| S62
 
-    %% Process 5.0: Program Monitoring
-    Admin -->|Member workout plan: body-part exercises, dates, sets, reps| P5
-    D2 -->|Retrieve assigned member info| P5
-    P5 -->|Save dated assignments, targets, and gesture class| D5
-    D5 -->|Pending tasks and recent workout logs| P5
-    GestureEngine -->|Detected movement class and face-matched member ID| P5
-    P5 -->|Match detection to member's due assignment and update exercise log| D5
-    P5 -->|Workout queue, detection status, and exercise history| Admin
+    Admin -->|"Payment details, refund request"| P7
+    P7 -->|"Transaction list, receipt"| Admin
+    S70[("D8 transactions")]
+    P7 <-->|"Transactions"| S70
+    S71[("D6 plans")]
+    P7 ~~~ S71
+    S71 -->|"Package name"| P7
 
-    %% Process 6.0: Subscription Management
-    Admin -->|Plan rates and subscription renewals| P6
-    P6 -->|Save and update pricing tiers| D6
-    P6 -->|Save and update member subscription dates| D7
-    D6 -->|Retrieve available plans| P6
-    D7 -->|Retrieve active and expired memberships| P6
-    P6 -->|Plan list, subscription status and expiry alerts| Admin
+    Admin -->|"Report type, date range"| P8
+    P8 -->|"Report table, CSV or print"| Admin
+    S80[("D8 transactions")]
+    P8 ~~~ S80
+    S80 -->|"Payments"| P8
+    S81[("D7 memberships")]
+    P8 ~~~ S81
+    S81 -->|"Subscriptions"| P8
+    S82[("D4 attendances")]
+    P8 ~~~ S82
+    S82 -->|"Check-ins"| P8
 
-    %% Process 7.0: Payment Transactions
-    Admin -->|Payment details via Cash, GCash or Maya| P7
-    P7 -->|Save transaction record and reference| D8
-    P7 -->|Update active subscription validity| D7
-    D8 -->|Retrieve payment history| P7
-    P7 -->|Payment confirmation, receipt and ledger| Admin
-
-    %% Process 8.0: System Reports
-    Admin -->|Report filter criteria and export request| P8
-    D4 -->|Read attendance history| P8
-    D5 -->|Read workout history| P8
-    D7 -->|Read subscription records| P8
-    D8 -->|Read payment transactions| P8
-    P8 -->|Generated system reports in PDF or CSV| Admin
+    Camera -->|"Live video"| P4
+    Camera -->|"Live video"| P5
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 **Figure 4.3.** Data Flow Diagram (DFD Level 1) for Gym Owner / Administrator.
 
