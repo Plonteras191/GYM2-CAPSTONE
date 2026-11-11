@@ -10,91 +10,72 @@ It illustrates the end-to-end operational flow executed by the System Administra
 
 ```mermaid
 flowchart TD
-    Start([Start]) --> Login["Login (Administrator)"]
-    Login --> Credentials["Enter Username and Password"]
-    Credentials --> ValidAuth{"Valid\nCredentials?"}
-    
-    ValidAuth -- "No" --> LoginError["Display Login Error"]
-    LoginError --> Credentials
-    
-    ValidAuth -- "Yes" --> Dashboard["Administrator Dashboard"]
-    Dashboard --> SelectFunc["Select Function"]
-    
-    %% Six Primary Functional Modules
-    SelectFunc --> M1["1. Member Registration"]
-    SelectFunc --> M2["2. Attendance Monitoring"]
-    SelectFunc --> M3["3. Program Monitoring"]
-    SelectFunc --> M4["4. Subscription Management"]
-    SelectFunc --> M5["5. Payment Transaction"]
-    SelectFunc --> M6["6. Reports"]
-    
-    %% Module 1: Member Registration
-    M1 --> M1_1["Enter Member Information\n(Personal info, contact details,\nheight and weight)"]
-    M1_1 --> M1_1b["Select Member Body Type\n(Ectomorph / Mesomorph / Endomorph)"]
-    M1_1b --> M1_2["Capture / Register Facial Data"]
-    M1_2 --> M1_3["Save Member Information"]
-    
-    %% Module 2: Attendance Monitoring
-    M2 --> M2_1["Camera Captures Member Face"]
-    M2_1 --> M2_2["Facial Recognition Analysis"]
-    M2_2 --> M2_Check{"Member\nRecognized?"}
-    M2_Check -- "No" --> M2_Fail["Display Unrecognized Member Alert"]
-    M2_Check -- "Yes" --> M2_3["Record Attendance Entry"]
-    M2_3 --> M2_4["Save Date, Time, and Status"]
-    
-    %% Module 3: Program Monitoring (Fix 2 & Fix 3 Applied)
-    M3 --> M3_1["Select Registered Member"]
-    M3_1 --> M3_2["Assign Exercise Task\n(from Approved Scope)"]
-    M3_2 --> M3_3["Camera Captures Exercise Movement"]
-    M3_3 --> M3_4["Pose Landmark & Movement Recognition"]
-    M3_4 --> M3_Check{"Exercise\nDetected?"}
-    M3_Check -- "No" --> M3_Fail["Display 'Adjust Position in Camera View'"]
-    M3_Fail --> M3_3
-    M3_Check -- "Yes" --> M3_5["Monitor Exercise Execution"]
-    M3_5 --> M3_6["Count Repetitions / Track Form"]
-    M3_6 --> M3_7["Save Monitoring Results"]
-    
-    %% Module 4: Subscription Management
-    M4 --> M4_1["View Member Subscriptions"]
-    M4_1 --> M4_2["Check Membership Status"]
-    M4_2 --> M4_Check{"Active or\nExpired?"}
-    M4_Check -- "Active" --> M4_Active["Display Membership Status"]
-    M4_Check -- "Expired" --> M4_Renew["Process Membership Renewal"]
-    M4_Renew --> M4_Pay["Record Renewal Payment\n(Cash / GCash / Maya)"]
-    M4_Pay --> M4_Update["Update Membership Record"]
-    
-    %% Module 5: Payment Transaction (Fix 4 & Fix 5 Applied)
-    M5 --> M5_1["Select Member"]
-    M5_1 --> M5_2["Select Linked Membership Plan"]
-    M5_2 --> M5_3["Enter Payment Details\n(Amount, Reference No.)"]
-    M5_3 --> M5_4["Select Payment Method\n(Cash / GCash / Maya)"]
-    M5_4 --> M5_5["Record Payment Transaction"]
-    M5_5 --> M5_6["Update Payment History"]
-    M5_6 --> M5_7["Activate / Update\nMembership Subscription"]
-    
-    %% Module 6: Reports
-    M6 --> M6_1["Select Report Category:\n• Attendance Report\n• Membership Report\n• Program Monitoring Report\n• Payment Report"]
-    M6_1 --> M6_2["Generate Filtered Report"]
-    M6_2 --> M6_3["Display & Export Report"]
-    
-    %% Return / Merge Paths to Session Decision
-    M1_3 --> LogoutCheck
-    M2_4 --> LogoutCheck
-    M2_Fail --> LogoutCheck
-    M3_7 --> LogoutCheck
-    M4_Active --> LogoutCheck
-    M4_Update --> LogoutCheck
-    M5_7 --> LogoutCheck
-    M6_3 --> LogoutCheck
-    
-    %% Session Control
-    LogoutCheck{"Logout?"}
-    LogoutCheck -- "No" --> ReturnDash["Return to Dashboard"]
-    ReturnDash --> Dashboard
-    
-    LogoutCheck -- "Yes" --> LogoutAction["Perform Logout"]
-    LogoutAction --> EndNode([End])
+    Start([Start]) --> Cred["Enter email and password"]
+    Cred --> Valid{"Email and password<br/>correct?"}
+    Valid -- No --> Err1["Show login error"]
+    Err1 --> Cred
+    Valid -- Yes --> EnterPin["Enter the 6-digit PIN"]
+    EnterPin --> PinOk{"PIN correct?"}
+    PinOk -- No --> Err2["Show PIN error"]
+    Err2 --> EnterPin
+    PinOk -- Yes --> Dash["Dashboard"]
+    Dash --> Select["Select function"]
+
+    Select --> A1["Module 1: Member Registration"]
+    A1 --> A2["Enter name, contact details,<br/>date of birth, height and weight"]
+    A2 --> A3["Capture face:<br/>front, left and right"]
+    A3 --> A4["Save member record<br/>and face photo"]
+
+    Select --> B1["Module 2: Attendance Monitoring"]
+    B1 --> B2["Camera captures<br/>the member's face"]
+    B2 --> B3{"Face<br/>recognized?"}
+    B3 -- No --> B4["Show 'Unknown'<br/>on the live feed"]
+    B3 -- Yes --> B5{"Within 9:00 AM to 9:30 PM<br/>and not yet logged today?"}
+    B5 -- No --> B6["No attendance saved"]
+    B5 -- Yes --> B7["Save member, date<br/>and time in"]
+
+    Select --> C1["Module 3: Program Monitoring"]
+    C1 --> C2["Build the member's 7-day plan:<br/>exercise, date, sets and reps"]
+    C2 --> C3["Camera captures the member<br/>doing the exercise"]
+    C3 --> C4{"Assigned exercise<br/>recognized?"}
+    C4 -- No --> C5["Coach verifies<br/>the task manually"]
+    C4 -- Yes --> C6["Task marked as verified"]
+    C5 --> C6
+
+    Select --> D1["Module 4: Packages and Subscriptions"]
+    D1 --> D2["Select member<br/>and package"]
+    D2 --> D3{"Member has an active<br/>subscription?"}
+    D3 -- Yes --> D4["Upgrade to a higher-priced<br/>package and pay the balance"]
+    D3 -- No --> D5["Save new subscription"]
+    D5 --> D6["Payment transaction<br/>created automatically"]
+    D4 --> D6
+
+    Select --> E1["Module 5: Payment Transactions"]
+    E1 --> E2["Select package and member<br/>(none for a walk-in guest)"]
+    E2 --> E3["Enter amount, reference number<br/>and method: Cash, GCash or Maya"]
+    E3 --> E4["Save transaction"]
+    E4 --> E5["Print receipt<br/>or refund if needed"]
+
+    Select --> F1["Module 6: Reports"]
+    F1 --> F2["Choose report type:<br/>Payment Transactions, or<br/>Membership and Attendance"]
+    F2 --> F3["Set start and end date"]
+    F3 --> F4["View report, then<br/>export CSV or print"]
+
+    A4 --> Out{"Log out?"}
+    B4 --> Out
+    B6 --> Out
+    B7 --> Out
+    C6 --> Out
+    D6 --> Out
+    E5 --> Out
+    F4 --> Out
+    Out -- No --> Dash
+    Out -- Yes --> Logout["Log out"]
+    Logout --> End([End])
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 **Figure 4.1.** Updated System Process Flow Diagram for the Camera-Based Gym Management System for Double Alpha Fitness Gym.
 

@@ -20,42 +20,31 @@ To keep the diagram visually clear and easy to read during presentations, relate
 ## 2. Context Level Diagram (PRESENT)
 
 ```mermaid
-flowchart TD
-    %% External Entities
-    Admin["Gym Owner or Admin - Primary Operator"]
-    Camera["Camera or Webcam - IoT Vision Hardware"]
-    Member["Gym Member - Physical Participant"]
+flowchart LR
+    Admin["Gym Owner / Admin"]
+    Camera["Camera<br/>(CCTV, phone camera or webcam)"]
+    Member["Gym Member"]
+    Mail["Email Server"]
+    System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
 
-    %% Central Process 0
-    System(["Process 0: IoT-Based Gym Management System for Double Alpha Fitness Gym"])
+    Admin -->|"F1: Email, password and login PIN"| System
+    Admin -->|"F2: Member details, face capture, packages, subscriptions, coach events, payments and refunds"| System
+    Admin -->|"F3: Workout plans and manual verification"| System
+    Admin -->|"F4: Report dates, camera selection and profile updates"| System
 
-    %% Admin Inflows (Inputs)
-    Admin -->|1. Admin login credentials| System
-    Admin -->|2. Member profile, anthropometrics and photo command| System
-    Admin -->|3. Plans, workout assignments and payment details| System
-    Admin -->|4. Report generation requests and filter parameters| System
+    System -->|"F5: Login result, dashboard summary and notifications"| Admin
+    System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
+    System -->|"F7: Live camera feeds, today's attendance and workout task status"| Admin
+    System -->|"F8: Reports (CSV or print)"| Admin
 
-    %% Admin Outflows (Outputs)
-    System -->|5. Login status and dashboard summary statistics| Admin
-    System -->|6. Member records and enrollment confirmation| Admin
-    System -->|7. Attendance logs and recognition alerts - Recognized or Unrecognized| Admin
-    System -->|8. Membership status, expiration alerts and payment records| Admin
-    System -->|9. Program monitoring results and repetition counts| Admin
-    System -->|10. Generated system reports - PDF or CSV| Admin
-
-    %% Camera Inflows (Inputs)
-    Camera -->|11. Live facial video stream for entrance recognition| System
-    Camera -->|12. Live exercise movement video stream for pose tracking| System
-
-    %% Member Inflows (Inputs)
-    Member -->|13. Registration info, measurements and photo posing| System
-    Member -->|14. Payment remittance via Cash, GCash or Maya| System
-
-    %% Member Outflows (Outputs)
-    System -->|15. Attendance check-in greeting and recognition status| Member
-    System -->|16. Real-time exercise repetition count and monitoring result| Member
-    System -->|17. Membership validity notice and official payment receipt| Member
+    Camera -->|"F9: Live video of faces and exercise movement"| System
+    Member -->|"F10: Personal details, face photo and payment (through the admin)"| System
+    System -->|"F11: Payment receipt (printed by the admin)"| Member
+    System -->|"F12: Login PIN and password-reset PIN"| Mail
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 **Figure 4.2.** Simplified Context Level Diagram (DFD Level 0) for Double Alpha Fitness Gym.
 

@@ -10,124 +10,47 @@ This diagram shows the complete system boundary with all three actors and their 
 
 ```mermaid
 flowchart LR
-    subgraph SystemBoundary ["System Boundary: Double Alpha Fitness Gym Management System"]
+    Admin["Gym Owner / Admin"]
+    Camera["Camera / Gesture Engine"]
+    Member["Gym Member"]
 
-        UC_Login(["Login"])
-        UC_ValCred(["Validate Credentials"])
-        UC_Forgot(["Forgot Password"])
-        UC_ResetPass(["Reset Password"])
-        UC_Logout(["Logout"])
-        UC_InvalidateSess(["Invalidate Session Token"])
-        UC_Dash(["View Dashboard"])
-
-        UC_ManageMem(["Manage Members"])
-        UC_AddMem(["Add Member & Anthropometrics"])
-        UC_ViewMem(["View Member List & Profiles"])
-        UC_UpdateMem(["Update Member Information"])
-        UC_DeleteMem(["Archive / Deactivate Member"])
-        UC_EnrollFace(["Enroll Facial Biometric Data"])
-
-        UC_ManagePlan(["Manage Membership Plans"])
-        UC_AddPlan(["Create Membership Plan"])
-        UC_ViewPlan(["View Membership Plans"])
-        UC_UpdatePlan(["Update Plan Details & Rates"])
-        UC_TogglePlan(["Activate / Deactivate Plan"])
-        UC_ManageSub(["Manage Subscriptions & Renewals"])
-
-        UC_ManageTrans(["Manage Payment Transactions"])
-        UC_ViewTrans(["View Payment Records"])
-        UC_RecordPay(["Record Payment (Cash, GCash, Maya)"])
-        UC_UpdatePay(["Update / Confirm Payment Status"])
-
-        UC_ManageProg(["Manage Workout Programs"])
-        UC_AssignTask(["Assign Exercise Tasks to Member"])
-        UC_ManualVerify(["Manually Verify Workout Log"])
-
-        UC_CamControl(["Manage Camera Feeds & Hardware"])
-        UC_ViewLive(["View Live Camera Streams"])
-        UC_ConnCam(["Connect / Switch Camera Source"])
-        UC_DisconnCam(["Disconnect Camera Stream"])
-
-        UC_FaceDetect(["Detect Facial Features"])
-        UC_MatchFace(["Match Face Encodings"])
-        UC_LogAtt(["Auto-Record Attendance Timestamp"])
-
-        UC_DetectPose(["Detect Human Body Landmarks"])
-        UC_ClassifyEx(["Identify Exercise Type"])
-        UC_CountReps(["Count Exercise Repetitions"])
-        UC_LogWorkout(["Auto-Record Workout Reps & Performance"])
-
-        UC_ManageRep(["Manage Reports & Analytics"])
-        UC_RepSub(["Generate Membership/Subscription Report"])
-        UC_RepAtt(["Generate Attendance Logs Report"])
-        UC_RepPay(["Generate Payment & Revenue Report"])
-        UC_RepProg(["Generate Program Monitoring Report"])
-
-        UC_ManageAcc(["Manage Admin Profile"])
-        UC_UpdProf(["Update Profile Details"])
-        UC_ChangePass(["Change Security Password"])
-        UC_UpdPhoto(["Update Admin Profile Picture"])
-
-        UC_Login -.->|"<<include>>"| UC_ValCred
-        UC_Login -.->|"<<extend>>"| UC_Forgot
-        UC_Forgot -.->|"<<include>>"| UC_ResetPass
-        UC_Logout -.->|"<<include>>"| UC_InvalidateSess
-        UC_ManageMem -.->|"<<include>>"| UC_AddMem
-        UC_ManageMem -.->|"<<include>>"| UC_ViewMem
-        UC_ManageMem -.->|"<<include>>"| UC_UpdateMem
-        UC_ManageMem -.->|"<<include>>"| UC_DeleteMem
-        UC_ManageMem -.->|"<<include>>"| UC_EnrollFace
-        UC_ManagePlan -.->|"<<include>>"| UC_AddPlan
-        UC_ManagePlan -.->|"<<include>>"| UC_ViewPlan
-        UC_ManagePlan -.->|"<<include>>"| UC_UpdatePlan
-        UC_ManagePlan -.->|"<<include>>"| UC_TogglePlan
-        UC_ManagePlan -.->|"<<include>>"| UC_ManageSub
-        UC_ManageTrans -.->|"<<include>>"| UC_ViewTrans
-        UC_ManageTrans -.->|"<<include>>"| UC_RecordPay
-        UC_ManageTrans -.->|"<<include>>"| UC_UpdatePay
-        UC_ManageProg -.->|"<<include>>"| UC_AssignTask
-        UC_ManageProg -.->|"<<include>>"| UC_ManualVerify
-        UC_CamControl -.->|"<<include>>"| UC_ViewLive
-        UC_CamControl -.->|"<<include>>"| UC_ConnCam
-        UC_CamControl -.->|"<<include>>"| UC_DisconnCam
-        UC_ManageRep -.->|"<<include>>"| UC_RepSub
-        UC_ManageRep -.->|"<<include>>"| UC_RepAtt
-        UC_ManageRep -.->|"<<include>>"| UC_RepPay
-        UC_ManageRep -.->|"<<include>>"| UC_RepProg
-        UC_ManageAcc -.->|"<<include>>"| UC_UpdProf
-        UC_ManageAcc -.->|"<<include>>"| UC_ChangePass
-        UC_ManageAcc -.->|"<<include>>"| UC_UpdPhoto
-        UC_FaceDetect -.->|"<<include>>"| UC_MatchFace
-        UC_MatchFace -.->|"<<include>>"| UC_LogAtt
-        UC_DetectPose -.->|"<<include>>"| UC_ClassifyEx
-        UC_ClassifyEx -.->|"<<include>>"| UC_CountReps
-        UC_CountReps -.->|"<<include>>"| UC_LogWorkout
+    subgraph Boundary ["Gym Management System"]
+        UC1(["Log In with Email,<br/>Password and PIN"])
+        UC2(["View Dashboard<br/>and Notifications"])
+        UC3(["Manage Members<br/>and Face Capture"])
+        UC4(["Manage Packages<br/>and Subscriptions"])
+        UC5(["Record Payments,<br/>Receipts and Refunds"])
+        UC6(["Build Workout Plans and<br/>Verify Tasks Manually"])
+        UC7(["View Attendance and<br/>Gesture Monitors"])
+        UC8(["Generate Reports"])
+        UC9(["Manage Admin Profile"])
+        UC10(["Recognize Faces and<br/>Log Attendance"])
+        UC11(["Recognize Assigned<br/>Exercise and Verify Task"])
+        UC12(["Stream Live Video"])
     end
 
-    Admin["🧑‍💼 Gym Owner / Coach (Admin)\n[Primary System Actor]"]
-    Camera["📷 Security Camera / AI Vision Engine\n[IoT / Device Actor]"]
-    Member["🏃 Gym Member\n[Physical Participant Actor]"]
+    Admin --> UC1
+    Admin --> UC2
+    Admin --> UC3
+    Admin --> UC4
+    Admin --> UC5
+    Admin --> UC6
+    Admin --> UC7
+    Admin --> UC8
+    Admin --> UC9
 
-    Admin --> UC_Login
-    Admin --> UC_Logout
-    Admin --> UC_Dash
-    Admin --> UC_ManageMem
-    Admin --> UC_ManagePlan
-    Admin --> UC_ManageTrans
-    Admin --> UC_ManageProg
-    Admin --> UC_CamControl
-    Admin --> UC_ManageRep
-    Admin --> UC_ManageAcc
+    Camera --> UC10
+    Camera --> UC11
+    Camera --> UC12
 
-    Camera --> UC_FaceDetect
-    Camera --> UC_DetectPose
-    Camera --> UC_ViewLive
-
-    Member -.->|Provides Info & Face Photo| UC_EnrollFace
-    Member -.->|Walks in front of Camera| UC_FaceDetect
-    Member -.->|Performs Exercise Gestures| UC_DetectPose
-    Member -.->|Submits Payment| UC_RecordPay
+    Member --> UC3
+    Member --> UC5
+    Member --> UC10
+    Member --> UC11
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 ---
 
@@ -147,80 +70,92 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Admin["🧑‍💼 Gym Owner / Coach (Admin)\n[Primary System Actor]"]
+    Admin["Gym Owner / Admin"]
 
-    subgraph AdminBoundary ["Admin Use Cases — Gym Management System"]
+    subgraph Boundary ["Gym Management System"]
+        Login(["Log In"])
+        ValCred(["Validate Email and Password"])
+        VerPin(["Verify 6-Digit PIN"])
+        Reset(["Reset Password by PIN"])
+        Logout(["Log Out"])
 
-        A_Login(["UC-01: Login / Authentication"])
-        A_ValCred(["Validate Credentials"])
-        A_Forgot(["Forgot Password"])
-        A_ResetPass(["Reset Password"])
-        A_Logout(["UC-01b: Logout"])
-        A_InvSess(["Invalidate Session Token"])
+        Dash(["View Dashboard"])
+        Notif(["View Notifications"])
 
-        A_Dash(["UC-02: View Dashboard & Statistics"])
+        AddMem(["Add Member"])
+        Face(["Capture Face<br/>(front, left, right)"])
+        ViewMem(["View Member Profile,<br/>Attendance and Workouts"])
+        UpdMem(["Update Member"])
+        DelMem(["Delete Member"])
 
-        A_AddMem(["UC-03a: Add Member & Enroll Biometrics"])
-        A_ViewMem(["UC-03b: View & Search Member List"])
-        A_UpdateMem(["UC-03c: Edit Member Information"])
-        A_DeleteMem(["UC-03d: Archive / Deactivate Member"])
+        Pack(["Manage Packages and Prices"])
+        Cat(["Manage Package Categories"])
+        NewSub(["Create Subscription"])
+        UpSub(["Upgrade Subscription"])
+        AutoPay(["Create Payment Transaction"])
+        Events(["Manage Coach Events"])
 
-        A_AddPlan(["UC-04a: Create Membership Plan"])
-        A_TogglePlan(["UC-04b: Activate / Deactivate Plan"])
-        A_AddSub(["UC-04c: Assign Subscription to Member"])
-        A_ManageSub(["UC-04d: Monitor & Renew Subscriptions"])
+        Pay(["Record Payment<br/>(Cash, GCash, Maya)"])
+        Receipt(["Print Receipt"])
+        Refund(["Refund Transaction"])
 
-        A_RecordPay(["UC-05a: Record Payment Transaction"])
-        A_PrintReceipt(["UC-05b: Print Payment Receipt"])
+        Plan(["Build 7-Day Workout Plan"])
+        Manual(["Manually Verify Workout Task"])
 
-        A_AssignTask(["UC-07a: Assign Exercise Task to Member"])
-        A_ManualVerify(["UC-07b: Manually Verify Workout Log"])
+        AttMon(["View Attendance Monitor"])
+        GesMon(["View Gesture Monitor"])
+        Switch(["Switch Camera Source"])
+        Sync(["Re-sync Enrolled Faces"])
 
-        A_ViewLive(["UC-09a: View Live Camera Stream"])
-        A_SwitchCam(["UC-09b: Switch Camera Source (RTSP / Webcam)"])
+        Report(["Generate Report"])
+        Export(["Export CSV or Print"])
 
-        A_GenRep(["UC-10a: Generate & Filter System Reports"])
-        A_ExportRep(["UC-10b: Export CSV / Print PDF Report"])
+        Profile(["Update Admin Profile"])
+        Pass(["Change Password"])
+        Logo(["Update System Logo"])
 
-        A_UpdateProf(["UC-11a: Update Admin Profile Details"])
-        A_ChangePass(["UC-11b: Change Security Password"])
-        A_UpdPhoto(["UC-11c: Update Profile Picture"])
-        A_ViewAtt(["UC-06: View Attendance Monitor (Security Monitor)"])
-        A_EnrollBio(["Enroll Facial Biometric Data"])
-        A_ActivateSub(["Activate / Update Member Subscription"])
-
-        A_Login -.->|"<<include>>"| A_ValCred
-        A_Login -.->|"<<extend>>"| A_Forgot
-        A_Forgot -.->|"<<include>>"| A_ResetPass
-        A_Logout -.->|"<<include>>"| A_InvSess
-        A_GenRep -.->|"<<include>>"| A_ExportRep
-        A_AddMem -.->|"<<include>>"| A_EnrollBio
-        A_RecordPay -.->|"<<include>>"| A_ActivateSub
+        Login -.->|"«include»"| ValCred
+        Login -.->|"«include»"| VerPin
+        Login ~~~ Reset
+        Reset -.->|"«extend»"| Login
+        AddMem -.->|"«include»"| Face
+        NewSub -.->|"«include»"| AutoPay
+        UpSub -.->|"«include»"| AutoPay
+        Pay ~~~ Receipt
+        Receipt -.->|"«extend»"| Pay
+        Report ~~~ Export
+        Export -.->|"«extend»"| Report
     end
 
-    Admin --> A_Login
-    Admin --> A_Logout
-    Admin --> A_Dash
-    Admin --> A_AddMem
-    Admin --> A_ViewMem
-    Admin --> A_UpdateMem
-    Admin --> A_DeleteMem
-    Admin --> A_AddPlan
-    Admin --> A_TogglePlan
-    Admin --> A_AddSub
-    Admin --> A_ManageSub
-    Admin --> A_RecordPay
-    Admin --> A_PrintReceipt
-    Admin --> A_AssignTask
-    Admin --> A_ManualVerify
-    Admin --> A_ViewLive
-    Admin --> A_SwitchCam
-    Admin --> A_GenRep
-    Admin --> A_UpdateProf
-    Admin --> A_ChangePass
-    Admin --> A_UpdPhoto
-    Admin --> A_ViewAtt
+    Admin --> Login
+    Admin --> Logout
+    Admin --> Dash
+    Admin --> Notif
+    Admin --> AddMem
+    Admin --> ViewMem
+    Admin --> UpdMem
+    Admin --> DelMem
+    Admin --> Pack
+    Admin --> Cat
+    Admin --> NewSub
+    Admin --> UpSub
+    Admin --> Events
+    Admin --> Pay
+    Admin --> Refund
+    Admin --> Plan
+    Admin --> Manual
+    Admin --> AttMon
+    Admin --> GesMon
+    Admin --> Switch
+    Admin --> Sync
+    Admin --> Report
+    Admin --> Profile
+    Admin --> Pass
+    Admin --> Logo
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 ### 3.2 Use Case Relationships and Scope Boundaries
 
@@ -432,39 +367,40 @@ The use case diagram illustrates the administrative capabilities of the Gym Owne
 
 ```mermaid
 flowchart LR
-    Camera["📷 Security Camera / AI Vision Engine\n[IoT / Device Actor]"]
+    Camera["Camera / Gesture Engine"]
 
-    subgraph CameraBoundary ["AI Vision Engine Use Cases — Gym Management System"]
+    subgraph Boundary ["Gym Management System"]
+        Stream(["Stream Live Video Feed"])
+        SwitchSrc(["Switch Camera Source<br/>on Admin Request"])
+        LoadFaces(["Load Enrolled Faces"])
+        LoadPlans(["Load Today's Workout Plans"])
 
-        C_StreamFeed(["UC-09c: Stream Live Video Feed (MJPEG)"])
-        C_SwitchSrc(["UC-09d: Accept Camera Source Switch Request"])
+        Detect(["Detect Faces"])
+        Match(["Match Face with<br/>Enrolled Members"])
+        Att(["Send Attendance<br/>to Laravel API"])
 
-        C_DetectFace(["UC-06a: Detect Facial Bounding Box"])
-        C_ExtractEnc(["UC-06b: Extract 128-d Face Embeddings"])
-        C_MatchEnc(["UC-06c: Match Encoding Against Enrolled Database"])
-        C_LogAtt(["UC-06d: Send Attendance Record to Laravel API"])
+        Pose(["Detect Body Pose"])
+        Link(["Link Pose to<br/>Recognized Member"])
+        Classify(["Classify Exercise"])
+        Verify(["Send Workout Verification<br/>to Laravel API"])
 
-        C_DetectPose(["UC-08a: Detect 33-Point Skeletal Landmarks"])
-        C_CalcAngle(["UC-08b: Calculate Joint Angles"])
-        C_ClassifyEx(["UC-08c: Classify Exercise Type via ML Model"])
-        C_CountReps(["UC-08d: Count Completed Repetitions"])
-        C_LogWorkout(["UC-08e: Send Workout Record to Laravel API"])
-
-        C_DetectFace -.->|"<<include>>"| C_ExtractEnc
-        C_ExtractEnc -.->|"<<include>>"| C_MatchEnc
-        C_MatchEnc -.->|"<<include>>"| C_LogAtt
-
-        C_DetectPose -.->|"<<include>>"| C_CalcAngle
-        C_CalcAngle -.->|"<<include>>"| C_ClassifyEx
-        C_ClassifyEx -.->|"<<include>>"| C_CountReps
-        C_CountReps -.->|"<<include>>"| C_LogWorkout
+        Detect -.->|"«include»"| Match
+        Att -.->|"«extend» face matched"| Match
+        Pose -.->|"«include»"| Link
+        Link -.->|"«include»"| Classify
+        Verify -.->|"«extend» assigned exercise confirmed"| Classify
     end
 
-    Camera --> C_StreamFeed
-    Camera --> C_SwitchSrc
-    Camera --> C_DetectFace
-    Camera --> C_DetectPose
+    Camera --> Stream
+    Camera --> SwitchSrc
+    Camera --> LoadFaces
+    Camera --> LoadPlans
+    Camera --> Detect
+    Camera --> Pose
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 ### 4.2 Use Case Relationships and Scope Boundaries
 
@@ -545,36 +481,36 @@ The use case diagram for the Security Camera / AI Vision Engine depicts the auto
 
 ```mermaid
 flowchart LR
-    Member["🏃 Gym Member\n[Physical Participant Actor]"]
+    Member["Gym Member"]
 
-    subgraph MemberBoundary ["Gym Member Use Cases — Gym Management System"]
+    subgraph Boundary ["Gym Management System"]
+        Info(["Provide Personal Details<br/>to the Admin"])
+        FacePose(["Pose for Face Capture<br/>(front, left, right)"])
+        Pay(["Pay for a Package<br/>through the Admin"])
 
-        M_ProvideInfo(["UC-03m: Provide Personal & Anthropometric Information"])
-        M_ProvideFace(["UC-03f: Pose for Facial Biometric Photo Capture"])
+        Scan(["Face the Camera<br/>for Attendance"])
+        Recog(["Be Recognized by Face"])
+        Logged(["Attendance Logged"])
 
-        M_SubmitPayment(["UC-05m: Submit Payment (Cash / GCash / Maya)"])
+        Exercise(["Perform Assigned Exercise<br/>in Camera View"])
+        ExRecog(["Exercise Recognized"])
+        Verified(["Task Marked as Verified"])
 
-        M_FaceScan(["UC-06m: Face the Entrance Camera for Attendance Scan"])
-        M_Recognized(["UC-06r: Be Identified by Facial Recognition Engine"])
-        M_AttLogged(["UC-06l: Attendance Entry is Auto-Logged"])
-
-        M_PerformEx(["UC-08m: Perform Assigned Exercise in Camera View"])
-        M_PoseDetected(["UC-08p: Pose Landmarks Detected by AI Engine"])
-        M_RepsLogged(["UC-08r: Repetition Count Auto-Recorded"])
-
-        M_FaceScan -.->|"<<include>>"| M_Recognized
-        M_Recognized -.->|"<<include>>"| M_AttLogged
-
-        M_PerformEx -.->|"<<include>>"| M_PoseDetected
-        M_PoseDetected -.->|"<<include>>"| M_RepsLogged
+        Scan -.->|"«include»"| Recog
+        Logged -.->|"«extend» face matched"| Recog
+        Exercise -.->|"«include»"| ExRecog
+        Verified -.->|"«extend» assigned exercise confirmed"| ExRecog
     end
 
-    Member --> M_ProvideInfo
-    Member --> M_ProvideFace
-    Member --> M_SubmitPayment
-    Member --> M_FaceScan
-    Member --> M_PerformEx
+    Member --> Info
+    Member --> FacePose
+    Member --> Pay
+    Member --> Scan
+    Member --> Exercise
 ```
+
+> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+
 
 ### 5.2 Use Case Relationships and Scope Boundaries
 
