@@ -427,7 +427,7 @@ erDiagram
         text name
         text email
         text password
-        text logo
+        image system_logo
     }
     LOGIN_PIN {
         text purpose
