@@ -31,6 +31,9 @@ from mediapipe.tasks.python.vision.core.vision_task_running_mode import VisionTa
 from mediapipe.framework.formats import landmark_pb2
 from camera_tracking import update_pose_track_identity
 from workout_prediction import select_assigned_prediction
+from face_matching import IdentityVote, align_box, best_member_match
+from face_matching import box_size as face_box_size
+from face_enrollment import EncodingCache, encode_at
 
 app = Flask(__name__)
 CORS(app)
@@ -99,17 +102,37 @@ def make_placeholder_frame(status_text="Connecting to Camera..."):
     cv2.putText(ph, time.strftime("%Y-%m-%d %H:%M:%S"), (40, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (160, 160, 160), 1)
     return ph
 
-known_face_encodings = []
-known_face_ids = []
-known_face_names = []
-known_face_workout_eligibility = []
+def _env_number(name, default, cast=float):
+    try:
+        return cast(os.getenv(name, default))
+    except (TypeError, ValueError):
+        print(f"[WARNING] Invalid {name}; using default {default}.")
+        return cast(default)
+
+
+# Enrolled faces as one immutable snapshot, swapped atomically on reload so
+# the face worker never sees half-loaded lists:
+# (encodings array, member ids, names, workout eligibility), one row per view.
+face_db = (np.empty((0, 128)), [], [], [])
+face_db_reload_lock = threading.Lock()
+FACE_CACHE_PATH = os.path.join(BASE_DIR, 'models', 'face_cache.pkl')
+
+# Recognition tuning. Override in "Gesture Engine/.env"; calibrate with
+# scripts/eval_faces.py. Lower threshold = stricter matching.
+FACE_MATCH_THRESHOLD = _env_number('FACE_MATCH_THRESHOLD', '0.50')
+FACE_MATCH_MARGIN = _env_number('FACE_MATCH_MARGIN', '0.05')
+FACE_MIN_SIZE = _env_number('FACE_MIN_SIZE', '70', int)
+FACE_VOTES_REQUIRED = _env_number('FACE_VOTES_REQUIRED', '3', int)
+FACE_VOTE_WINDOW = max(FACE_VOTES_REQUIRED * 2, 4)
+RECOGNITION_INTERVAL_UNCONFIRMED = 0.3
+RECOGNITION_INTERVAL_CONFIRMED = 2.0
+MOVE_CLOSER_LABEL = 'Move closer'
 logged_today = {}
 workout_cooldowns = {} # Prevents API spam!
 
 shared_faces = []
 tracked_faces = [] # Multi-person tracking state: list of active face tracks
 next_track_id = 1
-FACE_MATCH_THRESHOLD = 0.50 # Strict threshold: lower = harder to match (prevents wrong-person assignment)
 shared_athletes = []
 pose_tracks = []
 next_pose_track_id = 1
@@ -166,6 +189,9 @@ pose_landmarker = mp_vision.PoseLandmarker.create_from_options(
 
 mp_face = mp.solutions.face_detection
 face_detector = mp_face.FaceDetection(min_detection_confidence=0.3, model_selection=1)
+# Separate instance for enrollment: load_registered_faces() can run on a Flask
+# thread (/refresh_ai) while face_ai_worker uses face_detector.
+enroll_face_detector = mp_face.FaceDetection(min_detection_confidence=0.5, model_selection=1)
 
 current_raw_frame = None
 current_frame_sequence = 0
@@ -181,13 +207,21 @@ if ml_model is not None:
     except Exception:
         pass
 
+def member_face_path(member):
+    raw_path = member['image_file'].lstrip('/')
+    return os.path.normpath(os.path.join(KNOWN_FACES_DIR, raw_path))
+
+
 def load_registered_faces():
-    global known_face_encodings, known_face_ids, known_face_names, known_face_workout_eligibility
-    known_face_encodings.clear()
-    known_face_ids.clear()
-    known_face_names.clear()
-    known_face_workout_eligibility.clear()
-    
+    """Fetch enrolled members from Laravel and encode each enrolled view.
+
+    Each registration image holds stacked views (front/left/right). Every
+    view is encoded separately with the same MediaPipe framing used for live
+    frames. Encodings are cached in models/face_cache.pkl, so only new or
+    changed enrollments pay the slower high-jitter encoding.
+    """
+    global face_db
+
     print("\n" + "="*50)
     print("🚀 [CAPSTONE READY] HIGH-ACCURACY AI ENGINE...")
     print("[SYNC] Fetching registered members from Laravel...")
@@ -195,31 +229,52 @@ def load_registered_faces():
         response = requests.get(f"{LARAVEL_API}/ai/members-faces", headers=LARAVEL_HEADERS, timeout=10)
         response.raise_for_status()
         members = response.json()
-        
-        for member in members:
-            raw_path = member['image_file']
-            if raw_path.startswith('/'): raw_path = raw_path[1:] 
-            filepath = os.path.normpath(os.path.join(KNOWN_FACES_DIR, raw_path)) 
-            
-            if os.path.exists(filepath):
-                try:
-                    image = face_recognition.load_image_file(filepath)
-                    # Fast 1-jitter encoding for instant startup & sync
-                    encodings = face_recognition.face_encodings(image, num_jitters=1)
-
-                    
-                    if len(encodings) > 0:
-                        for encoding in encodings:
-                            known_face_encodings.append(encoding)
-                            known_face_ids.append(member['id'])
-                            known_face_names.append(member['name'])
-                            known_face_workout_eligibility.append(bool(member.get('workout_eligible', False)))
-                        eligibility_label = "coach eligible" if known_face_workout_eligibility[-1] else "attendance only"
-                        print(f"  [SUCCESS] {len(encodings)} face view(s) loaded: {member['name']} ({eligibility_label})")
-                except Exception as img_err:
-                    print(f"  [ERROR] Could not process image: {img_err}")
     except Exception as e:
         print(f"[ERROR] Failed to connect to Laravel: {e}")
+        print("="*50 + "\n")
+        return
+
+    with face_db_reload_lock:
+        cache = EncodingCache(FACE_CACHE_PATH)
+        encodings, ids, names, eligibility = [], [], [], []
+        seen_paths = []
+
+        for member in members:
+            filepath = member_face_path(member)
+            if not os.path.exists(filepath):
+                print(f"  [MISSING] Face image not found for {member['name']}")
+                continue
+            seen_paths.append(filepath)
+            try:
+                member_encodings, total_views, cached = cache.get_or_encode(filepath, enroll_face_detector)
+            except Exception as img_err:
+                print(f"  [ERROR] Could not process image for {member['name']}: {img_err}")
+                continue
+
+            workout_eligible = bool(member.get('workout_eligible', False))
+            for encoding in member_encodings:
+                encodings.append(encoding)
+                ids.append(member['id'])
+                names.append(member['name'])
+                eligibility.append(workout_eligible)
+
+            eligibility_label = "coach eligible" if workout_eligible else "attendance only"
+            source = "cached" if cached else "encoded"
+            if member_encodings:
+                status = "SUCCESS" if len(member_encodings) >= min(2, total_views) else "WEAK"
+                print(f"  [{status}] {member['name']}: {len(member_encodings)}/{total_views} views {source} ({eligibility_label})")
+            else:
+                print(f"  [FAILED] {member['name']}: no face found in any view. Re-capture this member's face.")
+
+        cache.prune(seen_paths)
+        try:
+            cache.save()
+        except OSError as cache_err:
+            print(f"  [WARNING] Could not save face cache: {cache_err}")
+
+        matrix = np.array(encodings) if encodings else np.empty((0, 128))
+        face_db = (matrix, ids, names, eligibility)
+        print(f"[SYNC] {len(set(ids))} members ready ({len(ids)} face views).")
     print("="*50 + "\n")
 
 def compute_iou(boxA, boxB):
@@ -236,17 +291,6 @@ def compute_iou(boxA, boxB):
     areaA = (bottomA - topA) * (rightA - leftA)
     areaB = (bottomB - topB) * (rightB - leftB)
     return inter_area / float(areaA + areaB - inter_area)
-
-def prepare_face_crop(face_crop):
-    # Preserves natural 3D RGB color chroma required by dlib ResNet face descriptor
-    rgb_crop = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
-    # FIX #8: Sample every 4th pixel — 16x faster brightness check, same result
-    if rgb_crop[::4, ::4].mean() < 65:
-        # Gentle brightening in HSV space without flattening grayscale contours
-        hsv = cv2.cvtColor(face_crop, cv2.COLOR_BGR2HSV)
-        hsv[:, :, 2] = cv2.convertScaleAbs(hsv[:, :, 2], alpha=1.2, beta=20)
-        rgb_crop = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
-    return rgb_crop
 
 def log_attendance_to_laravel(member_id, name):
     current_time = time.time()
@@ -385,6 +429,22 @@ def camera_reader_thread():
             fail_count = 0
 
 def face_ai_worker():
+    """Run the face loop and restart it after an unexpected error.
+
+    Without this, one exception silently kills the thread and every face
+    box and recognition stops while the rest of the engine keeps running.
+    """
+    import traceback
+    while True:
+        try:
+            _face_ai_loop()
+        except Exception:
+            print("[ERROR] Face worker crashed; restarting in 1s:")
+            traceback.print_exc()
+            time.sleep(1.0)
+
+
+def _face_ai_loop():
     global current_raw_frame, shared_faces, tracked_faces, next_track_id
     last_processed_sequence = -1
     
@@ -413,6 +473,7 @@ def face_ai_worker():
         face_results = face_detector.process(rgb_scan_frame)
         
         detected_boxes = []
+        aligned_boxes = {}
         now = time.time()
         
         if face_results.detections:
@@ -431,7 +492,11 @@ def face_ai_worker():
                 
                 if (bottom - top) > 25 and (right - left) > 25:
                     detected_boxes.append((top, right, bottom, left))
-        
+                    # Same framing as enrollment, used only for encoding.
+                    aligned_boxes[(top, right, bottom, left)] = align_box(
+                        bboxC.xmin, bboxC.ymin, bboxC.width, bboxC.height, w, h
+                    )
+
         # --- MULTI-PERSON TRACKING & ASSOCIATION ---
         updated_tracks = []
         unmatched_detections = list(detected_boxes)
@@ -462,6 +527,7 @@ def face_ai_worker():
             if best_match_idx != -1:
                 matched_box = unmatched_detections.pop(best_match_idx)
                 track['box'] = matched_box
+                track['aligned_box'] = aligned_boxes[matched_box]
                 track['last_seen'] = now
                 updated_tracks.append(track)
             elif (now - track['last_seen']) < 1.0:
@@ -473,87 +539,86 @@ def face_ai_worker():
             new_track = {
                 'id': next_track_id,
                 'box': new_box,
+                'aligned_box': aligned_boxes[new_box],
                 'name': 'Unknown',
                 'member_id': None,
+                'workout_eligible': False,
                 'color': (0, 0, 255),
                 'last_seen': now,
                 'last_recon': 0.0,
-                # FIX #5: Skip re-encoding for 2s after a failed crop attempt
-                'last_recon_failed': 0.0
+                'vote': IdentityVote(
+                    window=FACE_VOTE_WINDOW,
+                    required=FACE_VOTES_REQUIRED,
+                ),
             }
             next_track_id += 1
             updated_tracks.append(new_track)
             
-        # 3. Perform Deep Face Recognition for tracks that are Unknown or due for re-check (every 4s)
-        # Longer interval = stable identity, prevents re-recognition confusion when people shift
+        # 3. Face recognition with multi-frame voting.
+        # Unconfirmed tracks are sampled often; confirmed ones are re-verified
+        # less often. A name is shown, and attendance logged, only once several
+        # samples agree, so one bad frame cannot assign the wrong member.
+        known_matrix, known_ids, known_names, known_eligibility = face_db
+        rgb_frame = None
         for track in updated_tracks:
-            # FIX #5: Skip tracks that failed encoding recently — 2s cooldown prevents
-            # hammering dlib every frame when a crop returns no encodings.
-            if (now - track.get('last_recon_failed', 0.0)) < 2.0:
+            if len(known_ids) == 0 or track['last_seen'] != now:
                 continue
-            if track['name'] == 'Unknown' or (now - track['last_recon']) > 4.0:
-                top, right, bottom, left = track['box']
-                face_crop = frame[top:bottom, left:right]
-                if face_crop.size > 0 and known_face_encodings:
-                    try:
-                        prep_crop = prepare_face_crop(face_crop)
-                        crop_h, crop_w = prep_crop.shape[:2]
+            vote = track['vote']
+            interval = (
+                RECOGNITION_INTERVAL_CONFIRMED if vote.confirmed is not None
+                else RECOGNITION_INTERVAL_UNCONFIRMED
+            )
+            if (now - track['last_recon']) < interval:
+                continue
+            track['last_recon'] = now
 
-                        # FIX #4: Resize crop to max 160x160 before dlib ResNet encoding.
-                        # dlib internally resizes anyway — quality is identical but we avoid
-                        # feeding large 720p crops through the descriptor network.
-                        MAX_CROP = 160
-                        if crop_h > MAX_CROP or crop_w > MAX_CROP:
-                            scale = MAX_CROP / max(crop_h, crop_w)
-                            prep_crop = cv2.resize(prep_crop, (int(crop_w * scale), int(crop_h * scale)))
-                            crop_h, crop_w = prep_crop.shape[:2]
-                        
-                        # CRITICAL FIX: Pass explicit face location so face_recognition does NOT
-                        # run its own internal face detector on the crop. Without this, dlib may
-                        # detect the wrong face (e.g. a neighbor's face bleeding in from padding)
-                        # or return 0 encodings when the cropped face is too close to the edge.
-                        # Format: [(top, right, bottom, left)] in crop coordinates
-                        explicit_location = [(0, crop_w, crop_h, 0)]
-                        encs = face_recognition.face_encodings(prep_crop, known_face_locations=explicit_location, num_jitters=1)
-                        
-                        if encs and len(encs) > 0:
-                            distances = face_recognition.face_distance(known_face_encodings, encs[0])
-                            if len(distances) > 0:
-                                best_idx = int(np.argmin(distances))
-                                best_dist = float(distances[best_idx])
-                                
-                                # Strict threshold (0.50): lower = harder to match
-                                is_match = best_dist < FACE_MATCH_THRESHOLD
-                                
-                                # Margin check: require at least 0.06 gap between top-2 candidates.
-                                # Prevents "coin-flip" assignments when two people look similar.
-                                if is_match and len(distances) > 1:
-                                    sorted_dists = sorted(distances)
-                                    if (sorted_dists[1] - sorted_dists[0]) < 0.06:
-                                        is_match = False # Too ambiguous, treat as Unknown
-                                
-                                if is_match:
-                                    member_id = known_face_ids[best_idx]
-                                    name = known_face_names[best_idx]
-                                    workout_eligible = known_face_workout_eligibility[best_idx]
-                                    track['name'] = name
-                                    track['member_id'] = member_id
-                                    track['workout_eligible'] = workout_eligible
-                                    track['color'] = (0, 255, 0)
-                                    track['last_recon'] = now
-                                    threading.Thread(target=log_attendance_to_laravel, args=(member_id, name), daemon=True).start()
-                                else:
-                                    track['name'] = 'Unknown'
-                                    track['member_id'] = None
-                                    track['workout_eligible'] = False
-                                    track['color'] = (0, 0, 255)
-                                    track['last_recon'] = now
-                        else:
-                            # FIX #5: Mark failed recon so we don't retry every frame
-                            track['last_recon_failed'] = now
-                    except Exception:
-                        track['last_recon_failed'] = now
-                        
+            aligned = track['aligned_box']
+            if face_box_size(aligned) < FACE_MIN_SIZE:
+                # Too small for a reliable descriptor: don't guess. A member
+                # already confirmed on this track keeps their name.
+                if vote.confirmed is None:
+                    track['name'] = MOVE_CLOSER_LABEL
+                    track['color'] = (0, 165, 255)
+                continue
+
+            if rgb_frame is None:
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            try:
+                encoding = encode_at(rgb_frame, aligned, jitters=1)
+            except Exception:
+                encoding = None
+            if encoding is None:
+                continue
+
+            distances = face_recognition.face_distance(known_matrix, encoding)
+            sample_id, _, _ = best_member_match(
+                distances, known_ids, FACE_MATCH_THRESHOLD, FACE_MATCH_MARGIN
+            )
+            newly_confirmed = vote.add(sample_id)
+            if vote.confirmed is not None and vote.confirmed not in known_ids:
+                # Member was removed by a face reload while being tracked.
+                vote.confirmed = None
+                newly_confirmed = False
+
+            if vote.confirmed is not None:
+                idx = known_ids.index(vote.confirmed)
+                track['member_id'] = vote.confirmed
+                track['name'] = known_names[idx]
+                track['workout_eligible'] = known_eligibility[idx]
+                track['color'] = (0, 255, 0)
+                if newly_confirmed:
+                    threading.Thread(
+                        target=log_attendance_to_laravel,
+                        args=(vote.confirmed, known_names[idx]),
+                        daemon=True,
+                    ).start()
+            else:
+                track['member_id'] = None
+                track['name'] = 'Unknown'
+                track['workout_eligible'] = False
+                track['color'] = (0, 0, 255)
+
+
         tracked_faces = updated_tracks
         # Update shared_faces for Security Monitor HUD and skeleton binding
         shared_faces = [
