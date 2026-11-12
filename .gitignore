@@ -38,3 +38,10 @@ backend/public/profiles/
 # Notes that contain camera passwords
 DOCUMENTATION/Updated Current Plan For Development/OpenSesami.md
 DOCUMENTATION/Updated Current Plan For Development/Reminder.md
+
+# Cached face encodings (biometric data)
+Gesture Engine/models/face_cache.pkl
+Gesture Engine/models/face_cache.pkl.tmp
+
+# Local credentials notes (never commit)
+OpenSesami.md
