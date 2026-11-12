@@ -1,9 +1,10 @@
 # Chapter 4 Diagrams — Double Alpha Fitness Gym Management System
 
-One diagram for each figure in Section 4.2, drawn from what the system actually does. Diagrams only.
+One diagram for each figure in Chapter 4. Figure 4.1 shows the gym's manual process before the system. Figures 4.3 to 4.10 are drawn from what the system actually does. Diagrams only.
 
 | Figure | Diagram |
 |---|---|
+| 4.1 | Manual Process Flow for Admin |
 | 4.3 | System Process Flow for Administrator |
 | 4.4 | Context Level Diagram |
 | 4.5 | Data Flow Diagram |
@@ -12,6 +13,52 @@ One diagram for each figure in Section 4.2, drawn from what the system actually 
 | 4.8 | Use Case Diagram for Camera / Gesture Engine |
 | 4.9 | Logical Entity-Relationship Diagram |
 | 4.10 | Physical Entity-Relationship Diagram |
+
+---
+
+## Figure 4.1 — Manual Process Flow for Admin
+
+```mermaid
+flowchart LR
+    subgraph S1 ["Stage 1: Registration"]
+        direction TB
+        Start([Start]) --> A1["Member fills out the<br/>membership form on paper"]
+        A1 --> A2["Member submits personal<br/>and membership information"]
+        A2 --> A3["Admin receives and<br/>reviews the information"]
+        A3 --> A4{"Is the information<br/>complete?"}
+        A4 -- No --> A5["Return to member<br/>for correction"]
+        A5 --> A2
+        A4 -- Yes --> A6["Admin records member<br/>information in the<br/>logbook or spreadsheet"]
+        A6 --> A7["Admin records membership<br/>and payment<br/>(Cash, GCash or Maya)"]
+        A7 --> A8["Admin confirms the<br/>membership to the member"]
+    end
+
+    subgraph S2 ["Stage 2: Attendance"]
+        direction TB
+        B1["Member visits the gym"] --> B2["Admin records attendance<br/>in the logbook"]
+        B2 --> B3{"Is the membership<br/>active?"}
+        B3 -- No --> B4["Member renews<br/>the membership"]
+        B4 --> B5["Admin processes the<br/>renewal and updates the<br/>membership status"]
+        B5 --> B6["Member proceeds with<br/>gym activities"]
+        B3 -- Yes --> B6
+    end
+
+    subgraph S3 ["Stage 3: Fitness Program"]
+        direction TB
+        C1["Admin assigns a fitness<br/>program (new member<br/>or new program)"] --> C2["Admin explains the<br/>exercises and proper<br/>techniques"]
+        C2 --> C3["Admin observes and<br/>monitors the member"]
+        C3 --> C4["Admin records progress<br/>in the logbook"]
+    end
+
+    subgraph S4 ["Stage 4: Reports"]
+        direction TB
+        D1["Admin maintains attendance,<br/>membership, payment<br/>and member records"] --> D2["Admin prepares reports<br/>(attendance, payments,<br/>member list)"]
+        D2 --> D3["Admin files and stores<br/>the records on paper<br/>and in logbooks"]
+        D3 --> End([End])
+    end
+
+    S1 --> S2 --> S3 --> S4
+```
 
 ---
 
