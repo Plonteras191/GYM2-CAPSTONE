@@ -7,7 +7,6 @@ dlib or a running Laravel backend.
 from collections import Counter, deque
 
 import cv2
-import numpy as np
 
 # MediaPipe's face box runs roughly from the eyebrows to the mouth. dlib's
 # encoder was trained on its own detector's boxes, which are square and reach
@@ -108,10 +107,19 @@ class IdentityVote:
         self.confirmed = None
         self.non_confirming = 0
 
-    def add(self, member_id):
-        """Record one sample. Returns True if a member was newly confirmed."""
-        self.history.append(member_id)
-        counts = Counter(m for m in self.history if m is not None)
+    def add(self, member_id, weight=1.0):
+        """Record one sample. Returns True if a member was newly confirmed.
+
+        weight < 1 makes a less reliable sample (e.g. a small, far face)
+        count as part of a vote, so more of them are needed to confirm.
+        """
+        self.history.append((member_id, weight))
+        counts = Counter()
+        for sample_id, sample_weight in self.history:
+            if sample_id is not None:
+                counts[sample_id] += sample_weight
+        # Small tolerance so e.g. 5 samples of weight 0.6 reach 3 votes.
+        counts = Counter({k: v + 1e-9 for k, v in counts.items()})
 
         if self.confirmed is not None:
             if member_id == self.confirmed:

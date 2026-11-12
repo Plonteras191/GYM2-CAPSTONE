@@ -7,6 +7,7 @@ enrollments exactly the same way as live frames are encoded.
 import os
 import pickle
 
+import cv2
 import face_recognition
 import numpy as np
 
@@ -26,8 +27,12 @@ CONTEXT_MARGIN = 0.25
 CACHE_VERSION = f"v2-j{ENROLL_JITTERS}-s{ALIGN_SCALE}-d{ALIGN_SHIFT_DOWN}-c{CONTEXT_MARGIN}"
 
 
-def encode_at(rgb_image, box, jitters=1):
-    """Encode the face at box (top, right, bottom, left); None if it fails."""
+def encode_at(rgb_image, box, jitters=1, upscale=1.0):
+    """Encode the face at box (top, right, bottom, left); None if it fails.
+
+    upscale > 1 enlarges the face region first (used for small, far faces)
+    so the landmark predictor has more pixels to place the eyes and nose.
+    """
     top, right, bottom, left = box
     height, width = rgb_image.shape[:2]
     pad = int((bottom - top) * CONTEXT_MARGIN)
@@ -39,6 +44,9 @@ def encode_at(rgb_image, box, jitters=1):
         return None
     region = normalize_lighting(region)
     location = [(top - crop_top, right - crop_left, bottom - crop_top, left - crop_left)]
+    if upscale > 1.0:
+        region = cv2.resize(region, None, fx=upscale, fy=upscale, interpolation=cv2.INTER_CUBIC)
+        location = [tuple(int(round(value * upscale)) for value in location[0])]
     encodings = face_recognition.face_encodings(region, known_face_locations=location, num_jitters=jitters)
     return encodings[0] if encodings else None
 

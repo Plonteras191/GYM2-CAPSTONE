@@ -29,7 +29,16 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.vision.core.vision_task_running_mode import VisionTaskRunningMode
 from mediapipe.framework.formats import landmark_pb2
-from camera_tracking import update_pose_track_identity
+from camera_tracking import boxes_overlap, head_region, torso_histogram, update_pose_track_identity
+from monitoring import EXCLUDED, IDENTIFYING, monitoring_status
+from pose_features import (
+    MotionTracker,
+    joints_visible_for,
+    landmarks_array,
+    load_train_torso,
+    scaled_model_input,
+    static_exercises_from_env,
+)
 from workout_prediction import select_assigned_prediction
 from face_matching import IdentityVote, align_box, best_member_match
 from face_matching import box_size as face_box_size
@@ -81,6 +90,8 @@ CONFIGURED_CAMERA_SOURCES = (
 )
 CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', 'phone').lower()
 WEBCAM_INDEX = int(os.getenv('WEBCAM_INDEX', '0'))
+WEBCAM_WIDTH = int(os.getenv('WEBCAM_WIDTH', '1280'))
+WEBCAM_HEIGHT = int(os.getenv('WEBCAM_HEIGHT', '720'))
 if CAMERA_SOURCE not in CONFIGURED_CAMERA_SOURCES:
     CAMERA_SOURCE = CONFIGURED_CAMERA_SOURCES[0]
 
@@ -121,9 +132,21 @@ FACE_CACHE_PATH = os.path.join(BASE_DIR, 'models', 'face_cache.pkl')
 # scripts/eval_faces.py. Lower threshold = stricter matching.
 FACE_MATCH_THRESHOLD = _env_number('FACE_MATCH_THRESHOLD', '0.50')
 FACE_MATCH_MARGIN = _env_number('FACE_MATCH_MARGIN', '0.05')
-FACE_MIN_SIZE = _env_number('FACE_MIN_SIZE', '70', int)
 FACE_VOTES_REQUIRED = _env_number('FACE_VOTES_REQUIRED', '3', int)
-FACE_VOTE_WINDOW = max(FACE_VOTES_REQUIRED * 2, 4)
+# Size tiers: faces >= FACE_NEAR_SIZE use the rules above; faces between
+# FACE_MIN_SIZE and FACE_NEAR_SIZE ("far") are enlarged before encoding and
+# need a stricter distance and more agreeing samples; smaller faces are not
+# recognized (the tracked body keeps the name instead).
+FACE_MIN_SIZE = _env_number('FACE_MIN_SIZE', '40', int)
+FACE_NEAR_SIZE = _env_number('FACE_NEAR_SIZE', '70', int)
+FACE_FAR_THRESHOLD = _env_number('FACE_FAR_THRESHOLD', '0.45')
+FACE_FAR_VOTES = max(FACE_VOTES_REQUIRED, _env_number('FACE_FAR_VOTES', '5', int))
+FACE_FAR_WEIGHT = FACE_VOTES_REQUIRED / FACE_FAR_VOTES
+FACE_FAR_UPSCALE = 2.0
+FACE_VOTE_WINDOW = max(FACE_FAR_VOTES * 2, FACE_VOTES_REQUIRED * 2, 4)
+# Frames wider than this are scaled down before detection; smaller frames
+# are processed at full resolution so distant people keep their pixels.
+DETECTION_MAX_WIDTH = 1280
 RECOGNITION_INTERVAL_UNCONFIRMED = 0.3
 RECOGNITION_INTERVAL_CONFIRMED = 2.0
 MOVE_CLOSER_LABEL = 'Move closer'
@@ -142,6 +165,14 @@ ambiguous_workout_plans = {}
 workout_plans_lock = threading.Lock()
 WORKOUT_CONFIDENCE_THRESHOLD = 0.70
 MAX_POSES = 12
+# Body motion (in torso lengths over ~1.5s) below which a monitored member
+# is shown as "Not moving" and no exercise is checked or logged.
+MOTION_MIN = _env_number('MOTION_MIN', '0.15')
+STATIC_EXERCISES = static_exercises_from_env()
+TRAIN_TORSO = load_train_torso(os.path.join(BASE_DIR, 'datasets', 'custom_workout_dataset.csv'))
+# Head regions from pose landmarks, published by the gesture worker so the
+# face worker can look for faces too small for whole-frame detection.
+shared_head_regions = []
 
 # FIX #1: Thread-safe frame sharing — protects current_raw_frame from partial reads
 frame_lock = threading.Lock()
@@ -173,9 +204,19 @@ if ml_model is None:
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
-POSE_LANDMARKER_MODEL = os.path.join(BASE_DIR, 'models', 'pose_landmarker_lite.task')
+# POSE_MODEL=full (default) is more accurate for small, distant bodies at
+# about twice the CPU cost; POSE_MODEL=lite is the lighter fallback.
+POSE_MODEL = os.getenv('POSE_MODEL', 'full').strip().lower()
+if POSE_MODEL not in ('full', 'lite'):
+    print(f"[WARNING] Unknown POSE_MODEL '{POSE_MODEL}'; using 'full'.")
+    POSE_MODEL = 'full'
+POSE_LANDMARKER_MODEL = os.path.join(BASE_DIR, 'models', f'pose_landmarker_{POSE_MODEL}.task')
+if not os.path.exists(POSE_LANDMARKER_MODEL) and POSE_MODEL == 'full':
+    print("[WARNING] models/pose_landmarker_full.task is missing; falling back to the lite pose model.")
+    POSE_LANDMARKER_MODEL = os.path.join(BASE_DIR, 'models', 'pose_landmarker_lite.task')
 if not os.path.exists(POSE_LANDMARKER_MODEL):
     raise FileNotFoundError(f"Multi-person pose model is missing: {POSE_LANDMARKER_MODEL}")
+print(f"[POSE] Using {os.path.basename(POSE_LANDMARKER_MODEL)}")
 pose_landmarker = mp_vision.PoseLandmarker.create_from_options(
     mp_vision.PoseLandmarkerOptions(
         base_options=mp_python.BaseOptions(model_asset_path=POSE_LANDMARKER_MODEL),
@@ -189,6 +230,10 @@ pose_landmarker = mp_vision.PoseLandmarker.create_from_options(
 
 mp_face = mp.solutions.face_detection
 face_detector = mp_face.FaceDetection(min_detection_confidence=0.3, model_selection=1)
+# Runs on small head crops found from pose landmarks (face worker thread only).
+# The whole-frame detector shrinks every frame to 192x192 internally, so
+# distant faces become a few pixels and are missed; a head crop keeps them large.
+head_face_detector = mp_face.FaceDetection(min_detection_confidence=0.4, model_selection=0)
 # Separate instance for enrollment: load_registered_faces() can run on a Flask
 # thread (/refresh_ai) while face_ai_worker uses face_detector.
 enroll_face_detector = mp_face.FaceDetection(min_detection_confidence=0.5, model_selection=1)
@@ -339,8 +384,10 @@ def open_camera():
     if camera_mode == "webcam":
         print(f"📷 [CAMERA] Initializing local Webcam (Index {WEBCAM_INDEX})...")
         cap = cv2.VideoCapture(WEBCAM_INDEX, cv2.CAP_DSHOW if sys.platform == 'win32' else cv2.CAP_ANY)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        # Higher resolution keeps distant faces and bodies detectable. The
+        # camera falls back to its nearest supported size automatically.
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, WEBCAM_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, WEBCAM_HEIGHT)
         cap.set(cv2.CAP_PROP_FPS, 30)
         return cap
     elif camera_mode == "phone":
@@ -463,39 +510,71 @@ def _face_ai_loop():
 
         frame = raw.copy()
         h, w, _ = frame.shape
-        scan_frame = cv2.resize(frame, (0, 0), fx=0.75, fy=0.75)
-        
+        # Full resolution up to DETECTION_MAX_WIDTH, so small faces keep their pixels.
+        scan_frame = frame
+        if w > DETECTION_MAX_WIDTH:
+            scale = DETECTION_MAX_WIDTH / w
+            scan_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+
         # FIX #8: Sample every 4th pixel for brightness — 16x faster
         if scan_frame[::4, ::4].mean() < 70:
             scan_frame = cv2.convertScaleAbs(scan_frame, alpha=1.2, beta=20)
-            
+
         rgb_scan_frame = cv2.cvtColor(scan_frame, cv2.COLOR_BGR2RGB)
         face_results = face_detector.process(rgb_scan_frame)
-        
+
         detected_boxes = []
         aligned_boxes = {}
         now = time.time()
-        
+
+        def add_detection(rel_xmin, rel_ymin, rel_width, rel_height):
+            """Add a face given in full-frame relative coordinates."""
+            xmin, ymin = int(rel_xmin * w), int(rel_ymin * h)
+            box_w, box_h = int(rel_width * w), int(rel_height * h)
+            # Asymmetric tight padding: more headroom above (forehead), minimal sides
+            # to prevent neighbor face bleed-over when people stand close.
+            pad_top = int(box_h * 0.15)
+            pad_side = int(box_w * 0.08)
+            pad_bot = int(box_h * 0.05)
+            top, left = max(0, ymin - pad_top), max(0, xmin - pad_side)
+            bottom, right = min(h, ymin + box_h + pad_bot), min(w, xmin + box_w + pad_side)
+            if (bottom - top) > 25 and (right - left) > 25:
+                box = (top, right, bottom, left)
+                detected_boxes.append(box)
+                # Same framing as enrollment, used only for encoding.
+                aligned_boxes[box] = align_box(rel_xmin, rel_ymin, rel_width, rel_height, w, h)
+
         if face_results.detections:
             for detection in face_results.detections:
                 bboxC = detection.location_data.relative_bounding_box
-                xmin, ymin = int(bboxC.xmin * w), int(bboxC.ymin * h)
-                box_w, box_h = int(bboxC.width * w), int(bboxC.height * h)
-                
-                # Asymmetric tight padding: more headroom above (forehead), minimal sides
-                # Reduced from 20% to 10% to prevent neighbor face bleed-over when people stand close
-                pad_top = int(box_h * 0.15)   # slight forehead room
-                pad_side = int(box_w * 0.08)  # tight sides to avoid bleed
-                pad_bot = int(box_h * 0.05)   # minimal chin
-                top, left = max(0, ymin - pad_top), max(0, xmin - pad_side)
-                bottom, right = min(h, ymin + box_h + pad_bot), min(w, xmin + box_w + pad_side)
-                
-                if (bottom - top) > 25 and (right - left) > 25:
-                    detected_boxes.append((top, right, bottom, left))
-                    # Same framing as enrollment, used only for encoding.
-                    aligned_boxes[(top, right, bottom, left)] = align_box(
-                        bboxC.xmin, bboxC.ymin, bboxC.width, bboxC.height, w, h
-                    )
+                add_detection(bboxC.xmin, bboxC.ymin, bboxC.width, bboxC.height)
+
+        # Faces too small for the whole-frame detector: search each head
+        # region found by the pose model (from the full-resolution frame).
+        for region in list(shared_head_regions):
+            r_top, r_right, r_bottom, r_left = region
+            if r_bottom > h or r_right > w:
+                continue  # stale region from a different camera resolution
+            if any(
+                r_left <= (box[1] + box[3]) // 2 <= r_right and r_top <= (box[0] + box[2]) // 2 <= r_bottom
+                for box in detected_boxes
+            ):
+                continue  # this head already has a detected face
+            crop = frame[r_top:r_bottom, r_left:r_right]
+            if crop.size == 0:
+                continue
+            crop_h, crop_w = crop.shape[:2]
+            head_results = head_face_detector.process(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+            if not head_results.detections:
+                continue
+            best = max(head_results.detections, key=lambda d: d.score[0])
+            bbox = best.location_data.relative_bounding_box
+            add_detection(
+                (r_left + bbox.xmin * crop_w) / w,
+                (r_top + bbox.ymin * crop_h) / h,
+                bbox.width * crop_w / w,
+                bbox.height * crop_h / h,
+            )
 
         # --- MULTI-PERSON TRACKING & ASSOCIATION ---
         updated_tracks = []
@@ -573,7 +652,8 @@ def _face_ai_loop():
             track['last_recon'] = now
 
             aligned = track['aligned_box']
-            if face_box_size(aligned) < FACE_MIN_SIZE:
+            face_size = face_box_size(aligned)
+            if face_size < FACE_MIN_SIZE:
                 # Too small for a reliable descriptor: don't guess. A member
                 # already confirmed on this track keeps their name.
                 if vote.confirmed is None:
@@ -581,10 +661,16 @@ def _face_ai_loop():
                     track['color'] = (0, 165, 255)
                 continue
 
+            # Far tier: enlarge before encoding, stricter distance, and each
+            # sample counts as only part of a vote.
+            is_far = face_size < FACE_NEAR_SIZE
             if rgb_frame is None:
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             try:
-                encoding = encode_at(rgb_frame, aligned, jitters=1)
+                encoding = encode_at(
+                    rgb_frame, aligned, jitters=1,
+                    upscale=FACE_FAR_UPSCALE if is_far else 1.0,
+                )
             except Exception:
                 encoding = None
             if encoding is None:
@@ -592,9 +678,11 @@ def _face_ai_loop():
 
             distances = face_recognition.face_distance(known_matrix, encoding)
             sample_id, _, _ = best_member_match(
-                distances, known_ids, FACE_MATCH_THRESHOLD, FACE_MATCH_MARGIN
+                distances, known_ids,
+                FACE_FAR_THRESHOLD if is_far else FACE_MATCH_THRESHOLD,
+                FACE_MATCH_MARGIN,
             )
-            newly_confirmed = vote.add(sample_id)
+            newly_confirmed = vote.add(sample_id, weight=FACE_FAR_WEIGHT if is_far else 1.0)
             if vote.confirmed is not None and vote.confirmed not in known_ids:
                 # Member was removed by a face reload while being tracked.
                 vote.confirmed = None
@@ -707,9 +795,16 @@ def pose_bounding_box(landmarks, frame_width, frame_height):
     bottom = min(frame_height, int(max(y_values)) + padding)
     return (top, right, bottom, left)
 
-def associate_poses_with_people(pose_landmarks, faces, frame_width, frame_height, now):
+def associate_poses_with_people(pose_landmarks, faces, frame_width, frame_height, now, frame=None):
     global pose_tracks, next_pose_track_id
     pose_boxes = [pose_bounding_box(points, frame_width, frame_height) for points in pose_landmarks]
+    overlapping = [
+        box is not None and any(
+            other is not None and other_index != index and boxes_overlap(box, other)
+            for other_index, other in enumerate(pose_boxes)
+        )
+        for index, box in enumerate(pose_boxes)
+    ]
     face_candidates = []
 
     for pose_index, landmarks in enumerate(pose_landmarks):
@@ -809,7 +904,10 @@ def associate_poses_with_people(pose_landmarks, faces, frame_width, frame_height
             track['box'] = box
             track['last_seen'] = now
 
-        name, member_id, workout_eligible = update_pose_track_identity(track, face, now)
+        appearance = torso_histogram(frame, landmarks) if frame is not None else None
+        name, member_id, workout_eligible = update_pose_track_identity(
+            track, face, now, appearance=appearance, overlapped=overlapping[pose_index]
+        )
         updated_tracks.append(track)
         actor_id = f"pose:{track['id']}"
         face_box = face['box'] if face else None
@@ -819,6 +917,7 @@ def associate_poses_with_people(pose_landmarks, faces, frame_width, frame_height
             'landmarks': landmarks,
             'box': box,
             'face_box': face_box,
+            'head_region': head_region(landmarks, frame_width, frame_height),
             'name': name,
             'member_id': member_id,
             'workout_eligible': workout_eligible,
@@ -828,7 +927,7 @@ def associate_poses_with_people(pose_landmarks, faces, frame_width, frame_height
     return results
 
 def gesture_ai_worker():
-    global current_raw_frame, shared_athletes
+    global current_raw_frame, shared_athletes, shared_head_regions
     infer_counter = 0
     last_processed_sequence = -1
 
@@ -846,7 +945,12 @@ def gesture_ai_worker():
 
         frame = raw.copy()
         height, width = frame.shape[:2]
-        scan_frame = cv2.resize(frame, (0, 0), fx=0.75, fy=0.75)
+        # Full resolution up to DETECTION_MAX_WIDTH: the pose landmark model
+        # crops each person from this image, so distant bodies keep detail.
+        scan_frame = frame
+        if width > DETECTION_MAX_WIDTH:
+            scale = DETECTION_MAX_WIDTH / width
+            scan_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
         if scan_frame[::4, ::4].mean() < 90:
             scan_frame = cv2.convertScaleAbs(scan_frame, alpha=1.2, beta=30)
         rgb_frame = cv2.cvtColor(scan_frame, cv2.COLOR_BGR2RGB)
@@ -858,7 +962,13 @@ def gesture_ai_worker():
             width,
             height,
             time.monotonic(),
+            frame=frame,
         )
+        # Let the face worker look for small faces in each body's head region
+        # (names unknown bodies, and keeps re-confirming named ones).
+        shared_head_regions = [
+            person['head_region'] for person in poses if person['head_region'] is not None
+        ]
         infer_counter += 1
 
         with workout_plans_lock:
@@ -872,16 +982,25 @@ def gesture_ai_worker():
         for person in poses:
             member_id = person['member_id']
             workout_eligible = person.get('workout_eligible', False)
-            expected = (
-                current_plans.get(str(member_id), set())
-                if member_id is not None and workout_eligible
-                else set()
-            )
-            ambiguous = current_ambiguities.get(str(member_id), set()) if member_id is not None else set()
+
+            # Only members with an active coach membership are monitored.
+            status = monitoring_status(member_id, workout_eligible)
+            person['status'] = status
+            if status == EXCLUDED:
+                workout_states.pop(person['actor_id'], None)
+                continue
+            if status == IDENTIFYING:
+                workout_states.pop(person['actor_id'], None)
+                athletes.append(person)
+                continue
+
+            expected = current_plans.get(str(member_id), set())
+            ambiguous = current_ambiguities.get(str(member_id), set())
             state = workout_states.setdefault(person['actor_id'], {
                 'buffer': collections.deque(maxlen=7),
                 'exercise': 'SCANNING',
                 'confidence': 0.0,
+                'motion': MotionTracker(),
             })
             state['last_seen'] = time.monotonic()
             target_signature = tuple(sorted(expected))
@@ -891,47 +1010,48 @@ def gesture_ai_worker():
                 state['confidence'] = 0.0
                 state['target_signature'] = target_signature
 
-            if expected and ml_model is not None and infer_counter % 3 == 0:
-                try:
-                    landmarks = person['landmarks']
-                    origin_x = landmarks[0].x if landmarks[0].x is not None else 0.0
-                    origin_y = landmarks[0].y if landmarks[0].y is not None else 0.0
-                    origin_z = landmarks[0].z if landmarks[0].z is not None else 0.0
-                    pose_array = np.array(
-                        [[
-                            (point.x if point.x is not None else 0.0) - origin_x,
-                            (point.y if point.y is not None else 0.0) - origin_y,
-                            (point.z if point.z is not None else 0.0) - origin_z,
-                            point.visibility if point.visibility is not None else 0.0,
-                        ] for point in landmarks],
-                        dtype=np.float32,
-                    ).flatten().reshape(1, -1)
-                    probabilities = ml_model.predict_proba(pose_array)[0]
-                    prediction, confidence = select_assigned_prediction(
-                        probabilities,
-                        ml_classes,
-                        expected,
-                    )
-                    state['buffer'].append((prediction, confidence))
-                    state['exercise'] = collections.Counter(label for label, _ in state['buffer']).most_common(1)[0][0]
-                    matching_confidences = [
-                        score for label, score in state['buffer'] if label == state['exercise']
-                    ]
-                    state['confidence'] = sum(matching_confidences) / len(matching_confidences)
-                except (ValueError, RuntimeError) as e:
-                    print(f"[ERROR] Could not classify pose for {person['name']}: {e}")
-                    state['exercise'] = 'SCANNING'
-                    state['confidence'] = 0.0
+            points = landmarks_array(person['landmarks'])
+            state['motion'].add(points)
+
+            def gate(label):
+                # Not checkable right now: show why, and require fresh
+                # stable predictions once the person can be checked again.
+                state['buffer'].clear()
+                state['exercise'] = label
+                state['confidence'] = 0.0
 
             if not expected:
-                state['buffer'].clear()
-                if member_id is None:
-                    state['exercise'] = 'UNRECOGNIZED'
-                elif not workout_eligible:
-                    state['exercise'] = 'COACH MEMBERSHIP REQUIRED'
+                gate('NO PLAN TODAY')
+            elif ml_model is not None and infer_counter % 3 == 0:
+                motion = state['motion'].motion()
+                checks_static = bool(expected & STATIC_EXERCISES)
+                if not any(joints_visible_for(exercise, points) for exercise in expected):
+                    gate('BODY NOT FULLY VISIBLE')
+                elif not checks_static and motion is not None and motion < MOTION_MIN:
+                    gate('NOT MOVING')
                 else:
-                    state['exercise'] = 'NO PLAN'
-                state['confidence'] = 0.0
+                    # Rescale the body to the training data's size so near
+                    # and far members look the same to the model.
+                    pose_array = scaled_model_input(points, TRAIN_TORSO)
+                    if pose_array is not None:
+                        try:
+                            probabilities = ml_model.predict_proba(pose_array)[0]
+                            prediction, confidence = select_assigned_prediction(
+                                probabilities,
+                                ml_classes,
+                                expected,
+                            )
+                            state['buffer'].append((prediction, confidence))
+                            state['exercise'] = collections.Counter(
+                                label for label, _ in state['buffer']
+                            ).most_common(1)[0][0]
+                            matching_confidences = [
+                                score for label, score in state['buffer'] if label == state['exercise']
+                            ]
+                            state['confidence'] = sum(matching_confidences) / len(matching_confidences)
+                        except (ValueError, RuntimeError) as e:
+                            print(f"[ERROR] Could not classify pose for {person['name']}: {e}")
+                            gate('SCANNING')
 
             exercise = state['exercise']
             confidence = state['confidence']
@@ -978,7 +1098,22 @@ def gesture_ai_worker():
 
         time.sleep(0.015)
 
+def draw_identifying_tag(frame, athlete):
+    """Small grey tag for a body whose face has not been recognized yet."""
+    top, right, bottom, left = athlete['box']
+    label = "Identifying..."
+    font, scale, thickness = cv2.FONT_HERSHEY_DUPLEX, 0.42, 1
+    (text_w, text_h), _ = cv2.getTextSize(label, font, scale, thickness)
+    x = max(0, min((left + right) // 2 - text_w // 2 - 5, frame.shape[1] - text_w - 10))
+    y = max(0, top - text_h - 10)
+    cv2.rectangle(frame, (x, y), (x + text_w + 10, y + text_h + 8), (90, 90, 90), cv2.FILLED)
+    cv2.putText(frame, label, (x + 5, y + text_h + 3), font, scale, (235, 235, 235), thickness)
+
+
 def draw_athlete_overlay(frame, athlete):
+    if athlete.get('status') == IDENTIFYING:
+        draw_identifying_tag(frame, athlete)
+        return
     height, width = frame.shape[:2]
     landmarks = athlete['landmarks']
     landmark_list = landmark_pb2.NormalizedLandmarkList(
@@ -1017,6 +1152,8 @@ def draw_athlete_overlay(frame, athlete):
             exercise_label = "SCANNING TARGET: " + "/".join(athlete['expected'])
         elif athlete['exercise'] == 'WAITING':
             exercise_label = "WAITING FOR: " + "/".join(athlete['expected'])
+        elif athlete['exercise'] in ('NOT MOVING', 'BODY NOT FULLY VISIBLE'):
+            exercise_label = f"{athlete['exercise']} ({'/'.join(athlete['expected'])})"
         elif athlete['target_match']:
             exercise_label = f"MATCH: {athlete['exercise']} ({int(athlete['confidence'] * 100)}%)"
         else:

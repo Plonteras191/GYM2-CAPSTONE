@@ -68,6 +68,12 @@ class IdentityVoteTests(unittest.TestCase):
         self.assertEqual(vote.confirmed, 2)
         self.assertEqual(switched.count(True), 1)
 
+    def test_far_samples_need_more_votes(self):
+        # Far faces count 3/5 of a vote: 4 are not enough, 5 confirm.
+        vote = IdentityVote(window=10, required=3)
+        results = [vote.add(1, weight=0.6) for _ in range(5)]
+        self.assertEqual(results, [False, False, False, False, True])
+
     def test_releases_after_consecutive_misses(self):
         vote = IdentityVote(window=6, required=3, release_after=4)
         for m in (1, 1, 1):
