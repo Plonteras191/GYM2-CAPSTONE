@@ -7,10 +7,14 @@ import { aiEngineFetch } from '../../../utils/aiEngine';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 import { formatNumber } from '../../../utils/numberFormat';
 
+// The first view is also used as the profile picture, so keep Front first.
+// Side views are slight turns: the face recognizer cannot use full profiles.
+// "Chin down" matches how ceiling-mounted CCTV sees members.
 const FACE_CAPTURE_VIEWS = [
   { label: 'Front', instruction: 'Face the camera and look straight ahead.' },
-  { label: 'Left side', instruction: 'Turn your head to your left and hold still.' },
-  { label: 'Right side', instruction: 'Turn your head to your right and hold still.' },
+  { label: 'Chin down', instruction: 'Keep facing the camera and tilt your chin down slightly.' },
+  { label: 'Left', instruction: 'Turn your head slightly to your left (about 30°), both eyes visible.' },
+  { label: 'Right', instruction: 'Turn your head slightly to your right (about 30°), both eyes visible.' },
 ];
 
 const getBmiInfo = (height, weight) => {
@@ -167,7 +171,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
     const hasExistingEnrollment = faceImage === 'existing_data';
     const hasNewEnrollment = capturedFaceViews.length === FACE_CAPTURE_VIEWS.length;
     if (!hasExistingEnrollment && !hasNewEnrollment) {
-      onShowAlert('Face Capture Required', 'Capture the front, left-side, and right-side views before saving this member.', 'error');
+      onShowAlert('Face Capture Required', `Capture all ${FACE_CAPTURE_VIEWS.length} face views (${FACE_CAPTURE_VIEWS.map(view => view.label.toLowerCase()).join(', ')}) before saving this member.`, 'error');
       return;
     }
 
@@ -263,7 +267,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
 
   return (
     <>
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border-2 border-gray-300 bg-white shadow-2xl dark:border-gray-600 dark:bg-[#252830]">
         
         {/* ADDED: Style block to completely hide the number input spinner arrows */}
@@ -299,14 +303,14 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         <div className="flex-1 space-y-5 overflow-y-auto bg-slate-100 p-4 dark:bg-[#191b22] sm:p-5">
           <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
             {/* Profile Pic */}
-            <div className="flex min-h-[18rem] flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-4 text-center shadow-sm dark:border-gray-600 dark:bg-[#252830]">
+            <div className="flex min-h-72 flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-4 text-center shadow-sm dark:border-gray-600 dark:bg-[#252830]">
               <h4 className="flex h-6 items-center font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wide text-sm">Display Picture</h4>
               {profilePic ? (
                 <div className="flex w-full flex-1 flex-col items-center justify-center gap-4">
                   <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-full border-4 border-amber-500 shadow-lg">
                     <AvatarEditor ref={editorRef} image={profilePic} width={150} height={150} border={0} borderRadius={75} color={[255,255,255,0.6]} scale={editorScale} rotate={0} />
                   </div>
-                  <div className="w-full max-w-[200px] flex items-center gap-2">
+                  <div className="w-full max-w-50 flex items-center gap-2">
                     <span className="text-xs font-bold text-gray-400">-</span>
                     <input type="range" min="1" max="3" step="0.01" value={editorScale} onChange={e => setEditorScale(parseFloat(e.target.value))} className="w-full accent-amber-500 cursor-pointer" />
                     <span className="text-xs font-bold text-gray-400">+</span>
@@ -393,7 +397,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
 
                   <label className="block min-w-0">
                     <span className={labelClass}>Body Mass Index</span>
-                    <div className={`flex min-h-[46px] items-center justify-between gap-3 rounded-xl border-2 p-2.5 shadow-sm ${bmiData.color}`}>
+                    <div className={`flex min-h-11.5 items-center justify-between gap-3 rounded-xl border-2 p-2.5 shadow-sm ${bmiData.color}`}>
                       <span className="min-w-0 truncate text-sm font-medium">{bmiData.label}</span>
                       <span className="shrink-0 text-sm font-bold tabular-nums">{bmiData.value}</span>
                     </div>

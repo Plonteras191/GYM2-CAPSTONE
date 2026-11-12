@@ -18,7 +18,7 @@ export default function CameraCapture({
   const hasExistingEnrollment = faceImage === 'existing_data' && capturedViews.length === 0;
 
   return (
-    <div className="flex min-h-[18rem] flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-4 text-center shadow-sm dark:border-gray-600 dark:bg-[#252830]">
+    <div className="flex min-h-72 flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-4 text-center shadow-sm dark:border-gray-600 dark:bg-[#252830]">
       <h4 className="flex h-6 items-center font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wide text-sm">Facial Recognition</h4>
 
       <div className="flex w-full flex-1 flex-col items-center justify-center gap-3">
@@ -26,7 +26,7 @@ export default function CameraCapture({
         {isCameraActive
           ? `${nextView?.label} view: ${nextView?.instruction}`
           : isComplete
-            ? 'Front, left-side, and right-side views captured.'
+            ? `All ${captureViews.length} face views captured.`
             : hasExistingEnrollment
               ? 'A face enrollment is already saved.'
             : `${nextView?.label} view: ${nextView?.instruction}`}
