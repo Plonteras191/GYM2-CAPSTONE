@@ -32,6 +32,12 @@
 5. Transactions
 6. Reports
 7. Attendance Monitor
+    - (Must do) Set a returning member back to Active automatically. When an Inactive member checks in, their profile becomes Active again, so the rule works both ways: gone 1 month → Inactive, comes back → Active. (Backend: AttendanceController.php)
+    - (Must do) Run the 1-month Inactive check every day. Add a daily scheduled job so members become Inactive on time, not only when someone opens the Members page. Keeps Dashboard and Reports counts correct. Reuses the existing check.
+    - (Recommended) Flag expired subscriptions at the door. Keep logging them, but show an orange name tag on the camera feed and an "Expired" badge in today's log so staff can ask the member to renew. Nothing is blocked.
+    - (Nice to have) Show status in today's log. A small badge next to each check-in: Active, "Returned (was Inactive)" or Expired.
+    - (Before the defense) Test with several people at once. Have 3–5 registered members plus 1 unregistered person walk in together. Confirm each member is logged exactly once and the stranger stays "Unknown".
+
 8. Gesture Monitor
 9. Admin profile
 10. Notification
