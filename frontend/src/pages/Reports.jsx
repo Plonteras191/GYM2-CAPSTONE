@@ -16,7 +16,8 @@ import StyledSelect from '../components/ui/StyledSelect';
 
 const reportTypeOptions = [
   { value: 'Payments', label: 'Payment Transactions' },
-  { value: 'Memberships', label: 'Membership & Attendance Status' },
+  { value: 'Memberships', label: 'Membership Status' },
+  { value: 'Attendance', label: 'Attendance' },
 ];
 
 export default function Reports() {
@@ -38,7 +39,7 @@ export default function Reports() {
 
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
-  const cacheKey = `reports_v2_${startDate}_${endDate}`;
+  const cacheKey = `reports_v3_${startDate}_${endDate}`;
   const [isLoading, setIsLoading] = useState(() => !getCache(cacheKey));
   const [loadError, setLoadError] = useState('');
   const requestId = useRef(0);

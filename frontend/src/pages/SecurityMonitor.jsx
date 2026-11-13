@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiMaximize, FiCamera, FiWifiOff, FiLoader, FiUserCheck, FiArrowRight, FiRefreshCw, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiMaximize, FiCamera, FiWifiOff, FiLoader, FiUserCheck, FiArrowRight, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiUserPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { AI_BASE, aiEngineFetch } from '../utils/aiEngine';
 import { getCameraSourceLabel } from '../utils/cameraSourceLabel';
 import { getMediaUrl } from '../utils/mediaUrl';
 import { formatNumber } from '../utils/numberFormat';
+import ManualCheckInModal from '../components/ui/ManualCheckInModal';
 
 function AttendanceAvatar({ member }) {
   const [imageFailed, setImageFailed] = useState(false);
   const name = `${member?.first_name || ''} ${member?.last_name || ''}`.trim();
-  const profilePic = getMediaUrl(member?.profile_pic || member?.enrolled_face_id);
+  // The face enrollment photo is private biometric data; only the profile picture is shown.
+  const profilePic = member?.profile_pic ? getMediaUrl(member.profile_pic) : null;
 
   if (profilePic && !imageFailed) {
     return (
@@ -30,6 +32,39 @@ function AttendanceAvatar({ member }) {
   );
 }
 
+const BADGE_BASE = 'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider';
+
+function AttendanceBadges({ log }) {
+  const badges = [];
+  if (log.reactivated) {
+    badges.push(['Returned', 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400', 'Was Inactive; set back to Active by this check-in']);
+  }
+  if (log.subscription_status === 'expired') {
+    badges.push(['Expired', 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400', 'Subscription expired: ask the member to renew']);
+  } else if (log.subscription_status === 'none') {
+    badges.push(['No Sub', 'border-slate-400 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300', 'No subscription on record']);
+  } else if (log.subscription_status === 'active') {
+    badges.push(['Active', 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400', 'Subscription active']);
+  }
+  if (log.source === 'manual') {
+    badges.push(['Manual', 'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400', 'Checked in by staff']);
+  }
+  if (badges.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {badges.map(([label, colors, title]) => (
+        <span key={label} title={title} className={`${BADGE_BASE} ${colors}`}>{label}</span>
+      ))}
+    </div>
+  );
+}
+
+function formatTimeIn(timeIn) {
+  const [hours, minutes] = String(timeIn || '').split(':').map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return timeIn || '';
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${hours < 12 ? 'AM' : 'PM'}`;
+}
+
 export default function SecurityMonitor() {
   const navigate = useNavigate();
   const [connectionState, setConnectionState] = useState('RECONNECTING'); 
@@ -43,6 +78,7 @@ export default function SecurityMonitor() {
   
   const [liveLogs, setLiveLogs] = useState([]); 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
 
   // --- NEW: Custom Alert Modal ---
   const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'success' });
@@ -225,6 +261,9 @@ export default function SecurityMonitor() {
                   ))}
                 </select>
               </label>
+              <button onClick={() => setIsManualCheckInOpen(true)} className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-colors border border-white/10 active:scale-95" title="Manual check-in (when the camera cannot recognize a member)" aria-label="Manual check-in">
+                <FiUserPlus className="size-4 md:size-5" />
+              </button>
               <button onClick={handleSyncAI} disabled={isSyncing} className="p-2 md:p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg md:rounded-xl backdrop-blur-md transition-colors border border-white/10 active:scale-95" title="Force AI Memory Sync">
                 <FiRefreshCw className={`size-4 md:size-5 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
@@ -242,25 +281,38 @@ export default function SecurityMonitor() {
                 <FiUserCheck className="text-black dark:text-gray-300" size={18} />
                 Current Attendance
               </h3>
+              <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-gray-300 dark:text-black" title="Check-ins today">
+                {liveLogs.length}
+              </span>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 hidden-scrollbar">
                {liveLogs.length === 0 ? (
                    <div className="text-center mt-6 md:mt-10">
                      <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3"><FiCamera className="size-5 md:size-6 text-gray-500 dark:text-gray-300"/></div>
-                     <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400">Camera is Scanning...</p>
+                     <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400">
+                       {engineOnline === false ? 'Engine offline' : 'No check-ins yet today'}
+                     </p>
+                     <p className="mt-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                       {engineOnline === false
+                         ? 'Start the Python engine to record attendance.'
+                         : 'Members appear here when the camera recognizes them.'}
+                     </p>
                    </div>
                ) : (
-                   liveLogs.map((log, index) => {
-                    const memberName = log.member ? `${log.member.first_name} ${log.member.last_name}` : 'Unknown';
+                   liveLogs.map((log) => {
+                    const memberName = log.member
+                      ? `${log.member.first_name} ${log.member.last_name}`
+                      : (log.member_name_snapshot || 'Deleted member');
                      return (
-                     <div key={index} className="flex gap-3 items-center border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
+                     <div key={log.id} className="flex gap-3 items-center border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
                         <AttendanceAvatar member={log.member} />
                         <div className="min-w-0 flex-1">
                          <button type="button" onClick={() => log.member?.id && navigate('/members', { state: { memberId: log.member.id } })} className="truncate text-left text-xs font-bold leading-tight text-slate-800 dark:text-gray-200 md:text-sm">{memberName}</button>
                          <p className="text-[9px] md:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5 truncate">
-                           {log.time_in}
+                           {formatTimeIn(log.time_in)}
                          </p>
+                         <AttendanceBadges log={log} />
                        </div>
                     </div>
                    )})
@@ -281,7 +333,7 @@ export default function SecurityMonitor() {
                         : 'Camera connecting / unavailable'}
                 </span>
               </div>
-              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Memberships' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-gray-200 dark:hover:bg-[#252833] rounded-xl transition-all">
+              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-gray-200 dark:hover:bg-[#252833] rounded-xl transition-all">
                 Full Log <FiArrowRight />
               </button>
             </div>
@@ -290,6 +342,15 @@ export default function SecurityMonitor() {
         </div>
 
       </div>
+
+      <ManualCheckInModal
+        isOpen={isManualCheckInOpen}
+        onClose={() => setIsManualCheckInOpen(false)}
+        onDone={(title, message, type) => {
+          setAlertDialog({ isOpen: true, title, message, type });
+          api.get('/attendance/today').then(res => setLiveLogs(res.data)).catch(() => {});
+        }}
+      />
 
       {/* --- CUSTOM ALERT MODAL --- */}
       {alertDialog.isOpen && (

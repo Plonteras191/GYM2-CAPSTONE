@@ -12,6 +12,7 @@ import MobileCalendarDaySheet from '../../../components/ui/MobileCalendarDayShee
 import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 import Pagination from '../../../components/ui/Pagination';
 import StyledSelect from '../../../components/ui/StyledSelect';
+import ManualCheckInModal from '../../../components/ui/ManualCheckInModal';
 import { formatNumber } from '../../../utils/numberFormat';
 
 const getBmiInfo = (height, weight) => {
@@ -81,6 +82,7 @@ const getGestureClass = (exercise) => {
 export default function MemberProfileModal({ isOpen, member, onClose, onShowAlert }) {
   const [activeTab, setActiveTab] = useState('workouts');
   const [attendance, setAttendance] = useState([]);
+  const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
   const [workouts, setWorkouts] = useState([]);
   const [coachNotes, setCoachNotes] = useState('');
   const [workoutPage, setWorkoutPage] = useState(1);
@@ -260,6 +262,9 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     return `${h}:${minStr} ${ampm}`;
   };
 
+  const localDateKey = (date = new Date()) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const visitsThisMonth = attendance.filter(log => String(log.date).startsWith(localDateKey().slice(0, 7))).length;
   const attendanceEvents = attendance.map(log => ({
     id: log.id,
     title: `Time In: ${formatTime12h(log.time_in)}`,
@@ -460,6 +465,30 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               {activeTab === 'attendance' && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-0">
                   <div className="border border-gray-300 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-[#252830] shadow-sm relative flex-1 overflow-hidden flex flex-col min-h-0">
+                    <p className="mb-2 text-xs font-semibold text-slate-600 dark:text-gray-400">
+                      Visits this month: <span className="font-bold text-slate-900 dark:text-gray-200">{visitsThisMonth}</span>
+                      <span className="mx-2 text-gray-300 dark:text-gray-600">|</span>
+                      Last 2 years: <span className="font-bold text-slate-900 dark:text-gray-200">{attendance.length}</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsManualCheckInOpen(true)}
+                        className="float-right rounded-lg border border-gray-300 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-[#191b22]"
+                      >
+                        Manual check-in
+                      </button>
+                    </p>
+                    <ManualCheckInModal
+                      isOpen={isManualCheckInOpen}
+                      member={{
+                        id: member.id,
+                        name: `${member.firstName || member.first_name || ''} ${member.lastName || member.last_name || ''}`.trim(),
+                      }}
+                      onClose={() => setIsManualCheckInOpen(false)}
+                      onDone={(title, message, type) => {
+                        onShowAlert?.(title, message, type);
+                        api.get(`/members/${member.id}/attendance`).then(res => setAttendance(res.data)).catch(() => {});
+                      }}
+                    />
                     <style>{`
                       .fc { --fc-border-color: #e2e8f0; --fc-page-bg-color: transparent; color: #4b5563; }
                       .dark .fc { --fc-border-color: #4b5563; --fc-today-bg-color: rgba(245, 158, 11, 0.1); color: #d1d5db; }
@@ -698,7 +727,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                           const totalTasks = group.exercises.length;
                           const verifiedTasks = group.exercises.filter(log => getTaskStatus(log) === 'VERIFIED').length;
                           const isToday = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) === group.date;
-                          const hasFaceIdToday = isToday ? attendance.some(att => att.date === new Date().toISOString().split('T')[0]) : true;
+                          const hasFaceIdToday = isToday ? attendance.some(att => att.date === localDateKey()) : true;
 
                           let groupBadge;
                           if (verifiedTasks === totalTasks) {

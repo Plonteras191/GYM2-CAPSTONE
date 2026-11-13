@@ -41,6 +41,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   const [profilePic, setProfilePic] = useState(null);
   const [faceImage, setFaceImage] = useState(null);
   const [capturedFaceViews, setCapturedFaceViews] = useState([]);
+  const [biometricConsent, setBiometricConsent] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editorScale, setEditorScale] = useState(1.2);
@@ -78,6 +79,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       const initialFaceImage = isEditing && (initialData?.enrolledFaceId || initialData?.enrolled_face_id) ? 'existing_data' : null;
       setFaceImage(initialFaceImage);
       setCapturedFaceViews([]);
+      setBiometricConsent(false);
       initialSnapshotRef.current = JSON.stringify({ form: initial, faceImage: initialFaceImage, capturedFaceViews: [] });
       setIsCameraActive(false);
     }
@@ -175,6 +177,11 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       return;
     }
 
+    if (hasNewEnrollment && !biometricConsent) {
+      onShowAlert('Consent Required', 'Tick the consent box to confirm the member agrees to face enrollment before saving.', 'error');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const fd = new FormData();
@@ -184,7 +191,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       fd.append('phone', formData.phone || '');
       fd.append('address', formData.address || '');
       fd.append('plan', formData.plan || 'Walk-in');
-      fd.append('status', formData.status || 'Active');
+      fd.append('status', formData.status === 'Inactive' ? 'Inactive' : 'Active');
       if (formData.dob) fd.append('dob', formData.dob);
       if (formData.height) fd.append('height', formData.height);
       if (formData.weight) fd.append('weight', formData.weight);
@@ -200,6 +207,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
 
       if (hasNewEnrollment) {
         fd.append('enrolled_face_id', await combineFaceViews());
+        fd.append('biometric_consent', '1');
       }
       if (isEditing) {
         fd.append('_method', 'PUT');
@@ -346,6 +354,19 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
               onStop={stopCamera}
               onRetake={() => { setCapturedFaceViews([]); startCamera(); }}
             />
+            {faceImage !== 'existing_data' && (
+              <label className="mt-3 flex cursor-pointer items-start gap-2 text-left">
+                <input
+                  type="checkbox"
+                  checked={biometricConsent}
+                  onChange={e => setBiometricConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-amber-600"
+                />
+                <span className="text-[11px] font-medium leading-snug text-slate-600 dark:text-gray-400">
+                  The member consents to the gym storing their face photo and using it only for attendance and workout monitoring (Data Privacy Act of 2012, RA 10173).
+                </span>
+              </label>
+            )}
           </div>
 
           {/* Personal Details Form */}
@@ -382,6 +403,23 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                   {invalidFields.phone && <span className="mt-1 block text-xs font-medium text-orange-600 dark:text-orange-400">Enter all 11 digits of the phone number.</span>}
                   <span className="text-[10px] text-gray-400 font-medium float-right mt-1">{(formData.phone || '').length}/11</span>
                 </label>
+                {isEditing && (
+                  <label className="block">
+                    <span className={labelClass}>Member Status</span>
+                    <select
+                      name="status"
+                      value={formData.status === 'Inactive' ? 'Inactive' : 'Active'}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      className={inputClass}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                    <span className="mt-1 block text-[10px] font-medium text-gray-400">
+                      Set automatically: Inactive after 1 month without a visit, Active again on check-in.
+                    </span>
+                  </label>
+                )}
                 <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 items-end gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <label className="block"><span className={labelClass}>Date of Birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>
                   <label className="block">

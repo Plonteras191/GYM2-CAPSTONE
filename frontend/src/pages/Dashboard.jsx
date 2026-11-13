@@ -11,7 +11,7 @@ import CoachEventModal from '../features/subscriptions/components/CoachEventModa
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
   FiUsers, FiCheckCircle, FiDollarSign, FiFileText,
   FiLoader, FiTrendingUp, FiClock, FiUserPlus, FiCalendar
@@ -50,6 +50,8 @@ export default function Dashboard() {
   const cachedDash = getCache('dashboard');
   const [isLoading, setIsLoading] = useState(!cachedDash);
   const [salesData, setSalesData] = useState(cachedDash?.salesData || []);
+  const [todayCheckIns, setTodayCheckIns] = useState(cachedDash?.todayCheckIns ?? 0);
+  const [checkInsByHour, setCheckInsByHour] = useState(cachedDash?.checkInsByHour || []);
   const [stats, setStats] = useState(cachedDash?.stats || { revenue: 0, members: 0, activeSubs: 0, reports: 0 });
   const [recentMembers, setRecentMembers] = useState(cachedDash?.recentMembers || []);
   const [recentTxns, setRecentTxns] = useState(cachedDash?.recentTxns || []);
@@ -84,12 +86,16 @@ export default function Dashboard() {
       });
       setStats(newStats);
       setSalesData(newSalesData);
+      setTodayCheckIns(data.todayCheckIns ?? 0);
+      setCheckInsByHour(data.checkInsByHour || []);
       setRecentMembers(newRecentMembers);
       setRecentTxns(newRecentTxns);
       setExpiringSoon(newExpiringSoon);
       setCache('dashboard', {
         stats: newStats,
         salesData: newSalesData,
+        todayCheckIns: data.todayCheckIns ?? 0,
+        checkInsByHour: data.checkInsByHour || [],
         recentMembers: newRecentMembers,
         recentTxns: newRecentTxns,
         expiringSoon: newExpiringSoon,
@@ -136,6 +142,37 @@ export default function Dashboard() {
         <Link to="/members"><StatCard title="Total Members" value={stats.members} icon={<FiUsers size={28} strokeWidth={2.5} />} colorClass="bg-blue-800 text-white shadow-lg shadow-blue-700/40 dark:shadow-none" /></Link>
         <Link to="/subscriptions"><StatCard title="Active Subs" value={stats.activeSubs} icon={<FiCheckCircle size={28} strokeWidth={2.5} />} colorClass="bg-purple-800 text-white shadow-lg shadow-purple-700/40 dark:shadow-none" /></Link>
         <Link to="/reports"><StatCard title="Transactions" value={stats.reports} icon={<FiFileText size={28} strokeWidth={2.5} />} colorClass="bg-amber-700 text-white shadow-lg shadow-amber-600/40 dark:shadow-none" /></Link>
+      </div>
+
+      <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-300">
+            <FiCheckCircle size={18} className="shrink-0" /> Today's Check-ins
+            <span className="rounded-full bg-blue-800 px-2.5 py-0.5 text-sm font-bold text-white">{todayCheckIns}</span>
+          </h3>
+          <Link to="/reports" state={{ defaultTab: 'Attendance' }} className="text-xs font-bold text-slate-600 hover:text-amber-700 dark:text-gray-400 dark:hover:text-amber-400">
+            Attendance report
+          </Link>
+        </div>
+        <div className="relative h-[180px]">
+          {isLoading ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <FiLoader className="animate-spin text-amber-500 text-3xl" />
+            </div>
+          ) : todayCheckIns === 0 ? (
+            <p className="flex h-full items-center justify-center text-sm font-medium text-slate-500 dark:text-gray-400">No check-ins yet today.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={checkInsByHour}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#6b7280" opacity={0.2} />
+                <XAxis dataKey="hour" stroke="#6b7280" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
+                <Tooltip cursor={{ fill: 'rgba(107,114,128,0.12)' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#1f2937', color: '#fff' }} />
+                <Bar dataKey="checkIns" name="Check-ins" fill="#1e40af" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

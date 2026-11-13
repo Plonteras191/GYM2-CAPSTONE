@@ -16,7 +16,7 @@ export const memberService = {
       activeMembership: dbMember.active_membership || null,
       status: dbMember.status,
       enrolledFaceId: dbMember.enrolled_face_id,
-      profilePicUrl: getMediaUrl(dbMember.profile_pic || dbMember.enrolled_face_id),
+      profilePicUrl: getMediaUrl(dbMember.profile_pic),
       dob: dbMember.dob || '',
       height: dbMember.height || '',
       weight: dbMember.weight || '',
