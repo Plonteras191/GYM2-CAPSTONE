@@ -14,7 +14,7 @@ const AdminProfile = lazy(() => import('./pages/AdminProfile'));
 
 function PageLoading() {
   return (
-    <div className="flex min-h-40 flex-1 items-center justify-center p-8 text-sm font-semibold text-slate-500 dark:text-gray-400" role="status">
+    <div className="flex min-h-40 flex-1 items-center justify-center p-8 text-sm font-medium text-muted" role="status">
       Loading page...
     </div>
   );

@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@cycjimmy/jsmpeg-player": "^6.1.2",
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
     "@fullcalendar/daygrid": "^6.1.21",
     "@fullcalendar/interaction": "^6.1.21",
     "@fullcalendar/list": "^6.1.21",

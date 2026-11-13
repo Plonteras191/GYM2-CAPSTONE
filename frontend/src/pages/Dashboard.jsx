@@ -1,5 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { ThemeContext } from '../context/ThemeContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
+import { useCountUp } from '../hooks/useCountUp';
+import Panel, { PanelLink } from '../components/ui/Panel';
+import { StatStrip, StatCell } from '../components/ui/StatStrip';
 import api from '../api'; 
 import { getPaymentMethodLabel } from '../utils/paymentMethod';
 import { formatNumber } from '../utils/numberFormat';
@@ -12,12 +17,69 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
 
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { 
-  FiUsers, FiCheckCircle, FiDollarSign, FiFileText,
-  FiLoader, FiTrendingUp, FiClock, FiUserPlus, FiCalendar
+import {
+  FiCheckCircle, FiDollarSign, FiTrendingUp, FiClock, FiUserPlus, FiCalendar, FiArrowRight
 } from 'react-icons/fi';
 
+/* ── Presentation helpers (display only) ─────────────────────────────── */
+
+const CHART_THEME = {
+  light: { revenue: '#D97A07', bars: '#A61F2B', grid: '#DCDDE1', tick: '#5B6170', cursor: 'rgba(13,13,13,0.05)' },
+  dark: { revenue: '#F2B705', bars: '#E25563', grid: '#353A47', tick: '#8B93A7', cursor: 'rgba(139,147,167,0.12)' },
+};
+
+const initialsOf = (name = '') =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || '?';
+
+const methodTone = (method = '') => {
+  const key = method.toLowerCase();
+  if (key === 'gcash') return 'bg-brand-navy-50 text-brand-navy dark:bg-brand-navy-200/10 dark:text-brand-navy-200';
+  if (key === 'cash') return 'bg-positive-soft text-positive';
+  return 'bg-hover text-ink-2';
+};
+
+function ChartTooltip({ active, payload, label, format = (v) => v, unit }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-line bg-panel px-3 py-2 shadow-[0_8px_24px_rgb(13_13_13/0.12)]">
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <p className="font-display text-lg font-semibold leading-tight text-ink tabular-nums">
+        {format(payload[0].value)}{unit ? <span className="ml-1 font-sans text-xs font-medium text-muted">{unit}</span> : null}
+      </p>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, children }) {
+  return (
+    <div className="flex h-full min-h-32 flex-col items-center justify-center gap-3 py-6 text-center">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-hover text-muted">
+        <Icon size={18} aria-hidden="true" />
+      </span>
+      <p className="text-sm font-medium text-muted">{children}</p>
+    </div>
+  );
+}
+
+function ListSkeleton({ rows = 4 }) {
+  return (
+    <div className="space-y-4 py-1" aria-label="Loading" role="status">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <span className="skeleton h-8 w-8 rounded-full" />
+          <span className="skeleton h-3.5 flex-1" style={{ maxWidth: `${70 - i * 8}%` }} />
+          <span className="skeleton h-3.5 w-14" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
+  const { isDarkMode } = useContext(ThemeContext);
+  const reducedMotion = useReducedMotion();
+  const chartTheme = isDarkMode ? CHART_THEME.dark : CHART_THEME.light;
+
   const { getCache, setCache } = useDataCache();
   const {
     subscriptions,
@@ -113,179 +175,226 @@ export default function Dashboard() {
     fetchDashboardData(!hasCached);
   }, [fetchDashboardData, getCache]);
 
-  const getMethodBadge = (method) => {
-    const base = "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border border-solid shadow-sm";
-    if (method.toLowerCase() === 'gcash') return `${base} bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50`;
-    if (method.toLowerCase() === 'cash') return `${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`;
-    return `${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`;
-  };
-
-  const StatCard = ({ title, value, icon, colorClass }) => (
-    <div className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252830] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
-      <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>
-        {icon}
-      </div>
-      <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
-        <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{title}</p>
-        <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">
-          {isLoading ? <FiLoader className="animate-spin text-xl mt-2 text-amber-500" /> : value}
-        </h3>
-      </div>
-    </div>
+  /* ── Display-only derivations ─────────────────────────────────────── */
+  const checkInsShown = useCountUp(todayCheckIns, { enabled: !isLoading });
+  const busiestHour = checkInsByHour.reduce(
+    (best, slot) => (Number(slot?.checkIns) > Number(best?.checkIns ?? 0) ? slot : best),
+    null
   );
+  const sixMonthRevenue = salesData.reduce((sum, row) => sum + (Number(row?.revenue) || 0), 0);
+  const chartMotion = { isAnimationActive: !reducedMotion, animationDuration: 1100, animationEasing: 'ease-out' };
+  const axisProps = { stroke: chartTheme.tick, fontSize: 12, tickLine: false, axisLine: false };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      
-      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        <Link to="/transactions"><StatCard title="Total Revenue" value={`₱ ${formatNumber(stats.revenue)}`} icon={<FiDollarSign size={28} strokeWidth={2.5} />} colorClass="bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none" /></Link>
-        <Link to="/members"><StatCard title="Total Members" value={stats.members} icon={<FiUsers size={28} strokeWidth={2.5} />} colorClass="bg-blue-800 text-white shadow-lg shadow-blue-700/40 dark:shadow-none" /></Link>
-        <Link to="/subscriptions"><StatCard title="Active Subs" value={stats.activeSubs} icon={<FiCheckCircle size={28} strokeWidth={2.5} />} colorClass="bg-purple-800 text-white shadow-lg shadow-purple-700/40 dark:shadow-none" /></Link>
-        <Link to="/reports"><StatCard title="Transactions" value={stats.reports} icon={<FiFileText size={28} strokeWidth={2.5} />} colorClass="bg-amber-700 text-white shadow-lg shadow-amber-600/40 dark:shadow-none" /></Link>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-5 p-6 lg:space-y-6">
 
-      <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-300">
-            <FiCheckCircle size={18} className="shrink-0" /> Today's Check-ins
-            <span className="rounded-full bg-blue-800 px-2.5 py-0.5 text-sm font-bold text-white">{todayCheckIns}</span>
-          </h3>
-          <Link to="/reports" state={{ defaultTab: 'Attendance' }} className="text-xs font-bold text-slate-600 hover:text-amber-700 dark:text-gray-400 dark:hover:text-amber-400">
+      <StatStrip index={0}>
+        <StatCell label="Total Revenue" tone="gold" to="/transactions" isLoading={isLoading} value={stats.revenue} format={(v) => `₱ ${formatNumber(v)}`} />
+        <StatCell label="Total Members" tone="red" to="/members" isLoading={isLoading} value={stats.members} format={(v) => formatNumber(v)} />
+        <StatCell label="Active Subs" tone="orange" to="/subscriptions" isLoading={isLoading} value={stats.activeSubs} format={(v) => formatNumber(v)} />
+        <StatCell label="Transactions" tone="slate" to="/reports" isLoading={isLoading} value={stats.reports} format={(v) => formatNumber(v)} />
+      </StatStrip>
+
+      <Panel
+        index={1}
+        title="Today's Check-ins"
+        icon={FiCheckCircle}
+        action={
+          <PanelLink as={Link} to="/reports" state={{ defaultTab: 'Attendance' }} icon={FiArrowRight}>
             Attendance report
-          </Link>
-        </div>
-        <div className="relative h-[180px]">
-          {isLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <FiLoader className="animate-spin text-amber-500 text-3xl" />
+          </PanelLink>
+        }
+      >
+        <div className="grid gap-5 md:grid-cols-[minmax(10rem,12rem)_minmax(0,1fr)]">
+          <div className="flex items-end justify-between gap-4 md:flex-col md:items-start md:border-r md:border-line md:pr-5">
+            <div>
+              {isLoading ? (
+                <span className="skeleton h-14 w-20" />
+              ) : (
+                <p className="flex items-center gap-3 font-display text-6xl font-semibold leading-none tracking-tight text-ink tabular-nums">
+                  {formatNumber(checkInsShown)}
+                  {todayCheckIns > 0 && <span aria-hidden="true" className="live-dot h-2.5 w-2.5 rounded-full bg-brand-gold" />}
+                </p>
+              )}
+              <p className="mt-2 text-sm text-muted">check-ins so far today</p>
             </div>
-          ) : todayCheckIns === 0 ? (
-            <p className="flex h-full items-center justify-center text-sm font-medium text-slate-500 dark:text-gray-400">No check-ins yet today.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={checkInsByHour}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#6b7280" opacity={0.2} />
-                <XAxis dataKey="hour" stroke="#6b7280" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
-                <Tooltip cursor={{ fill: 'rgba(107,114,128,0.12)' }} contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#1f2937', color: '#fff' }} />
-                <Bar dataKey="checkIns" name="Check-ins" fill="#1e40af" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+            {!isLoading && busiestHour && (
+              <p className="text-right md:text-left">
+                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">Busiest hour</span>
+                <span className="font-display text-2xl font-semibold text-ink-2">{busiestHour.hour}</span>
+              </p>
+            )}
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <div className="lg:col-span-2 bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col">
-          <h3 className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 text-lg font-bold text-slate-800 dark:border-gray-600 dark:text-gray-300">
-            <FiTrendingUp size={18} className="shrink-0" /> Revenue Growth (Last 6 Months)
-          </h3>
-          <div className="flex-1 min-h-[250px] relative">
+          <div className="relative h-[180px] min-w-0">
             {isLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <FiLoader className="animate-spin text-amber-500 text-3xl" />
-              </div>
+              <span className="skeleton absolute inset-0" />
+            ) : todayCheckIns === 0 ? (
+              <EmptyState icon={FiClock}>No check-ins yet today.</EmptyState>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={salesData}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#6b7280" opacity={0.2} />
-                  <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `₱${val}`} />
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#1f2937', color: '#fff' }} />
-                  <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                </AreaChart>
+                <BarChart data={checkInsByHour} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke={chartTheme.grid} />
+                  <XAxis dataKey="hour" {...axisProps} fontSize={11} />
+                  <YAxis {...axisProps} allowDecimals={false} width={28} />
+                  <Tooltip cursor={{ fill: chartTheme.cursor, radius: 4 }} content={<ChartTooltip unit="check-ins" />} />
+                  <Bar dataKey="checkIns" name="Check-ins" fill={chartTheme.bars} radius={[4, 4, 0, 0]} maxBarSize={36} {...chartMotion} />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
+      </Panel>
 
-        <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm flex flex-col">
-          <div className="mb-3 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-300">
-              <FiClock size={18} className="shrink-0" /> Expiring Subscription within 7 Days
-            </h3>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
+        <Panel
+          index={2}
+          className="lg:col-span-2"
+          title="Revenue Growth"
+          icon={FiTrendingUp}
+          meta={<span className="text-xs font-medium text-muted">Last 6 months</span>}
+          action={
+            !isLoading && (
+              <span className="text-right">
+                <span className="sr-only">Six-month total: </span>
+                <span className="font-display text-xl font-semibold text-ink tabular-nums">₱ {formatNumber(sixMonthRevenue)}</span>
+              </span>
+            )
+          }
+          bodyClassName="flex flex-col"
+        >
+          <div className="relative min-h-[260px] flex-1">
             {isLoading ? (
-               <div className="flex justify-center py-10"><FiLoader className="animate-spin text-amber-500 text-2xl" /></div>
-            ) : expiringSoon.length === 0 ? (
-               <div className="text-center py-10 text-gray-500 dark:text-gray-400 font-medium">No memberships expiring soon.</div>
+              <span className="skeleton absolute inset-0" />
             ) : (
-              expiringSoon.map((item, i) => (
-                <div key={i} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-900/30">
-                  <span className="font-normal text-slate-800 dark:text-gray-200">{item.name}</span>
-                  <span className="text-xs font-normal text-red-600 dark:text-red-400">{item.days} days left</span>
-                </div>
-              ))
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={salesData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={chartTheme.revenue} stopOpacity={0.28} />
+                      <stop offset="100%" stopColor={chartTheme.revenue} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke={chartTheme.grid} />
+                  <XAxis dataKey="name" {...axisProps} />
+                  <YAxis {...axisProps} width={64} tickFormatter={(val) => `₱${formatNumber(val, { notation: 'compact', maximumFractionDigits: 1 })}`} />
+                  <Tooltip
+                    cursor={{ stroke: chartTheme.tick, strokeDasharray: '3 3' }}
+                    content={<ChartTooltip format={(v) => `₱ ${formatNumber(v)}`} />}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke={chartTheme.revenue}
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorRev)"
+                    activeDot={{ r: 5, strokeWidth: 2, stroke: isDarkMode ? '#22252D' : '#FFFFFF' }}
+                    {...chartMotion}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             )}
           </div>
-        </div>
-      </div>
+        </Panel>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 text-lg font-bold text-slate-800 dark:border-gray-600 dark:text-gray-300">
-            <FiUserPlus size={18} className="shrink-0" /> Recently Added Members
-          </h3>
-          <ul className="space-y-3">
-            {isLoading ? (
-              <div className="flex justify-center py-6"><FiLoader className="animate-spin text-amber-500" /></div>
-            ) : recentMembers.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-4">No members found.</div>
-            ) : (
-              recentMembers.map((member, i) => {
-                const name = typeof member === 'string' ? member : member.name;
+        <Panel
+          index={3}
+          title="Expiring within 7 Days"
+          icon={FiClock}
+          meta={!isLoading && expiringSoon.length > 0 && (
+            <span className="rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn tabular-nums">{expiringSoon.length}</span>
+          )}
+          bodyClassName="lg:max-h-[340px] overflow-y-auto"
+        >
+          {isLoading ? (
+            <ListSkeleton rows={4} />
+          ) : expiringSoon.length === 0 ? (
+            <EmptyState icon={FiCheckCircle}>No memberships expiring soon.</EmptyState>
+          ) : (
+            <ul className="-my-1 divide-y divide-line">
+              {expiringSoon.map((item, i) => {
+                const urgent = item.days <= 2;
                 return (
-                  <li key={member.id || name || i} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 dark:border-gray-700/50 last:border-0">
-                    <Link to="/members" state={{ searchTerm: name }} className="min-w-0 truncate font-semibold text-slate-700 hover:text-amber-700 dark:text-gray-300 dark:hover:text-amber-400">{name}</Link>
-                    <span className="inline-flex shrink-0 items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border border-solid shadow-sm bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50">New</span>
+                  <li key={i} className="rise flex items-center justify-between gap-3 py-3" style={{ '--i': i * 0.6 + 3 }}>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span aria-hidden="true" className={`h-8 w-1 shrink-0 rounded-full ${urgent ? 'bg-accent' : 'bg-brand-gold'}`} />
+                      <span className="truncate text-sm font-medium text-ink">{item.name}</span>
+                    </span>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${urgent ? 'bg-accent-soft text-accent' : 'bg-warn-soft text-warn'}`}>
+                      {item.days} days left
+                    </span>
                   </li>
                 );
-              })
-            )}
-          </ul>
-        </div>
-
-        <div className="bg-white dark:bg-[#252830] p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 text-lg font-bold text-slate-800 dark:border-gray-600 dark:text-gray-300">
-            <FiDollarSign size={18} className="shrink-0" /> Recent Transactions
-          </h3>
-          <ul className="space-y-3">
-            {isLoading ? (
-              <div className="flex justify-center py-6"><FiLoader className="animate-spin text-amber-500" /></div>
-            ) : recentTxns.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-4">No transactions found.</div>
-            ) : (
-              recentTxns.map((txn, i) => (
-                <li key={txn.id || i} className="grid grid-cols-[minmax(0,1fr)_5rem_6rem] items-center gap-3 border-b border-gray-100 py-3 last:border-0 animate-in fade-in slide-in-from-top-2 dark:border-gray-700/50">
-                  <div className="min-w-0">
-                    <Link to="/transactions" state={{ searchTerm: txn.transactionId || txn.memberName }} className="block truncate text-sm font-semibold text-slate-800 hover:text-amber-700 dark:text-gray-300 dark:hover:text-amber-400">{txn.memberName}</Link>
-                    <div className="mt-1 min-w-0">
-                      <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{txn.packageDetails?.title || 'Package Payment'}</span>
-                      <span className="block truncate text-[10px] font-semibold text-gray-500 dark:text-gray-400">{txn.packageDetails?.category}</span>
-                    </div>
-                  </div>
-                  <span className={`${getMethodBadge(txn.method)} w-full justify-center`}>{txn.method}</span>
-                  <span className={`text-right font-semibold whitespace-nowrap ${txn.status === 'Refunded' || Number(txn.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-500'}`}>{Number(txn.amount) > 0 ? '+' : '-'} ₱{formatNumber(Math.abs(txn.amount))}</span>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
+              })}
+            </ul>
+          )}
+        </Panel>
       </div>
 
-      <div className="relative w-full rounded-xl border-2 border-gray-300 bg-white p-6 shadow-sm dark:border-gray-600 dark:bg-[#252830]">
-        <h3 className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 text-lg font-bold text-slate-800 dark:border-gray-600 dark:text-gray-300">
-          <FiCalendar size={18} className="shrink-0" /> Subscriptions &amp; Events
-        </h3>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5 lg:gap-6">
+        <Panel index={4} className="lg:col-span-2" title="Recently Added Members" icon={FiUserPlus}>
+          {isLoading ? (
+            <ListSkeleton rows={4} />
+          ) : recentMembers.length === 0 ? (
+            <EmptyState icon={FiUserPlus}>No members found.</EmptyState>
+          ) : (
+            <ul className="-my-1 divide-y divide-line">
+              {recentMembers.map((member, i) => {
+                const name = typeof member === 'string' ? member : member.name;
+                return (
+                  <li key={member.id || name || i} className="rise flex items-center justify-between gap-3 py-2.5" style={{ '--i': i * 0.6 + 4 }}>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-hover font-display text-sm font-semibold text-ink-2">
+                        {initialsOf(name)}
+                      </span>
+                      <Link to="/members" state={{ searchTerm: name }} className="link-draw min-w-0 truncate py-1 text-sm font-semibold text-ink hover:text-accent">
+                        {name}
+                      </Link>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-positive-soft px-2.5 py-1 text-xs font-semibold text-positive">New</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel index={5} className="lg:col-span-3" title="Recent Transactions" icon={FiDollarSign}>
+          {isLoading ? (
+            <ListSkeleton rows={4} />
+          ) : recentTxns.length === 0 ? (
+            <EmptyState icon={FiDollarSign}>No transactions found.</EmptyState>
+          ) : (
+            <ul className="-my-1 divide-y divide-line">
+              {recentTxns.map((txn, i) => {
+                const isNegative = txn.status === 'Refunded' || Number(txn.amount) < 0;
+                return (
+                  <li key={txn.id || i} className="rise grid grid-cols-[minmax(0,1fr)_4.75rem_6.5rem] items-center gap-3 py-3" style={{ '--i': i * 0.6 + 5 }}>
+                    <div className="min-w-0">
+                      <Link to="/transactions" state={{ searchTerm: txn.transactionId || txn.memberName }} className="link-draw block w-fit max-w-full truncate text-sm font-semibold text-ink hover:text-accent">
+                        {txn.memberName}
+                      </Link>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {txn.packageDetails?.title || 'Package Payment'}
+                        {txn.packageDetails?.category && <span> · {txn.packageDetails.category}</span>}
+                      </p>
+                    </div>
+                    <span className={`inline-flex w-full items-center justify-center rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${methodTone(txn.method)}`}>
+                      {txn.method}
+                    </span>
+                    <span className={`whitespace-nowrap text-right font-display text-base font-semibold tabular-nums ${isNegative ? 'text-negative' : 'text-positive'}`}>
+                      {Number(txn.amount) > 0 ? '+' : '-'} ₱{formatNumber(Math.abs(txn.amount))}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      <Panel index={6} title="Subscriptions & Events" icon={FiCalendar} className="relative w-full">
         <SubscriptionsCalendarView
           subscriptions={subscriptions}
           coachEvents={coachEvents}
@@ -330,7 +439,7 @@ export default function Dashboard() {
           type={alertDialog.type}
           onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
         />
-      </div>
+      </Panel>
 
     </div>
   );

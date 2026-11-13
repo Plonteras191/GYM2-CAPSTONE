@@ -26,23 +26,23 @@ export default function Pagination({
   }
 
   return (
-    <div className={`flex min-w-0 flex-col items-center justify-between gap-3 border-t-2 border-gray-300 bg-gray-50 px-3 py-3 dark:border-[#393e4f] dark:bg-[#191b22] ${stacked ? '' : 'sm:flex-row'}`}>
-      <p className="max-w-full text-center text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-gray-400">
+    <div className={`flex min-w-0 flex-col items-center justify-between gap-3 border-t border-line bg-canvas px-3 py-3 ${stacked ? '' : 'sm:flex-row'}`}>
+      <p className="max-w-full text-center text-xs font-medium text-muted tabular-nums">
         Showing {startItem} to {endItem} of {totalItems} {itemsLabel}
       </p>
 
-      <nav aria-label="Pagination" className="flex max-w-full items-center rounded-lg border border-gray-300 bg-gray-200 p-1 shadow-inner dark:border-gray-600 dark:bg-gray-700">
+      <nav aria-label="Pagination" className="flex max-w-full items-center gap-0.5 rounded-xl border border-line bg-panel p-1">
         <button
           type="button"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1 || totalPages <= 1}
           aria-label="Previous page"
-          className="rounded-md p-1 text-slate-600 transition-colors enabled:hover:bg-gray-600 enabled:hover:text-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:enabled:hover:bg-gray-300 dark:enabled:hover:text-gray-900"
+          className="rounded-md p-1 press text-ink-2 enabled:hover:bg-hover enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
         >
           <FiChevronLeft size={18} />
         </button>
         {pages.map(page => typeof page === 'string' ? (
-          <span key={page} aria-hidden="true" className="px-1 text-slate-500 dark:text-gray-400">…</span>
+          <span key={page} aria-hidden="true" className="px-1 text-muted">…</span>
         ) : (
           <button
             key={page}
@@ -50,10 +50,10 @@ export default function Pagination({
             onClick={() => onPageChange(page)}
             aria-label={`Page ${page}`}
             aria-current={currentPage === page ? 'page' : undefined}
-            className={`min-w-8 rounded-md px-2 py-1 font-semibold shadow-sm transition-colors ${
+            className={`press min-w-8 rounded-lg px-2 py-1 text-sm font-semibold tabular-nums ${
               currentPage === page
-                ? 'bg-black text-gray-300 dark:bg-gray-300 dark:text-black'
-                : 'text-slate-700 dark:text-gray-300 enabled:hover:bg-gray-600 enabled:hover:text-gray-100 dark:enabled:hover:bg-gray-300 dark:enabled:hover:text-gray-900'
+                ? 'bg-brand-dark text-brand-white dark:bg-brand-gold dark:text-brand-dark'
+                : 'text-ink-2 enabled:hover:bg-hover enabled:hover:text-ink'
             }`}
           >
             {page}
@@ -64,7 +64,7 @@ export default function Pagination({
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages || totalPages <= 1}
           aria-label="Next page"
-          className="rounded-md p-1 text-slate-600 transition-colors enabled:hover:bg-gray-600 enabled:hover:text-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:enabled:hover:bg-gray-300 dark:enabled:hover:text-gray-900"
+          className="rounded-md p-1 press text-ink-2 enabled:hover:bg-hover enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
         >
           <FiChevronRight size={18} />
         </button>

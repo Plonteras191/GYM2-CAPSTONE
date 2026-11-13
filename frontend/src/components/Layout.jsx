@@ -248,64 +248,105 @@ export default function Layout() {
     }
   ];
 
+  // Visual style per notification type (presentation only)
+  const notificationStyle = (alert) => {
+    if (alert.type === 'expiring') {
+      const today = alert.days_left === 0;
+      return {
+        icon: <FiClock size={15} />,
+        tile: 'bg-warn-soft text-warn',
+        badge: today ? 'TODAY' : `${alert.days_left}d left`,
+        badgeClass: today ? 'bg-accent-soft text-accent' : 'bg-warn-soft text-warn',
+      };
+    }
+    if (alert.type === 'event') {
+      return {
+        icon: <FiCalendar size={15} />,
+        tile: 'bg-positive-soft text-positive',
+        badge: alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d event`,
+        badgeClass: 'bg-positive-soft text-positive',
+      };
+    }
+    if (alert.type === 'no_sub') {
+      return { icon: <FiAlertCircle size={15} />, tile: 'bg-accent-soft text-accent', badge: 'No Sub', badgeClass: 'bg-accent-soft text-accent' };
+    }
+    if (alert.type === 'login') {
+      return { icon: <FiLogIn size={15} />, tile: 'bg-hover text-ink-2', badge: 'Login', badgeClass: 'bg-hover text-ink-2' };
+    }
+    return {
+      icon: <FiCheckSquare size={15} />,
+      tile: 'bg-brand-navy-50 text-brand-navy dark:bg-brand-navy-200/10 dark:text-brand-navy-200',
+      badge: 'Task',
+      badgeClass: 'bg-brand-navy-50 text-brand-navy dark:bg-brand-navy-200/10 dark:text-brand-navy-200',
+    };
+  };
+
+  const iconButton = 'press relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-panel text-ink-2 hover:bg-hover hover:text-ink sm:h-11 sm:w-11';
+
   return (
-    <div className="flex h-dvh bg-slate-100 dark:bg-[#050505] overflow-hidden font-sans">
-      
+    <div className="flex h-dvh overflow-hidden bg-canvas font-sans">
+
       <style>{`
         .hidden-scrollbar::-webkit-scrollbar { display: none; }
         .hidden-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
+        <div
+          className="animate-fade-in fixed inset-0 z-40 bg-brand-dark/60 backdrop-blur-sm lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:w-72 bg-white dark:bg-[#161616] border-r border-gray-400 dark:border-gray-600 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none lg:static lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-24 px-5 flex items-center justify-between gap-4 border-b border-gray-400 dark:border-gray-600 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center bg-white dark:bg-[#161616] border-[3px] border-black dark:border-amber-500 shadow-md dark:shadow-[0_0_12px_rgba(245,158,11,0.4)] transition-all flex-shrink-0">
-              <img src={systemLogo} alt="System logo" className="w-full h-full rounded-full object-cover bg-white p-0.5" />
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-line bg-raised shadow-2xl transition-transform duration-300 ease-out-quint lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex h-16 flex-shrink-0 items-center justify-between gap-3 border-b border-line px-5 sm:h-20 lg:h-[76px]">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white ring-2 ring-brand-dark ring-offset-2 ring-offset-raised dark:ring-brand-gold">
+              <img src={systemLogo} alt="System logo" className="h-full w-full rounded-full bg-white object-cover p-0.5" />
             </div>
-            <div className="flex flex-col justify-center">
-              <h1 className="font-black italic text-transparent bg-clip-text bg-gradient-to-r from-brand-red to-brand-orange text-xl md:text-2xl leading-none uppercase tracking-tight drop-shadow-sm">
+            <div className="flex min-w-0 flex-col justify-center">
+              <h1 className="bg-gradient-to-r from-brand-red to-brand-orange-700 bg-clip-text pr-1 font-display text-[1.65rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent dark:from-brand-red-300 dark:to-brand-orange-300">
                 Double Alpha
               </h1>
-              <span className="font-bold text-[0.65rem] md:text-xs text-slate-500 dark:text-gray-400 uppercase tracking-[0.25em] mt-0.5">
+              <span className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-muted">
                 Fitness
               </span>
             </div>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-500 hover:text-brand-red dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-white/5">
-            <FiX size={26} />
+          <button onClick={() => setIsSidebarOpen(false)} aria-label="Close navigation menu" className="press rounded-lg p-2 text-muted hover:bg-hover hover:text-ink lg:hidden">
+            <FiX size={22} />
           </button>
         </div>
-        
-        <nav className="flex-1 overflow-y-auto py-8 px-5 space-y-6 hidden-scrollbar">
+
+        <nav aria-label="Main navigation" className="hidden-scrollbar flex-1 space-y-7 overflow-y-auto px-3 py-6">
           {navGroups.map((group, index) => (
             <div key={index}>
-              <h3 className="text-[11px] md:text-xs font-bold text-gray-700 dark:text-gray-500 uppercase tracking-widest mb-3 px-3">
+              <h3 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                 {group.title}
               </h3>
-              <ul className="space-y-1.5">
+              <ul className="space-y-0.5">
                 {group.items.map((item) => (
                   <li key={item.name}>
                     <NavLink
                       to={item.path}
                       onClick={() => setIsSidebarOpen(false)}
                       className={({ isActive }) =>
-                        `flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 font-bold text-sm md:text-base ${
-                          isActive 
-                            ? 'bg-black text-white dark:bg-white/10 dark:text-gray-300 shadow-md' 
-                            : 'text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-black dark:hover:text-gray-300'
+                        `group press relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium ${
+                          isActive
+                            ? 'bg-accent-soft text-ink'
+                            : 'text-ink-2 hover:bg-hover hover:text-ink'
                         }`
                       }
                     >
                       {({ isActive }) => (
                         <>
-                          <span className={`text-xl ${isActive ? 'text-gray-300 dark:text-gray-300' : 'opacity-70'}`}>{item.icon}</span>
+                          <span
+                            aria-hidden="true"
+                            className={`absolute inset-y-2 left-0 w-[3px] origin-center rounded-r-full bg-accent transition-transform duration-300 ease-out-quint ${isActive ? 'scale-y-100' : 'scale-y-0'}`}
+                          />
+                          <span className={`text-lg transition-transform duration-200 ${isActive ? 'text-accent' : 'text-muted group-hover:translate-x-0.5 group-hover:text-ink'}`}>
+                            {item.icon}
+                          </span>
                           {item.name}
                         </>
                       )}
@@ -317,46 +358,46 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="p-5 border-t border-gray-400 dark:border-gray-600 flex-shrink-0">
-          <button onClick={handleLogout} className="flex items-center gap-3.5 px-4 py-3 w-full text-base text-slate-600 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 rounded-xl transition-colors font-bold">
-            <FiLogOut className="text-xl opacity-70" /> Sign Out
+        <div className="flex-shrink-0 border-t border-line p-3">
+          <button onClick={handleLogout} className="group press flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium text-ink-2 hover:bg-accent-soft hover:text-accent">
+            <FiLogOut className="text-lg text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent" /> Sign Out
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
-        
-        <header className="h-16 sm:h-20 lg:h-24 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-md border-b border-gray-400 dark:border-gray-600 flex justify-between items-center px-3 sm:px-5 lg:px-8 transition-colors duration-300 z-10 w-full flex-shrink-0">
-          
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-            <button onClick={() => setIsSidebarOpen(true)} aria-label="Open navigation menu" className="lg:hidden p-2 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors border border-slate-200 dark:border-white/5 flex-shrink-0">
-              <FiMenu size={22} />
+      <div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
+
+        <header className="z-10 flex h-16 w-full flex-shrink-0 items-center justify-between border-b border-line bg-raised/90 px-3 backdrop-blur-md transition-colors duration-300 sm:h-20 sm:px-5 lg:h-[76px] lg:px-8">
+
+          <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+            <button onClick={() => setIsSidebarOpen(true)} aria-label="Open navigation menu" className={`${iconButton} lg:hidden`}>
+              <FiMenu size={20} />
             </button>
-            
-            <div className="flex flex-col min-w-0">
-              <h2 className="text-base sm:text-xl md:text-3xl font-black text-black dark:text-gray-300 tracking-wide leading-tight truncate max-w-[170px] sm:max-w-xs md:max-w-none">
+
+            <div className="flex min-w-0 flex-col">
+              <h2 key={location.pathname} className="animate-in fade-in slide-in-from-bottom-2 max-w-[170px] truncate font-display text-xl font-semibold leading-tight tracking-tight text-ink sm:max-w-xs sm:text-2xl md:max-w-none lg:text-[1.75rem]">
                 {getPageTitle(location.pathname)}
               </h2>
-              <span className="hidden sm:block text-[9px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest mt-0.5 truncate">
+              <span className="mt-0.5 hidden truncate text-xs font-medium text-muted sm:block">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5 flex-shrink-0">
-            
+          <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2.5 md:gap-3">
+
             <div className="relative order-3">
-              <button 
+              <button
                 ref={notificationButtonRef}
                 onClick={toggleNotifications}
                 aria-label={`Open notifications${visibleNotifications.length ? `, ${visibleNotifications.length} unread` : ''}`}
                 aria-expanded={showNotifications}
                 aria-controls="notification-panel"
-                className="relative rounded-full border border-gray-500 bg-gray-200 p-2.5 text-black shadow-sm transition-colors hover:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus-visible:ring-offset-[#161616] sm:p-3"
+                className={`${iconButton} group ${showNotifications ? 'bg-hover text-ink' : ''}`}
               >
-                <FiBell size={21} strokeWidth={2.4} />
+                <FiBell size={19} strokeWidth={2.2} className="origin-top transition-transform duration-300 group-hover:rotate-12" />
                 {visibleNotifications.length > 0 && (
-                  <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-gray-200 bg-amber-500 px-1 text-[10px] font-extrabold leading-none tabular-nums text-slate-950 shadow-sm dark:border-gray-700 dark:bg-amber-400 dark:text-[#17191f]">
+                  <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-gold px-1 text-[10px] font-bold leading-none text-brand-dark tabular-nums ring-2 ring-raised">
                     {visibleNotifications.length > 99 ? '99+' : visibleNotifications.length}
                   </span>
                 )}
@@ -367,90 +408,69 @@ export default function Layout() {
                 <div
                   id="notification-panel"
                   style={notificationPanelPosition}
-                  className="fixed z-[90] flex flex-col overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 text-slate-800 shadow-[0_16px_40px_rgba(15,23,42,0.18)] ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 dark:border-[#3a3e49] dark:bg-[#1d2028] dark:text-gray-200 dark:shadow-[0_18px_44px_rgba(0,0,0,0.5)] dark:ring-white/5"
+                  className="animate-in fade-in zoom-in-95 slide-in-from-top-2 fixed z-[90] flex origin-top-right flex-col overflow-hidden rounded-2xl border border-line bg-panel text-ink shadow-[0_18px_48px_rgb(13_13_13/0.18)] dark:shadow-[0_18px_48px_rgb(0_0_0/0.55)]"
                 >
                   {/* Panel Header */}
-                  <div className="flex items-center justify-between border-b border-slate-300 bg-slate-200 px-4 py-3.5 dark:border-[#343843] dark:bg-[#232630]">
+                  <div className="flex items-center justify-between border-b border-line px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <FiBell size={16} className="text-slate-500 dark:text-gray-400" />
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-gray-100">Notifications</h4>
+                      <FiBell size={15} className="text-muted" />
+                      <h4 className="text-sm font-semibold text-ink">Notifications</h4>
+                      {visibleNotifications.length > 0 && (
+                        <span className="rounded-full bg-hover px-2 py-0.5 text-xs font-semibold text-ink-2 tabular-nums">{visibleNotifications.length}</span>
+                      )}
                     </div>
                     {visibleNotifications.length > 0 && (
-                      <button onClick={dismissAll} className="rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100">Clear All</button>
+                      <button onClick={dismissAll} className="press rounded-md px-2 py-1.5 text-xs font-semibold text-muted hover:bg-hover hover:text-ink">Clear all</button>
                     )}
                   </div>
 
                   {/* Notification List */}
-                  <div className="max-h-[360px] min-h-0 flex-1 overflow-y-auto hidden-scrollbar divide-y divide-slate-200/80 dark:divide-[#343843]">
+                  <div className="hidden-scrollbar max-h-[360px] min-h-0 flex-1 divide-y divide-line overflow-y-auto">
                     {visibleNotifications.length === 0 ? (
                       <div className="p-8 text-center">
-                        <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
-                          <FiCheckCircle size={21} />
+                        <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-positive-soft text-positive">
+                          <FiCheckCircle size={20} />
                         </span>
-                        <p className="text-sm font-bold text-slate-800 dark:text-gray-200">All clear</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">No pending alerts right now.</p>
+                        <p className="text-sm font-semibold text-ink">All clear</p>
+                        <p className="mt-1 text-xs text-muted">No pending alerts right now.</p>
                       </div>
                     ) : (
                       visibleNotifications.map((alert, index) => {
-                        // Determine visual style per type
-                        let icon, iconBg, iconColor, badge, badgeColor;
-                        if (alert.type === 'expiring') {
-                          icon = <FiClock size={15}/>;
-                          iconBg = 'bg-amber-50 dark:bg-amber-500/10';
-                          iconColor = 'text-amber-700 dark:text-amber-300';
-                          badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d left`;
-                          badgeColor = alert.days_left === 0 ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-500/10 dark:text-red-300' : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700/50 dark:bg-amber-500/10 dark:text-amber-300';
-                        } else if (alert.type === 'event') {
-                          icon = <FiCalendar size={15}/>;
-                          iconBg = 'bg-emerald-50 dark:bg-emerald-500/10';
-                          iconColor = 'text-emerald-700 dark:text-emerald-300';
-                          badge = alert.days_left === 0 ? 'TODAY' : `${alert.days_left}d event`;
-                          badgeColor = 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-700/50 dark:bg-emerald-500/10 dark:text-emerald-300';
-                        } else if (alert.type === 'no_sub') {
-                          icon = <FiAlertCircle size={15}/>;
-                          iconBg = 'bg-rose-50 dark:bg-rose-500/10';
-                          iconColor = 'text-rose-700 dark:text-rose-300';
-                          badge = 'No Sub';
-                          badgeColor = 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-700/50 dark:bg-rose-500/10 dark:text-rose-300';
-                        } else if (alert.type === 'login') {
-                          icon = <FiLogIn size={15}/>;
-                          iconBg = 'bg-slate-100 dark:bg-slate-500/15';
-                          iconColor = 'text-slate-700 dark:text-slate-300';
-                          badge = 'Login';
-                          badgeColor = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-500/15 dark:text-slate-300';
-                        } else {
-                          // task
-                          icon = <FiCheckSquare size={15}/>;
-                          iconBg = 'bg-violet-50 dark:bg-violet-500/10';
-                          iconColor = 'text-violet-700 dark:text-violet-300';
-                          badge = 'Task';
-                          badgeColor = 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-700/50 dark:bg-violet-500/10 dark:text-violet-300';
-                        }
-
+                        const style = notificationStyle(alert);
                         return (
                           <div
                             key={alert.id || index}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => handleNotificationClick(alert)}
-                            className="group relative cursor-pointer px-4 py-3.5 transition-colors hover:bg-slate-200 dark:hover:bg-[#292d37]"
+                            onKeyDown={(e) => {
+                              if (e.target !== e.currentTarget) return;
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleNotificationClick(alert);
+                              }
+                            }}
+                            className="animate-in fade-in slide-in-from-right-4 group relative cursor-pointer px-4 py-3.5 transition-colors hover:bg-hover focus-visible:-outline-offset-2"
+                            style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}
                           >
-                            <div className="flex gap-3 items-start">
-                              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-black/5 ${iconBg} ${iconColor} dark:border-white/5`}>
-                                {icon}
+                            <div className="flex items-start gap-3">
+                              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${style.tile}`}>
+                                {style.icon}
                               </div>
-                              <div className="flex-1 min-w-0 pr-4">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-sm font-semibold leading-tight text-slate-900 dark:text-gray-100">{alert.member_name}</p>
-                                  <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${badgeColor}`}>{badge}</span>
+                              <div className="min-w-0 flex-1 pr-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold leading-tight text-ink">{alert.member_name}</p>
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${style.badgeClass}`}>{style.badge}</span>
                                 </div>
-                                <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-400">{alert.message}</p>
+                                <p className="mt-1 text-xs leading-relaxed text-muted">{alert.message}</p>
                               </div>
                               <button
                                 onClick={(e) => dismissOne(alert.id, e)}
                                 title="Dismiss notification"
                                 aria-label="Dismiss notification"
-                                className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-gray-500 dark:hover:bg-white/5 dark:hover:text-rose-300"
+                                className="press rounded-md p-1.5 text-muted opacity-70 hover:bg-panel hover:text-accent group-hover:opacity-100"
                               >
-                                <FiX size={13} />
+                                <FiX size={14} />
                               </button>
                             </div>
                           </div>
@@ -461,8 +481,8 @@ export default function Layout() {
 
                   {/* Panel Footer */}
                   {visibleNotifications.length > 0 && (
-                    <div className="border-t border-slate-300 bg-slate-200 px-3 py-2.5 text-center dark:border-[#343843] dark:bg-[#232630]">
-                      <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] font-medium text-slate-500 dark:text-gray-400">
+                    <div className="border-t border-line bg-canvas px-3 py-2.5 text-center">
+                      <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-medium text-muted">
                         {visibleNotifications.filter(n => n.type === 'expiring').length > 0 && (
                           <span>{visibleNotifications.filter(n => n.type === 'expiring').length} expiring</span>
                         )}
@@ -486,52 +506,54 @@ export default function Layout() {
               )}
             </div>
 
-            <div className="w-px h-8 bg-gray-400 dark:bg-gray-600 mx-1 hidden order-2 md:block"></div>
+            <div className="order-2 mx-1 hidden h-8 w-px bg-line md:block"></div>
 
-            <NavLink to="/profile" aria-label="Open admin profile" className="order-1 flex items-center gap-3 rounded-full border border-transparent p-1.5 transition-colors hover:border-gray-400 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 md:py-1.5 md:pl-2 md:pr-4 dark:hover:border-gray-700 dark:hover:bg-gray-800 dark:focus-visible:ring-offset-[#161616] group">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-500 bg-gray-200 text-black shadow-sm transition-transform group-hover:scale-105 sm:h-9 sm:w-9 md:h-10 md:w-10 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300">
-                <FiUser size={19} strokeWidth={2.4} />
+            <NavLink to="/profile" aria-label="Open admin profile" className="group press order-1 flex items-center gap-3 rounded-full border border-transparent p-1 hover:border-line hover:bg-hover md:py-1 md:pl-1 md:pr-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-dark text-brand-white transition-transform duration-200 group-hover:scale-105 sm:h-10 sm:w-10 dark:bg-brand-gold dark:text-brand-dark">
+                <FiUser size={18} strokeWidth={2.4} />
               </div>
-              <div className="hidden md:flex flex-col items-start">
-                <span className="text-sm font-bold text-black transition-colors leading-none group-hover:text-gray-700 dark:text-gray-300 dark:group-hover:text-white">
+              <div className="hidden flex-col items-start md:flex">
+                <span className="text-sm font-semibold leading-none text-ink">
                   {adminName}
                 </span>
-                <span className="text-[10px] font-bold text-slate-600 dark:text-gray-500 uppercase tracking-widest mt-1.5 leading-none">
+                <span className="mt-1 text-xs font-medium leading-none text-muted">
                   System Admin
                 </span>
               </div>
-              <FiChevronDown className="ml-1 hidden text-gray-700 transition-transform group-hover:translate-y-0.5 group-hover:text-black md:block dark:text-gray-300 dark:group-hover:text-white" size={17} strokeWidth={2.5} />
+              <FiChevronDown className="ml-0.5 hidden text-muted transition-transform group-hover:translate-y-0.5 group-hover:text-ink md:block" size={16} strokeWidth={2.4} />
             </NavLink>
 
-            <button 
-              onClick={toggleTheme} 
+            <button
+              onClick={toggleTheme}
               aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="order-5 flex-shrink-0 rounded-full border border-gray-500 bg-gray-200 p-2.5 text-black shadow-sm transition-transform hover:scale-110 hover:bg-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 active:scale-95 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 dark:focus-visible:ring-offset-[#161616] sm:p-3 md:p-3.5"
+              className={`${iconButton} order-5`}
               title="Toggle Dark Mode"
             >
-              {isDarkMode ? <FiSun size={21} strokeWidth={2.4} /> : <FiMoon size={21} strokeWidth={2.4} />}
+              <span key={isDarkMode ? 'sun' : 'moon'} className="icon-swap">
+                {isDarkMode ? <FiSun size={19} strokeWidth={2.2} /> : <FiMoon size={19} strokeWidth={2.2} />}
+              </span>
             </button>
           </div>
         </header>
 
-        <main className="flex-1 min-w-0 overflow-y-auto bg-slate-100 dark:bg-[#050505] w-full relative hidden-scrollbar overscroll-y-contain">
+        <main className="hidden-scrollbar relative w-full min-w-0 flex-1 overflow-y-auto overscroll-y-contain bg-canvas">
           <Outlet />
         </main>
 
         {/* GLOBAL LAYOUT CONFIRM LOGOUT MODAL */}
         {confirmDialog.isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 border-red-500/30">
-              <div className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-200 dark:border-red-500/30">
-                  <FiLogOut size={32} />
+          <div className="animate-in fade-in fixed inset-0 z-[100] flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm">
+            <div role="dialog" aria-modal="true" aria-labelledby="logout-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+              <div className="space-y-3 p-6 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
+                  <FiLogOut size={26} />
                 </div>
-                <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{confirmDialog.title}</h3>
-                <p className="text-slate-500 dark:text-gray-400 font-medium">{confirmDialog.message}</p>
+                <h3 id="logout-title" className="font-display text-2xl font-semibold text-ink">{confirmDialog.title}</h3>
+                <p className="text-sm text-muted">{confirmDialog.message}</p>
               </div>
-              <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center gap-3">
-                <button onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} className="flex-1 px-4 py-2.5 rounded-xl font-bold text-slate-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors uppercase tracking-wide text-xs">Cancel</button>
-                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ ...confirmDialog, isOpen: false }); }} className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-red-900/20 transition-all active:scale-95 uppercase tracking-wide text-xs">
+              <div className="flex justify-center gap-3 border-t border-line bg-canvas p-4">
+                <button onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} className="press min-h-11 flex-1 rounded-xl border border-line bg-panel px-4 py-2.5 text-sm font-semibold text-ink-2 hover:bg-hover hover:text-ink">Cancel</button>
+                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog({ ...confirmDialog, isOpen: false }); }} className="press flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-red px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-red-800">
                   Confirm
                 </button>
               </div>

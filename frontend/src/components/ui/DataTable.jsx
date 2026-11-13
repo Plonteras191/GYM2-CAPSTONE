@@ -15,27 +15,27 @@ export default function DataTable({
     <div className={`overflow-x-auto overscroll-x-contain touch-pan-x ${className}`}>
       <table className="w-full text-left border-collapse min-w-[800px]">
         <thead>
-          <tr className="bg-gray-100 dark:bg-gray-800 border-b-2 border-gray-300 dark:border-gray-600">
+          <tr className="border-b border-line bg-canvas">
             {columns.map((col, idx) => (
               <th
                 key={idx}
-                className={`px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.headerClassName || ''}`}
+                className={`px-6 py-3.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.headerClassName || ''}`}
               >
                 {col.title}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
+        <tbody className="divide-y divide-line">
           {isLoading ? (
             <tr>
               <td colSpan={columns.length || 1} className="px-6 py-24 text-center">
                 <div className="flex flex-col items-center justify-center space-y-4">
                   <div className="relative w-16 h-16">
-                    <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 border-4 border-brand-gold-100 dark:border-line rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-brand-gold border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                  <p className="text-sm font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest animate-pulse">
+                  <p className="text-sm font-semibold text-muted animate-pulse">
                     {loadingMessage}
                   </p>
                 </div>
@@ -43,14 +43,14 @@ export default function DataTable({
             </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length || 1} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">
+              <td colSpan={columns.length || 1} className="px-6 py-12 text-center text-muted font-medium">
                 {emptyMessage}
               </td>
             </tr>
           ) : (
             data.map((item, idx) => (
               renderRow ? renderRow(item, idx) : (
-                <tr key={item[rowKey] || idx} className="hover:bg-gray-50 dark:hover:bg-[#1e1e1e] transition-colors group">
+                <tr key={item[rowKey] || idx} className="hover:bg-hover transition-colors group">
                   {columns.map((col, cIdx) => (
                     <td key={cIdx} className={`px-6 py-4 whitespace-nowrap text-sm ${col.cellClassName || ''}`}>
                       {col.render ? col.render(item, idx) : item[col.accessor]}
