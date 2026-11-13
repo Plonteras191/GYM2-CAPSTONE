@@ -69,9 +69,9 @@ export default function PricingCatalogModal({
 
   if (!isOpen) return null;
 
-  const inputClass = "w-full px-4 py-2.5 bg-white dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-black dark:text-gray-300 font-medium transition-all shadow-sm";
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-2";
-  const catalogActionButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const inputClass = "w-full px-4 py-2.5 bg-panel border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus text-ink font-medium transition-all shadow-sm";
+  const labelClass = "block text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-2";
+  const catalogActionButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
   const handlePriceInput = (value, onChange) => {
     const sanitizedValue = sanitizePackagePrice(value.replace(/,/g, ''));
     if (sanitizedValue !== null) onChange(sanitizedValue);
@@ -97,7 +97,7 @@ export default function PricingCatalogModal({
         category_detail: '',
       })}
       aria-label="Package Category"
-      className={`${inputClass} ${plan.category ? '' : '!text-slate-400 dark:!text-gray-500'}`}
+      className={`${inputClass} ${plan.category ? '' : '!text-muted dark:!text-muted'}`}
     >
       <option value="" disabled>Select Package Category</option>
       <option value="normal">Normal Subscription</option>
@@ -107,8 +107,8 @@ export default function PricingCatalogModal({
   );
   const recentColorButtons = (selectedColor, onSelect) => (
     recentColors.length > 0 && (
-      <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white/70 px-2.5 py-2 dark:border-gray-700 dark:bg-[#191b22]/70" aria-label="Recently used colors">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Recent</span>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-line bg-white/70 px-2.5 py-2 dark:border-line dark:bg-night-field/70" aria-label="Recently used colors">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Recent</span>
         {recentColors.map(color => (
           <button
             key={color}
@@ -119,7 +119,7 @@ export default function PricingCatalogModal({
             }}
             aria-label={`Use recent color ${color}`}
             title={color}
-            className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${selectedColor === color ? 'border-slate-900 ring-2 ring-amber-400 dark:border-white' : 'border-black/20 dark:border-white/30'}`}
+            className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${selectedColor === color ? 'border-ink ring-2 ring-focus dark:border-white' : 'border-black/20 dark:border-white/30'}`}
             style={{ backgroundColor: color }}
           />
         ))}
@@ -129,7 +129,7 @@ export default function PricingCatalogModal({
   return (
     <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-gray-300 dark:border-gray-600 flex flex-col max-h-[90vh]">
+      <div className="bg-panel rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-line flex flex-col max-h-[90vh]">
         
         <style>{`
           input[type='number']::-webkit-inner-spin-button,
@@ -142,23 +142,23 @@ export default function PricingCatalogModal({
           }
         `}</style>
 
-        <div className="flex items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-black dark:text-gray-300">
+        <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-ink">
             <FiSettings size={19} /> Manage Packages
           </h3>
           <button
             type="button"
             onClick={requestClose}
             aria-label="Close Manage Packages"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-500 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-300 dark:hover:bg-red-500/10"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
           >
             <FiX size={24} />
           </button>
         </div>
         
         <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-gray-300 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-            <p className="min-w-0 text-xs font-medium leading-relaxed text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-field p-3 dark:border-line dark:bg-hover">
+            <p className="min-w-0 text-xs font-medium leading-relaxed text-muted">
               Update existing packages or create a new subscription package.
             </p>
             <button onClick={() => setIsAddingPlan(true)} className={`${catalogActionButtonClass} w-auto shrink-0`}>
@@ -170,16 +170,16 @@ export default function PricingCatalogModal({
             <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={event => {
               if (event.target === event.currentTarget) setIsAddingPlan(false);
             }}>
-              <section role="dialog" aria-modal="true" aria-labelledby="new-package-title" className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-2 border-gray-300 bg-white shadow-2xl dark:border-gray-600 dark:bg-[#252830]">
-                <div className="flex shrink-0 items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
-                  <h4 id="new-package-title" className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-gray-200">
+              <section role="dialog" aria-modal="true" aria-labelledby="new-package-title" className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
+                <div className="flex shrink-0 items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
+                  <h4 id="new-package-title" className="flex items-center gap-2 text-base font-bold text-ink">
                     <FiPlus size={18} /> Create Custom Package
                   </h4>
                   <button
                     type="button"
                     onClick={() => setIsAddingPlan(false)}
                     aria-label="Cancel new package"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-500 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-300 dark:hover:bg-red-500/10"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
                   >
                     <FiX size={18} />
                   </button>
@@ -211,9 +211,9 @@ export default function PricingCatalogModal({
                             onUseColor?.(e.target.value);
                           }}
                           aria-label="New package color"
-                          className="h-11 w-14 cursor-pointer rounded-lg border-2 border-gray-300 bg-white p-1 dark:border-gray-600 dark:bg-[#252830]"
+                          className="h-11 w-14 cursor-pointer rounded-lg border border-line bg-panel p-1 dark:border-line dark:bg-panel"
                         />
-                        <span className="text-sm font-semibold text-slate-600 dark:text-gray-300">{newPlan.color || '#10b981'}</span>
+                        <span className="text-sm font-semibold text-ink-2">{newPlan.color || '#10b981'}</span>
                       </div>
                       {recentColorButtons(newPlan.color, color => setNewPlan(plan => ({ ...plan, color })))}
                     </div>
@@ -248,7 +248,7 @@ export default function PricingCatalogModal({
                     </label>
                   </div>
                 </div>
-                <div className="flex shrink-0 justify-end border-t-2 border-gray-300 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800">
+                <div className="flex shrink-0 justify-end border-t border-line bg-field p-3 dark:border-line dark:bg-hover">
                   <button onClick={onAddNewPlan} disabled={isSaving} className={`${catalogActionButtonClass} mx-0 w-full sm:w-auto`}>
                     {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
                     {isSaving ? 'Creating...' : 'Save New Package'}
@@ -260,9 +260,9 @@ export default function PricingCatalogModal({
           )}
 
           {plans.length === 0 && (
-            <div className="text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl">
-              <p className="text-gray-500 dark:text-gray-400 font-medium">No plans found in the database.</p>
-              <p className="text-sm text-amber-600 dark:text-amber-500 font-bold mt-1 cursor-pointer hover:underline" onClick={() => setIsAddingPlan(true)}>
+            <div className="text-center py-8 border-2 border-dashed border-line rounded-xl">
+              <p className="text-muted font-medium">No plans found in the database.</p>
+              <p className="text-sm text-warn dark:text-warn font-bold mt-1 cursor-pointer hover:underline" onClick={() => setIsAddingPlan(true)}>
                 Click 'New Package' to create one!
               </p>
             </div>
@@ -271,15 +271,15 @@ export default function PricingCatalogModal({
           <div className="space-y-3">
             {plans.map(plan => (
               <div key={plan.id} className="space-y-2">
-                <div className="flex flex-col gap-3 rounded-xl border-2 border-gray-300 border-l-4 bg-white p-3 transition-all hover:shadow-sm dark:border-gray-600 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between" style={{ borderLeftColor: getPackageColor(plan) }}>
+                <div className="flex flex-col gap-3 rounded-xl border border-line border-l-4 bg-panel p-3 transition-all hover:shadow-sm dark:border-line dark:bg-hover sm:flex-row sm:items-center sm:justify-between" style={{ borderLeftColor: getPackageColor(plan) }}>
                   <div className="flex min-w-0 flex-col">
-                    <span className="font-bold text-black dark:text-gray-400">{plan.name}</span>
+                    <span className="font-bold text-ink dark:text-muted">{plan.name}</span>
                     <span className="mt-1 inline-flex max-w-full items-center gap-1.5">
-                      <span className="truncate text-xs font-semibold text-gray-500 dark:text-gray-400">{formatDuration(plan.duration_days)}</span>
+                      <span className="truncate text-xs font-semibold text-muted">{formatDuration(plan.duration_days)}</span>
                     </span>
                   </div>
                   <div className="flex min-w-0 items-center justify-end gap-1.5 sm:shrink-0">
-                    <span className="px-1 text-lg font-bold text-black dark:text-gray-400">&#8369;</span>
+                    <span className="px-1 text-lg font-bold text-ink dark:text-muted">&#8369;</span>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -291,7 +291,7 @@ export default function PricingCatalogModal({
                       onFocus={() => setFocusedPriceInput(`price-${plan.id}`)}
                       onBlur={() => setFocusedPriceInput(null)}
                       aria-label={`Price for ${plan.name}`}
-                      className="w-28 px-2.5 py-2 bg-gray-50 dark:bg-[#1e1e1e] border-2 border-gray-300 dark:border-gray-600 rounded-xl text-right font-bold text-black dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                      className="w-28 px-2.5 py-2 bg-field border border-line rounded-xl text-right font-bold text-ink dark:text-muted focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus transition-all"
                     />
                     <div className="relative">
                     <button
@@ -300,12 +300,12 @@ export default function PricingCatalogModal({
                       title="Package actions"
                       aria-label={`${openActionsPlanId === plan.id ? 'Close' : 'Open'} actions for ${plan.name}`}
                       aria-expanded={openActionsPlanId === plan.id}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-slate-700 shadow-sm transition-colors hover:border-amber-500 hover:bg-amber-50 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-200 dark:hover:bg-amber-500/10"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-panel text-ink-2 shadow-sm transition-colors hover:border-warn/40 hover:bg-warn-soft dark:border-line dark:bg-panel dark:text-ink dark:hover:bg-warn-soft"
                     >
                       <FiMoreVertical size={18} />
                     </button>
                     {openActionsPlanId === plan.id && (
-                      <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1 rounded-xl border-2 border-gray-300 bg-white p-1.5 shadow-xl dark:border-gray-600 dark:bg-[#191b22]">
+                      <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1 rounded-xl border border-line bg-panel p-1.5 shadow-xl dark:border-line dark:bg-field">
                         <button
                           type="button"
                           onClick={() => {
@@ -315,7 +315,7 @@ export default function PricingCatalogModal({
                           }}
                           title={viewingPlanId === plan.id ? 'Hide package details' : 'View package'}
                           aria-label={viewingPlanId === plan.id ? `Hide ${plan.name} details` : `View ${plan.name}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-blue-700 shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-50 dark:border-gray-600 dark:bg-[#252830] dark:text-blue-300 dark:hover:bg-blue-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-brand-navy shadow-sm transition-colors hover:border-brand-navy/30 hover:bg-brand-navy-50 dark:border-line dark:bg-panel dark:text-brand-navy-200 dark:hover:bg-brand-navy-200/10"
                         >
                           <FiEye size={16} />
                         </button>
@@ -328,7 +328,7 @@ export default function PricingCatalogModal({
                           }}
                           title="Edit package"
                           aria-label={`Edit ${plan.name}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-amber-700 shadow-sm transition-colors hover:border-amber-500 hover:bg-amber-50 dark:border-gray-600 dark:bg-[#252830] dark:text-amber-300 dark:hover:bg-amber-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-warn shadow-sm transition-colors hover:border-warn/40 hover:bg-warn-soft dark:border-line dark:bg-panel dark:text-warn dark:hover:bg-warn-soft"
                         >
                           <FiEdit2 size={16} />
                         </button>
@@ -341,7 +341,7 @@ export default function PricingCatalogModal({
                           disabled={deletingPlanId === plan.id}
                           title="Delete package"
                           aria-label={`Delete ${plan.name}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-red-700 shadow-sm transition-colors hover:border-red-500 hover:bg-red-50 disabled:opacity-50 dark:border-gray-600 dark:bg-[#252830] dark:text-red-300 dark:hover:bg-red-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-negative shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft disabled:opacity-50 dark:border-line dark:bg-panel dark:text-negative dark:hover:bg-negative-soft"
                         >
                           {deletingPlanId === plan.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} />}
                         </button>
@@ -355,11 +355,11 @@ export default function PricingCatalogModal({
           </div>
         </div>
 
-        <div className="p-5 border-t-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3 mt-auto">
+        <div className="p-5 border-t border-line bg-field flex justify-end gap-3 mt-auto">
           <button 
             onClick={requestClose}
             disabled={isSaving} 
-            className="px-6 py-2.5 rounded-xl font-bold text-slate-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 uppercase tracking-wide text-sm"
+            className="px-6 py-2.5 rounded-xl font-bold text-ink-2 hover:bg-hover transition-colors disabled:opacity-50 uppercase tracking-wide text-sm"
           >
             Close
           </button>
@@ -374,13 +374,13 @@ export default function PricingCatalogModal({
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={event => {
         if (event.target === event.currentTarget) setViewingPlanId(null);
       }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="package-view-title" className="w-full max-w-lg overflow-hidden rounded-2xl border-2 border-slate-400 bg-white shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-slate-500 dark:bg-[#252830] dark:shadow-black/60 dark:ring-white/10">
+        <section role="dialog" aria-modal="true" aria-labelledby="package-view-title" className="w-full max-w-lg overflow-hidden rounded-2xl border-2 border-line-strong bg-panel shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-line dark:bg-panel dark:shadow-black/60 dark:ring-white/10">
           <div className="h-1.5" style={{ backgroundColor: getPackageColor(viewingPlan) }} />
-          <div className="flex items-center justify-between gap-3 border-b-2 border-slate-300 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-gray-800 sm:px-5">
-            <h4 id="package-view-title" className="flex min-w-0 items-center gap-2 text-lg font-bold text-black dark:text-gray-300">
+          <div className="flex items-center justify-between gap-3 border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover sm:px-5">
+            <h4 id="package-view-title" className="flex min-w-0 items-center gap-2 text-lg font-bold text-ink">
               <FiEye className="shrink-0" size={19} /> View Package Details
             </h4>
-            <button type="button" onClick={() => setViewingPlanId(null)} aria-label="Close package details" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-slate-300 bg-white text-slate-600 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-700 dark:border-slate-600 dark:bg-[#191b22] dark:text-gray-200 dark:hover:border-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-300">
+            <button type="button" onClick={() => setViewingPlanId(null)} aria-label="Close package details" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-panel text-ink-2 shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-field dark:text-ink dark:hover:border-red-500 dark:hover:bg-negative-soft dark:hover:text-negative">
               <FiX size={18} />
             </button>
           </div>
@@ -388,37 +388,37 @@ export default function PricingCatalogModal({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <p className={`${labelClass} mb-1.5`}>Package Name</p>
-                <div className="flex min-h-10 items-center rounded-xl border-2 border-gray-300 bg-gray-50 px-3 text-sm font-medium text-slate-900 dark:border-gray-600 dark:bg-[#1e1e1e] dark:text-gray-200">{viewingPlan.name}</div>
+                <div className="flex min-h-10 items-center rounded-xl border border-line bg-field px-3 text-sm font-medium text-ink dark:border-line dark:bg-field dark:text-ink">{viewingPlan.name}</div>
               </div>
               <div className="min-w-0">
                 <p className={`${labelClass} mb-1.5`}>Package Category</p>
-                <div className="flex min-h-10 items-center rounded-xl border-2 border-gray-300 bg-gray-50 px-3 text-sm font-medium text-slate-900 dark:border-gray-600 dark:bg-[#1e1e1e] dark:text-gray-200">{getPackageCategoryLabel(viewingPlan)}</div>
+                <div className="flex min-h-10 items-center rounded-xl border border-line bg-field px-3 text-sm font-medium text-ink dark:border-line dark:bg-field dark:text-ink">{getPackageCategoryLabel(viewingPlan)}</div>
               </div>
             </div>
-            <div className="rounded-xl border-2 border-slate-300 bg-slate-50 p-3 dark:border-slate-600 dark:bg-[#191b22]">
+            <div className="rounded-xl border border-line bg-field p-3 dark:border-line dark:bg-field">
               <div className="flex items-center justify-between gap-3">
                 <p className={labelClass}>Package Color</p>
-                <span className="rounded-md border border-slate-300 bg-white px-2 py-1 font-mono text-[11px] font-semibold uppercase text-slate-700 dark:border-slate-600 dark:bg-[#252830] dark:text-gray-200">{getPackageColor(viewingPlan)}</span>
+                <span className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-[11px] font-semibold uppercase text-ink-2 dark:border-line dark:bg-panel dark:text-ink">{getPackageColor(viewingPlan)}</span>
               </div>
               <div className="mt-2 flex items-center gap-3">
-                <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border-2 border-slate-300 bg-white p-1 shadow-sm dark:border-slate-500 dark:bg-[#252830]">
+                <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border border-line bg-panel p-1 shadow-sm dark:border-line dark:bg-panel">
                   <span className="h-full w-full rounded-sm border border-black/10 dark:border-white/10" style={{ backgroundColor: getPackageColor(viewingPlan) }} />
                 </span>
-                <span className="text-sm font-medium text-slate-600 dark:text-gray-300">Package display color</span>
+                <span className="text-sm font-medium text-ink-2">Package display color</span>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
                 <p className={`${labelClass} mb-1.5`}>Duration (Days)</p>
-                <div className="flex min-h-10 items-center rounded-xl border-2 border-gray-300 bg-gray-50 px-3 text-sm font-medium text-slate-900 dark:border-gray-600 dark:bg-[#1e1e1e] dark:text-gray-200">{viewingPlan.duration_days}</div>
+                <div className="flex min-h-10 items-center rounded-xl border border-line bg-field px-3 text-sm font-medium text-ink dark:border-line dark:bg-field dark:text-ink">{viewingPlan.duration_days}</div>
               </div>
               <div className="min-w-0">
                 <p className={`${labelClass} mb-1.5`}>Price (₱)</p>
-                <div className="flex min-h-10 items-center rounded-xl border-2 border-gray-300 bg-gray-50 px-3 text-sm font-semibold text-slate-900 dark:border-gray-600 dark:bg-[#1e1e1e] dark:text-gray-200">{formatNumber(viewingPlan.price)}</div>
+                <div className="flex min-h-10 items-center rounded-xl border border-line bg-field px-3 text-sm font-semibold text-ink dark:border-line dark:bg-field dark:text-ink">{formatNumber(viewingPlan.price)}</div>
               </div>
             </div>
           </div>
-          <div className="flex justify-end border-t-2 border-slate-300 bg-slate-50 px-4 py-2.5 dark:border-slate-600 dark:bg-[#1e2027] sm:px-5">
+          <div className="flex justify-end border-t border-line bg-field px-4 py-2.5 dark:border-line dark:bg-[#1e2027] sm:px-5">
             <button type="button" onClick={() => setViewingPlanId(null)} className={`${catalogActionButtonClass} mx-0`}>
               Done
             </button>
@@ -430,13 +430,13 @@ export default function PricingCatalogModal({
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={event => {
         if (event.target === event.currentTarget) editingPlanGuard.requestClose(() => setEditingPlan(null));
       }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="package-edit-title" className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-2 border-slate-400 bg-white shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-slate-500 dark:bg-[#252830] dark:shadow-black/60 dark:ring-white/10">
+        <section role="dialog" aria-modal="true" aria-labelledby="package-edit-title" className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-2 border-line-strong bg-panel shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-line dark:bg-panel dark:shadow-black/60 dark:ring-white/10">
           <div className="h-1.5 shrink-0" style={{ backgroundColor: getPackageColor(editingPlan) }} />
-          <div className="flex items-center justify-between gap-3 border-b-2 border-slate-300 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-gray-800 sm:px-5">
-            <h4 id="package-edit-title" className="flex min-w-0 items-center gap-2 text-lg font-bold text-black dark:text-gray-300">
+          <div className="flex items-center justify-between gap-3 border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover sm:px-5">
+            <h4 id="package-edit-title" className="flex min-w-0 items-center gap-2 text-lg font-bold text-ink">
               <FiEdit2 className="shrink-0" size={19} /> Edit Package Details
             </h4>
-            <button type="button" onClick={() => editingPlanGuard.requestClose(() => setEditingPlan(null))} aria-label="Close package editor" className="shrink-0 rounded-lg border-2 border-slate-300 bg-white p-1.5 text-slate-600 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-700 dark:border-slate-600 dark:bg-[#252830] dark:text-gray-200 dark:hover:border-red-500 dark:hover:bg-red-500/10 dark:hover:text-red-300">
+            <button type="button" onClick={() => editingPlanGuard.requestClose(() => setEditingPlan(null))} aria-label="Close package editor" className="shrink-0 rounded-lg border border-line bg-panel p-1.5 text-ink-2 shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-panel dark:text-ink dark:hover:border-red-500 dark:hover:bg-negative-soft dark:hover:text-negative">
               <FiX size={18} />
             </button>
           </div>
@@ -445,24 +445,24 @@ export default function PricingCatalogModal({
               <label className="block min-w-0"><span className={labelClass}>Package Name</span><input value={editingPlan.name} onChange={event => setEditingPlan({ ...editingPlan, name: event.target.value })} className={inputClass} /></label>
               <label className="block min-w-0">
                 <span className={labelClass}>Package Category</span>
-                <StyledSelect value={editingPlan.category === 'other' ? '' : editingPlan.category || ''} onChange={event => setEditingPlan({ ...editingPlan, category: event.target.value, category_detail: event.target.value === 'other' ? editingPlan.category_detail || '' : '' })} aria-label="Package Category" className={`${inputClass} ${editingPlan.category === 'other' ? '!text-slate-400 dark:!text-gray-500' : ''}`}>
+                <StyledSelect value={editingPlan.category === 'other' ? '' : editingPlan.category || ''} onChange={event => setEditingPlan({ ...editingPlan, category: event.target.value, category_detail: event.target.value === 'other' ? editingPlan.category_detail || '' : '' })} aria-label="Package Category" className={`${inputClass} ${editingPlan.category === 'other' ? '!text-muted dark:!text-muted' : ''}`}>
                   {editingPlan.category === 'other' && <option value="" disabled>Select Package Category</option>}
                   <option value="normal">Normal Subscription</option><option value="with_coach">With Coach Subscription</option><option value="walk_in">Walk-In</option>
                 </StyledSelect>
-                {editingPlan.category === 'other' && <span className="mt-1 block text-xs text-slate-500 dark:text-gray-400">This legacy category is kept unless you choose a new category.</span>}
+                {editingPlan.category === 'other' && <span className="mt-1 block text-xs text-muted">This legacy category is kept unless you choose a new category.</span>}
               </label>
             </div>
-            <div className="rounded-xl border-2 border-slate-300 bg-slate-50/70 p-3 dark:border-slate-600 dark:bg-[#191b22]/70">
+            <div className="rounded-xl border border-line bg-field p-3 dark:border-line dark:bg-night-field/70">
               <div className="flex items-center justify-between gap-3">
                 <span className={`${labelClass} mb-0`}>Package Color</span>
-                <span className="rounded-md border border-slate-300 bg-white px-2 py-1 font-mono text-[11px] font-semibold uppercase text-slate-700 dark:border-slate-600 dark:bg-[#252830] dark:text-gray-200">{editingPlan.color || getPackageColor(editingPlan)}</span>
+                <span className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-[11px] font-semibold uppercase text-ink-2 dark:border-line dark:bg-panel dark:text-ink">{editingPlan.color || getPackageColor(editingPlan)}</span>
               </div>
               <div className="mt-2 space-y-2.5">
                 <div className="flex items-center gap-3">
-                  <label className="flex h-11 w-14 cursor-pointer items-center justify-center rounded-lg border-2 border-slate-300 bg-white p-1 shadow-sm transition-colors hover:border-amber-500 dark:border-slate-500 dark:bg-[#252830]" title="Choose package color">
+                  <label className="flex h-11 w-14 cursor-pointer items-center justify-center rounded-lg border border-line bg-panel p-1 shadow-sm transition-colors hover:border-warn/40 dark:border-line dark:bg-panel" title="Choose package color">
                     <input type="color" value={editingPlan.color || getPackageColor(editingPlan)} onChange={event => { setEditingPlan({ ...editingPlan, color: event.target.value }); onUseColor?.(event.target.value); }} aria-label={`Color for ${editingPlan.name}`} className="h-full w-full cursor-pointer rounded border-0 bg-transparent p-0" />
                   </label>
-                  <span className="text-xs font-medium text-slate-600 dark:text-gray-300">Choose a color or select a recent one.</span>
+                  <span className="text-xs font-medium text-ink-2">Choose a color or select a recent one.</span>
                 </div>
                 {recentColorButtons(editingPlan.color || getPackageColor(editingPlan), color => setEditingPlan(plan => ({ ...plan, color })))}
               </div>
@@ -472,8 +472,8 @@ export default function PricingCatalogModal({
               <label className="block"><span className={labelClass}>Price (₱)</span><input type="text" inputMode="decimal" pattern="\\d+(\\.\\d{1,2})?" min="0" max="9999999.99" value={displayPrice(editingPlan.price, focusedPriceInput === `edit-${editingPlan.id}`)} onChange={event => handlePriceInput(event.target.value, price => setEditingPlan({ ...editingPlan, price }))} onFocus={() => setFocusedPriceInput(`edit-${editingPlan.id}`)} onBlur={() => setFocusedPriceInput(null)} className={inputClass} /></label>
             </div>
           </div>
-          <div className="flex justify-end gap-2 border-t-2 border-slate-300 bg-slate-50 p-3 dark:border-slate-600 dark:bg-gray-800">
-            <button type="button" onClick={() => editingPlanGuard.requestClose(() => setEditingPlan(null))} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#252830] dark:text-gray-200 dark:hover:border-slate-500 dark:hover:bg-gray-700">Cancel</button>
+          <div className="flex justify-end gap-2 border-t border-line bg-field p-3 dark:border-line dark:bg-hover">
+            <button type="button" onClick={() => editingPlanGuard.requestClose(() => setEditingPlan(null))} className="rounded-lg border border-line bg-panel px-4 py-2 text-sm font-bold text-ink-2 transition-colors hover:border-line-strong hover:bg-hover dark:border-line dark:bg-panel dark:text-ink dark:hover:border-line-strong dark:hover:bg-hover">Cancel</button>
             <button type="button" disabled={isSaving} onClick={async () => {
               if (await onSavePlan(editingPlan)) {
                 initialPlansRef.current = initialPlansRef.current.map(plan => plan.id === editingPlan.id ? planSnapshot(editingPlan) : plan);

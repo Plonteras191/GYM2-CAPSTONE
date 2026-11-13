@@ -1,6 +1,7 @@
 import React, { useId } from 'react';
 import { FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import useDialogAccessibility from './useDialogAccessibility';
+import Button from './Button';
 
 export default function AlertDialog({ isOpen, title, message, onClose, type = 'success' }) {
   const titleId = useId();
@@ -11,7 +12,7 @@ export default function AlertDialog({ isOpen, title, message, onClose, type = 's
   const isSuccess = type === 'success';
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="animate-fade-in fixed inset-0 z-[120] flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm">
       <div
         ref={dialogRef}
         role="alertdialog"
@@ -19,29 +20,16 @@ export default function AlertDialog({ isOpen, title, message, onClose, type = 's
         aria-labelledby={titleId}
         aria-describedby={messageId}
         tabIndex={-1}
-        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 text-center"
+        className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 relative w-full max-w-md rounded-2xl border border-line bg-panel p-6 text-center shadow-2xl"
       >
-        <div className={`mx-auto mb-4 w-12 h-12 flex items-center justify-center rounded-full ${
-          isSuccess 
-            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' 
-            : 'bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400'
-        }`}>
-          {isSuccess ? <FiCheckCircle className="w-7 h-7" /> : <FiAlertCircle className="w-7 h-7" />}
+        <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${isSuccess ? 'bg-positive-soft text-positive' : 'bg-negative-soft text-negative'}`}>
+          {isSuccess ? <FiCheckCircle size={26} /> : <FiAlertCircle size={26} />}
         </div>
-        
-        <h4 id={titleId} className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h4>
-        <p id={messageId} className="text-sm text-slate-500 dark:text-slate-400 mt-2">{message}</p>
 
-        <button
-          onClick={onClose}
-          className={`mt-6 w-full py-2.5 px-4 text-sm font-semibold text-white rounded-xl shadow-md transition-colors ${
-            isSuccess 
-              ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20' 
-              : 'bg-red-600 hover:bg-red-700 shadow-red-500/20'
-          }`}
-        >
-          OK
-        </button>
+        <h4 id={titleId} className="font-display text-2xl font-semibold text-ink">{title}</h4>
+        <p id={messageId} className="mt-2 whitespace-pre-line text-sm text-muted">{message}</p>
+
+        <Button onClick={onClose} variant={isSuccess ? 'primary' : 'danger'} className="mt-6 w-full">OK</Button>
       </div>
     </div>
   );

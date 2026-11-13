@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  FiDownload, FiPrinter, FiList,
-  FiTrendingUp, FiTrendingDown, FiDollarSign, FiClock, FiActivity, FiLoader,
-} from 'react-icons/fi';
+import { FiDownload, FiPrinter, FiList, FiClock, FiRefreshCw, FiFileText } from 'react-icons/fi';
 import api from '../api';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import Avatar from '../components/ui/Avatar';
+import SearchInput from '../components/ui/SearchInput';
+import TableShell, { Toolbar, TableEmpty, CardListEmpty, MobileCard } from '../components/ui/TableShell';
+import { StatStrip, StatCell } from '../components/ui/StatStrip';
+import { fieldClass, labelClass, thClass, tdClass } from '../components/ui/field';
 import { useLocation } from 'react-router-dom';
 import { useDataCache } from '../context/DataCacheContext';
 import Pagination from '../components/ui/Pagination';
@@ -147,70 +151,68 @@ export default function Reports() {
 
   if (!reportData) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 animate-in fade-in">
+      <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6">
         {isLoading ? (
           <>
-            <div className="relative h-16 w-16">
-              <div className="absolute inset-0 rounded-full border-4 border-amber-200 dark:border-amber-900" />
-              <div className="absolute inset-0 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
-            </div>
-            <h2 className="mt-2 text-lg font-bold text-slate-700 dark:text-gray-300">Loading reports...</h2>
+            <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-line border-t-brand-gold" role="status" aria-label="Loading" />
+            <p className="text-sm font-medium text-muted">Loading reports…</p>
           </>
         ) : (
           <>
-            <p role="alert" className="text-center font-semibold text-red-700 dark:text-red-400">{loadError || 'Reports are unavailable.'}</p>
-            <button type="button" onClick={fetchReports} className="rounded-xl bg-amber-500 px-5 py-2.5 font-bold text-black shadow-sm hover:bg-amber-400">Retry</button>
+            <p role="alert" className="text-center text-sm font-semibold text-negative">{loadError || 'Reports are unavailable.'}</p>
+            <Button onClick={fetchReports} icon={<FiRefreshCw size={16} />}>Retry</Button>
           </>
         )}
       </div>
     );
   }
 
+  const statusVariant = (val) => {
+    const key = String(val ?? '').toLowerCase();
+    if (key === 'active' || key === 'checked in' || key === 'complete' || key === 'cash') return 'success';
+    if (key === 'expired' || key === 'failed' || key === 'refunded') return 'danger';
+    if (key === 'gcash') return 'info';
+    if (key === 'pending') return 'warning';
+    if (key === 'maya' || key === 'other') return 'default';
+    return null;
+  };
+
   const renderCellContent = (cell, column, rowStatus) => {
     if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
       if ('title' in cell || 'category' in cell) {
         return (
           <div className="min-w-0">
-            <span className="block truncate text-sm font-bold text-black dark:text-gray-300">{cell.title}</span>
-            <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500 dark:text-gray-400">{cell.category || 'No additional details'}</span>
+            <span className="block truncate text-sm font-semibold text-ink">{cell.title}</span>
+            <span className="mt-0.5 block truncate text-xs text-muted">{cell.category || 'No additional details'}</span>
           </div>
         );
       }
-      const initials = `${cell.name?.trim().split(/\s+/).map(part => part[0] || '').slice(0, 2).join('') || '?'}`.toUpperCase();
       return (
-        <button type="button" onClick={() => cell.id && navigate('/members', { state: { memberId: cell.id } })} className="flex min-w-0 items-center gap-2.5 text-left">
-          {cell.profile_pic ? (
-            <img src={getMediaUrl(cell.profile_pic)} alt="" className="h-10 w-10 shrink-0 rounded-full border-2 border-gray-300 object-cover dark:border-gray-600" />
-          ) : (
-            <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-xs font-bold text-slate-700 dark:border-gray-600 dark:bg-[#191b22] dark:text-gray-300">{initials}</div>
-          )}
+        <button type="button" onClick={() => cell.id && navigate('/members', { state: { memberId: cell.id } })} className="flex min-w-0 items-center gap-3 rounded-lg text-left">
+          <Avatar src={cell.profile_pic ? getMediaUrl(cell.profile_pic) : null} name={cell.name} />
           <div className="min-w-0">
-            <span className="block truncate font-semibold text-slate-800 dark:text-gray-300">{cell.name}</span>
-            {cell.email && <span className="mt-0.5 block truncate text-xs font-normal text-slate-500 dark:text-gray-400">{cell.email}</span>}
-        </div>
+            <span className={`block truncate font-semibold text-ink${cell.id ? ' link-draw' : ''}`}>{cell.name}</span>
+            {cell.email && <span className="mt-0.5 block truncate text-xs text-muted">{cell.email}</span>}
+          </div>
         </button>
       );
     }
     if (column?.toLowerCase().includes('amount') && typeof cell === 'number') {
       const isRefunded = rowStatus === 'Refunded' || cell < 0;
-      return <span className={`text-lg font-normal tracking-tight ${isRefunded ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-gray-300'}`}>{cell < 0 ? '-' : ''}₱ {formatNumber(Math.abs(cell))}</span>;
+      return <span className={`font-display text-lg font-semibold tabular-nums ${isRefunded ? 'text-negative' : 'text-ink'}`}>{cell < 0 ? '-' : ''}₱ {formatNumber(Math.abs(cell))}</span>;
     }
     const val = getPaymentMethodLabel(cell);
-    const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
-
-    if (val === 'Active' || val === 'Checked In' || val === 'Complete' || val === 'Cash') return <span className={`${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`}>{val}</span>;
-    if (val === 'Expired' || val === 'Failed') return <span className={`${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`}>{val}</span>;
-    if (val === 'Refunded') return <span className={`${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`}>{val}</span>;
-    if (val === 'Gcash' || val === 'Pending') return <span className={`${base} bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50`}>{val}</span>;
-    if (val === 'Maya' || val === 'Other') return <span className={`${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`}>{val}</span>;
-
-    return val;
+    const variant = statusVariant(val);
+    return variant ? <Badge variant={variant}>{val}</Badge> : val;
   };
 
-  const inputClass = "w-full px-4 py-2.5 bg-slate-50 dark:bg-[#1e1e1e] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium shadow-sm transition-all outline-none";
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2";
-  const primaryButtonClass = "flex min-h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-4 py-2 font-sans text-sm font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70";
-  const exportButtonClass = "flex min-h-[38px] items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-black px-4 py-2 font-sans text-sm font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
+  const kpiTone = (label) => {
+    const key = label.toLowerCase();
+    if (key.includes('refund') || key.includes('expire')) return 'crimson';
+    if (key.includes('transaction') || key.includes('signup') || key.includes('visits')) return 'orange';
+    if (key.includes('time') || key.includes('pending')) return 'slate';
+    return 'gold';
+  };
 
   return (
     <>
@@ -330,110 +332,81 @@ export default function Reports() {
       </div>
 
       {/* Regular UI (hidden during print) */}
-      <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
-        <div className="print:hidden flex flex-col gap-6">
+      <div className="mx-auto max-w-7xl space-y-5 p-6 lg:space-y-6">
+        <div className="flex flex-col gap-5 print:hidden lg:gap-6">
           {loadError && (
-            <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+            <div role="alert" className="flex flex-col gap-3 rounded-xl border border-negative/30 bg-negative-soft p-4 text-sm text-negative sm:flex-row sm:items-center sm:justify-between">
               <span>{loadError} Showing the last available data.</span>
-              <button type="button" onClick={fetchReports} disabled={isLoading} className="font-bold underline disabled:opacity-50">
+              <button type="button" onClick={fetchReports} disabled={isLoading} className="link-draw font-semibold disabled:opacity-50">
                 {isLoading ? 'Retrying...' : 'Retry'}
               </button>
             </div>
           )}
-          <div className="order-2 grid grid-cols-1 items-end gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-[#252830] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.5fr)_repeat(5,minmax(0,1fr))]">
-            <div className="relative w-full min-w-0">
-              <label className={labelClass}>Report Type</label>
-              <StyledSelect
-                value={reportType}
-                onChange={event => setReportType(event.target.value)}
-                aria-label="Report type"
-                className={`${inputClass} min-w-0 font-semibold text-slate-800 hover:border-slate-400 focus:border-amber-500 focus:ring-amber-500/30 dark:text-gray-200`}
+
+          {/* KPI summary first, matching the Overview page hierarchy. */}
+          <StatStrip index={0} columns={currentData.kpis.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}>
+            {currentData.kpis.map((kpi, index) => (
+              <StatCell key={index} label={kpi.label} value={kpi.value} tone={kpiTone(kpi.label)} />
+            ))}
+          </StatStrip>
+
+          <Toolbar index={1}>
+            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))_repeat(3,auto)]">
+              <div className="min-w-0">
+                <label className={labelClass}>Report Type</label>
+                <StyledSelect value={reportType} onChange={event => setReportType(event.target.value)} aria-label="Report type" className={fieldClass}>
+                  {reportTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </StyledSelect>
+              </div>
+              <div className="min-w-0">
+                <label className={labelClass}>Start Date</label>
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={fieldClass} />
+              </div>
+              <div className="min-w-0">
+                <label className={labelClass}>End Date</label>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={fieldClass} />
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                aria-pressed={isTodaySelected}
+                icon={<FiClock size={16} />}
+                className={`w-full whitespace-nowrap ${isTodaySelected ? 'border-focus bg-warn-soft text-ink' : ''}`}
               >
-                {reportTypeOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </StyledSelect>
+                This Day
+              </Button>
+              <Button variant="outline" onClick={handleExportCSV} disabled={isExporting || !reportData} isLoading={isExporting} icon={<FiDownload size={16} />} className="w-full whitespace-nowrap">
+                {isExporting ? 'Exporting…' : 'Export CSV'}
+              </Button>
+              <Button onClick={handlePrint} icon={<FiPrinter size={16} />} className="w-full whitespace-nowrap">
+                Print All
+              </Button>
+              {exportError && <p role="alert" className="text-sm font-semibold text-negative sm:col-span-2 lg:col-span-3 xl:col-span-6">{exportError}</p>}
             </div>
-            <div className="relative w-full min-w-0">
-              <label className={labelClass}>Start Date</label>
-              <div className="relative">
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
-              </div>
-            </div>
-            <div className="relative w-full min-w-0">
-              <label className={labelClass}>End Date</label>
-              <div className="relative">
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
-              </div>
-            </div>
+          </Toolbar>
 
-            <button
-              onClick={() => {
-                setStartDate(today);
-                setEndDate(today);
-              }}
-              className={`${primaryButtonClass} w-full transition-opacity ${isTodaySelected ? 'opacity-50' : 'opacity-100'}`}
-              aria-pressed={isTodaySelected}
-              style={{ minWidth: '160px' }}
-            >
-              <FiClock size={18} />
-              This Day
-            </button>
-            <button onClick={handleExportCSV} disabled={isExporting || !reportData} className={`${exportButtonClass} w-full min-w-0 px-2`}>
-              {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
-              {isExporting ? 'Exporting...' : 'Export CSV'}
-            </button>
-            <button onClick={handlePrint} className={`${primaryButtonClass} w-full min-w-0 px-2`}>
-              <FiPrinter size={18} /> Print All
-            </button>
-            {exportError && <p role="alert" className="text-sm font-semibold text-red-700 dark:text-red-400 sm:col-span-2 xl:col-span-6">{exportError}</p>}
-          </div>
-
-          {/* KPI summary appears first, matching the Overview page hierarchy. */}
-          <div className={`order-1 grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 sm:gap-6 ${currentData.kpis.length === 4 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
-            {currentData.kpis.map((kpi, index) => {
-
-              let IconComponent = FiTrendingUp;
-              let colorClass = "bg-emerald-700 text-white shadow-lg shadow-emerald-700/40 dark:shadow-none";
-              const labelLower = kpi.label.toLowerCase();
-
-              if (labelLower.includes('refund') || labelLower.includes('expire')) {
-                IconComponent = FiTrendingDown;
-                colorClass = "bg-red-800 text-white shadow-lg shadow-red-800/40 dark:shadow-none";
-              } else if (labelLower.includes('transaction') || labelLower.includes('signup') || labelLower.includes('visits')) {
-                IconComponent = labelLower.includes('transaction') ? FiDollarSign : FiActivity;
-                colorClass = "bg-blue-800 text-white shadow-lg shadow-blue-800/40 dark:shadow-none";
-              } else if (labelLower.includes('time') || labelLower.includes('pending')) {
-                IconComponent = FiClock;
-                colorClass = "bg-amber-600 text-white shadow-lg shadow-amber-600/40 dark:shadow-none";
-              }
-
-              return (
-                <div key={index} className="grid min-h-24 grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3 bg-white dark:bg-[#252830] p-3 sm:min-h-0 sm:p-6 rounded-xl border-2 border-gray-300 dark:border-gray-600 shadow-sm sm:flex sm:gap-5 transition-transform hover:-translate-y-1 hover:shadow-md duration-200">
-                  <div className={`h-11 w-11 rounded-lg p-2 sm:h-auto sm:w-auto sm:rounded-xl sm:p-4 flex items-center justify-center ${colorClass}`}>
-                    <IconComponent size={28} strokeWidth={2.5} />
-                  </div>
-                  <div className="flex min-w-0 flex-col gap-1 sm:flex-1">
-                    <p className="max-w-full break-words text-left text-[10px] leading-tight sm:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-normal sm:tracking-widest">{kpi.label}</p>
-                    <h3 className="text-lg leading-tight sm:text-3xl font-normal text-slate-900 dark:text-gray-300 mt-0 sm:mt-1 break-words">{kpi.value}</h3>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="order-3 bg-white dark:bg-[#252830] rounded-2xl border-2 border-slate-200 dark:border-slate-700/50 shadow-sm overflow-hidden flex flex-col">
-            <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-700/50 dark:bg-[#1e1e1e] sm:flex-row sm:items-center">
-              <div className="flex min-w-0 items-center gap-2">
-                <FiList size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
-                <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Total Reports</h3>
-                <span className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
-                  {filteredRows.length.toLocaleString()}
-                </span>
-              </div>
-              <input type="text" placeholder={`Search ${reportType}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-64 px-4 py-2 text-sm font-medium bg-white dark:bg-[#252830] border-2 border-slate-300 dark:border-slate-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 transition-all shadow-sm" />
-            </div>
-
+          <TableShell
+            index={2}
+            title="Total Reports"
+            icon={FiList}
+            count={filteredRows.length}
+            action={
+              <SearchInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClear={() => setSearchTerm('')}
+                placeholder={`Search ${reportType}…`}
+                containerClassName="relative w-full sm:w-64"
+                className="min-h-10 py-2 text-sm"
+              />
+            }
+          >
             <div className="hidden overflow-hidden xl:block">
               <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
                 <colgroup>
@@ -442,56 +415,55 @@ export default function Reports() {
                   ))}
                 </colgroup>
                 <thead>
-                  <tr className="bg-slate-100/50 dark:bg-[#1a1c23] border-b-2 border-slate-200 dark:border-slate-700/50">
+                  <tr className="border-b border-line">
                     {reportDisplayColumns.map((col, i) => (
-                      <th key={i} className={`overflow-hidden px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400${col.toLowerCase().includes('status') ? ' text-center' : ' text-left'}`}>
+                      <th key={i} className={`${thClass} overflow-hidden${col.toLowerCase().includes('status') ? ' text-center' : col.toLowerCase().includes('amount') ? ' text-right' : ' text-left'}`}>
                         {col}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <tbody className="divide-y divide-line">
                   {pageRows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-slate-50 dark:hover:bg-[#1e1e1e] transition-colors group">
-                      {getDisplayRow(row).map((values, cellIndex) => (
-                        <td key={cellIndex} className={`overflow-hidden px-3 py-3 text-sm font-medium text-slate-700 dark:text-slate-300${reportDisplayColumns[cellIndex].toLowerCase().includes('status') ? ' text-center' : ' text-left'}`}>
-                          {values.length === 2 ? (
-                            <>
-                              <div className="truncate font-bold text-slate-900 dark:text-gray-300">{values[0]}</div>
-                              <div className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-gray-400">{values[1]}</div>
-                            </>
-                          ) : (
-                            <div className="min-w-0">{renderCellContent(values[0], reportDisplayColumns[cellIndex], row[6])}</div>
-                          )}
-                        </td>
-                      ))}
+                    <tr key={rowIndex} className="rise transition-colors hover:bg-hover" style={{ '--i': Math.min(rowIndex, 8) * 0.5 + 2 }}>
+                      {getDisplayRow(row).map((values, cellIndex) => {
+                        const column = reportDisplayColumns[cellIndex].toLowerCase();
+                        return (
+                          <td key={cellIndex} className={`${tdClass} overflow-hidden${column.includes('status') ? ' text-center' : column.includes('amount') ? ' text-right' : ' text-left'}`}>
+                            {values.length === 2 ? (
+                              <>
+                                <div className="truncate font-semibold text-ink">{values[0]}</div>
+                                <div className="mt-0.5 truncate text-xs text-muted">{values[1]}</div>
+                              </>
+                            ) : (
+                              <div className="min-w-0">{renderCellContent(values[0], reportDisplayColumns[cellIndex], row[6])}</div>
+                            )}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                   {filteredRows.length === 0 && (
-                    <tr>
-                      <td colSpan={reportDisplayColumns.length} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400 font-medium">
-                        No matching records found in the database.
-                      </td>
-                    </tr>
+                    <TableEmpty colSpan={reportDisplayColumns.length} icon={FiFileText}>No matching records found in the database.</TableEmpty>
                   )}
                 </tbody>
               </table>
             </div>
             <div className="space-y-3 p-3 xl:hidden">
               {pageRows.map((row, rowIndex) => (
-                <article key={rowIndex} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-[#1b1e26]">
+                <MobileCard key={rowIndex} index={rowIndex}>
                   <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                     {getDisplayRow(row).map((values, cellIndex) => {
                       const column = reportDisplayColumns[cellIndex];
                       const isStatus = column.toLowerCase().includes('status');
                       return (
                         <div key={column} className="min-w-0">
-                          <dt className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{column}</dt>
-                          <dd className={`break-words text-sm font-medium text-slate-700 dark:text-slate-300${isStatus ? ' flex justify-start' : ''}`}>
+                          <dt className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{column}</dt>
+                          <dd className={`break-words text-sm text-ink-2${isStatus ? ' flex justify-start' : ''}`}>
                             {values.length === 2 ? (
                               <>
-                                <span className="block font-bold text-slate-900 dark:text-gray-300">{values[0]}</span>
-                                <span className="mt-0.5 block text-xs font-medium text-slate-500 dark:text-gray-400">{values[1]}</span>
+                                <span className="block font-semibold text-ink">{values[0]}</span>
+                                <span className="mt-0.5 block text-xs text-muted">{values[1]}</span>
                               </>
                             ) : renderCellContent(values[0], column, row[6])}
                           </dd>
@@ -499,10 +471,10 @@ export default function Reports() {
                       );
                     })}
                   </dl>
-                </article>
+                </MobileCard>
               ))}
               {filteredRows.length === 0 && (
-                <p className="py-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">No matching records found in the database.</p>
+                <CardListEmpty>No matching records found in the database.</CardListEmpty>
               )}
             </div>
             <Pagination
@@ -512,7 +484,7 @@ export default function Reports() {
               totalItems={filteredRows.length}
               itemsPerPage={itemsPerPage}
             />
-          </div>
+          </TableShell>
         </div>
       </div>
     </>

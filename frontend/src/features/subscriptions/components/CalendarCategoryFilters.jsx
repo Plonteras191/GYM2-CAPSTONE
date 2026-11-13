@@ -1,6 +1,8 @@
 import React, { useId, useState } from 'react';
 import { FiCheck, FiChevronDown, FiMinus } from 'react-icons/fi';
 
+const countPill = 'shrink-0 rounded-full bg-hover px-2.5 py-0.5 font-display text-sm font-semibold tabular-nums text-ink-2';
+
 export default function CalendarCategoryFilters({
   title,
   categories,
@@ -33,7 +35,7 @@ export default function CalendarCategoryFilters({
       />
       <span
         aria-hidden="true"
-        className={`flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-amber-500 dark:peer-focus-visible:ring-offset-[#1b1e26] ${neutral ? (checked || indeterminate ? 'border-gray-900 bg-gray-900 dark:border-gray-300 dark:bg-gray-300' : 'border-gray-900 bg-transparent dark:border-gray-300') : ''}`}
+        className={`flex h-4 w-4 items-center justify-center rounded-full border-2 transition-[background-color,border-color,transform] duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-focus peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-panel ${neutral ? (checked || indeterminate ? 'border-ink bg-ink' : 'border-ink bg-transparent') : ''}`}
         style={{
           ...(neutral ? {} : {
             borderColor: color,
@@ -41,8 +43,8 @@ export default function CalendarCategoryFilters({
           }),
         }}
       >
-        {checked && !indeterminate && <FiCheck className={neutral ? 'text-gray-300 dark:text-gray-900' : 'text-white drop-shadow-sm'} size={11} strokeWidth={3} />}
-        {indeterminate && <FiMinus className={neutral ? 'text-gray-300 dark:text-gray-900' : 'text-white drop-shadow-sm'} size={11} strokeWidth={3} />}
+        {checked && !indeterminate && <FiCheck className={neutral ? 'text-panel' : 'text-white drop-shadow-sm'} size={11} strokeWidth={3} />}
+        {indeterminate && <FiMinus className={neutral ? 'text-panel' : 'text-white drop-shadow-sm'} size={11} strokeWidth={3} />}
       </span>
     </span>
   );
@@ -56,11 +58,9 @@ export default function CalendarCategoryFilters({
   };
 
   return (
-    <div
-      className="rounded-xl border-2 border-gray-300 bg-slate-50 p-3 text-slate-800 transition-colors dark:border-gray-600 dark:bg-[#1b1e26] dark:text-gray-100"
-    >
+    <div className="rounded-xl border border-line bg-field p-3 text-ink transition-colors">
       <div className="flex items-center justify-between gap-1.5">
-        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-sm font-semibold leading-tight text-slate-700 dark:text-gray-200">
+        <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-sm font-semibold leading-tight text-ink">
           {renderColorCheckbox(masterChecked, '#000000', {
             text: `${masterChecked ? 'Deactivate' : 'Activate'} all ${title} items`,
             onChange: () => {
@@ -73,39 +73,34 @@ export default function CalendarCategoryFilters({
               }
             }
           }, masterIndeterminate, true)}
-          <span className="min-w-0 whitespace-normal break-words font-bold">{title}</span>
+          <span className="min-w-0 whitespace-normal break-words">{title}</span>
         </label>
-        <div className="flex shrink-0 items-center gap-1">
-          <span
-            aria-label={`${categories.length} items`}
-            className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-gray-600 dark:bg-[#252833] dark:text-gray-300"
-          >
-            {categories.length}
-          </span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span aria-label={`${categories.length} items`} className={countPill}>{categories.length}</span>
           <button
             type="button"
             onClick={() => setIsExpanded(expanded => !expanded)}
             aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${title} items`}
             aria-expanded={isExpanded}
             aria-controls={categoryListId}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200 dark:text-gray-300 dark:hover:bg-white/[.08]"
+            className="press flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-ink"
           >
-            <FiChevronDown className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} size={16} />
+            <FiChevronDown className={`transition-transform duration-300 ease-out-quint ${isExpanded ? 'rotate-180' : ''}`} size={16} />
           </button>
         </div>
       </div>
-      <div id={categoryListId} hidden={!isExpanded} className="mt-3 space-y-2 border-t border-slate-200/80 pt-3 dark:border-slate-700/50">
+      <div id={categoryListId} hidden={!isExpanded} className="mt-3 space-y-1 border-t border-line pt-3">
         {categories.length === 0 ? (
-          <p className="px-1 py-1 text-xs text-slate-500 dark:text-gray-400">No packages available.</p>
+          <p className="px-1 py-1 text-xs text-muted">No packages available.</p>
         ) : categories.map(category => (
-          <label key={category.value} className="flex cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-200/70 dark:text-gray-100 dark:hover:bg-white/[.08]">
+          <label key={category.value} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-hover hover:text-ink">
             {renderColorCheckbox(
               selectedValues.includes(category.value),
               category.color || '#64748b',
               { text: `${title}: ${category.label}`, onChange: event => toggleCategory(category.value, event.target.checked) }
             )}
             <span className="min-w-0 flex-1 truncate">{category.label}</span>
-            <span aria-label={`${category.count ?? 0} active`} className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-gray-600 dark:bg-[#252833] dark:text-gray-300">
+            <span aria-label={`${category.count ?? 0} active`} className={countPill}>
               {Number(category.count || 0).toLocaleString()}
             </span>
           </label>

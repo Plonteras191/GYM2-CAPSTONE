@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiMaximize, FiCamera, FiWifiOff, FiLoader, FiUserCheck, FiArrowRight, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiUserPlus } from 'react-icons/fi';
+import { FiMaximize, FiCamera, FiWifiOff, FiLoader, FiUserCheck, FiArrowRight, FiRefreshCw, FiUserPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { AI_BASE, aiEngineFetch } from '../utils/aiEngine';
@@ -7,6 +7,8 @@ import { getCameraSourceLabel } from '../utils/cameraSourceLabel';
 import { getMediaUrl } from '../utils/mediaUrl';
 import { formatNumber } from '../utils/numberFormat';
 import ManualCheckInModal from '../components/ui/ManualCheckInModal';
+import AlertDialog from '../components/ui/AlertDialog';
+import Badge from '../components/ui/Badge';
 
 function AttendanceAvatar({ member }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -20,40 +22,38 @@ function AttendanceAvatar({ member }) {
         src={profilePic}
         alt={`${name || 'Member'} profile`}
         onError={() => setImageFailed(true)}
-        className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-slate-300 dark:border-gray-600 shadow-md flex-shrink-0"
+        className="h-9 w-9 flex-shrink-0 rounded-full border border-line object-cover md:h-10 md:w-10"
       />
     );
   }
 
   return (
-    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 text-white dark:bg-amber-500 dark:text-black flex items-center justify-center font-bold shadow-md text-xs md:text-sm flex-shrink-0">
+    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-hover font-display text-sm font-semibold text-ink-2 md:h-10 md:w-10">
       {name.charAt(0) || '?'}
     </div>
   );
 }
 
-const BADGE_BASE = 'inline-flex items-center rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider';
-
 function AttendanceBadges({ log }) {
   const badges = [];
   if (log.reactivated) {
-    badges.push(['Returned', 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400', 'Was Inactive; set back to Active by this check-in']);
+    badges.push(['Returned', 'info', 'Was Inactive; set back to Active by this check-in']);
   }
   if (log.subscription_status === 'expired') {
-    badges.push(['Expired', 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400', 'Subscription expired: ask the member to renew']);
+    badges.push(['Expired', 'warning', 'Subscription expired: ask the member to renew']);
   } else if (log.subscription_status === 'none') {
-    badges.push(['No Sub', 'border-slate-400 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300', 'No subscription on record']);
+    badges.push(['No Sub', 'default', 'No subscription on record']);
   } else if (log.subscription_status === 'active') {
-    badges.push(['Active', 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400', 'Subscription active']);
+    badges.push(['Active', 'success', 'Subscription active']);
   }
   if (log.source === 'manual') {
-    badges.push(['Manual', 'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400', 'Checked in by staff']);
+    badges.push(['Manual', 'default', 'Checked in by staff']);
   }
   if (badges.length === 0) return null;
   return (
-    <div className="mt-1 flex flex-wrap gap-1">
-      {badges.map(([label, colors, title]) => (
-        <span key={label} title={title} className={`${BADGE_BASE} ${colors}`}>{label}</span>
+    <div className="mt-1.5 flex flex-wrap gap-1">
+      {badges.map(([label, variant, title]) => (
+        <span key={label} title={title}><Badge size="sm" variant={variant}>{label}</Badge></span>
       ))}
     </div>
   );
@@ -176,27 +176,27 @@ export default function SecurityMonitor() {
     <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-full h-auto lg:h-full flex flex-col">
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">
         
-        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-[#393e4f] shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
+        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-line shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
           
           <div className="absolute top-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-b from-black/40 to-transparent flex justify-end items-start z-10 pointer-events-none">
             <div className="flex items-center gap-2 md:gap-4 bg-black/50 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10">
               {connectionState === 'RECONNECTING' ? (
                 <div className="flex items-center gap-1.5 md:gap-2">
-                  <FiLoader className="animate-spin text-yellow-500 size-3 md:size-4" />
-                  <span className="text-yellow-500 font-bold tracking-widest text-[9px] md:text-xs uppercase hidden sm:block">RECONNECTING...</span>
+                  <FiLoader className="animate-spin text-brand-gold size-3 md:size-4" />
+                  <span className="text-brand-gold font-bold tracking-widest text-[10px] md:text-xs uppercase hidden sm:block">RECONNECTING...</span>
                 </div>
               ) : connectionState === 'LIVE' ? (
                 <div className="flex items-center gap-1.5 md:gap-2">
                   <span className="relative flex h-2 w-2 md:h-2.5 md:w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 md:h-2.5 md:w-2.5 bg-red-600"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-red-300 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 md:h-2.5 md:w-2.5 bg-brand-red-300"></span>
                   </span>
-                  <span className="text-red-500 font-bold tracking-widest text-[9px] md:text-xs uppercase">LIVE</span>
+                  <span className="text-brand-red-300 font-bold tracking-widest text-[10px] md:text-xs uppercase">LIVE</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 md:gap-2">
                   <div className="h-2 w-2 md:h-2.5 md:w-2.5 rounded-full bg-slate-500"></div>
-                  <span className="text-slate-400 font-bold tracking-widest text-[9px] md:text-xs uppercase">DISCONNECTED</span>
+                  <span className="text-muted font-bold tracking-widest text-[10px] md:text-xs uppercase">DISCONNECTED</span>
                 </div>
               )}
             </div>
@@ -222,13 +222,13 @@ export default function SecurityMonitor() {
               />
 
               {connectionState === 'RECONNECTING' ? (
-               <div className="z-10 flex flex-col items-center justify-center text-slate-400">
-                 <FiLoader size={40} md:size={56} className="mb-2 md:mb-4 text-yellow-500 animate-spin" />
+               <div className="z-10 flex flex-col items-center justify-center text-muted">
+                 <FiLoader size={40} md:size={56} className="mb-2 md:mb-4 text-brand-gold animate-spin" />
                   <p className="text-sm md:text-lg font-bold uppercase tracking-widest text-slate-300">Connecting to camera...</p>
                </div>
               ) : connectionState === 'DISCONNECTED' ? (
-                  <div className="z-10 text-center text-slate-400 bg-black/40 p-4 md:p-8 rounded-2xl border border-white/5">
-                    <FiWifiOff size={40} md:size={56} className="mx-auto text-slate-600 mb-2 md:mb-4 opacity-90" />
+                  <div className="z-10 text-center text-muted bg-black/40 p-4 md:p-8 rounded-2xl border border-white/5">
+                    <FiWifiOff size={40} md:size={56} className="mx-auto text-ink-2 mb-2 md:mb-4 opacity-90" />
                      <p className="text-sm md:text-lg font-bold text-slate-200">
                        {engineOnline === false ? 'Python Engine Offline' : 'Camera Not Connected'}
                      </p>
@@ -254,7 +254,7 @@ export default function SecurityMonitor() {
           <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-end items-end z-10">
             <div className="flex gap-2 md:gap-3 items-center">
               <label className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 text-white rounded-lg md:rounded-xl backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" title="Select video source">
-                <FiCamera className="size-4 md:size-5 text-amber-400" />
+                <FiCamera className="size-4 md:size-5 text-brand-gold" />
                 <select value={cameraSource} onChange={handleCameraChange} className="camera-source-select bg-transparent text-white font-bold uppercase focus:outline-none">
                   {availableCameraSources.map(source => (
                     <option key={source} value={source} className="bg-slate-900 text-white">{getCameraSourceLabel(source)}</option>
@@ -273,43 +273,43 @@ export default function SecurityMonitor() {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/4 flex flex-col gap-6 min-h-[380px] lg:h-full flex-shrink-0">
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-gray-300 dark:border-gray-600 shadow-sm flex flex-col overflow-hidden h-full">
-            
-            <div className="p-4 md:p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex items-center justify-between flex-shrink-0">
-              <h3 className="font-bold text-slate-800 dark:text-gray-300 flex items-center gap-2 text-sm md:text-base">
-                <FiUserCheck className="text-black dark:text-gray-300" size={18} />
+        <div className="flex min-h-[380px] w-full flex-shrink-0 flex-col lg:h-full lg:w-1/4">
+          <section className="rise flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-panel" style={{ '--i': 1 }}>
+
+            <header className="flex flex-shrink-0 items-center justify-between border-b border-line bg-field px-4 py-3">
+              <h3 className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
+                <FiUserCheck className="text-muted" size={16} />
                 Current Attendance
               </h3>
-              <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-gray-300 dark:text-black" title="Check-ins today">
+              <span className="rounded-full bg-hover px-2.5 py-0.5 font-display text-sm font-semibold tabular-nums text-ink-2" title="Check-ins today">
                 {liveLogs.length}
               </span>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 hidden-scrollbar">
+            </header>
+
+            <div className="hidden-scrollbar flex-1 space-y-0.5 overflow-y-auto p-2.5">
                {liveLogs.length === 0 ? (
-                   <div className="text-center mt-6 md:mt-10">
-                     <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3"><FiCamera className="size-5 md:size-6 text-gray-500 dark:text-gray-300"/></div>
-                     <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400">
+                   <div className="mt-8 flex flex-col items-center gap-3 px-4 text-center">
+                     <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-muted"><FiCamera size={20} /></span>
+                     <p className="text-sm font-semibold text-ink">
                        {engineOnline === false ? 'Engine offline' : 'No check-ins yet today'}
                      </p>
-                     <p className="mt-1 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                     <p className="text-xs text-muted">
                        {engineOnline === false
                          ? 'Start the Python engine to record attendance.'
                          : 'Members appear here when the camera recognizes them.'}
                      </p>
                    </div>
                ) : (
-                   liveLogs.map((log) => {
+                   liveLogs.map((log, index) => {
                     const memberName = log.member
                       ? `${log.member.first_name} ${log.member.last_name}`
                       : (log.member_name_snapshot || 'Deleted member');
                      return (
-                     <div key={log.id} className="flex gap-3 items-center border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
+                     <div key={log.id} className="animate-in fade-in slide-in-from-right-4 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-hover" style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}>
                         <AttendanceAvatar member={log.member} />
                         <div className="min-w-0 flex-1">
-                         <button type="button" onClick={() => log.member?.id && navigate('/members', { state: { memberId: log.member.id } })} className="truncate text-left text-xs font-bold leading-tight text-slate-800 dark:text-gray-200 md:text-sm">{memberName}</button>
-                         <p className="text-[9px] md:text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5 truncate">
+                         <button type="button" onClick={() => log.member?.id && navigate('/members', { state: { memberId: log.member.id } })} className={`block max-w-full truncate text-left text-sm font-semibold leading-tight text-ink${log.member?.id ? ' link-draw' : ''}`}>{memberName}</button>
+                         <p className="mt-0.5 truncate text-xs text-muted tabular-nums">
                            {formatTimeIn(log.time_in)}
                          </p>
                          <AttendanceBadges log={log} />
@@ -319,11 +319,12 @@ export default function SecurityMonitor() {
                )}
             </div>
 
-            <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
-              <div className="mb-3 grid grid-cols-2 gap-2 text-[10px] font-semibold text-slate-500 dark:text-gray-400">
-                <span>Source: <span className="text-slate-800 dark:text-gray-200">{getCameraSourceLabel(cameraSource)}</span></span>
-                <span>FPS: <span className="text-slate-800 dark:text-gray-200">{cameraFps === null ? '--' : formatNumber(cameraFps, { maximumFractionDigits: 1 })}</span></span>
-                <span className={`col-span-2 ${engineOnline ? 'text-green-600' : 'text-red-600'}`}>
+            <footer className="flex-shrink-0 border-t border-line bg-field p-3">
+              <div className="mb-2 grid grid-cols-2 gap-2 text-xs text-muted">
+                <span>Source <span className="font-semibold text-ink-2">{getCameraSourceLabel(cameraSource)}</span></span>
+                <span>FPS <span className="font-semibold tabular-nums text-ink-2">{cameraFps === null ? '--' : formatNumber(cameraFps, { maximumFractionDigits: 1 })}</span></span>
+                <span className={`col-span-2 flex items-center gap-2 font-semibold ${engineOnline ? 'text-positive' : 'text-negative'}`}>
+                  <span aria-hidden="true" className={`h-2 w-2 rounded-full ${engineOnline ? 'bg-positive' : 'bg-negative'}`} />
                   {engineOnline === false
                     ? 'Python engine offline'
                     : cameraStatusError
@@ -333,12 +334,12 @@ export default function SecurityMonitor() {
                         : 'Camera connecting / unavailable'}
                 </span>
               </div>
-              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="w-full py-2 flex items-center justify-center gap-2 text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-gray-200 dark:hover:bg-[#252833] rounded-xl transition-all">
-                Full Log <FiArrowRight />
+              <button onClick={() => navigate('/reports', { state: { defaultTab: 'Attendance' } })} className="group press flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold text-ink-2 hover:bg-hover hover:text-ink">
+                Full Log <FiArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
               </button>
-            </div>
-            
-          </div>
+            </footer>
+
+          </section>
         </div>
 
       </div>
@@ -352,25 +353,13 @@ export default function SecurityMonitor() {
         }}
       />
 
-      {/* --- CUSTOM ALERT MODAL --- */}
-      {alertDialog.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`bg-white dark:bg-[#252833] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
-            <div className="p-6 text-center space-y-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
-                {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
-              </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
-              <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
-            </div>
-            <div className="p-4 border-t-2 border-gray-100 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex justify-center">
-              <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+      />
 
     </div>
   );

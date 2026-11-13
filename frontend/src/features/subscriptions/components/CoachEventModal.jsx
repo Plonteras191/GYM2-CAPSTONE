@@ -58,9 +58,9 @@ export default function CoachEventModal({
 
   if (!isOpen) return null;
 
-  const inputClass = "w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#191b22] border border-slate-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-[#6d758d] text-sm font-semibold transition-all shadow-xs";
-  const labelClass = "flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-gray-400 mb-1.5";
-  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const inputClass = "w-full px-3.5 py-2.5 bg-field border border-line rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-focus/20 text-ink placeholder-slate-400 dark:placeholder:text-muted text-sm font-semibold transition-all shadow-xs";
+  const labelClass = "flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5";
+  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
   const existingCategory = eventCategories.find(category =>
     category.name.toLowerCase() === (eventForm.category || '').trim().toLowerCase()
   );
@@ -75,11 +75,11 @@ export default function CoachEventModal({
         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
       />
 
-      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-2 border-gray-300 bg-white text-slate-900 shadow-2xl dark:border-gray-600 dark:bg-[#252830] dark:text-gray-100 animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
+      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel text-ink shadow-2xl dark:border-line dark:bg-panel dark:text-ink animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
           <div className="flex items-center gap-3">
             {eventForm.id ? <FiEdit2 size={19} /> : <FiCalendar size={20} />}
-            <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-gray-300">
+            <h3 className="text-lg font-bold tracking-tight text-ink">
               {eventForm.id ? 'Edit Coach Event' : 'Schedule Coach Event'}
             </h3>
           </div>
@@ -87,14 +87,14 @@ export default function CoachEventModal({
             type="button"
             onClick={requestClose}
             aria-label="Close event form"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-500 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-300 dark:hover:bg-red-500/10"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
           >
             <FiX size={18} />
           </button>
         </div>
         
         {/* Form */}
-        <form onSubmit={handleSubmit} className="min-h-0 flex flex-1 flex-col bg-slate-100 dark:bg-[#191b22]">
+        <form onSubmit={handleSubmit} className="min-h-0 flex flex-1 flex-col bg-field">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
           <label className="block">
             <span className={labelClass}>Event Title</span>
@@ -116,15 +116,15 @@ export default function CoachEventModal({
                 onClick={() => setIsCategoryMenuOpen(open => !open)}
                 aria-label="Choose an event category"
                 aria-expanded={isCategoryMenuOpen}
-                className={`${inputClass} flex items-center justify-between gap-3 text-left ${!isCreatingCategory && !existingCategory ? '!text-slate-400 dark:!text-gray-500' : ''}`}
+                className={`${inputClass} flex items-center justify-between gap-3 text-left ${!isCreatingCategory && !existingCategory ? '!text-muted dark:!text-muted' : ''}`}
               >
                 <span className="min-w-0 truncate">
                   {isCreatingCategory ? 'Create New Category' : existingCategory?.name || 'Select/Create Category'}
                 </span>
-                <FiChevronDown className={`shrink-0 text-slate-500 transition-transform dark:text-gray-400 ${isCategoryMenuOpen ? 'rotate-180' : ''}`} size={16} />
+                <FiChevronDown className={`shrink-0 text-muted transition-transform dark:text-muted ${isCategoryMenuOpen ? 'rotate-180' : ''}`} size={16} />
               </button>
               {isCategoryMenuOpen && (
-                <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border-2 border-gray-300 bg-white p-1 shadow-sm dark:border-gray-600 dark:bg-[#191b22]">
+                <div className="absolute z-30 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-line bg-panel p-1 shadow-sm dark:border-line dark:bg-field">
                   <button
                     type="button"
                     onClick={() => {
@@ -132,13 +132,13 @@ export default function CoachEventModal({
                       setIsCreatingCategory(true);
                       setIsCategoryMenuOpen(false);
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-black hover:bg-slate-100 dark:text-gray-300 dark:hover:bg-white/[.06]"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-ink hover:bg-hover dark:text-ink-2 dark:hover:bg-white/[.06]"
                   >
                     <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 bg-transparent dark:border-white/20" />
                     Create New Category
                   </button>
                   {eventCategories.map(category => (
-                    <div key={category.id} className="flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-slate-100 dark:hover:bg-white/[.06]">
+                    <div key={category.id} className="flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-hover dark:hover:bg-white/[.06]">
                       {editingCategoryId === category.id ? (
                         <>
                           <input
@@ -147,7 +147,7 @@ export default function CoachEventModal({
                             onChange={event => setCategoryDraft({ ...categoryDraft, name: event.target.value })}
                             aria-label="Category name"
                             maxLength={80}
-                            className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-black dark:border-gray-600 dark:bg-[#252833] dark:text-gray-300"
+                            className="min-w-0 flex-1 rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink dark:border-line dark:bg-panel dark:text-ink-2"
                           />
                           <input
                             type="color"
@@ -167,7 +167,7 @@ export default function CoachEventModal({
                               if (saved) setEditingCategoryId(null);
                             }}
                             aria-label={`Save ${category.name}`}
-                            className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
+                            className="rounded-md p-1.5 text-positive hover:bg-positive-soft disabled:opacity-50 dark:text-positive dark:hover:bg-positive/10"
                           >
                             <FiCheck size={16} />
                           </button>
@@ -175,7 +175,7 @@ export default function CoachEventModal({
                             type="button"
                             onClick={() => unsavedChangesGuard.requestClose(() => setEditingCategoryId(null))}
                             aria-label={`Cancel editing ${category.name}`}
-                            className="rounded-md p-1.5 text-slate-600 hover:bg-slate-200 dark:text-gray-300 dark:hover:bg-white/[.08]"
+                            className="rounded-md p-1.5 text-ink-2 hover:bg-hover dark:text-ink-2 dark:hover:bg-hover"
                           >
                             <FiX size={16} />
                           </button>
@@ -189,7 +189,7 @@ export default function CoachEventModal({
                               setIsCreatingCategory(false);
                               setIsCategoryMenuOpen(false);
                             }}
-                            className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-sm text-black dark:text-gray-300"
+                            className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-sm text-ink"
                           >
                             <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 dark:border-white/20" style={{ backgroundColor: category.color || '#eab308' }} />
                             <span className="truncate">{category.name}</span>
@@ -204,7 +204,7 @@ export default function CoachEventModal({
                             }}
                             aria-label={`Edit ${category.name}`}
                             title="Edit category"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-amber-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-500 hover:bg-amber-50 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-amber-400 dark:hover:bg-amber-500/10"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-panel text-warn shadow-sm transition-all hover:-translate-y-0.5 hover:border-warn/40 hover:bg-warn-soft dark:border-line dark:bg-field dark:text-warn dark:hover:bg-warn-soft"
                           >
                             <FiEdit2 size={14} />
                           </button>
@@ -213,7 +213,7 @@ export default function CoachEventModal({
                             onClick={() => onDeleteCategory?.(category)}
                             aria-label={`Delete ${category.name}`}
                             title="Delete category"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-red-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-red-500 hover:bg-red-50 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-red-400 dark:hover:bg-red-500/10"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-panel text-negative shadow-sm transition-all hover:-translate-y-0.5 hover:border-negative/40 hover:bg-negative-soft dark:border-line dark:bg-field dark:text-negative dark:hover:bg-negative-soft"
                           >
                             <FiTrash2 size={14} />
                           </button>
@@ -244,7 +244,7 @@ export default function CoachEventModal({
               />
             )}
             {categoryRequired && !eventForm.category?.trim() && (
-              <span role="alert" className="mt-1 block text-xs font-semibold text-orange-600 dark:text-orange-400">Select or create a category before saving.</span>
+              <span role="alert" className="mt-1 block text-xs font-semibold text-warn dark:text-warn">Select or create a category before saving.</span>
             )}
           </label>
 
@@ -276,7 +276,7 @@ export default function CoachEventModal({
             </label>
           </div>
           {eventForm.start_date && eventForm.end_date && eventForm.end_date < eventForm.start_date && (
-            <p role="alert" className="text-sm font-semibold text-red-600 dark:text-red-400">
+            <p role="alert" className="text-sm font-semibold text-negative dark:text-negative">
               End date must be on or after the start date.
             </p>
           )}
@@ -319,20 +319,20 @@ export default function CoachEventModal({
             
             <label className="block">
               <span className={labelClass}>Banner Color</span>
-              <div className="flex gap-2 items-center h-[42px] px-2 bg-slate-50 dark:bg-[#191b22] border border-slate-300 dark:border-[#393e4f] rounded-xl">
+              <div className="flex gap-2 items-center h-[42px] px-2 bg-field border border-line rounded-xl">
                 <input 
                   type="color" 
                   value={eventForm.color} 
                   onChange={e => setEventForm({ ...eventForm, color: e.target.value })} 
                   className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0" 
                 />
-                <div className="flex flex-wrap gap-1.5 ml-1 border-l border-slate-200 dark:border-[#393e4f] pl-2">
+                <div className="flex flex-wrap gap-1.5 ml-1 border-l border-line pl-2">
                   {recentColors.map(c => (
                     <button 
                       type="button" 
                       key={c} 
                       onClick={() => setEventForm({ ...eventForm, color: c })} 
-                      className={`w-5 h-5 rounded-full border transition-transform hover:scale-125 ${eventForm.color === c ? 'ring-2 ring-amber-500 ring-offset-1 ring-offset-slate-900 border-white' : 'border-black/20'}`} 
+                      className={`w-5 h-5 rounded-full border transition-transform hover:scale-125 ${eventForm.color === c ? 'ring-2 ring-focus ring-offset-1 ring-offset-slate-900 border-white' : 'border-black/20'}`} 
                       style={{ backgroundColor: c }}
                     />
                   ))}
@@ -354,11 +354,11 @@ export default function CoachEventModal({
           </label>
           </div>
 
-          <div className="sticky bottom-0 flex shrink-0 items-center justify-end gap-3 border-t-2 border-gray-300 bg-white p-3 dark:border-gray-600 dark:bg-[#252830]">
+          <div className="sticky bottom-0 flex shrink-0 items-center justify-end gap-3 border-t border-line bg-panel p-3 dark:border-line dark:bg-panel">
             <button 
               type="button" 
               onClick={requestClose}
-              className="px-4 py-2 rounded-xl font-bold text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-[#252833] transition-colors uppercase tracking-wider text-xs"
+              className="px-4 py-2 rounded-xl font-bold text-muted hover:bg-hover transition-colors uppercase tracking-wider text-xs"
             >
               Cancel
             </button>

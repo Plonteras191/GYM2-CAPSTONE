@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { 
-  FiUser, FiMail, FiLock, FiSave, FiShield, 
-  FiEye, FiEyeOff,
-  FiCheck, FiX, FiCamera, FiLoader, FiCheckCircle, FiAlertCircle,
-  FiZoomIn, FiZoomOut
-} from 'react-icons/fi';
+import { FiUser, FiSave, FiShield, FiEye, FiEyeOff, FiCheck, FiX, FiCamera, FiZoomIn, FiZoomOut } from 'react-icons/fi';
 
 import api from '../api';
+import Panel from '../components/ui/Panel';
+import Button from '../components/ui/Button';
+import AlertDialog from '../components/ui/AlertDialog';
+import { fieldClass, labelClass } from '../components/ui/field';
 import { notifySystemLogoChanged, useSystemLogo } from '../hooks/useSystemLogo';
 
 const getErrorMessage = (error, fallback) => {
@@ -233,141 +232,123 @@ export default function AdminProfile() {
     }
   };
 
-  const inputClass = "w-full p-2.5 bg-slate-50 dark:bg-[#1e1e1e] border border-slate-300 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-gray-300 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors shadow-sm";
-  const labelClass = "text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-300 flex items-center gap-2 mb-2";
-  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const eyeButton = 'press absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted hover:bg-hover hover:text-ink';
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      
-      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
-        <div className="flex h-full flex-col bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
-            
-            <div className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
-              <FiUser className="text-black dark:text-gray-300 text-xl" />
-              <h3 className="text-lg font-bold text-slate-800 dark:text-gray-300">Account Details</h3>
+    <div className="mx-auto max-w-5xl space-y-5 p-6 lg:space-y-6">
+
+      <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2 lg:gap-6">
+        <Panel index={0} title="Account Details" icon={FiUser} bodyClassName="flex flex-col">
+          <form onSubmit={handleSaveProfile} className="flex flex-1 flex-col gap-5">
+            <div className="flex items-center gap-4">
+              <div className="group relative shrink-0">
+                <img
+                  src={images.profile || systemLogo}
+                  alt="System logo"
+                  className="h-20 w-20 rounded-full bg-white object-cover p-1 ring-2 ring-brand-dark ring-offset-2 ring-offset-panel dark:ring-brand-gold"
+                />
+                <label className="press absolute -bottom-0.5 -right-0.5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-brand-gold text-brand-dark shadow-md ring-2 ring-panel hover:bg-brand-gold-500" title="Change system logo">
+                  <FiCamera size={14} />
+                  <span className="sr-only">Change system logo</span>
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => handleFileSelect(e, 'profile')} />
+                </label>
+              </div>
+              <div className="min-w-0">
+                <p className="break-words font-display text-2xl font-semibold leading-tight text-ink">{adminData.name}</p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted">System Administrator</p>
+              </div>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="flex flex-1 flex-col space-y-5">
-              <div className="flex items-center gap-4 pb-4">
-                <div className="relative shrink-0 group">
-                  <img
-                    src={images.profile || systemLogo}
-                    alt="System logo"
-                    className="h-20 w-20 rounded-full border-2 border-slate-900 bg-white object-cover p-1 shadow-md dark:border-white dark:bg-[#252830]"
-                  />
-                  <label className="absolute bottom-0 right-0 flex cursor-pointer items-center justify-center rounded-full bg-yellow-500 p-2 text-black shadow-lg transition-transform hover:bg-yellow-400 active:scale-95">
-                    <FiCamera size={15} />
-                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => handleFileSelect(e, 'profile')} />
-                  </label>
-                </div>
-                <div className="min-w-0">
-                  <p className="break-words font-bold text-slate-800 dark:text-gray-300">{adminData.name}</p>
-                  <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-300">System Administrator</p>
-                </div>
-              </div>
+            <label className="block">
+              <span className={labelClass}>Full Name</span>
+              <input
+                type="text"
+                value={adminData.name}
+                onChange={(e) => setAdminData({ ...adminData, name: e.target.value })}
+                className={fieldClass}
+                required
+              />
+            </label>
+            <label className="block">
+              <span className={labelClass}>Email Address</span>
+              <input type="email" value={adminData.email} onChange={(e) => setAdminData({...adminData, email: e.target.value})} className={fieldClass} required />
+            </label>
 
-              <label className="block">
-                <span className={labelClass}><FiUser size={14} className="text-gray-500 dark:text-gray-300"/> Full Name</span>
-                <input 
-                  type="text" 
-                  value={adminData.name} 
-                  onChange={(e) => setAdminData({ ...adminData, name: e.target.value })}
-                  className={inputClass} 
-                  required 
-                />
-              </label>
-              <label className="block">
-                <span className={labelClass}><FiMail size={14} className="text-gray-500 dark:text-gray-300"/> Email Address</span>
-                <input type="email" value={adminData.email} onChange={(e) => setAdminData({...adminData, email: e.target.value})} className={inputClass} required />
-              </label>
-              
-              <div className="mt-auto flex justify-end pt-2">
-                <button type="submit" disabled={isSavingProfile} className={`${primaryButtonClass} w-full sm:w-auto`}>
-                  {isSavingProfile ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />} 
-                  {isSavingProfile ? 'Saving...' : 'Update Details'}
+            <div className="mt-auto flex justify-end pt-1">
+              <Button type="submit" disabled={isSavingProfile} isLoading={isSavingProfile} icon={<FiSave size={17} />} className="w-full sm:w-auto">
+                {isSavingProfile ? 'Saving…' : 'Update Details'}
+              </Button>
+            </div>
+          </form>
+        </Panel>
+
+        <Panel index={1} title="Security" icon={FiShield} bodyClassName="flex flex-col">
+          <p className="mb-5 text-sm text-muted">Use your current password to set a new one. New passwords must be at least 8 characters.</p>
+          <form onSubmit={handleSavePassword} className="flex flex-1 flex-col gap-5">
+
+            <label className="block">
+              <span className={labelClass}>Current Password</span>
+              <div className="relative">
+                <input type={showPass.current ? "text" : "password"} value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} placeholder="••••••••" className={`${fieldClass} pr-11`} required />
+                <button type="button" onClick={() => togglePass('current')} aria-label={showPass.current ? 'Hide password' : 'Show password'} className={eyeButton}>
+                  {showPass.current ? <FiEyeOff size={17} /> : <FiEye size={17} />}
                 </button>
               </div>
-            </form>
-        </div>
+            </label>
 
-        <div className="flex h-full flex-col bg-white dark:bg-[#252830] p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-sm">
-            
-            <div className="mb-4 flex items-center gap-2 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
-              <FiShield className="text-black dark:text-gray-300 text-xl" />
-              <h3 className="text-lg font-bold text-slate-800 dark:text-gray-300">Security</h3>
-            </div>
-
-            <p className="text-sm text-gray-500 dark:text-gray-300 mb-5">Use your current password to set a new one. New passwords must be at least 8 characters.</p>
-            <form onSubmit={handleSavePassword} className="flex flex-1 flex-col space-y-5">
-              
-              <label className="block relative">
-                <span className={labelClass}><FiLock size={14} className="text-gray-500 dark:text-gray-300"/> Current Password</span>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <label className="block">
+                <span className={labelClass}>New Password</span>
                 <div className="relative">
-                  <input type={showPass.current ? "text" : "password"} value={passwords.current} onChange={(e) => setPasswords({...passwords, current: e.target.value})} placeholder="••••••••" className={inputClass} required />
-                  <button type="button" onClick={() => togglePass('current')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-200">
-                    {showPass.current ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  <input type={showPass.new ? "text" : "password"} value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} placeholder="••••••••" className={`${fieldClass} pr-11`} minLength={8} required />
+                  <button type="button" onClick={() => togglePass('new')} aria-label={showPass.new ? 'Hide password' : 'Show password'} className={eyeButton}>
+                    {showPass.new ? <FiEyeOff size={17} /> : <FiEye size={17} />}
                   </button>
                 </div>
               </label>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <label className="block relative">
-                  <span className={labelClass}><FiLock size={14} className="text-gray-500 dark:text-gray-300"/> New Password</span>
-                  <div className="relative">
-                    <input type={showPass.new ? "text" : "password"} value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} placeholder="••••••••" className={inputClass} minLength={8} required />
-                    <button type="button" onClick={() => togglePass('new')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-200">
-                      {showPass.new ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-                    </button>
-                  </div>
-                </label>
+              <label className="block">
+                <span className={labelClass}>Confirm New Password</span>
+                <div className="relative">
+                  <input type={showPass.confirm ? "text" : "password"} value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} placeholder="••••••••" className={`${fieldClass} pr-11`} minLength={8} required />
+                  <button type="button" onClick={() => togglePass('confirm')} aria-label={showPass.confirm ? 'Hide password' : 'Show password'} className={eyeButton}>
+                    {showPass.confirm ? <FiEyeOff size={17} /> : <FiEye size={17} />}
+                  </button>
+                </div>
+              </label>
+            </div>
 
-                <label className="block relative">
-                  <span className={labelClass}><FiLock size={14} className="text-gray-500 dark:text-gray-300"/> Confirm New Password</span>
-                  <div className="relative">
-                    <input type={showPass.confirm ? "text" : "password"} value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} placeholder="••••••••" className={inputClass} minLength={8} required />
-                    <button type="button" onClick={() => togglePass('confirm')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-200">
-                      {showPass.confirm ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-                    </button>
-                  </div>
-                </label>
-              </div>
-
-              <div className="mt-auto flex justify-end pt-2">
-                <button type="submit" disabled={isSavingSecurity} className={`${primaryButtonClass} w-full sm:w-auto`}>
-                  {isSavingSecurity ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />} 
-                  {isSavingSecurity ? 'Saving...' : 'Update Password'}
-                </button>
-              </div>
-            </form>
-        </div>
+            <div className="mt-auto flex justify-end pt-1">
+              <Button type="submit" disabled={isSavingSecurity} isLoading={isSavingSecurity} icon={<FiSave size={17} />} className="w-full sm:w-auto">
+                {isSavingSecurity ? 'Saving…' : 'Update Password'}
+              </Button>
+            </div>
+          </form>
+        </Panel>
       </div>
 
       {imageModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700/50 flex flex-col">
-            
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-[#1e1e1e]">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-gray-300">
-                Preview system logo
-              </h3>
-              <button onClick={handleCloseImageModal} className="text-gray-500 hover:text-red-500 transition-colors dark:text-gray-300">
-                <FiX size={24} />
+        <div className="animate-fade-in fixed inset-0 z-[100] flex items-center justify-center bg-brand-dark/70 p-4 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="logo-crop-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <h3 id="logo-crop-title" className="font-display text-2xl font-semibold text-ink">Preview system logo</h3>
+              <button onClick={handleCloseImageModal} aria-label="Close" className="press rounded-lg p-2 text-muted hover:bg-hover hover:text-ink">
+                <FiX size={20} />
               </button>
             </div>
-            
-            <div className="p-6 flex flex-col items-center bg-slate-100 dark:bg-[#1a1c23]">
-              
+
+            <div className="flex flex-col items-center bg-field p-6">
               <div
-                className={`relative flex h-64 w-64 touch-none items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-black/10 shadow-inner dark:border-slate-700 dark:bg-black/30 ${zoomLevel > 100 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+                className={`relative flex h-64 w-64 touch-none items-center justify-center overflow-hidden rounded-full border border-line bg-brand-dark/10 shadow-inner dark:bg-brand-dark/40 ${zoomLevel > 100 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
                 onPointerDown={handleImagePointerDown}
                 onPointerMove={handleImagePointerMove}
                 onPointerUp={() => setIsDraggingImage(false)}
                 onPointerCancel={() => setIsDraggingImage(false)}
               >
-                <img 
-                  src={imageModal.tempUrl} 
-                  alt="Preview" 
+                <img
+                  src={imageModal.tempUrl}
+                  alt="Preview"
                   onLoad={(event) => setImageDimensions({
                     width: event.currentTarget.naturalWidth,
                     height: event.currentTarget.naturalHeight,
@@ -379,11 +360,11 @@ export default function AdminProfile() {
                   }}
                   draggable="false"
                 />
-                <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]"></div>
+                <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]"></div>
               </div>
 
-              <div className="mt-6 flex w-full max-w-xs items-center gap-3 text-gray-500 dark:text-gray-300">
-                <FiZoomOut size={20} />
+              <div className="mt-6 flex w-full max-w-xs items-center gap-3 text-muted">
+                <FiZoomOut size={18} />
                 <input
                   type="range"
                   min="100"
@@ -392,51 +373,35 @@ export default function AdminProfile() {
                   value={zoomLevel}
                   onChange={handleZoomChange}
                   aria-label="Zoom system logo"
-                  className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-300 accent-amber-500 dark:bg-slate-700"
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line accent-brand-gold"
                 />
-                <FiZoomIn size={20} />
-                <span className="w-12 text-right text-xs font-semibold">{zoomLevel}%</span>
+                <FiZoomIn size={18} />
+                <span className="w-12 text-right text-xs font-semibold tabular-nums text-ink-2">{zoomLevel}%</span>
               </div>
 
-              <p className="text-xs text-gray-500 dark:text-gray-300 mt-3 font-medium text-center">
+              <p className="mt-3 text-center text-xs text-muted">
                 Zoom to resize, then drag the image to adjust its position. Apply Image saves your crop.
               </p>
             </div>
-            
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#1e1e1e] flex justify-end gap-3">
-              <button onClick={handleCloseImageModal} className="px-6 py-2.5 rounded-xl font-bold text-gray-500 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                Cancel
-              </button>
-              
-              <button onClick={handleApplyImage} disabled={isSavingLogo || !imageDimensions.width} className={primaryButtonClass}>
-                {isSavingLogo ? <FiLoader className="animate-spin" size={18} /> : <FiCheck size={18} />}
-                {isSavingLogo ? 'Saving...' : 'Apply Image'}
-              </button>
+
+            <div className="flex justify-end gap-2 border-t border-line p-4">
+              <Button variant="outline" onClick={handleCloseImageModal}>Cancel</Button>
+              <Button onClick={handleApplyImage} disabled={isSavingLogo || !imageDimensions.width} isLoading={isSavingLogo} icon={<FiCheck size={17} />}>
+                {isSavingLogo ? 'Saving…' : 'Apply Image'}
+              </Button>
             </div>
-            
+
           </div>
         </div>
       )}
 
-      {/* --- CUSTOM ALERT MODAL --- */}
-      {alertDialog.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`bg-white dark:bg-[#252830] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
-            <div className="p-6 text-center space-y-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
-                {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
-              </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
-              <p className="text-gray-500 dark:text-gray-300 font-medium whitespace-pre-line">{alertDialog.message}</p>
-            </div>
-            <div className="p-4 border-t-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-center">
-              <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+      />
 
     </div>
   );

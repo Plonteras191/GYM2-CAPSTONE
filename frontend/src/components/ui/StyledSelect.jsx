@@ -115,13 +115,13 @@ export default function StyledSelect({
         className={`${className} flex items-center justify-between gap-3 text-left`}
       >
         <span className="min-w-0 flex-1 truncate">{selectedOption?.label}</span>
-        <FiChevronDown aria-hidden="true" size={17} className={`shrink-0 text-slate-500 transition-transform duration-200 dark:text-gray-400 ${isOpen ? 'rotate-180' : ''}`} />
+        <FiChevronDown aria-hidden="true" size={17} className={`shrink-0 text-muted transition-transform duration-300 ease-out-quint ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
         <div
           id={listboxId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-40 mt-2 max-h-60 overflow-y-auto rounded-xl border-2 border-slate-300 bg-slate-100 p-1.5 shadow-xl shadow-slate-900/10 dark:border-slate-700/50 dark:bg-[#1e1e1e] dark:shadow-black/40"
+          className="animate-in fade-in zoom-in-95 slide-in-from-top-2 absolute left-0 right-0 top-full z-40 mt-2 max-h-60 origin-top overflow-y-auto rounded-xl border border-line bg-panel p-1.5 shadow-[0_12px_32px_rgb(13_13_13/0.14)] dark:shadow-[0_12px_32px_rgb(0_0_0/0.5)]"
         >
           {options.map((option, index) => {
             const isSelected = option.value === String(value);
@@ -135,14 +135,14 @@ export default function StyledSelect({
                 disabled={option.disabled}
                 onClick={() => chooseOption(option)}
                 onKeyDown={event => moveFocus(event, index)}
-                className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50 ${
                   isSelected
-                    ? 'bg-slate-200 font-semibold text-slate-900 dark:bg-[#303541] dark:text-gray-100'
-                    : 'font-medium text-slate-700 hover:bg-slate-200/70 dark:text-gray-300 dark:hover:bg-[#292d37]'
+                    ? 'bg-accent-soft font-semibold text-ink'
+                    : 'font-medium text-ink-2 hover:bg-hover hover:text-ink'
                 }`}
               >
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                {isSelected && <FiCheck aria-hidden="true" size={16} className="shrink-0 text-black dark:text-gray-400" />}
+                {isSelected && <FiCheck aria-hidden="true" size={16} className="shrink-0 text-accent" />}
               </button>
             );
           })}

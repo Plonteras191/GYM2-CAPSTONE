@@ -18,17 +18,17 @@ const FACE_CAPTURE_VIEWS = [
 ];
 
 const getBmiInfo = (height, weight) => {
-  if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500' };
+  if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-hover text-ink-2 border-line-strong' };
   const bmi = formatNumber(weight / Math.pow(height / 100, 2), { maximumFractionDigits: 1 });
   const n = parseFloat(bmi);
-  if (n < 16) return { value: bmi, label: 'Severe Thinness', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
-  if (n < 17) return { value: bmi, label: 'Moderate Thin', color: 'bg-orange-50 text-orange-700 border-orange-500 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/50' };
-  if (n < 18.5) return { value: bmi, label: 'Mild Thinness', color: 'bg-amber-50 text-amber-700 border-amber-500 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/50' };
-  if (n < 25) return { value: bmi, label: 'Normal', color: 'bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50' };
-  if (n < 30) return { value: bmi, label: 'Overweight', color: 'bg-amber-50 text-amber-700 border-amber-500 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/50' };
-  if (n < 35) return { value: bmi, label: 'Obese Class I', color: 'bg-orange-50 text-orange-700 border-orange-500 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/50' };
-  if (n < 40) return { value: bmi, label: 'Obese Class II', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
-  return { value: bmi, label: 'Obese Class III', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
+  if (n < 16) return { value: bmi, label: 'Severe Thinness', color: 'bg-negative-soft text-negative border-negative/40' };
+  if (n < 17) return { value: bmi, label: 'Moderate Thin', color: 'bg-warn-soft text-warn border-warn/40 dark:bg-warn-soft dark:text-warn dark:border-warn/40' };
+  if (n < 18.5) return { value: bmi, label: 'Mild Thinness', color: 'bg-warn-soft text-warn border-warn/40' };
+  if (n < 25) return { value: bmi, label: 'Normal', color: 'bg-positive-soft text-positive border-positive/40' };
+  if (n < 30) return { value: bmi, label: 'Overweight', color: 'bg-warn-soft text-warn border-warn/40' };
+  if (n < 35) return { value: bmi, label: 'Obese Class I', color: 'bg-warn-soft text-warn border-warn/40 dark:bg-warn-soft dark:text-warn dark:border-warn/40' };
+  if (n < 40) return { value: bmi, label: 'Obese Class II', color: 'bg-negative-soft text-negative border-negative/40' };
+  return { value: bmi, label: 'Obese Class III', color: 'bg-negative-soft text-negative border-negative/40' };
 };
 
 const defaultForm = {
@@ -256,12 +256,12 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
     setInvalidFields(previous => ({ ...previous, [field]: !input.checkValidity() }));
   };
 
-  const inputClass = "w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-gray-300 font-medium transition-all shadow-sm";
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-500 mb-2";
-  const getInputClass = field => `${inputClass}${invalidFields[field] ? ' !border-orange-500 !ring-1 !ring-orange-400 dark:!border-orange-500' : ''}`;
-  const primaryBtn = "flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-semibold shadow-sm transition-colors active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm";
-  const saveMemberBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
-  const saveChangesBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const inputClass = "w-full px-4 py-2.5 bg-field border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus dark:text-ink-2 font-medium transition-all shadow-sm";
+  const labelClass = "block text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-2";
+  const getInputClass = field => `${inputClass}${invalidFields[field] ? ' !border-warn/40 !ring-1 !ring-orange-400 dark:!border-warn/40' : ''}`;
+  const primaryBtn = "flex items-center justify-center gap-2 bg-brand-dark hover:bg-brand-slate text-brand-white px-6 py-2.5 rounded-xl font-semibold shadow-sm transition-colors active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm";
+  const saveMemberBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const saveChangesBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
   const bmiData = getBmiInfo(formData.height, formData.weight);
   const isDirty = Boolean(profilePic)
     || JSON.stringify({ form: formData, faceImage, capturedFaceViews }) !== initialSnapshotRef.current;
@@ -276,7 +276,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   return (
     <>
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border-2 border-gray-300 bg-white shadow-2xl dark:border-gray-600 dark:bg-[#252830]">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
         
         {/* ADDED: Style block to completely hide the number input spinner arrows */}
         <style>{`
@@ -291,8 +291,8 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         `}</style>
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b-2 border-gray-300 bg-gray-50 px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
-          <h3 className="flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-gray-300">
+        <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
+          <h3 className="flex items-center gap-2 text-xl font-bold text-ink">
             {isEditing ? <FiEdit2 size={19} /> : <FiPlus size={20} />}
             {isEditing ? 'Edit Member Profile' : 'Add New Member'}
           </h3>
@@ -301,38 +301,38 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
             onClick={requestClose}
             disabled={isSaving}
             aria-label="Close member form"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-gray-500 shadow-sm transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:border-gray-600 dark:bg-[#252830] dark:text-gray-300 dark:hover:bg-red-500/10"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative disabled:opacity-50 dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
           >
             <FiX size={24} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-5 overflow-y-auto bg-slate-100 p-4 dark:bg-[#191b22] sm:p-5">
+        <div className="flex-1 space-y-5 overflow-y-auto bg-hover p-4 dark:bg-field sm:p-5">
           <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
             {/* Profile Pic */}
-            <div className="flex min-h-72 flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-4 text-center shadow-sm dark:border-gray-600 dark:bg-[#252830]">
-              <h4 className="flex h-6 items-center font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wide text-sm">Display Picture</h4>
+            <div className="flex min-h-72 flex-col items-center gap-3 rounded-xl border border-line bg-panel p-4 text-center shadow-sm dark:border-line dark:bg-panel">
+              <h4 className="flex h-6 items-center font-bold text-ink uppercase tracking-wide text-sm">Display Picture</h4>
               {profilePic ? (
                 <div className="flex w-full flex-1 flex-col items-center justify-center gap-4">
-                  <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-full border-4 border-amber-500 shadow-lg">
+                  <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-full border-4 border-warn/40 shadow-lg">
                     <AvatarEditor ref={editorRef} image={profilePic} width={150} height={150} border={0} borderRadius={75} color={[255,255,255,0.6]} scale={editorScale} rotate={0} />
                   </div>
                   <div className="w-full max-w-50 flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-400">-</span>
-                    <input type="range" min="1" max="3" step="0.01" value={editorScale} onChange={e => setEditorScale(parseFloat(e.target.value))} className="w-full accent-amber-500 cursor-pointer" />
-                    <span className="text-xs font-bold text-gray-400">+</span>
+                    <span className="text-xs font-bold text-muted">-</span>
+                    <input type="range" min="1" max="3" step="0.01" value={editorScale} onChange={e => setEditorScale(parseFloat(e.target.value))} className="w-full accent-brand-gold cursor-pointer" />
+                    <span className="text-xs font-bold text-muted">+</span>
                   </div>
-                  <button type="button" onClick={() => { setProfilePic(null); setEditorScale(1.2); }} className="text-[10px] font-bold text-red-500 uppercase tracking-widest hover:underline">Cancel / Pick New Image</button>
+                  <button type="button" onClick={() => { setProfilePic(null); setEditorScale(1.2); }} className="text-[10px] font-bold text-negative uppercase tracking-widest hover:underline">Cancel / Pick New Image</button>
                 </div>
               ) : (
                 <label className="group relative mt-2 flex flex-1 cursor-pointer items-center justify-center">
-                  <div className="h-40 w-40 overflow-hidden rounded-full border-4 border-dashed border-gray-400 bg-white transition-colors group-hover:border-amber-500 dark:border-gray-500 dark:bg-[#252830]">
+                  <div className="h-40 w-40 overflow-hidden rounded-full border-4 border-dashed border-line-strong bg-panel transition-colors group-hover:border-focus dark:border-line-strong dark:bg-panel">
                     {formData.profilePicUrl ? (
                       <img src={formData.profilePicUrl} alt="Existing Profile" className="w-full h-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
-                        <FiUpload className="text-gray-400 group-hover:text-amber-500" size={24} />
+                        <FiUpload className="text-muted group-hover:text-amber-500" size={24} />
                       </div>
                     )}
                   </div>
@@ -362,7 +362,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                   onChange={e => setBiometricConsent(e.target.checked)}
                   className="mt-0.5 h-4 w-4 shrink-0 accent-amber-600"
                 />
-                <span className="text-[11px] font-medium leading-snug text-slate-600 dark:text-gray-400">
+                <span className="text-[11px] font-medium leading-snug text-muted">
                   The member consents to the gym storing their face photo and using it only for attendance and workout monitoring (Data Privacy Act of 2012, RA 10173).
                 </span>
               </label>
@@ -375,23 +375,23 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
             const field = event.target.name;
             if (field) setInvalidFields(previous => ({ ...previous, [field]: true }));
           }}>
-            <div className="rounded-xl border-2 border-gray-300 bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-[#252830]">
-              <h4 className="mb-4 border-b-2 border-gray-300 pb-2 text-base font-bold text-slate-800 dark:border-gray-600 dark:text-gray-300">Personal Details</h4>
+            <div className="rounded-xl border border-line bg-panel p-4 shadow-sm dark:border-line dark:bg-panel">
+              <h4 className="mb-4 border-b border-line pb-2 text-base font-bold text-ink dark:border-line dark:text-ink-2">Personal Details</h4>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <label className="block">
                   <span className={labelClass}>First Name</span>
                   <input name="firstName" type="text" required value={formData.firstName} onChange={e => { handleNameChange(e, 'firstName'); trackFieldValidity('firstName', e.currentTarget); }} aria-invalid={Boolean(invalidFields.firstName)} className={getInputClass('firstName')} placeholder="Juan" />
-                  {invalidFields.firstName && <span className="mt-1 block text-xs font-medium text-orange-600 dark:text-orange-400">Enter the member's first name.</span>}
+                  {invalidFields.firstName && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter the member's first name.</span>}
                 </label>
                 <label className="block">
                   <span className={labelClass}>Last Name</span>
                   <input name="lastName" type="text" required value={formData.lastName} onChange={e => { handleNameChange(e, 'lastName'); trackFieldValidity('lastName', e.currentTarget); }} aria-invalid={Boolean(invalidFields.lastName)} className={getInputClass('lastName')} placeholder="Dela Cruz" />
-                  {invalidFields.lastName && <span className="mt-1 block text-xs font-medium text-orange-600 dark:text-orange-400">Enter the member's last name.</span>}
+                  {invalidFields.lastName && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter the member's last name.</span>}
                 </label>
                 <label className="block">
                   <span className={labelClass}>Email</span>
                   <input name="email" type="email" required value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); trackFieldValidity('email', e.currentTarget); }} aria-invalid={Boolean(invalidFields.email)} className={getInputClass('email')} placeholder="juan@email.com" />
-                  {invalidFields.email && <span className="mt-1 block text-xs font-medium text-orange-600 dark:text-orange-400">Enter a valid email address.</span>}
+                  {invalidFields.email && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter a valid email address.</span>}
                 </label>
                 <label className="block lg:col-span-2">
                   <span className={labelClass}>Address</span>
@@ -400,8 +400,8 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                 <label className="block">
                   <span className={labelClass}>Phone Number</span>
                   <input name="phone" type="tel" inputMode="numeric" pattern="[0-9]{11}" minLength={11} maxLength={11} required value={formData.phone || ''} onChange={e => { handlePhoneChange(e); trackFieldValidity('phone', e.currentTarget); }} aria-invalid={Boolean(invalidFields.phone)} className={getInputClass('phone')} placeholder="09123456789" />
-                  {invalidFields.phone && <span className="mt-1 block text-xs font-medium text-orange-600 dark:text-orange-400">Enter all 11 digits of the phone number.</span>}
-                  <span className="text-[10px] text-gray-400 font-medium float-right mt-1">{(formData.phone || '').length}/11</span>
+                  {invalidFields.phone && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter all 11 digits of the phone number.</span>}
+                  <span className="text-[10px] text-muted font-medium float-right mt-1">{(formData.phone || '').length}/11</span>
                 </label>
                 {isEditing && (
                   <label className="block">
@@ -415,7 +415,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
                     </select>
-                    <span className="mt-1 block text-[10px] font-medium text-gray-400">
+                    <span className="mt-1 block text-[10px] font-medium text-muted">
                       Set automatically: Inactive after 1 month without a visit, Active again on check-in.
                     </span>
                   </label>
@@ -426,7 +426,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                     <span className={labelClass}>Height (cm)</span>
                     <input type="number" min="1" value={formData.height || ''} onChange={e => setFormData({...formData, height: e.target.value})} className={inputClass} placeholder="170" />
                     {Number(formData.height) > 0 && (
-                      <span className="mt-1 block text-xs font-medium text-slate-500 dark:text-gray-400">
+                      <span className="mt-1 block text-xs font-medium text-muted">
                         Approx. {Math.floor(Math.round(Number(formData.height) / 2.54) / 12)} ft {Math.round(Number(formData.height) / 2.54) % 12} in
                       </span>
                     )}
@@ -447,8 +447,8 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t-2 border-gray-300 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-800 sm:p-5">
-          <button type="button" onClick={requestClose} disabled={isSaving} className="px-6 py-2.5 rounded-xl font-bold text-slate-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 uppercase tracking-wide text-sm">Cancel</button>
+        <div className="flex justify-end gap-3 border-t border-line bg-field p-4 dark:border-line dark:bg-hover sm:p-5">
+          <button type="button" onClick={requestClose} disabled={isSaving} className="px-6 py-2.5 rounded-xl font-bold text-ink-2 hover:bg-hover transition-colors disabled:opacity-50 uppercase tracking-wide text-sm">Cancel</button>
           <button form="memberForm" type="submit" disabled={isSaving || ((formData.phone || '').length > 0 && (formData.phone || '').length < 11)} className={isEditing ? saveChangesBtn : saveMemberBtn}>
             {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
             {isSaving ? 'Processing...' : (isEditing ? 'Save Changes' : 'Save Member')}

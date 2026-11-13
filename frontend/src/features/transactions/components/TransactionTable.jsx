@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FiSearch, FiPlus, FiDownload, FiRotateCcw, FiList,
-  FiPrinter, FiUser, FiLoader, FiX
-} from 'react-icons/fi';
+import { FiPlus, FiDownload, FiRotateCcw, FiList, FiPrinter, FiUser, FiLoader, FiCreditCard } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import { getMediaUrl } from '../../../utils/mediaUrl';
 import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
@@ -10,33 +7,54 @@ import { useNavigate } from 'react-router-dom';
 import { getPackageDetails } from '../../../utils/packageDisplay';
 import { formatNumber } from '../../../utils/numberFormat';
 import StyledSelect from '../../../components/ui/StyledSelect';
+import SearchInput from '../../../components/ui/SearchInput';
+import Button from '../../../components/ui/Button';
+import Badge from '../../../components/ui/Badge';
+import Avatar from '../../../components/ui/Avatar';
+import IconButton from '../../../components/ui/IconButton';
+import TableShell, { Toolbar, TableLoading, TableEmpty, CardListLoading, CardListEmpty, MobileCard } from '../../../components/ui/TableShell';
+import { fieldClass, thClass, tdClass } from '../../../components/ui/field';
 
-const getMemberInitials = (member) => `${member?.first_name?.[0] || ''}${member?.last_name?.[0] || ''}`.toUpperCase();
+const statusVariant = (status) => {
+  switch (status) {
+    case 'Complete': return 'success';
+    case 'Pending': return 'warning';
+    case 'Refunded':
+    case 'Failed': return 'danger';
+    default: return 'default';
+  }
+};
+
+const methodVariant = (method) => {
+  const key = (method || '').toLowerCase();
+  if (key === 'gcash') return 'info';
+  if (key === 'cash') return 'success';
+  return 'default';
+};
+
+const amountText = (txn) => (Number(txn.amount) > 0
+  ? `₱ ${formatNumber(Number(txn.amount))}`
+  : `-₱ ${formatNumber(Math.abs(Number(txn.amount)))}`);
+const isNegative = (txn) => txn.status === 'Refunded' || Number(txn.amount) < 0;
 
 function MemberDetails({ member, snapshot, profilePicSnapshot, emailSnapshot }) {
   const navigate = useNavigate();
   const memberName = member ? `${member.first_name} ${member.last_name}` : snapshot;
   const profilePic = member?.profile_pic || profilePicSnapshot;
-  const initials = (memberName || '?').trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
+  const linked = Boolean(member?.id);
   const content = (
     <>
-      {profilePic ? (
-        <img src={getMediaUrl(profilePic)} alt="" className="h-10 w-10 shrink-0 rounded-full border-2 border-gray-300 object-cover dark:border-gray-600" />
-      ) : (
-        <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-xs font-bold text-slate-700 dark:border-gray-600 dark:bg-[#191b22] dark:text-gray-300">
-          {memberName ? initials : <FiUser size={15} />}
-        </div>
-      )}
+      <Avatar src={profilePic ? getMediaUrl(profilePic) : null} name={memberName} fallback={<FiUser size={15} />} />
       <div className="min-w-0">
-        <span className={`block truncate font-semibold ${memberName ? 'text-slate-800 dark:text-gray-300' : 'italic text-amber-600 dark:text-amber-500'}`}>
+        <span className={`block truncate font-semibold ${memberName ? `text-ink${linked ? ' link-draw' : ''}` : 'italic text-warn'}`}>
           {memberName || 'Walk-in Guest'}
         </span>
-        {(member?.email || emailSnapshot) && <span className="mt-0.5 block truncate text-xs font-normal text-slate-500 dark:text-gray-400">{member?.email || emailSnapshot}</span>}
+        {(member?.email || emailSnapshot) && <span className="mt-0.5 block truncate text-xs text-muted">{member?.email || emailSnapshot}</span>}
       </div>
     </>
   );
-  return member?.id
-    ? <button type="button" onClick={() => navigate('/members', { state: { memberId: member.id } })} className="flex min-w-0 items-center gap-3 text-left">{content}</button>
+  return linked
+    ? <button type="button" onClick={() => navigate('/members', { state: { memberId: member.id } })} className="flex min-w-0 items-center gap-3 rounded-lg text-left">{content}</button>
     : <div className="flex min-w-0 items-center gap-3">{content}</div>;
 }
 
@@ -54,6 +72,7 @@ export default function TransactionTable({
   onExportCSV,
   onPrintReceipt
 }) {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -69,138 +88,97 @@ export default function TransactionTable({
     setCurrentPage(page => Math.max(1, Math.min(page, totalPages || 1)));
   }, [totalPages]);
 
-  const getStatusBadge = (status) => {
-    const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
-    switch (status) {
-      case 'Complete': return `${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`;
-      case 'Pending': return `${base} bg-amber-50 text-amber-700 border-amber-500 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/50`;
-      case 'Refunded': return `${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`;
-      case 'Failed': return `${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`;
-      default: return `${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`;
-    }
-  };
-
-  const getMethodBadge = (method) => {
-    const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
-    if ((method || '').toLowerCase() === 'gcash') return `${base} bg-blue-50 text-blue-700 border-blue-500 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/50`;
-    if ((method || '').toLowerCase() === 'cash') return `${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`;
-    return `${base} bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500`;
-  };
-
-  const primaryButtonClass = "flex min-h-[38px] min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-2 py-2 font-sans text-sm font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
-  const exportButtonClass = "flex min-h-[38px] min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg border-0 bg-black px-2 py-2 font-sans text-sm font-bold normal-case text-gray-300 shadow-sm transition-colors hover:bg-gray-900 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed dark:bg-gray-300 dark:text-black dark:hover:bg-gray-200";
+  const rowActions = (txn, withLabels = false) => (
+    <div className="inline-flex items-center gap-1.5">
+      {txn.status === 'Complete' && txn.type !== 'Refund' && (
+        <IconButton
+          tone="danger"
+          label="Refund transaction"
+          icon={refundingId === txn.id ? <FiLoader size={15} className="animate-spin" /> : <FiRotateCcw size={15} />}
+          onClick={() => onRefundTransaction(txn)}
+          disabled={refundingId === txn.id}
+        >
+          {refundingId === txn.id ? 'Refunding…' : 'Refund'}
+        </IconButton>
+      )}
+      <IconButton label="Print receipt" icon={<FiPrinter size={15} />} onClick={() => onPrintReceipt(txn)}>{withLabels && 'Receipt'}</IconButton>
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 bg-white dark:bg-[#252833] p-4 sm:p-5 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm items-stretch lg:items-center">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full min-w-0 lg:flex-1">
-          <div className="relative flex-1 min-w-0">
-            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
-            <input 
-              type="text" 
-              placeholder="Search by ID or Member Name..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-              className="w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm" 
-            />
-            {searchTerm && (
-              <button 
-                type="button" 
-                onClick={() => setSearchTerm('')} 
-                aria-label="Clear search"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
-              >
-                <FiX size={15} />
-              </button>
-            )}
-          </div>
-          <StyledSelect
+    <div className="space-y-5 lg:space-y-6">
+      <Toolbar index={1} className="lg:flex-row lg:items-center">
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center lg:flex-1">
+          <SearchInput
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onClear={() => setSearchTerm('')}
+            placeholder="Search by ID or member name"
+            containerClassName="relative min-w-0 flex-1 sm:min-w-[15rem]"
+          />
+          <div className="min-w-0 sm:w-48">
+            <StyledSelect
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               aria-label="Filter transactions"
-              className="w-full sm:min-w-[10rem] sm:w-auto px-4 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
+              className={fieldClass}
             >
               <option value="All">All Transactions</option>
               <option value="Subscription">Subscriptions</option>
               <option value="Walk-In">Walk-Ins</option>
               <option value="Refund">Refunds</option>
             </StyledSelect>
+          </div>
         </div>
 
-        <div className="grid w-full grid-cols-3 gap-2 lg:w-[34rem]">
-          <button onClick={onAddTransaction} className={`${primaryButtonClass} md:hidden`}>
-            <FiPlus size={16} strokeWidth={3} /> Record
-          </button>
-          <button onClick={onAddTransaction} className={`${primaryButtonClass} hidden md:flex`}>
-            <FiPlus size={18} strokeWidth={3} /> Record Transaction
-          </button>
-          <button onClick={onExportCSV} disabled={isExporting} className={exportButtonClass} title="Download filtered transactions as a spreadsheet">
-            {isExporting ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
-            {isExporting ? 'Exporting...' : 'Export CSV'}
-          </button>
-          
-          <button onClick={() => window.print()} className={primaryButtonClass}>
-            <FiPrinter size={18} /> Print All
-          </button>
+        <div className="grid w-full grid-cols-3 gap-2 lg:w-auto lg:flex">
+          <Button onClick={onAddTransaction} icon={<FiPlus size={18} strokeWidth={2.5} />} className="min-w-0 whitespace-nowrap px-3">
+            <span className="md:hidden">Record</span>
+            <span className="hidden md:inline">Record Transaction</span>
+          </Button>
+          <Button variant="outline" onClick={onExportCSV} disabled={isExporting} isLoading={isExporting} icon={<FiDownload size={17} />} className="min-w-0 whitespace-nowrap px-3" title="Download filtered transactions as a spreadsheet">
+            {isExporting ? 'Exporting…' : 'Export CSV'}
+          </Button>
+          <Button variant="outline" onClick={() => window.print()} icon={<FiPrinter size={17} />} className="min-w-0 whitespace-nowrap px-3">Print All</Button>
         </div>
-      </div>
+      </Toolbar>
 
-      <div className="bg-white dark:bg-[#252833] rounded-2xl border-2 border-gray-300 dark:border-[#393e4f] shadow-sm overflow-hidden flex flex-col">
-        <div className="flex min-w-0 items-center gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-600 dark:bg-[#191b22]/50">
-          <FiList size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
-          <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Total Transactions</h3>
-          <span className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
-            {transactions.length.toLocaleString()}
-          </span>
-        </div>
-
+      <TableShell index={2} title="Total Transactions" icon={FiList} count={transactions.length}>
         <div className="hidden overflow-hidden xl:block">
           <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
-              <col className="w-[15%]" />
+              <col className="w-[14%]" />
+              <col className="w-[21%]" />
               <col className="w-[20%]" />
-              <col className="w-[18%]" />
-              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+              <col className="w-[12%]" />
               <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[15%]" />
+              <col className="w-[13%]" />
             </colgroup>
             <thead>
-              <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
-                <th className="whitespace-nowrap px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Txn ID & Date</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Member Details</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Details</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Method</th>
-                <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Amount</th>
-                <th className="px-3 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Payment Status</th>
-                <th className="px-3 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">Actions</th>
+              <tr className="border-b border-line">
+                <th className={`${thClass} whitespace-nowrap`}>Txn ID & Date</th>
+                <th className={thClass}>Member Details</th>
+                <th className={thClass}>Details</th>
+                <th className={thClass}>Method</th>
+                <th className={`${thClass} text-right`}>Amount</th>
+                <th className={`${thClass} text-center`}>Payment Status</th>
+                <th className={`${thClass} text-right`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
+            <tbody className="divide-y divide-line">
               {isLoading ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-24 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                      <div className="relative w-16 h-16">
-                        <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                      <p className="text-sm font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest animate-pulse">Loading Database...</p>
-                    </div>
-                  </td>
-                </tr>
+                <TableLoading colSpan={7} />
               ) : currentTxns.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">No transactions found.</td>
-                </tr>
+                <TableEmpty colSpan={7} icon={FiCreditCard}>No transactions found.</TableEmpty>
               ) : (
-                currentTxns.map((txn) => (
-                  <tr key={txn.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group">
-                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
-                      <div className="truncate text-sm font-bold text-slate-900 dark:text-gray-300">{txn.transaction_id}</div>
-                      <div className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-gray-400">{txn.transaction_date}</div>
+                currentTxns.map((txn, i) => (
+                  <tr key={txn.id} className="rise transition-colors hover:bg-hover" style={{ '--i': Math.min(i, 8) * 0.5 + 2 }}>
+                    <td className={`${tdClass} overflow-hidden whitespace-nowrap`}>
+                      <div className="truncate font-semibold text-ink">{txn.transaction_id}</div>
+                      <div className="mt-0.5 truncate text-xs text-muted">{txn.transaction_date}</div>
                     </td>
-                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
+                    <td className={`${tdClass} overflow-hidden whitespace-nowrap`}>
                       <MemberDetails
                         member={txn.member}
                         snapshot={txn.member_name_snapshot}
@@ -208,40 +186,20 @@ export default function TransactionTable({
                         emailSnapshot={txn.member_email_snapshot}
                       />
                     </td>
-                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
-                      <div className="truncate text-sm font-bold text-black dark:text-gray-300">{getPackageDetails(txn).title}</div>
-                      <div className="mt-0.5 truncate text-xs font-semibold text-slate-500 dark:text-gray-400">{getPackageDetails(txn).category}</div>
+                    <td className={`${tdClass} overflow-hidden whitespace-nowrap`}>
+                      <div className="truncate font-semibold text-ink">{getPackageDetails(txn).title}</div>
+                      <div className="mt-0.5 truncate text-xs text-muted">{getPackageDetails(txn).category}</div>
                     </td>
-                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
-                      <span className={getMethodBadge(txn.payment_method)}>{getPaymentMethodLabel(txn.payment_method)}</span>
+                    <td className={`${tdClass} whitespace-nowrap`}>
+                      <Badge variant={methodVariant(txn.payment_method)}>{getPaymentMethodLabel(txn.payment_method)}</Badge>
                     </td>
-                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
-                      <div className={`font-normal text-lg tracking-tight ${txn.status === 'Refunded' || Number(txn.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-gray-300'}`}>
-                        {Number(txn.amount) > 0 ? `\u20B1 ${formatNumber(Number(txn.amount))}` : `-\u20B1 ${formatNumber(Math.abs(Number(txn.amount)))}`}
-                      </div>
+                    <td className={`${tdClass} whitespace-nowrap text-right font-display text-lg font-semibold tabular-nums ${isNegative(txn) ? 'text-negative' : 'text-ink'}`}>
+                      {amountText(txn)}
                     </td>
-                    <td className="overflow-hidden px-3 py-3 text-center whitespace-nowrap">
-                      <span className={getStatusBadge(txn.status)}>{txn.status}</span>
+                    <td className={`${tdClass} whitespace-nowrap text-center`}>
+                      <Badge variant={statusVariant(txn.status)}>{txn.status}</Badge>
                     </td>
-                    <td className="overflow-hidden space-x-2 px-3 py-3 text-right whitespace-nowrap">
-                      {txn.status === 'Complete' && txn.type !== 'Refund' && (
-                        <button
-                          onClick={() => onRefundTransaction(txn)}
-                          disabled={refundingId === txn.id}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-2 text-red-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-red-500 hover:bg-red-50 hover:shadow-md disabled:opacity-50 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-red-400 dark:hover:bg-red-500/10"
-                          title="Refund transaction"
-                        >
-                          {refundingId === txn.id ? <FiLoader size={16} className="animate-spin" /> : <FiRotateCcw size={16} strokeWidth={2.5} />}
-                          <span className="text-xs font-bold">Refund</span>
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => onPrintReceipt(txn)} 
-                        className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-[#393e4f] hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-[#252833] rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md shadow-sm"
-                      >
-                        <FiPrinter size={16} strokeWidth={2.5} />
-                      </button>
-                    </td>
+                    <td className={`${tdClass} whitespace-nowrap text-right`}>{rowActions(txn)}</td>
                   </tr>
                 ))
               )}
@@ -251,59 +209,45 @@ export default function TransactionTable({
 
         <div className="space-y-3 p-3 xl:hidden">
           {isLoading ? (
-            <p role="status" className="py-8 text-center text-sm font-semibold text-slate-500 dark:text-gray-400">Loading transactions…</p>
+            <CardListLoading />
           ) : currentTxns.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-500 dark:text-gray-400">No transactions found.</p>
-          ) : currentTxns.map(txn => (
-            <article key={txn.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#393e4f] dark:bg-[#1b1e26]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+            <CardListEmpty>No transactions found.</CardListEmpty>
+          ) : currentTxns.map((txn, i) => {
+            const memberName = txn.member_name_snapshot || (txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : '');
+            const profilePic = txn.member?.profile_pic || txn.member_profile_pic_snapshot;
+            return (
+              <MobileCard key={txn.id} index={i}>
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    {(txn.member?.profile_pic || txn.member_profile_pic_snapshot) ? (
-                      <img src={getMediaUrl(txn.member?.profile_pic || txn.member_profile_pic_snapshot)} alt="" className="h-10 w-10 shrink-0 rounded-full border border-slate-300 object-cover dark:border-[#393e4f]" />
-                    ) : txn.member ? (
-                      <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-xs font-bold text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">{getMemberInitials(txn.member)}</div>
-                    ) : (
-                      <div aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-500/10 dark:text-amber-400"><FiUser size={16} /></div>
-                    )}
+                    <Avatar src={profilePic ? getMediaUrl(profilePic) : null} name={memberName} fallback={<FiUser size={16} />} />
                     <div className="min-w-0">
                       {txn.member?.id ? (
-                        <button type="button" onClick={() => navigate('/members', { state: { memberId: txn.member.id } })} className="truncate text-left font-semibold text-slate-900 dark:text-gray-200">
+                        <button type="button" onClick={() => navigate('/members', { state: { memberId: txn.member.id } })} className="link-draw truncate text-left font-semibold text-ink">
                           {txn.member.first_name} {txn.member.last_name}
                         </button>
                       ) : (
-                        <p className="truncate font-semibold text-slate-900 dark:text-gray-200">
-                          {txn.member_name_snapshot || (txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : 'Walk-in Guest')}
-                        </p>
+                        <p className={`truncate font-semibold ${memberName ? 'text-ink' : 'italic text-warn'}`}>{memberName || 'Walk-in Guest'}</p>
                       )}
-                      {(txn.member?.email || txn.member_email_snapshot) && <p className="truncate text-xs text-slate-500 dark:text-gray-400">{txn.member?.email || txn.member_email_snapshot}</p>}
+                      {(txn.member?.email || txn.member_email_snapshot) && <p className="truncate text-xs text-muted">{txn.member?.email || txn.member_email_snapshot}</p>}
                     </div>
                   </div>
-                  <div className="mt-1 min-w-0">
-                    <p className="truncate text-sm font-bold text-slate-900 dark:text-gray-300">{txn.transaction_id}</p>
-                    <p className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-gray-400">{txn.transaction_date}</p>
+                  <span className={`shrink-0 font-display text-lg font-semibold tabular-nums ${isNegative(txn) ? 'text-negative' : 'text-ink'}`}>
+                    {amountText(txn)}
+                  </span>
+                </div>
+                <div className="mt-3 border-t border-line pt-3">
+                  <p className="text-sm font-semibold text-ink">{getPackageDetails(txn).title}</p>
+                  <p className="mt-0.5 text-xs text-muted">{getPackageDetails(txn).category}</p>
+                  <p className="mt-2 text-xs text-muted"><span className="font-semibold text-ink-2">{txn.transaction_id}</span> · {txn.transaction_date}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge variant={methodVariant(txn.payment_method)}>{getPaymentMethodLabel(txn.payment_method)}</Badge>
+                    <Badge variant={statusVariant(txn.status)}>{txn.status}</Badge>
                   </div>
                 </div>
-                <span className={`shrink-0 font-bold ${txn.status === 'Refunded' || Number(txn.amount) < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-gray-200'}`}>
-                  {Number(txn.amount) < 0 ? '-' : ''}₱{formatNumber(Math.abs(Number(txn.amount)))}
-                </span>
-              </div>
-              <p className="mt-2 text-sm font-bold text-black dark:text-gray-300">{getPackageDetails(txn).title}</p>
-              <p className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-gray-400">{getPackageDetails(txn).category}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className={getMethodBadge(txn.payment_method)}>{getPaymentMethodLabel(txn.payment_method)}</span>
-                <span className={getStatusBadge(txn.status)}>{txn.status}</span>
-              </div>
-              <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-[#393e4f]">
-                {txn.status === 'Complete' && txn.type !== 'Refund' && (
-                  <button onClick={() => onRefundTransaction(txn)} disabled={refundingId === txn.id} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:border-red-900 dark:text-red-400">
-                    {refundingId === txn.id ? 'Refunding…' : 'Refund'}
-                  </button>
-                )}
-                <button onClick={() => onPrintReceipt(txn)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-[#393e4f] dark:text-gray-300">Print receipt</button>
-              </div>
-            </article>
-          ))}
+                <div className="mt-3 flex justify-end border-t border-line pt-3">{rowActions(txn, true)}</div>
+              </MobileCard>
+            );
+          })}
         </div>
 
         <Pagination
@@ -314,7 +258,7 @@ export default function TransactionTable({
           itemsPerPage={itemsPerPage}
           itemsLabel="transactions"
         />
-      </div>
+      </TableShell>
     </div>
   );
 }

@@ -16,17 +16,17 @@ import ManualCheckInModal from '../../../components/ui/ManualCheckInModal';
 import { formatNumber } from '../../../utils/numberFormat';
 
 const getBmiInfo = (height, weight) => {
-  if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-slate-50 text-slate-700 border-slate-400 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-500' };
+  if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-hover text-ink-2 border-line-strong' };
   const bmi = formatNumber(weight / Math.pow(height / 100, 2), { maximumFractionDigits: 1 });
   const n = parseFloat(bmi);
-  if (n < 16) return { value: bmi, label: 'Severe Thinness', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
-  if (n < 17) return { value: bmi, label: 'Moderate Thin', color: 'bg-orange-50 text-orange-700 border-orange-500 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/50' };
-  if (n < 18.5) return { value: bmi, label: 'Mild Thinness', color: 'bg-amber-50 text-amber-700 border-amber-500 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/50' };
-  if (n < 25) return { value: bmi, label: 'Normal', color: 'bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50' };
-  if (n < 30) return { value: bmi, label: 'Overweight', color: 'bg-amber-50 text-amber-700 border-amber-500 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/50' };
-  if (n < 35) return { value: bmi, label: 'Obese Class I', color: 'bg-orange-50 text-orange-700 border-orange-500 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/50' };
-  if (n < 40) return { value: bmi, label: 'Obese Class II', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
-  return { value: bmi, label: 'Obese Class III', color: 'bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50' };
+  if (n < 16) return { value: bmi, label: 'Severe Thinness', color: 'bg-negative-soft text-negative border-negative/40' };
+  if (n < 17) return { value: bmi, label: 'Moderate Thin', color: 'bg-warn-soft text-warn border-warn/40 dark:bg-warn-soft dark:text-warn dark:border-warn/40' };
+  if (n < 18.5) return { value: bmi, label: 'Mild Thinness', color: 'bg-warn-soft text-warn border-warn/40' };
+  if (n < 25) return { value: bmi, label: 'Normal', color: 'bg-positive-soft text-positive border-positive/40' };
+  if (n < 30) return { value: bmi, label: 'Overweight', color: 'bg-warn-soft text-warn border-warn/40' };
+  if (n < 35) return { value: bmi, label: 'Obese Class I', color: 'bg-warn-soft text-warn border-warn/40 dark:bg-warn-soft dark:text-warn dark:border-warn/40' };
+  if (n < 40) return { value: bmi, label: 'Obese Class II', color: 'bg-negative-soft text-negative border-negative/40' };
+  return { value: bmi, label: 'Obese Class III', color: 'bg-negative-soft text-negative border-negative/40' };
 };
 
 const getTaskStatus = (log) => {
@@ -344,10 +344,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 lg:p-8 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white dark:bg-[#252830] rounded-3xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden border-2 border-gray-300 dark:border-gray-600 relative">
+      <div className="bg-panel rounded-3xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden border border-line relative">
 
         <div className="absolute top-4 right-4 z-20">
-          <button onClick={onClose} className="p-2 bg-black/10 dark:bg-white/10 hover:bg-red-500 hover:text-white rounded-full transition-colors text-slate-700 dark:text-gray-300 backdrop-blur-md">
+          <button onClick={onClose} className="p-2 bg-black/10 dark:bg-white/10 hover:bg-brand-red hover:text-white rounded-full transition-colors text-ink-2 backdrop-blur-md">
             <FiX size={24} />
           </button>
         </div>
@@ -355,21 +355,21 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
         <div className="flex flex-col lg:flex-row h-full overflow-y-auto lg:overflow-hidden">
 
           {/* LEFT SIDEBAR */}
-          <div className="w-full lg:w-[32%] bg-gray-50 dark:bg-[#1a1c23] border-r-2 border-gray-300 dark:border-gray-700 p-4 sm:p-6 lg:p-8 flex flex-col items-center flex-shrink-0 lg:overflow-y-auto">
+          <div className="w-full lg:w-[32%] bg-field border-r-2 border-line p-4 sm:p-6 lg:p-8 flex flex-col items-center flex-shrink-0 lg:overflow-y-auto">
             <div className="flex w-full items-center justify-between gap-4 lg:flex-col lg:justify-center lg:gap-0">
               <div className="flex items-center gap-3 lg:flex-col">
                 <div className="relative group mt-0 lg:mt-2 shrink-0">
                   {member.profilePicUrl ? (
-                    <img src={member.profilePicUrl} alt="Avatar" className="w-16 h-16 lg:w-36 lg:h-36 rounded-full object-cover border-2 lg:border-4 border-white dark:border-gray-600 shadow-md lg:shadow-lg" />
+                    <img src={member.profilePicUrl} alt="Avatar" className="w-16 h-16 lg:w-36 lg:h-36 rounded-full object-cover border-2 lg:border-4 border-white dark:border-line shadow-md lg:shadow-lg" />
                   ) : (
-                    <div className="w-16 h-16 lg:w-36 lg:h-36 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-lg lg:text-4xl border-2 lg:border-4 border-white dark:border-gray-600 shadow-md lg:shadow-lg">
+                    <div className="w-16 h-16 lg:w-36 lg:h-36 rounded-full bg-line dark:bg-hover flex items-center justify-center text-ink-2 font-bold text-lg lg:text-4xl border-2 lg:border-4 border-white dark:border-line shadow-md lg:shadow-lg">
                       {getInitials(member.firstName, member.lastName)}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 text-left lg:text-center">
-                  <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-gray-300 lg:text-2xl">{member.firstName} {member.lastName}</h2>
-                  <p className="mt-0.5 border-b-2 border-gray-300 pb-3 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:border-gray-600 dark:text-amber-500 lg:mt-1 lg:text-xs">{member.plan}</p>
+                  <h2 className="text-lg font-semibold tracking-tight text-ink lg:text-2xl">{member.firstName} {member.lastName}</h2>
+                  <p className="mt-0.5 border-b border-line pb-3 text-[10px] font-semibold uppercase tracking-wide text-warn dark:border-line dark:text-warn lg:mt-1 lg:text-xs">{member.plan}</p>
                 </div>
               </div>
             </div>
@@ -377,18 +377,18 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
             {/* Member information, visible on mobile and desktop */}
             <div className="block w-full mt-4 lg:mt-6 animate-in fade-in">
               <div className="w-full space-y-3 mb-6">
-                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                  <FiMapPin className="text-black dark:text-gray-300 flex-shrink-0" size={16} />
+                <div className="flex items-center gap-3 text-sm text-ink-2 bg-panel p-3 rounded-xl border border-line shadow-sm">
+                  <FiMapPin className="text-ink flex-shrink-0" size={16} />
                   <span className="truncate">{member.address || 'No Address Provided'}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                  <FiPhone className="text-black dark:text-gray-300 flex-shrink-0" size={16} />
+                <div className="flex items-center gap-3 text-sm text-ink-2 bg-panel p-3 rounded-xl border border-line shadow-sm">
+                  <FiPhone className="text-ink flex-shrink-0" size={16} />
                   <span>{member.phone}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-gray-300 bg-white dark:bg-[#252830] p-3 rounded-xl border border-gray-300 dark:border-gray-700 shadow-sm">
-                  <FiCalendar className="text-black dark:text-gray-300 flex-shrink-0" size={16} />
+                <div className="flex items-center gap-3 text-sm text-ink-2 bg-panel p-3 rounded-xl border border-line shadow-sm">
+                  <FiCalendar className="text-ink flex-shrink-0" size={16} />
                   <span>
-                    <span className="mr-2 text-xs font-semibold text-slate-500 dark:text-gray-400">Birthday</span>
+                    <span className="mr-2 text-xs font-semibold text-muted">Birthday</span>
                     {member.dob
                       ? new Date(`${member.dob.slice(0, 10)}T00:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
                       : 'Not provided'}
@@ -397,34 +397,34 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               </div>
 
               {/* Body Metrics */}
-              <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-6">
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Body Metrics</h4>
+              <div className="w-full bg-panel rounded-xl border border-line p-4 shadow-sm mb-6">
+                <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3 border-b border-line pb-2">Body Metrics</h4>
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase font-bold">Age</p>
-                    <p className="text-lg font-bold text-slate-800 dark:text-gray-300">{calculateAge(member.dob)}</p>
+                    <p className="text-[10px] text-muted uppercase font-bold">Age</p>
+                    <p className="text-lg font-bold text-ink">{calculateAge(member.dob)}</p>
                   </div>
                   <div className="flex flex-col items-center justify-center">
-                    <p className="text-[10px] text-gray-500 uppercase font-bold">BMI</p>
-                    <p className="text-[17px] font-bold leading-none my-1.5 text-slate-900 dark:text-gray-300 tracking-tighter">{profileBmi.value}</p>
-                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border border-solid shadow-sm ${profileBmi.color}`}>{profileBmi.label}</span>
+                    <p className="text-[10px] text-muted uppercase font-bold">BMI</p>
+                    <p className="text-[17px] font-bold leading-none my-1.5 text-ink tracking-tighter">{profileBmi.value}</p>
+                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${profileBmi.color}`}>{profileBmi.label}</span>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase font-bold">Height</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.height || '-'} cm</p>
+                    <p className="text-[10px] text-muted uppercase font-bold">Height</p>
+                    <p className="text-sm font-bold text-ink">{member.height || '-'} cm</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase font-bold">Weight</p>
-                    <p className="text-sm font-bold text-slate-800 dark:text-gray-300">{member.weight || '-'} kg</p>
+                    <p className="text-[10px] text-muted uppercase font-bold">Weight</p>
+                    <p className="text-sm font-bold text-ink">{member.weight || '-'} kg</p>
                   </div>
                 </div>
               </div>
 
               {/* Coach Notes */}
-              <div className="w-full bg-white dark:bg-[#252830] rounded-xl border border-gray-300 dark:border-gray-700 p-4 shadow-sm mb-2">
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 dark:border-gray-700 pb-2">Coach Notes</h4>
+              <div className="w-full bg-panel rounded-xl border border-line p-4 shadow-sm mb-2">
+                <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3 border-b border-line pb-2">Coach Notes</h4>
                 <textarea
-                  className="w-full bg-gray-50 dark:bg-[#1e1e1e] border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-slate-800 dark:text-gray-300 transition-colors min-h-[90px]"
+                  className="w-full bg-field border border-line rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-ink transition-colors min-h-[90px]"
                   placeholder="Add Additional Notes here..."
                   value={coachNotes}
                   onChange={(e) => { setCoachNotes(e.target.value); localStorage.setItem(`notes_${member.id}`, e.target.value); }}
@@ -434,19 +434,19 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
           </div>
 
           {/* RIGHT CONTENT */}
-          <div className="w-full lg:w-[68%] flex flex-col h-full bg-white dark:bg-[#1e1e1e]">
+          <div className="w-full lg:w-[68%] flex flex-col h-full bg-panel">
             {/* Tabs */}
-            <div className="flex items-center gap-6 px-8 pt-6 border-b-2 border-gray-300 dark:border-gray-700 flex-shrink-0 overflow-x-auto">
+            <div className="flex items-center gap-6 px-8 pt-6 border-b border-line flex-shrink-0 overflow-x-auto">
               {[['workouts', 'Workout Logs'], ['attendance', 'Attendance Calendar'], ['plan', "Coach's Training Plan"]].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeTab === key ? 'text-amber-600 dark:text-amber-500' : 'text-black hover:text-black/50 dark:text-gray-500 dark:hover:text-white'}`}>
+                <button key={key} onClick={() => setActiveTab(key)} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeTab === key ? 'text-warn dark:text-warn' : 'text-ink hover:text-black/50 dark:text-muted dark:hover:text-ink'}`}>
                   {label}
-                  {activeTab === key && <div className="absolute bottom-0 left-0 w-full h-1 bg-amber-500 rounded-t-full" />}
+                  {activeTab === key && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-gold rounded-t-full" />}
                 </button>
               ))}
             </div>
 
             {(isProfileDataLoading || profileDataError) && (
-              <div className={`mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${profileDataError ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-gray-700 dark:bg-[#252830] dark:text-gray-300'}`}>
+              <div className={`mx-4 mt-3 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${profileDataError ? 'border-negative/40 bg-negative-soft text-negative dark:border-negative/40 dark:bg-negative-soft dark:text-negative' : 'border-line bg-field text-ink-2 dark:border-line dark:bg-panel dark:text-ink-2'}`}>
                 <p role={profileDataError ? 'alert' : 'status'}>
                   {profileDataError || 'Loading member activity...'}
                 </p>
@@ -464,15 +464,15 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               {/* ATTENDANCE CALENDAR */}
               {activeTab === 'attendance' && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-0">
-                  <div className="border border-gray-300 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-[#252830] shadow-sm relative flex-1 overflow-hidden flex flex-col min-h-0">
-                    <p className="mb-2 text-xs font-semibold text-slate-600 dark:text-gray-400">
-                      Visits this month: <span className="font-bold text-slate-900 dark:text-gray-200">{visitsThisMonth}</span>
-                      <span className="mx-2 text-gray-300 dark:text-gray-600">|</span>
-                      Last 2 years: <span className="font-bold text-slate-900 dark:text-gray-200">{attendance.length}</span>
+                  <div className="border border-line rounded-xl p-4 bg-panel shadow-sm relative flex-1 overflow-hidden flex flex-col min-h-0">
+                    <p className="mb-2 text-xs font-semibold text-muted">
+                      Visits this month: <span className="font-bold text-ink">{visitsThisMonth}</span>
+                      <span className="mx-2 text-brand-white dark:text-muted">|</span>
+                      Last 2 years: <span className="font-bold text-ink">{attendance.length}</span>
                       <button
                         type="button"
                         onClick={() => setIsManualCheckInOpen(true)}
-                        className="float-right rounded-lg border border-gray-300 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-[#191b22]"
+                        className="float-right rounded-lg border border-line px-2.5 py-1 text-[11px] font-bold text-ink-2 hover:bg-hover dark:border-line dark:text-ink-2 dark:hover:bg-hover"
                       >
                         Manual check-in
                       </button>
@@ -626,28 +626,28 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     `}</style>
                     <div className="mb-3 sm:hidden">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="min-w-0 flex-1 truncate text-left text-sm font-black uppercase tracking-wide text-slate-900 dark:text-gray-300">
+                        <h3 className="min-w-0 flex-1 truncate text-left text-sm font-bold uppercase tracking-wide text-ink">
                           {attendanceCalendarTitle}
                         </h3>
                         <div className="flex items-center gap-0 shrink-0">
                           <button
                             onClick={() => attendanceCalendarRef.current?.getApi().prev()}
                             aria-label="Previous month"
-                            className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-[#e5e7eb] text-black shadow-sm transition-colors active:scale-95"
+                            className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-hover text-ink shadow-sm transition-colors active:scale-95"
                           >
                             <FiChevronLeft size={16} />
                           </button>
                           <button
                             onClick={() => attendanceCalendarRef.current?.getApi().next()}
                             aria-label="Next month"
-                            className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-[#e5e7eb] text-black shadow-sm transition-colors active:scale-95"
+                            className="attendance-calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-hover text-ink shadow-sm transition-colors active:scale-95"
                           >
                             <FiChevronRight size={16} />
                           </button>
                           <button
                             onClick={() => attendanceCalendarRef.current?.getApi().today()}
                             aria-label="Today"
-                            className={`mx-1 flex min-h-[38px] shrink-0 items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 text-[15px] font-sans font-bold normal-case text-black shadow-sm transition-colors active:scale-95 ${isCurrentMonth ? 'opacity-100' : 'opacity-50'}`}
+                            className={`mx-1 flex min-h-[38px] shrink-0 items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 text-[15px] font-sans font-bold normal-case text-brand-dark shadow-sm transition-colors active:scale-95 ${isCurrentMonth ? 'opacity-100' : 'opacity-50'}`}
                           >
                             Today
                           </button>
@@ -675,8 +675,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         dateClick={info => showAttendanceDay(info.dateStr)}
                         eventClick={info => showAttendanceDay(info.event.startStr.slice(0, 10))}
                         eventContent={(eventInfo) => (
-                          <div className="flex min-h-6 w-full items-center justify-center gap-1 overflow-hidden rounded-md border border-emerald-300/80 bg-emerald-50 px-1 py-0.5 text-emerald-800 shadow-xs dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300 sm:justify-start">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600 dark:bg-emerald-400" />
+                          <div className="flex min-h-6 w-full items-center justify-center gap-1 overflow-hidden rounded-md border border-positive/40 bg-positive-soft px-1 py-0.5 text-positive shadow-xs dark:border-positive/40 dark:bg-positive-soft dark:text-positive sm:justify-start">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-positive dark:bg-positive" />
                             <span className="truncate text-[10px] font-medium">
                               <span className="hidden sm:inline">Time In: </span>
                               {eventInfo.event.extendedProps.timeIn}
@@ -710,18 +710,18 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               {/* WORKOUT LOGS */}
               {activeTab === 'workouts' && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex min-h-0 flex-col">
-                  <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-[#252830]">
+                  <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-line bg-panel shadow-sm dark:border-line dark:bg-panel">
                     <table className="w-full text-left border-collapse">
-                      <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-[#1a1c23] border-b border-gray-300 dark:border-gray-700">
+                      <thead className="sticky top-0 z-10 bg-field border-b border-line">
                         <tr>
-                          <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-1/4 text-center">Date</th>
-                          <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 text-center">Exercises Logged</th>
-                          <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 w-1/4 text-center">Verification</th>
+                          <th className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted w-1/4 text-center">Date</th>
+                          <th className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted text-center">Exercises Logged</th>
+                          <th className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted w-1/4 text-center">Verification</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                      <tbody className="divide-y divide-line">
                         {currentGroupedWorkouts.length === 0 ? (
-                          <tr><td colSpan="3" className="px-6 py-8 text-center text-gray-500 font-medium">No workout history logged yet.</td></tr>
+                          <tr><td colSpan="3" className="px-6 py-8 text-center text-muted font-medium">No workout history logged yet.</td></tr>
                         ) : currentGroupedWorkouts.map((group, idx) => {
                           const isExpanded = expandedDate === group.date;
                           const totalTasks = group.exercises.length;
@@ -731,34 +731,34 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
                           let groupBadge;
                           if (verifiedTasks === totalTasks) {
-                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-400">VERIFIED</span>;
+                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-positive-soft text-positive border border-positive/40 dark:bg-positive-soft dark:text-positive">VERIFIED</span>;
                           } else if (verifiedTasks > 0) {
-                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">INCOMPLETE</span>;
+                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-brand-navy-50 text-brand-navy border border-brand-navy/30 dark:bg-brand-navy-200/10 dark:text-brand-navy-200">INCOMPLETE</span>;
                           } else {
                             const hasPending = group.exercises.some(log => getTaskStatus(log) === 'PENDING');
                             const hasScheduled = group.exercises.some(log => getTaskStatus(log) === 'SCHEDULED');
                             groupBadge = hasPending
-                              ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">PENDING</span>
+                              ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-warn-soft text-warn border border-warn/40 dark:bg-warn-soft dark:text-warn">PENDING</span>
                               : hasScheduled
-                                ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400">SCHEDULED</span>
-                                : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest bg-red-50 text-red-700 border border-red-500/30 dark:bg-red-500/10 dark:text-red-400">MISSED</span>;
+                                ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-brand-navy-50 text-brand-navy border border-brand-navy/30 dark:bg-brand-navy-200/10 dark:text-brand-navy-200">SCHEDULED</span>
+                                : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-negative-soft text-negative border border-negative/40 dark:bg-negative-soft dark:text-negative">MISSED</span>;
                           }
 
                           return (
                             <React.Fragment key={idx}>
-                              <tr onClick={() => setExpandedDate(prev => prev === group.date ? null : group.date)} className="hover:bg-gray-50 dark:hover:bg-[#1e1e1e] transition-colors cursor-pointer group">
-                                <td className="px-6 py-4 whitespace-nowrap text-center"><div className="font-bold text-slate-800 dark:text-gray-400 text-sm">{group.date}</div></td>
-                                <td className="px-6 py-4 text-center"><span className="text-sm font-bold text-slate-600 dark:text-gray-400 group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">{group.exercises.length} Exercises Recorded</span></td>
+                              <tr onClick={() => setExpandedDate(prev => prev === group.date ? null : group.date)} className="hover:bg-hover transition-colors cursor-pointer group">
+                                <td className="px-6 py-4 whitespace-nowrap text-center"><div className="font-bold text-ink dark:text-muted text-sm">{group.date}</div></td>
+                                <td className="px-6 py-4 text-center"><span className="text-sm font-bold text-muted group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">{group.exercises.length} Exercises Recorded</span></td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center justify-center gap-3">
                                     {groupBadge}
-                                    {isExpanded ? <FiChevronUp className="text-gray-400" size={18} /> : <FiChevronDown className="text-gray-400 group-hover:text-amber-500 transition-colors" size={18} />}
+                                    {isExpanded ? <FiChevronUp className="text-muted" size={18} /> : <FiChevronDown className="text-muted group-hover:text-amber-500 transition-colors" size={18} />}
                                   </div>
                                 </td>
                               </tr>
                               {isExpanded && (
-                                <tr className="bg-gray-50/50 dark:bg-[#1a1c23]/50 shadow-inner">
-                                  <td colSpan="3" className="px-6 py-4 border-t border-gray-100 dark:border-gray-700/50 animate-in fade-in slide-in-from-top-2">
+                                <tr className="bg-field dark:bg-field shadow-inner">
+                                  <td colSpan="3" className="px-6 py-4 border-t border-line dark:border-line animate-in fade-in slide-in-from-top-2">
                                     <div className="flex flex-wrap gap-2 justify-center">
                                       {group.exercises.map(log => {
                                         const taskStatus = getTaskStatus(log);
@@ -768,16 +768,16 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                           ? new Date(`${log.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                                           : new Date(log.created_at).toLocaleTimeString('en-US', { timeStyle: 'short' });
                                         const badgeClass = taskStatus === 'VERIFIED'
-                                          ? 'bg-white border-emerald-200 text-emerald-800 dark:bg-[#252830] dark:border-emerald-500/40 dark:text-emerald-300'
+                                          ? 'bg-panel border-positive/40 text-positive dark:bg-panel dark:border-positive/40 dark:text-positive'
                                           : taskStatus === 'PENDING'
-                                            ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400'
+                                            ? 'bg-warn-soft border-warn/40 text-warn dark:bg-warn-soft dark:border-warn/40 dark:text-warn'
                                             : taskStatus === 'SCHEDULED'
-                                              ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400'
-                                              : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400';
+                                              ? 'bg-brand-navy-50 border-brand-navy/30 text-brand-navy dark:bg-brand-navy-200/10 dark:border-brand-navy-200/30 dark:text-brand-navy-200'
+                                              : 'bg-negative-soft border-negative/40 text-negative dark:bg-negative-soft dark:border-negative/40 dark:text-negative';
                                         return (
                                           <div key={log.id} className={`flex items-center gap-3 w-full sm:w-[calc(50%-0.5rem)] xl:w-[calc(33.333%-0.55rem)] min-w-0 rounded-xl border p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${badgeClass}`}>
-                                            <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-[#1a1c23] overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                              <FiActivity className="text-slate-400 dark:text-slate-500" size={19} />
+                                            <div className="relative w-12 h-12 rounded-lg bg-field overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                              <FiActivity className="text-muted dark:text-muted" size={19} />
                                               {getExerciseMediaUrl(exercise) && <img src={getExerciseMediaUrl(exercise)} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
                                                 if (exercise?.image && event.currentTarget.dataset.fallback !== 'true') {
                                                   event.currentTarget.dataset.fallback = 'true';
@@ -792,9 +792,9 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                             </div>
                                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                               {taskStatus === 'PENDING' && (hasFaceIdToday
-                                                ? <button onClick={() => handleManualVerify(log.id)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded-md text-[9px] font-bold transition-colors active:scale-95 shadow-sm">VERIFY</button>
+                                                ? <button onClick={() => handleManualVerify(log.id)} className="bg-brand-gold hover:bg-brand-gold-500 text-brand-dark text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors active:scale-95 shadow-sm">VERIFY</button>
                                                 : <span className="opacity-50" title="Locked: No Face ID Today"><FiLock size={12} /></span>)}
-                                              {taskStatus !== 'PENDING' && <span className="text-[8px] font-bold uppercase tracking-wide">{taskStatus}</span>}
+                                              {taskStatus !== 'PENDING' && <span className="text-[10px] font-bold uppercase tracking-wide">{taskStatus}</span>}
                                             </div>
                                           </div>
                                         );
@@ -824,38 +824,38 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               {activeTab === 'plan' && (
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-[580px] lg:min-h-0 relative">
                   {/* Mobile Sub-Navigation Switcher */}
-                  <div className="mb-2 grid w-full grid-cols-2 rounded-xl border border-gray-300 bg-gray-100 p-1 shadow-sm sm:hidden dark:border-[#393e4f] dark:bg-[#191b22]">
+                  <div className="mb-2 grid w-full grid-cols-2 rounded-xl border border-line bg-hover p-1 shadow-sm sm:hidden dark:border-line dark:bg-field">
                     <button
                       onClick={() => setMobileCoachView('library')}
                       aria-pressed={mobileCoachView === 'library'}
-                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'library' ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-300 dark:hover:bg-[#252833]'}`}
+                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'library' ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
                     >
                       Browse Exercises
                     </button>
                     <button
                       onClick={() => setMobileCoachView('routine')}
                       aria-pressed={mobileCoachView === 'routine'}
-                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'routine' ? 'bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm' : 'text-slate-600 hover:bg-white dark:text-gray-300 dark:hover:bg-[#252833]'}`}
+                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'routine' ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
                     >
                       Weekly Routine ({activeDay.slice(0, 3)})
                     </button>
                   </div>
 
-                  <div className="lg:absolute lg:inset-0 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-[#252830] shadow-sm flex flex-col sm:flex-row flex-1 overflow-y-auto sm:overflow-hidden min-h-[520px] lg:min-h-0">
+                  <div className="lg:absolute lg:inset-0 border border-line rounded-xl bg-panel shadow-sm flex flex-col sm:flex-row flex-1 overflow-y-auto sm:overflow-hidden min-h-[520px] lg:min-h-0">
                     
                     {/* Exercise Library */}
-                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col border-b sm:border-b-0 sm:border-r border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-[#1a1c23]/50 sm:min-h-0 ${mobileCoachView === 'library' ? 'flex flex-1' : 'hidden sm:flex'}`}>
-                      <div className="p-3 border-b border-gray-300 dark:border-[#393e4f] flex-shrink-0 bg-white dark:bg-[#252833]">
+                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col border-b sm:border-b-0 sm:border-r border-line bg-field dark:bg-field sm:min-h-0 ${mobileCoachView === 'library' ? 'flex flex-1' : 'hidden sm:flex'}`}>
+                      <div className="p-3 border-b border-line flex-shrink-0 bg-panel">
                         <div className="relative">
                           <input 
                             type="text" 
                             placeholder="Search name, muscle, or equipment..." 
                             value={exSearch} 
                             onChange={e => { setExSearch(e.target.value); setExercisePage(1); }} 
-                            className="w-full pl-3 pr-8 py-2 text-xs bg-gray-50 dark:bg-[#191b22] border border-gray-300 dark:border-[#393e4f] rounded-lg outline-none text-slate-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium shadow-sm focus:ring-1 focus:ring-amber-500" 
+                            className="w-full pl-3 pr-8 py-2 text-xs bg-field border border-line rounded-lg outline-none text-ink placeholder:text-muted font-medium shadow-sm focus:ring-1 focus:ring-focus/25 focus:border-focus" 
                           />
                           {exSearch && (
-                            <button onClick={() => { setExSearch(''); setExercisePage(1); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white">
+                            <button onClick={() => { setExSearch(''); setExercisePage(1); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink dark:text-muted dark:hover:text-ink">
                               <FiX size={12} />
                             </button>
                           )}
@@ -866,7 +866,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             value={selectedBodyPart} 
                             onChange={e => { setSelectedBodyPart(e.target.value); setExercisePage(1); }} 
                             aria-label="Filter exercises by body part"
-                            className="w-full rounded-xl border-2 border-gray-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 shadow-sm outline-none transition-colors hover:border-amber-400 focus:ring-2 focus:ring-amber-500 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-gray-100 dark:hover:border-amber-500"
+                            className="w-full rounded-xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink shadow-sm outline-none transition-colors hover:border-warn/40 focus:ring-2 focus:ring-focus/25 focus:border-focus dark:border-line dark:bg-field dark:text-ink dark:hover:border-amber-500"
                           >
                             <option value="all">All Body Parts</option>
                             {bodyPartOptions.map(bodyPart => <option key={bodyPart} value={bodyPart}>{formatExerciseName(bodyPart)}</option>)}
@@ -875,12 +875,12 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       </div>
                       <div className="p-3 flex-1 overflow-y-auto space-y-2">
                         {currentExercises.length === 0 ? (
-                          <p className="py-8 text-center text-xs font-medium text-slate-500 dark:text-gray-400">No matching exercises</p>
+                          <p className="py-8 text-center text-xs font-medium text-muted">No matching exercises</p>
                         ) : currentExercises.map(ex => {
                           return (
-                            <div key={ex.id} className="flex items-center bg-white dark:bg-[#252830] p-2 rounded-lg border border-slate-200 dark:border-gray-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md group">
-                              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-[#1a1c23] flex items-center justify-center">
-                                <FiActivity className="text-slate-400 dark:text-slate-500" size={19} />
+                            <div key={ex.id} className="flex items-center bg-panel p-2 rounded-lg border border-line shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md group">
+                              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-field flex items-center justify-center">
+                                <FiActivity className="text-muted dark:text-muted" size={19} />
                                 {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
                                   if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
                                     event.currentTarget.dataset.fallback = 'true';
@@ -889,10 +889,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                 }} />}
                               </div>
                               <div className="flex-1 min-w-0 px-3">
-                                <span className="font-bold text-xs text-slate-800 dark:text-gray-100 truncate block">{formatExerciseName(ex.name)}</span>
-                                <span className="text-[10px] text-slate-500 dark:text-gray-400 capitalize truncate block mt-0.5">{ex.target || ex.body_part} · {ex.equipment}</span>
+                                <span className="font-bold text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
+                                <span className="text-[10px] text-muted capitalize truncate block mt-0.5">{ex.target || ex.body_part} · {ex.equipment}</span>
                               </div>
-                              <button onClick={() => handleAddExercise(ex)} aria-label={`Add ${ex.name} to ${activeDay}`} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 font-semibold text-black shadow-sm transition-all hover:brightness-105 active:scale-95">+</button>
+                              <button onClick={() => handleAddExercise(ex)} aria-label={`Add ${ex.name} to ${activeDay}`} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 font-semibold text-brand-dark shadow-sm transition-all active:scale-95">+</button>
                             </div>
                           );
                         })}
@@ -909,24 +909,24 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     </div>
 
                     {/* Selected Routine */}
-                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col bg-white dark:bg-[#252830] sm:min-h-0 ${mobileCoachView === 'routine' ? 'flex flex-1' : 'hidden sm:flex'}`}>
-                      <div className="grid w-full flex-shrink-0 grid-cols-7 border-b border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-[#1a1c23]/50">
+                    <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col bg-panel sm:min-h-0 ${mobileCoachView === 'routine' ? 'flex flex-1' : 'hidden sm:flex'}`}>
+                      <div className="grid w-full flex-shrink-0 grid-cols-7 border-b border-line bg-field dark:border-line dark:bg-field">
                         {daysOfWeek.map(day => (
-                          <button key={day} title={day} onClick={() => setActiveDay(day)} className={`w-full min-w-0 px-1 py-3 text-[9px] font-bold uppercase tracking-wide transition-colors border-b-2 sm:px-2 sm:text-[10px] sm:tracking-widest ${activeDay === day ? 'border-[#d9a84a] text-[#d9a84a] bg-white dark:bg-[#252830]' : 'border-transparent text-gray-400 hover:text-slate-700 dark:hover:text-gray-300'}`}>
+                          <button key={day} title={day} onClick={() => setActiveDay(day)} className={`w-full min-w-0 px-1 py-3 text-[10px] font-bold uppercase tracking-wide transition-colors border-b-2 sm:px-2 sm:text-[10px] sm:tracking-widest ${activeDay === day ? 'border-brand-gold text-brand-gold-700 dark:text-brand-gold bg-panel' : 'border-transparent text-muted hover:text-ink dark:hover:text-ink'}`}>
                             {day.slice(0, 3)}
                           </button>
                         ))}
                       </div>
                       
-                      <div className="p-3 flex-1 overflow-y-auto space-y-2 bg-gray-50/30 dark:bg-black/10">
+                      <div className="p-3 flex-1 overflow-y-auto space-y-2 bg-field dark:bg-black/10">
                         {weeklyRoutine[activeDay].length === 0
-                          ? <p className="text-xs text-center text-gray-400 mt-6 font-medium">No exercises assigned for {activeDay}</p>
+                          ? <p className="text-xs text-center text-muted mt-6 font-medium">No exercises assigned for {activeDay}</p>
                           : weeklyRoutine[activeDay].map((ex, i) => (
-                            <div key={i} className="flex flex-col bg-white dark:bg-[#252830] p-3 rounded-xl border border-slate-200 dark:border-gray-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md animate-in fade-in zoom-in-95 duration-200">
+                            <div key={i} className="flex flex-col bg-panel p-3 rounded-xl border border-line shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md animate-in fade-in zoom-in-95 duration-200">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-[#1a1c23] flex items-center justify-center">
-                                    <FiActivity className="text-slate-400 dark:text-slate-500" size={16} />
+                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-field flex items-center justify-center">
+                                    <FiActivity className="text-muted dark:text-muted" size={16} />
                                     {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
                                       if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
                                         event.currentTarget.dataset.fallback = 'true';
@@ -935,36 +935,36 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                     }} />}
                                   </div>
                                   <div className="min-w-0">
-                                    <span className="font-bold text-xs text-slate-800 dark:text-gray-100 truncate block">{formatExerciseName(ex.name)}</span>
-                                    <span className="text-[10px] text-slate-500 dark:text-gray-400">{ex.sets} sets x {ex.reps} reps</span>
-                                    <span className={`text-[9px] font-semibold block mt-0.5 ${getGestureClass(ex) ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                                    <span className="font-bold text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
+                                    <span className="text-[10px] text-muted">{ex.sets} sets x {ex.reps} reps</span>
+                                    <span className={`text-[10px] font-semibold block mt-0.5 ${getGestureClass(ex) ? 'text-positive dark:text-positive' : 'text-warn dark:text-warn'}`}>
                                       {getGestureClass(ex) ? `AI tracks ${getGestureClass(ex)}` : 'Manual verification'}
                                     </span>
                                   </div>
                                 </div>
-                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="text-[10px] text-red-600 dark:text-red-400 hover:text-white font-black px-2 py-1 bg-red-50 dark:bg-red-500/10 hover:bg-red-500 rounded-md transition-colors flex-shrink-0">X</button>
+                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="text-[10px] text-negative dark:text-negative hover:text-white font-bold px-2 py-1 bg-negative-soft dark:bg-negative-soft hover:bg-brand-red rounded-md transition-colors flex-shrink-0">X</button>
                               </div>
                               
                               {/* --- REPS & SETS INPUTS --- */}
                               <div className="flex items-center gap-4 mt-3 pl-[3.25rem]">
-                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-gray-300">
+                                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
                                   Sets: 
                                   <input 
                                     type="number" 
                                     min="1" 
                                     value={ex.sets || ''} 
                                     onChange={(e) => updateExerciseDetail(i, 'sets', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded-md bg-slate-50 dark:bg-[#1a1c23] border border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-900 dark:text-gray-100 shadow-sm text-center"
+                                    className="w-14 px-2 py-1 rounded-md bg-field border border-line focus:outline-none focus:ring-1 focus:ring-focus/25 focus:border-focus text-ink shadow-sm text-center"
                                   />
                                 </label>
-                                <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-gray-300">
+                                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
                                   Reps: 
                                   <input 
                                     type="number" 
                                     min="1" 
                                     value={ex.reps || ''} 
                                     onChange={(e) => updateExerciseDetail(i, 'reps', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded-md bg-slate-50 dark:bg-[#1a1c23] border border-slate-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-900 dark:text-gray-100 shadow-sm text-center"
+                                    className="w-14 px-2 py-1 rounded-md bg-field border border-line focus:outline-none focus:ring-1 focus:ring-focus/25 focus:border-focus text-ink shadow-sm text-center"
                                   />
                                 </label>
                               </div>
@@ -973,8 +973,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         }
                       </div>
 
-                      <div className="p-3 border-t border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-[#1a1c23]/50 flex-shrink-0">
-                        <button onClick={handleAssignWeeklyPlan} disabled={isSavingPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:cursor-wait disabled:opacity-70">
+                      <div className="p-3 border-t border-line bg-field dark:bg-field flex-shrink-0">
+                        <button onClick={handleAssignWeeklyPlan} disabled={isSavingPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70">
                           {isSavingPlan ? 'Saving Plan...' : 'Save Weekly Plan'}
                         </button>
                       </div>

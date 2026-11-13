@@ -1,22 +1,27 @@
 import React from 'react';
-import {
-  FiSearch, FiPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiX, FiList
-} from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiList, FiUsers } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import StyledSelect from '../../../components/ui/StyledSelect';
+import SearchInput from '../../../components/ui/SearchInput';
+import Button from '../../../components/ui/Button';
+import Badge from '../../../components/ui/Badge';
+import Avatar from '../../../components/ui/Avatar';
+import IconButton from '../../../components/ui/IconButton';
+import TableShell, { Toolbar, TableLoading, TableEmpty, CardListLoading, CardListEmpty, MobileCard } from '../../../components/ui/TableShell';
+import { fieldClass, thClass, tdClass } from '../../../components/ui/field';
 
 const getStatusBadge = (status) => {
-  const base = "inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-solid shadow-sm";
-  if (status === 'Active') return <span className={`${base} bg-green-50 text-green-700 border-green-500 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/50`}>Active</span>;
-  if (status === 'Inactive') return <span className={`${base} bg-slate-50 text-slate-700 border-slate-500 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/50`}>Inactive</span>;
-  return <span className={`${base} bg-red-50 text-red-700 border-red-500 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/50`}>Expired</span>;
+  if (status === 'Active') return <Badge variant="success">Active</Badge>;
+  if (status === 'Inactive') return <Badge variant="default">Inactive</Badge>;
+  return <Badge variant="danger">Expired</Badge>;
 };
 
-const getInitials = (first, last) => `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase();
 const getActivePackageName = (member) => {
   const membership = member.activeMembership || member.active_membership;
   return membership?.plan?.name || membership?.plan_type || 'None';
 };
+
+const COLUMNS = ['Member ID', 'Member Details', 'Phone Number', 'Address', 'Package Type', 'Customer Since', 'Attendance Status', 'Actions'];
 
 export default function MemberTable({
   members,
@@ -43,136 +48,85 @@ export default function MemberTable({
     setCurrentPage(page => Math.max(1, Math.min(page, totalPages || 1)));
   }, [totalPages]);
 
-  const primaryBtn = "flex min-h-[42px] shrink-0 items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-sm font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const rowActions = (member, withLabels = false) => (
+    <div className="inline-flex items-center gap-1.5">
+      <IconButton tone="info" label="View profile" icon={<FiEye size={15} />} onClick={() => onViewProfile(member)}>{withLabels && 'View'}</IconButton>
+      <IconButton tone="warn" label="Edit member" icon={<FiEdit2 size={15} />} onClick={() => onEditMember(member)} disabled={deletingId === member.id}>{withLabels && 'Edit'}</IconButton>
+      <IconButton tone="danger" label="Delete member" icon={deletingId === member.id ? <FiLoader size={15} className="animate-spin" /> : <FiTrash2 size={15} />} onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id}>{withLabels && 'Delete'}</IconButton>
+    </div>
+  );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Search & Filter */}
-      <div className="flex flex-col items-stretch gap-3 bg-white p-4 shadow-sm dark:bg-[#252833] sm:flex-row sm:items-center sm:p-5 sm:gap-4 rounded-2xl border-2 border-gray-300 dark:border-[#393e4f]">
-        <div className="relative min-w-0 flex-1">
-          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#6d758d] text-lg pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-[#6d758d] font-medium transition-all shadow-sm"
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => setSearchTerm('')}
-              aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-[#6d758d] dark:hover:text-white p-1"
-            >
-              <FiX size={15} />
-            </button>
-          )}
-        </div>
-        <div className="min-w-0 sm:w-40">
+    <div className="mx-auto max-w-7xl space-y-5 p-6 lg:space-y-6">
+      <Toolbar index={0} className="sm:flex-row sm:items-center">
+        <SearchInput
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onClear={() => setSearchTerm('')}
+          placeholder="Search members"
+          containerClassName="relative min-w-0 flex-1"
+        />
+        <div className="min-w-0 sm:w-44">
           <StyledSelect
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             aria-label="Filter members by status"
-            className="w-full min-w-0 px-3 py-2.5 bg-gray-50 dark:bg-[#191b22] border-2 border-gray-300 dark:border-[#393e4f] rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-gray-100 font-medium transition-all shadow-sm cursor-pointer"
+            className={fieldClass}
           >
             <option value="All">All Statuses</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </StyledSelect>
         </div>
-        <button onClick={onAddMember} className={`${primaryBtn} w-full whitespace-nowrap sm:w-auto`}>
-          <FiPlus size={18} strokeWidth={3} /> Add Member
-        </button>
-      </div>
+        <Button onClick={onAddMember} icon={<FiPlus size={18} strokeWidth={2.5} />} className="w-full whitespace-nowrap sm:w-auto">
+          Add Member
+        </Button>
+      </Toolbar>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#252833] rounded-2xl shadow-sm border-2 border-gray-300 dark:border-[#393e4f] overflow-hidden flex flex-col">
-        <div className="flex min-w-0 items-center gap-2 border-b border-gray-200 bg-gray-50 px-5 py-3 dark:border-gray-600 dark:bg-[#191b22]/50">
-          <div className="flex min-w-0 items-center gap-2">
-            <FiList size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
-            <h3 className="min-w-0 truncate text-base font-bold tracking-wide text-slate-800 dark:text-gray-300">Total Members</h3>
-            <span className="shrink-0 rounded-lg border-2 border-gray-300 bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
-              {members.length.toLocaleString()}
-            </span>
-          </div>
-        </div>
-
+      <TableShell index={1} title="Total Members" icon={FiList} count={members.length}>
         <div className="hidden overflow-hidden xl:block">
           <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
               <col className="w-[8%]" />
-              <col className="w-[22%]" />
+              <col className="w-[23%]" />
               <col className="w-[12%]" />
-              <col className="w-[13%]" />
+              <col className="w-[14%]" />
               <col className="w-[11%]" />
               <col className="w-[11%]" />
-              <col className="w-[8%]" />
-              <col className="w-[15%]" />
+              <col className="w-[9%]" />
+              <col className="w-[12%]" />
             </colgroup>
             <thead>
-              <tr className="bg-gray-100 dark:bg-[#191b22] border-b-2 border-gray-300 dark:border-[#393e4f]">
-                {['Member ID', 'Member Details', 'Phone Number', 'Address', 'Package Type', 'Customer Since', 'Attendance Status', 'Actions'].map((h, i) => (
-                  <th key={h} scope="col" className={`whitespace-nowrap px-3 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest${i === 0 || i === 6 ? ' text-center' : i === 7 ? ' text-right' : ' text-left'}`}>{h}</th>
+              <tr className="border-b border-line">
+                {COLUMNS.map((h, i) => (
+                  <th key={h} scope="col" className={`${thClass} whitespace-nowrap${i === 0 || i === 6 ? ' text-center' : i === 7 ? ' text-right' : ' text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-[#393e4f]">
+            <tbody className="divide-y divide-line">
               {isLoading ? (
-                <tr>
-                  <td colSpan="8" className="px-6 py-24 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                      <div className="relative w-16 h-16">
-                        <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                      </div>
-                      <p className="text-sm font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest animate-pulse">Loading Database...</p>
-                    </div>
-                  </td>
-                </tr>
+                <TableLoading colSpan={8} />
               ) : currentMembers.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400 font-medium">
-                    No members found in the database.
-                  </td>
-                </tr>
+                <TableEmpty colSpan={8} icon={FiUsers}>No members found in the database.</TableEmpty>
               ) : (
-                currentMembers.map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-[#191b22]/50 transition-colors group border-b border-gray-200 dark:border-[#393e4f]">
-                    <td className="px-3 py-3 text-center text-sm font-bold tabular-nums text-slate-600 dark:text-gray-400">{member.id}</td>
-                    <td className="overflow-hidden px-3 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        {member.profilePicUrl ? (
-                          <img src={member.profilePicUrl} alt="Avatar" className="h-10 w-10 shrink-0 rounded-full border-2 border-gray-300 object-cover dark:border-gray-600" />
-                        ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-xs font-bold text-slate-700 dark:border-gray-600 dark:bg-[#191b22] dark:text-gray-300">
-                            {getInitials(member.firstName, member.lastName)}
-                          </div>
-                        )}
+                currentMembers.map((member, i) => (
+                  <tr key={member.id} className="rise transition-colors hover:bg-hover" style={{ '--i': Math.min(i, 8) * 0.5 + 1 }}>
+                    <td className={`${tdClass} text-center font-display text-base tabular-nums text-muted`}>{member.id}</td>
+                    <td className={`${tdClass} overflow-hidden whitespace-nowrap`}>
+                      <div className="flex items-center gap-3">
+                        <Avatar src={member.profilePicUrl} name={`${member.firstName} ${member.lastName}`} />
                         <div className="min-w-0">
-                          <div className="truncate font-semibold text-black dark:text-gray-300">{member.firstName} {member.lastName}</div>
-                          <div className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">{member.email}</div>
+                          <div className="truncate font-semibold text-ink">{member.firstName} {member.lastName}</div>
+                          <div className="mt-0.5 truncate text-xs text-muted">{member.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="overflow-hidden px-3 py-3 text-sm font-normal tabular-nums text-slate-700 dark:text-gray-300 whitespace-nowrap">{member.phone}</td>
-                    <td className="overflow-hidden px-3 py-3 text-sm font-normal text-slate-700 dark:text-gray-300 truncate">{member.address || '-'}</td>
-                    <td className="overflow-hidden px-3 py-3 text-sm font-bold text-slate-900 dark:text-gray-400 whitespace-nowrap truncate">{getActivePackageName(member)}</td>
-                    <td className="overflow-hidden px-3 py-3 text-sm font-normal text-slate-500 dark:text-gray-400 whitespace-nowrap">{member.customerSince}</td>
-                    <td className="overflow-hidden px-3 py-3 text-center whitespace-nowrap">{getStatusBadge(member.status)}</td>
-                    <td className="overflow-hidden px-3 py-3 text-right whitespace-nowrap">
-                      <div className="inline-flex items-center gap-2">
-                      <button onClick={() => onViewProfile(member)} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-blue-600 dark:text-blue-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm">
-                        <FiEye size={16} strokeWidth={2.5} />
-                      </button>
-                      <button onClick={() => onEditMember(member)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-amber-600 dark:text-amber-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-amber-50 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
-                        <FiEdit2 size={16} strokeWidth={2.5} />
-                      </button>
-                      <button onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id} className="inline-flex items-center justify-center p-2 bg-white dark:bg-[#191b22] text-red-600 dark:text-red-400 border-2 border-gray-300 dark:border-[#393e4f] hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all duration-200 hover:-translate-y-0.5 shadow-sm disabled:opacity-50">
-                        {deletingId === member.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} strokeWidth={2.5} />}
-                      </button>
-                      </div>
-                    </td>
+                    <td className={`${tdClass} overflow-hidden whitespace-nowrap tabular-nums`}>{member.phone}</td>
+                    <td className={`${tdClass} truncate`}>{member.address || '-'}</td>
+                    <td className={`${tdClass} truncate font-semibold text-ink`}>{getActivePackageName(member)}</td>
+                    <td className={`${tdClass} whitespace-nowrap text-muted`}>{member.customerSince}</td>
+                    <td className={`${tdClass} whitespace-nowrap text-center`}>{getStatusBadge(member.status)}</td>
+                    <td className={`${tdClass} whitespace-nowrap text-right`}>{rowActions(member)}</td>
                   </tr>
                 ))
               )}
@@ -182,36 +136,28 @@ export default function MemberTable({
 
         <div className="space-y-3 p-3 xl:hidden">
           {isLoading ? (
-            <p role="status" className="py-8 text-center text-sm font-semibold text-slate-500 dark:text-gray-400">Loading members…</p>
+            <CardListLoading />
           ) : currentMembers.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-500 dark:text-gray-400">No members found in the database.</p>
-          ) : currentMembers.map(member => (
-            <article key={member.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#393e4f] dark:bg-[#1b1e26]">
+            <CardListEmpty>No members found in the database.</CardListEmpty>
+          ) : currentMembers.map((member, i) => (
+            <MobileCard key={member.id} index={i}>
               <div className="flex items-start gap-3">
-                {member.profilePicUrl ? (
-                  <img src={member.profilePicUrl} alt="" className="h-11 w-11 shrink-0 rounded-full border border-slate-300 object-cover dark:border-[#393e4f]" />
-                ) : (
-                  <div aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-sm font-bold text-slate-700 dark:border-[#393e4f] dark:bg-[#252833] dark:text-gray-300">
-                    {getInitials(member.firstName, member.lastName)}
-                  </div>
-                )}
+                <Avatar size="lg" src={member.profilePicUrl} name={`${member.firstName} ${member.lastName}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold text-slate-900 dark:text-gray-200">{member.firstName} {member.lastName}</p>
-                  <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-gray-400">Member ID: {member.id}</p>
-                  <p className="truncate text-xs text-slate-500 dark:text-gray-400">{member.email}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-gray-300">
-                    <span>{member.phone || 'No phone'}</span>
-                    <span>{getActivePackageName(member)}</span>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate font-semibold text-ink">{member.firstName} {member.lastName}</p>
                     {getStatusBadge(member.status)}
                   </div>
+                  <p className="mt-0.5 truncate text-xs text-muted">{member.email}</p>
+                  <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <div><dt className="text-muted">Member ID</dt><dd className="font-semibold tabular-nums text-ink-2">{member.id}</dd></div>
+                    <div><dt className="text-muted">Phone</dt><dd className="font-semibold tabular-nums text-ink-2">{member.phone || '—'}</dd></div>
+                    <div className="col-span-2"><dt className="text-muted">Package</dt><dd className="font-semibold text-ink-2">{getActivePackageName(member)}</dd></div>
+                  </dl>
                 </div>
               </div>
-              <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-[#393e4f]">
-                <button onClick={() => onViewProfile(member)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-blue-700 dark:border-[#393e4f] dark:text-blue-400">View profile</button>
-                <button onClick={() => onEditMember(member)} disabled={deletingId === member.id} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-amber-700 disabled:opacity-50 dark:border-[#393e4f] dark:text-amber-400">Edit</button>
-                <button onClick={() => onDeleteMember(member.id)} disabled={deletingId === member.id} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 dark:border-red-900 dark:text-red-400">Delete</button>
-              </div>
-            </article>
+              <div className="mt-3 flex justify-end border-t border-line pt-3">{rowActions(member, true)}</div>
+            </MobileCard>
           ))}
         </div>
 
@@ -223,7 +169,7 @@ export default function MemberTable({
           itemsPerPage={itemsPerPage}
           itemsLabel="members"
         />
-      </div>
+      </TableShell>
     </div>
   );
 }

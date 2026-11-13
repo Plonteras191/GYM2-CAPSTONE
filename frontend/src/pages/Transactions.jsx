@@ -42,8 +42,8 @@ export default function Transactions() {
 
   return (
     <>
-      <div className="p-6 max-w-7xl mx-auto space-y-6 print:p-0 print:m-0 animate-in fade-in duration-300">
-        
+      <div className="mx-auto max-w-7xl space-y-5 p-6 print:m-0 print:p-0 lg:space-y-6">
+
         {/* Printable Report View (Visible only during window.print()) */}
         <PrintableTransactionReport
           filteredTxns={filteredTxns}
@@ -52,7 +52,7 @@ export default function Transactions() {
         />
 
         {/* Regular UI (Hidden during window.print()) */}
-        <div className="print:hidden space-y-6">
+        <div className="space-y-5 print:hidden lg:space-y-6">
           <TransactionStats
             totalIncome={totalIncome}
             totalRefunds={totalRefunds}

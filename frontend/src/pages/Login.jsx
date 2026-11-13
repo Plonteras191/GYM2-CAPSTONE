@@ -174,58 +174,60 @@ export default function Login() {
     window.location.href = '/overview';
   };
 
-  // SOFTENED INPUT CLASSES
-  const inputClass = "w-full pl-12 pr-10 py-3.5 bg-slate-800/80 border border-slate-700/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 text-gray-200 font-medium transition-all shadow-inner placeholder-gray-500";
-  const labelClass = "block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2.5 ml-1";
+  // Dark-ground field styles for the login screen only.
+  const inputClass = "w-full rounded-xl border border-white/15 bg-white/[0.06] py-3.5 pl-12 pr-10 font-medium text-white placeholder:text-white/40 transition-[border-color,box-shadow,background-color] duration-200 hover:bg-white/[0.09] focus:border-brand-gold focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-brand-gold/25";
+  const labelClass = "mb-2 block text-xs font-semibold uppercase tracking-[0.08em] text-white/60";
+  const goldButton = "press flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 font-semibold text-brand-dark shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)] hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <>
-    <div className="min-h-dvh w-full relative bg-[#11100f] text-gray-200 overflow-x-hidden font-sans">
+    <div className="relative min-h-dvh w-full overflow-x-hidden bg-brand-dark font-sans text-white">
 
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_24%_55%,rgba(166,54,22,0.16),transparent_44%),radial-gradient(ellipse_at_78%_18%,rgba(245,158,11,0.07),transparent_36%)]"></div>
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_24%_55%,rgb(166_3_3/0.18),transparent_44%),radial-gradient(ellipse_at_78%_18%,rgb(242_183_5/0.08),transparent_36%)]"></div>
 
-      <div className="hidden lg:block absolute top-0 left-0 w-[68%] h-full z-0">
+      <div className="absolute left-0 top-0 z-0 hidden h-full w-[68%] lg:block">
         <div
-          className="absolute inset-0 bg-cover mix-blend-screen opacity-55"
+          className="absolute inset-0 bg-cover opacity-55 mix-blend-screen"
           style={{ backgroundImage: `url(${loginBg})`, backgroundPosition: 'calc(-40% + 5px) center' }}
         ></div>
-        <div className="absolute inset-0 bg-linear-to-r from-transparent via-[#11100f]/30 via-55% to-[#11100f] to-100%"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-brand-dark/30 via-55% to-brand-dark to-100%"></div>
       </div>
 
-      <div className="lg:hidden absolute inset-0 z-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url(${loginBg})` }}>
-        <div className="absolute inset-0 bg-[#11100f]/80" />
+      <div className="absolute inset-0 z-0 bg-cover bg-center opacity-20 lg:hidden" style={{ backgroundImage: `url(${loginBg})` }}>
+        <div className="absolute inset-0 bg-brand-dark/80" />
       </div>
 
       <div className="relative z-10 flex min-h-dvh w-full">
 
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-14 pointer-events-none">
-          <div className="flex items-center gap-4 pointer-events-auto">
-            <div className="rounded-full border-2 border-gray-400">
-              <img src={systemLogo} alt="System logo" className="w-14 h-14 rounded-full object-cover" />
+        <div className="pointer-events-none hidden flex-col justify-between p-14 lg:flex lg:w-1/2">
+          <div className="rise pointer-events-auto flex items-center gap-4" style={{ '--i': 0 }}>
+            <div className="rounded-full bg-white ring-2 ring-brand-gold ring-offset-2 ring-offset-brand-dark">
+              <img src={systemLogo} alt="System logo" className="h-14 w-14 rounded-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="font-black italic text-transparent bg-clip-text bg-linear-to-r from-red-500 via-orange-500 to-amber-400 text-[25px] leading-none uppercase tracking-tight">Double Alpha</span>
-              <span className="mt-1.5 text-[15px] font-bold uppercase tracking-[0.28em] text-gray-100">Fitness</span>
+              <span className="bg-linear-to-r from-brand-red-300 to-brand-orange-300 bg-clip-text pr-1 font-display text-[1.75rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent">Double Alpha</span>
+              <span className="mt-1.5 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Fitness</span>
             </div>
           </div>
+          <p className="rise text-xs font-medium text-white/40" style={{ '--i': 6 }}>Member records, packages, payments and attendance in one place.</p>
         </div>
 
-        <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-5 py-8 sm:px-10 sm:py-12 lg:p-12 relative z-10">
+        <div className="relative z-10 flex w-full flex-col items-center justify-center px-5 py-8 sm:px-10 sm:py-12 lg:w-1/2 lg:p-12">
 
-          <div className="max-w-105 w-full space-y-2 sm:space-y-8 animate-in fade-in slide-in-from-right-8 duration-700 pointer-events-auto">
+          <div className="pointer-events-auto w-full max-w-105">
 
-            <div className="flex flex-col items-center lg:hidden mb-8 sm:mb-10">
-              <div className="p-1 rounded-full border-2 border-amber-500/50 bg-slate-950/50 shadow-[0_0_28px_rgba(245,158,11,0.18)]">
-                <img src={systemLogo} alt="System logo" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 backdrop-blur-md p-1 object-cover" />
+            <div className="rise mb-8 flex flex-col items-center sm:mb-10 lg:hidden" style={{ '--i': 0 }}>
+              <div className="rounded-full bg-white ring-2 ring-brand-gold ring-offset-2 ring-offset-brand-dark">
+                <img src={systemLogo} alt="System logo" className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20" />
               </div>
-              <p className="mt-3 text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">Double Alpha Fitness</p>
+              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-brand-gold">Double Alpha Fitness</p>
             </div>
 
-            <div className="text-left mb-8 sm:mb-10 border-l-4 border-amber-500 pl-4 sm:pl-5 py-1">
-              <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white drop-shadow-md">
-                System <span className="text-transparent bg-clip-text bg-linear-to-r from-yellow-500 to-amber-500">Login</span>
+            <div className="rise mb-8 border-l-[3px] border-brand-gold py-1 pl-5 sm:mb-10" style={{ '--i': 1 }}>
+              <h2 className="font-display text-4xl font-semibold uppercase leading-none tracking-tight text-white sm:text-5xl">
+                System <span className="text-brand-gold">Login</span>
               </h2>
-              <p className="text-slate-400 mt-2.5 font-medium text-sm leading-relaxed tracking-wide">
+              <p className="mt-3 text-sm leading-relaxed text-white/60">
                 Enter your administrator credentials to secure access to the hub.
               </p>
             </div>
@@ -233,19 +235,18 @@ export default function Login() {
             <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
 
               {errorMsg && (
-                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3 animate-in fade-in">
-                  <FiAlertCircle className="text-red-400 mt-0.5 shrink-0" size={18} />
-                  <p className="text-sm font-bold text-red-300">
-                    {errorMsg}
-                  </p>
+                <div role="alert" className="animate-in fade-in slide-in-from-top-2 flex items-start gap-3 rounded-xl border border-brand-red-300/30 bg-brand-red-300/10 p-4">
+                  <FiAlertCircle className="mt-0.5 shrink-0 text-brand-red-300" size={18} />
+                  <p className="text-sm font-semibold text-brand-red-300">{errorMsg}</p>
                 </div>
               )}
 
-              <div>
-                <label className={labelClass}>Email</label>
-                <div className="relative group">
-                  <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-amber-500 transition-colors text-lg" />
+              <div className="rise" style={{ '--i': 2 }}>
+                <label htmlFor="login-email" className={labelClass}>Email</label>
+                <div className="group relative">
+                  <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-white/40 transition-colors group-focus-within:text-brand-gold" />
                   <input
+                    id="login-email"
                     type="email"
                     required
                     placeholder="admin@example.com"
@@ -257,14 +258,15 @@ export default function Login() {
                 </div>
               </div>
 
-              <div>
-                <div className="flex justify-between items-center mb-2.5 ml-1">
-                  <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400">Password</label>
-                    {!loginChallengeId && <button type="button" onClick={() => setRecoveryOpen(true)} className="text-[11px] font-bold text-slate-500 hover:text-amber-500 transition-colors uppercase tracking-wider">Forgot Password?</button>}
+              <div className="rise" style={{ '--i': 3 }}>
+                <div className="mb-2 flex items-center justify-between">
+                  <label htmlFor="login-password" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/60">Password</label>
+                  {!loginChallengeId && <button type="button" onClick={() => setRecoveryOpen(true)} className="link-draw text-xs font-semibold text-white/60 transition-colors hover:text-brand-gold">Forgot password?</button>}
                 </div>
-                <div className="relative group">
-                  <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-amber-500 transition-colors text-lg" />
+                <div className="group relative">
+                  <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-white/40 transition-colors group-focus-within:text-brand-gold" />
                   <input
+                    id="login-password"
                     type={showPassword ? "text" : "password"}
                     required
                     placeholder="••••••••"
@@ -276,7 +278,8 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-gray-300 transition-colors focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="press absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-white/50 transition-colors hover:text-white"
                   >
                     {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                   </button>
@@ -284,7 +287,7 @@ export default function Login() {
               </div>
 
               {loginChallengeId && (
-                <div className="space-y-2">
+                <div className="animate-in fade-in slide-in-from-top-2 space-y-2">
                   <label htmlFor="login-pin" className={labelClass}>6-digit verification code</label>
                   <input
                     id="login-pin"
@@ -297,39 +300,37 @@ export default function Login() {
                     onChange={event => setLoginPin(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                     autoComplete="one-time-code"
                     placeholder="6-digit code"
-                    className={`${inputClass} min-h-12 pl-4 pr-4 text-center font-mono text-lg tracking-[0.45em]`}
+                    className={`${inputClass} min-h-12 pl-4 pr-4 text-center font-display text-2xl tracking-[0.45em]`}
                   />
-                  <p className="text-xs font-medium text-slate-400">Enter the code sent to your administrator email.</p>
-                  <p className="text-xs font-medium text-amber-300">{loginMessage}</p>
+                  <p className="text-xs font-medium text-white/60">Enter the code sent to your administrator email.</p>
+                  <p className="text-xs font-medium text-brand-gold">{loginMessage}</p>
                 </div>
               )}
 
-              {!loginChallengeId && <div className="flex items-center gap-3 pt-2 ml-1">
+              {!loginChallengeId && <div className="rise flex items-center gap-3 pt-1" style={{ '--i': 4 }}>
                 <input
                   type="checkbox"
                   id="remember"
                   checked={rememberMe}
                   onChange={event => setRememberMe(event.target.checked)}
-                  className="w-4 h-4 text-amber-500 bg-slate-800 border-slate-600 rounded focus:ring-amber-500 focus:ring-offset-slate-900 cursor-pointer transition-all"
+                  className="h-4 w-4 cursor-pointer rounded border-white/30 bg-white/10 accent-brand-gold"
                 />
-                <label htmlFor="remember" className="text-sm font-bold text-slate-400 cursor-pointer select-none hover:text-gray-200 transition-colors">
+                <label htmlFor="remember" className="cursor-pointer select-none text-sm font-medium text-white/70 transition-colors hover:text-white">
                   Remember me
                 </label>
               </div>}
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="mx-1 mt-6 flex min-h-9.5 w-full items-center justify-center gap-2 rounded-lg border-0 bg-linear-to-r from-yellow-400 to-amber-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-black shadow-sm transition-all hover:brightness-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70 sm:mt-8"
-              >
-                {isLoading ? <FiLoader className="animate-spin" size={20} /> : <FiLogIn size={20} />}
-                {isLoading ? (loginChallengeId ? 'Verifying...' : 'Authenticating...') : (loginChallengeId ? 'Verify and Login' : 'Login')}
-              </button>
+              <div className="rise pt-2 sm:pt-4" style={{ '--i': 5 }}>
+                <button type="submit" disabled={isLoading} className={goldButton}>
+                  {isLoading ? <FiLoader className="animate-spin" size={19} /> : <FiLogIn size={19} />}
+                  {isLoading ? (loginChallengeId ? 'Verifying…' : 'Authenticating…') : (loginChallengeId ? 'Verify and Login' : 'Login')}
+                </button>
+              </div>
 
             </form>
 
-            <div className="pt-8 sm:pt-12 text-center border-t border-slate-800 mt-6 sm:mt-8">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <div className="rise mt-8 border-t border-white/10 pt-8 text-center sm:mt-10 sm:pt-10" style={{ '--i': 6 }}>
+              <p className="text-xs font-medium leading-relaxed text-white/40">
                 Double Alpha Fitness v1.0 <br /> Tagoloan Community College Capstone
               </p>
             </div>
@@ -339,23 +340,23 @@ export default function Login() {
       </div>
     </div>
     {recoveryOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-        <div className="w-full max-w-md rounded-2xl border-2 border-slate-700 bg-[#17191f] p-6 shadow-2xl">
+      <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/70 p-4 backdrop-blur-sm">
+        <div role="dialog" aria-modal="true" aria-labelledby="recovery-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 w-full max-w-md rounded-2xl border border-night-line bg-night-panel p-6 shadow-2xl">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-lg font-black uppercase tracking-wide text-white">Forgot Password</h2>
-            <button type="button" onClick={() => setRecoveryOpen(false)} className="text-slate-400 hover:text-white" aria-label="Close recovery"><FiX size={20} /></button>
+            <h2 id="recovery-title" className="font-display text-2xl font-semibold text-white">Forgot Password</h2>
+            <button type="button" onClick={() => setRecoveryOpen(false)} className="press rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white" aria-label="Close recovery"><FiX size={20} /></button>
           </div>
           {recoveryStep === 'request' ? (
             <div className="space-y-4">
-              <p className="text-sm leading-relaxed text-slate-400">Enter the administrator email saved in Admin Profile to receive a six-digit PIN.</p>
-              <input type="email" value={credentials.email} onChange={event => setCredentials({ ...credentials, email: event.target.value })} className={inputClass} placeholder="Coach recovery email" />
-              <button type="button" onClick={requestRecovery} disabled={recoveryLoading} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-bold text-black disabled:opacity-60">
-                {recoveryLoading ? 'Sending...' : 'Send Recovery PIN'}
+              <p className="text-sm leading-relaxed text-white/60">Enter the administrator email saved in Admin Profile to receive a six-digit PIN.</p>
+              <input type="email" value={credentials.email} onChange={event => setCredentials({ ...credentials, email: event.target.value })} className={`${inputClass} pl-4`} placeholder="Coach recovery email" aria-label="Recovery email" />
+              <button type="button" onClick={requestRecovery} disabled={recoveryLoading} className={goldButton}>
+                {recoveryLoading ? 'Sending…' : 'Send Recovery PIN'}
               </button>
             </div>
           ) : (
             <form onSubmit={resetPassword} className="space-y-4">
-              <p className="text-sm leading-relaxed text-slate-400">Enter the PIN sent to the administrator email, then choose a new password.</p>
+              <p className="text-sm leading-relaxed text-white/60">Enter the PIN sent to the administrator email, then choose a new password.</p>
               <label htmlFor="recovery-pin" className={labelClass}>6-digit recovery code</label>
               <input
                 id="recovery-pin"
@@ -367,17 +368,17 @@ export default function Login() {
                 value={recoveryPin}
                 onChange={event => setRecoveryPin(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                 autoComplete="one-time-code"
-                className={`${inputClass} pl-4 pr-4 text-center font-mono text-lg tracking-[0.45em]`}
+                className={`${inputClass} pl-4 pr-4 text-center font-display text-2xl tracking-[0.45em]`}
                 placeholder="6-digit code"
               />
-              <input required minLength={8} type="password" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} className={inputClass} placeholder="New password" />
-              <input required minLength={8} type="password" value={recoveryConfirmation} onChange={event => setRecoveryConfirmation(event.target.value)} className={inputClass} placeholder="Confirm new password" />
-              <button type="submit" disabled={recoveryLoading} className="w-full rounded-xl bg-amber-500 px-4 py-3 font-bold text-black disabled:opacity-60">
-                {recoveryLoading ? 'Resetting...' : 'Reset Password'}
+              <input required minLength={8} type="password" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} className={`${inputClass} pl-4`} placeholder="New password" aria-label="New password" />
+              <input required minLength={8} type="password" value={recoveryConfirmation} onChange={event => setRecoveryConfirmation(event.target.value)} className={`${inputClass} pl-4`} placeholder="Confirm new password" aria-label="Confirm new password" />
+              <button type="submit" disabled={recoveryLoading} className={goldButton}>
+                {recoveryLoading ? 'Resetting…' : 'Reset Password'}
               </button>
             </form>
           )}
-          {recoveryMessage && <p className="mt-4 rounded-lg border border-slate-700 bg-slate-800/60 p-3 text-sm font-semibold text-slate-300">{recoveryMessage}</p>}
+          {recoveryMessage && <p className="mt-4 rounded-lg border border-night-line bg-night-field p-3 text-sm font-medium text-white/80">{recoveryMessage}</p>}
         </div>
       </div>
     )}

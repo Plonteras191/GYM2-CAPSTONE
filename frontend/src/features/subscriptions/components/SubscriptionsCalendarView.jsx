@@ -204,7 +204,7 @@ export default function SubscriptionsCalendarView({
       <div 
         onMouseMove={handleCalendarMouseMove}
         onMouseLeave={handleCalendarMouseLeave}
-        className={`mobile-calendar-grid calendar-nav-style relative flex h-auto sm:min-h-[clamp(28rem,75svh,46rem)] min-w-0 flex-col xl:col-start-1 xl:row-start-1 ${calendarOnly ? '' : 'rounded-2xl border-2 border-gray-300 bg-white p-3 shadow-sm dark:border-gray-600 dark:bg-[#252830] sm:p-5'} ${isCalendarCurrentMonth ? 'calendar-current-month' : 'calendar-other-month'}`}
+        className={`mobile-calendar-grid calendar-nav-style relative flex h-auto sm:min-h-[clamp(28rem,75svh,46rem)] min-w-0 flex-col xl:col-start-1 xl:row-start-1 ${calendarOnly ? '' : 'rounded-2xl border border-line bg-panel p-3 shadow-sm dark:border-line dark:bg-panel sm:p-5'} ${isCalendarCurrentMonth ? 'calendar-current-month' : 'calendar-other-month'}`}
       >
         <style>{`
           .fc { --fc-border-color: #e7eaf0; --fc-page-bg-color: transparent; --fc-list-event-hover-bg-color: rgba(0,0,0,0.05); --fc-today-bg-color: rgba(245,158,11,.08); color: #4b5563; }
@@ -404,10 +404,10 @@ export default function SubscriptionsCalendarView({
       </div>
 
       {!calendarOnly && <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2 lg:gap-5 xl:col-start-2 xl:row-start-1 xl:grid-cols-1 xl:content-start">
-        <div className="hidden w-full min-w-0 rounded-2xl border-2 border-gray-300 bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-[#252830] xl:col-span-1 xl:flex xl:flex-col">
-          <div className="mb-3 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-300">
-              <FiFilter size={18} className="shrink-0 text-slate-800 dark:text-gray-300" /> View Filters
+        <div className="hidden w-full min-w-0 rounded-2xl border border-line bg-panel p-4 shadow-sm dark:border-line dark:bg-panel xl:col-span-1 xl:flex xl:flex-col">
+          <div className="mb-3 border-b border-line pb-1 dark:border-line">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-ink">
+              <FiFilter size={18} className="shrink-0 text-ink" /> View Filters
             </h3>
           </div>
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-1">
@@ -430,23 +430,23 @@ export default function SubscriptionsCalendarView({
           </div>
         </div>
 
-        <div className="flex max-h-[36rem] min-h-[18rem] min-w-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm dark:border-[#454e5e] dark:bg-[#252833]">
-          <div className="mb-3 flex flex-shrink-0 items-center justify-between gap-2 border-b-2 border-gray-300 pb-1 dark:border-gray-600">
-            <h3 className="flex min-w-0 items-center gap-2 text-lg font-bold text-slate-800 dark:text-gray-300">
-              <FiCalendar size={18} className="shrink-0 text-slate-800 dark:text-gray-300" />
+        <div className="flex max-h-[36rem] min-h-[18rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-panel p-4 shadow-sm dark:border-line dark:bg-panel">
+          <div className="mb-3 flex flex-shrink-0 items-center justify-between gap-2 border-b border-line pb-1 dark:border-line">
+            <h3 className="flex min-w-0 items-center gap-2 text-lg font-bold text-ink">
+              <FiCalendar size={18} className="shrink-0 text-ink" />
               <span className="truncate">Coach Events</span>
             </h3>
-            {!readOnly && <button onClick={onOpenEventModal} aria-label="Add Event" title="Add Event" className="flex min-h-[36px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 px-3 py-2 text-xs font-bold text-slate-950 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed">
+            {!readOnly && <button onClick={onOpenEventModal} aria-label="Add Event" title="Add Event" className="flex min-h-[36px] items-center justify-center gap-2 rounded-xl bg-brand-gold hover:bg-brand-gold-500 px-3 py-2 text-xs font-bold text-brand-dark shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed">
               <FiPlus size={16} strokeWidth={3} /> <span className="sr-only sm:not-sr-only">Add Event</span>
             </button>}
           </div>
           <div
             aria-label="Upcoming coach events"
             tabIndex={0}
-            className="coach-event-list-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain space-y-2.5 pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500/60"
+            className="coach-event-list-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain space-y-2.5 pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus/60"
           >
             {upcomingCoachEvents.length === 0 ? (
-              <p className="rounded-xl bg-slate-50 px-3 py-8 text-center text-xs text-slate-500 dark:bg-white/[.03] dark:text-slate-400">No scheduled events.</p>
+              <p className="rounded-xl bg-field px-3 py-8 text-center text-xs text-muted dark:bg-white/[.03] dark:text-muted">No scheduled events.</p>
             ) : upcomingCoachEvents.map(event => {
               const eventDetails = {
                 id: event.id,
@@ -464,33 +464,33 @@ export default function SubscriptionsCalendarView({
               const eventColor = event.category?.color || event.color || '#eab308';
 
               return (
-                <div key={event.id} className="relative flex min-w-0 items-center gap-2 rounded-xl border-2 border-gray-300 bg-white p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-gray-600 dark:bg-[#1b1e26]" style={{ borderLeft: `4px solid ${eventColor}` }}>
+                <div key={event.id} className="relative flex min-w-0 items-center gap-2 rounded-xl border border-line bg-panel p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-line dark:bg-field" style={{ borderLeft: `4px solid ${eventColor}` }}>
                   <button onClick={() => openDayDetails(event.start_date, [eventDetails])} className="flex min-w-0 flex-1 flex-col gap-1 text-left">
-                    <span className="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-gray-100">{event.title}</span>
-                      <span className="truncate text-[10px] font-medium uppercase tracking-wide text-slate-600 dark:text-gray-300">{event.category?.name || 'Coach Event'}</span>
-                      {event.location && <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] font-medium text-slate-600 dark:text-gray-300">
-                        <FiMapPin size={12} className="shrink-0 text-slate-500 dark:text-gray-300" />
+                    <span className="truncate text-sm font-semibold leading-tight text-ink">{event.title}</span>
+                      <span className="truncate text-[10px] font-medium uppercase tracking-wide text-ink-2">{event.category?.name || 'Coach Event'}</span>
+                      {event.location && <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] font-medium text-ink-2">
+                        <FiMapPin size={12} className="shrink-0 text-muted" />
                       <span className="truncate">{event.location}</span>
                     </span>}
                   </button>
-                  <div className="flex w-[48px] shrink-0 flex-col items-center justify-center border-l border-slate-200 pl-2 dark:border-[#3c4352]">
-                    <span className="text-xl font-black leading-none text-slate-900 dark:text-gray-300">{new Date(event.start_date + 'T00:00:00').getDate()}</span>
-                    <span className="mt-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">{new Date(event.start_date + 'T00:00:00').toLocaleString('default', { month: 'short' })}</span>
-                    <span className="mt-1.5 rounded-md bg-slate-100 px-1.5 py-1 text-[8px] font-bold text-slate-600 dark:bg-slate-800 dark:text-gray-400">{formatTime(event.start_time)}</span>
+                  <div className="flex w-[48px] shrink-0 flex-col items-center justify-center border-l border-line pl-2 dark:border-line">
+                    <span className="text-xl font-bold leading-none text-ink">{new Date(event.start_date + 'T00:00:00').getDate()}</span>
+                    <span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">{new Date(event.start_date + 'T00:00:00').toLocaleString('default', { month: 'short' })}</span>
+                    <span className="mt-1.5 rounded-md bg-hover px-1.5 py-1 text-[10px] font-bold text-ink-2 dark:bg-hover dark:text-muted">{formatTime(event.start_time)}</span>
                   </div>
-                  <div className="relative shrink-0 border-l border-slate-100 pl-2 dark:border-[#2d3240]">
+                  <div className="relative shrink-0 border-l border-line pl-2 dark:border-line">
                     {!readOnly && <button
                       type="button"
                       onClick={() => setOpenActionsEventId(openActionsEventId === event.id ? null : event.id)}
                       title="Event actions"
                       aria-label={`${openActionsEventId === event.id ? 'Close' : 'Open'} actions for ${event.title}`}
                       aria-expanded={openActionsEventId === event.id}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-slate-700 shadow-sm transition-colors hover:border-amber-500 hover:bg-amber-50 dark:border-[#393e4f] dark:bg-[#191b22] dark:text-gray-200 dark:hover:bg-amber-500/10"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-ink-2 shadow-sm transition-colors hover:border-warn/40 hover:bg-warn-soft dark:border-line dark:bg-field dark:text-ink dark:hover:bg-warn-soft"
                     >
                       <FiMoreVertical size={18} />
                     </button>}
                     {openActionsEventId === event.id && (
-                      <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1 rounded-xl border-2 border-gray-300 bg-white p-1.5 shadow-xl dark:border-gray-600 dark:bg-[#191b22]">
+                      <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1 rounded-xl border border-line bg-panel p-1.5 shadow-xl dark:border-line dark:bg-field">
                         <button
                           type="button"
                           onClick={() => {
@@ -499,7 +499,7 @@ export default function SubscriptionsCalendarView({
                           }}
                           title="View event"
                           aria-label={`View ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-blue-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-500 hover:bg-blue-50 dark:border-[#393e4f] dark:bg-[#252830] dark:text-blue-300 dark:hover:bg-blue-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-brand-navy shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-navy/30 hover:bg-brand-navy-50 dark:border-line dark:bg-panel dark:text-brand-navy-200 dark:hover:bg-brand-navy-200/10"
                         >
                           <FiEye size={16} />
                         </button>
@@ -511,7 +511,7 @@ export default function SubscriptionsCalendarView({
                           }}
                           title="Edit event"
                           aria-label={`Edit ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-amber-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-500 hover:bg-amber-50 dark:border-[#393e4f] dark:bg-[#252830] dark:text-amber-300 dark:hover:bg-amber-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-warn shadow-sm transition-all hover:-translate-y-0.5 hover:border-warn/40 hover:bg-warn-soft dark:border-line dark:bg-panel dark:text-warn dark:hover:bg-warn-soft"
                         >
                           <FiEdit2 size={16} />
                         </button>}
@@ -524,7 +524,7 @@ export default function SubscriptionsCalendarView({
                           disabled={deletingEventId === event.id}
                           title="Delete event"
                           aria-label={`Delete ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border-2 border-gray-300 bg-white text-red-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-red-500 hover:bg-red-50 disabled:opacity-50 dark:border-[#393e4f] dark:bg-[#252830] dark:text-red-300 dark:hover:bg-red-500/10"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-negative shadow-sm transition-all hover:-translate-y-0.5 hover:border-negative/40 hover:bg-negative-soft disabled:opacity-50 dark:border-line dark:bg-panel dark:text-negative dark:hover:bg-negative-soft"
                         >
                           {deletingEventId === event.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} />}
                         </button>}

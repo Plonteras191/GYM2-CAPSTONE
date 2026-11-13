@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiMaximize, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiCamera } from 'react-icons/fi';
+import { FiMaximize, FiWifiOff, FiLoader, FiActivity, FiRefreshCw, FiCamera } from 'react-icons/fi';
 import api from '../api';
 import { AI_BASE, aiEngineFetch } from '../utils/aiEngine';
 import { getCameraSourceLabel } from '../utils/cameraSourceLabel';
 import { useNavigate } from 'react-router-dom';
 import { formatNumber } from '../utils/numberFormat';
+import AlertDialog from '../components/ui/AlertDialog';
 
 export default function GestureMonitor() {
   const navigate = useNavigate();
@@ -122,27 +123,27 @@ export default function GestureMonitor() {
     <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-full h-auto lg:h-full flex flex-col">
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">
         
-        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-slate-300 dark:border-[#393e4f] shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
+        <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-line shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
           
           <div className="absolute top-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-b from-black/40 to-transparent flex justify-end items-start z-10 pointer-events-none">
             <div className="flex items-center gap-2 md:gap-4 bg-black/50 backdrop-blur-md px-2 py-1 md:px-3 md:py-1.5 rounded-lg border border-white/10">
               {connectionState === 'CONNECTING' ? (
                 <div className="flex items-center gap-1.5 md:gap-2">
-                  <FiLoader className="animate-spin text-yellow-500 size-3 md:size-4" />
-                  <span className="text-yellow-500 font-bold tracking-widest text-[9px] md:text-xs uppercase hidden sm:block">RECONNECTING...</span>
+                  <FiLoader className="animate-spin text-brand-gold size-3 md:size-4" />
+                  <span className="text-brand-gold font-bold tracking-widest text-[10px] md:text-xs uppercase hidden sm:block">RECONNECTING...</span>
                 </div>
               ) : connectionState === 'LIVE' ? (
                 <div className="flex items-center gap-1.5 md:gap-2">
                   <span className="relative flex h-2 w-2 md:h-2.5 md:w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 md:h-2.5 md:w-2.5 bg-red-600"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-red-300 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 md:h-2.5 md:w-2.5 bg-brand-red-300"></span>
                   </span>
-                  <span className="text-red-500 font-bold tracking-widest text-[9px] md:text-xs uppercase">LIVE</span>
+                  <span className="text-brand-red-300 font-bold tracking-widest text-[10px] md:text-xs uppercase">LIVE</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 md:gap-2">
                   <div className="h-2 w-2 md:h-2.5 md:w-2.5 rounded-full bg-slate-500"></div>
-                  <span className="text-slate-400 font-bold tracking-widest text-[9px] md:text-xs uppercase">DISCONNECTED</span>
+                  <span className="text-muted font-bold tracking-widest text-[10px] md:text-xs uppercase">DISCONNECTED</span>
                 </div>
               )}
             </div>
@@ -164,13 +165,13 @@ export default function GestureMonitor() {
             />
             
             {connectionState === 'CONNECTING' ? (
-              <div className="z-10 flex flex-col items-center justify-center gap-4 text-slate-400">
-                <FiLoader size={48} className="text-amber-500 animate-spin" />
+              <div className="z-10 flex flex-col items-center justify-center gap-4 text-muted">
+                <FiLoader size={48} className="text-brand-gold animate-spin" />
                 <p className="font-bold uppercase tracking-widest text-xs">Connecting to camera...</p>
               </div>
             ) : connectionState === 'DISCONNECTED' ? (
-              <div className="z-10 text-center text-slate-400 bg-black/40 p-4 md:p-8 rounded-2xl border border-white/5">
-                <FiWifiOff size={40} md:size={56} className="mx-auto text-slate-600 mb-2 md:mb-4 opacity-90" />
+              <div className="z-10 text-center text-muted bg-black/40 p-4 md:p-8 rounded-2xl border border-white/5">
+                <FiWifiOff size={40} md:size={56} className="mx-auto text-ink-2 mb-2 md:mb-4 opacity-90" />
                 <p className="text-sm md:text-lg font-bold text-slate-200">
                   {engineOnline === false ? 'Python Engine Offline' : 'Camera Not Connected'}
                 </p>
@@ -189,7 +190,7 @@ export default function GestureMonitor() {
           <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-end items-end z-10">
             <div className="flex gap-2 md:gap-3 items-center">
               <label className="px-2.5 py-2 md:px-3.5 md:py-2.5 bg-white/10 text-white rounded-lg md:rounded-xl backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[10px] md:text-xs font-bold uppercase tracking-wider shadow-sm" title="Select video source">
-                <FiCamera className="size-4 md:size-5 text-amber-400" />
+                <FiCamera className="size-4 md:size-5 text-brand-gold" />
                 <select value={cameraSource} onChange={handleCameraChange} className="camera-source-select bg-transparent text-white font-bold uppercase focus:outline-none">
                   {availableCameraSources.map(source => (
                     <option key={source} value={source} className="bg-slate-900 text-white">{getCameraSourceLabel(source)}</option>
@@ -204,27 +205,28 @@ export default function GestureMonitor() {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/4 flex flex-col gap-6 min-h-[380px] lg:h-full flex-shrink-0">
-          <div className="bg-white dark:bg-[#252830] rounded-2xl border border-gray-300 dark:border-gray-600 shadow-sm flex flex-col overflow-hidden h-full">
-            <div className="p-4 md:p-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex items-center justify-between flex-shrink-0">
-              <h3 className="flex min-w-0 items-center gap-2 whitespace-nowrap font-bold text-slate-800 dark:text-gray-300 text-[11px] sm:text-xs lg:text-[9px] xl:text-[11px] 2xl:text-sm">
-                <FiActivity className="shrink-0 text-black dark:text-gray-300" size={18} />
-                Workout Queue & Gesture Logs
+        <div className="flex min-h-[380px] w-full flex-shrink-0 flex-col lg:h-full lg:w-1/4">
+          <section className="rise flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-panel" style={{ '--i': 1 }}>
+            <header className="flex flex-shrink-0 items-center justify-between border-b border-line bg-field px-4 py-3">
+              <h3 className="flex min-w-0 items-center gap-2.5 text-[15px] font-semibold leading-tight text-ink">
+                <FiActivity className="shrink-0 text-muted" size={16} />
+                <span className="min-w-0">Workout Queue & Gesture Logs</span>
               </h3>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 hidden-scrollbar">
+            </header>
+
+            <div className="hidden-scrollbar flex-1 divide-y divide-line overflow-y-auto px-4">
               {recentLogs.length === 0 ? (
-                <div className="text-center mt-10">
-                   <p className="text-xs md:text-sm font-bold text-gray-600 dark:text-gray-400">No scheduled workouts or AI detections yet.</p>
+                <div className="mt-8 flex flex-col items-center gap-3 px-2 text-center">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-muted"><FiActivity size={20} /></span>
+                  <p className="text-sm font-medium text-muted">No scheduled workouts or AI detections yet.</p>
                 </div>
               ) : (
-                recentLogs.map((log) => (
-                  <div key={log.id} className="flex gap-4 items-start relative pb-4 border-b border-gray-200 dark:border-gray-700 last:border-0 last:pb-0 animate-in fade-in slide-in-from-right-4">
-                    <div className="text-[10px] md:text-[11px] font-mono font-bold text-gray-600 dark:text-gray-400 mt-0.5 w-[65px] md:w-[72px] flex-shrink-0">{log.time}</div>
-                    <div>
-                      <button type="button" onClick={() => log.member_id && navigate('/members', { state: { memberId: log.member_id } })} className="text-left text-xs font-bold leading-tight text-gray-900 dark:text-gray-200 md:text-sm">{log.name}</button>
-                      <p className={`text-[10px] md:text-xs font-medium mt-1 ${log.event.includes('Pending') ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`}>
+                recentLogs.map((log, index) => (
+                  <div key={log.id} className="animate-in fade-in slide-in-from-right-4 flex items-start gap-3 py-3" style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}>
+                    <div className="mt-0.5 w-[68px] flex-shrink-0 font-display text-sm font-semibold tabular-nums text-muted">{log.time}</div>
+                    <div className="min-w-0">
+                      <button type="button" onClick={() => log.member_id && navigate('/members', { state: { memberId: log.member_id } })} className={`block max-w-full truncate text-left text-sm font-semibold leading-tight text-ink${log.member_id ? ' link-draw' : ''}`}>{log.name}</button>
+                      <p className={`mt-1 text-xs font-medium ${log.event.includes('Pending') ? 'text-warn' : 'text-positive'}`}>
                         {log.event}
                       </p>
                     </div>
@@ -232,16 +234,17 @@ export default function GestureMonitor() {
                 ))
               )}
             </div>
-            
-            <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#191b22] flex-shrink-0">
-              <div className="flex justify-between items-center text-[10px] md:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-2">Camera FPS: <span className={`${connectionState === 'LIVE' ? 'text-slate-800 dark:text-gray-300' : 'text-slate-400'}`}>{connectionState === 'LIVE' && cameraFps !== null ? formatNumber(cameraFps, { maximumFractionDigits: 1 }) : '--'}</span></span>
-                <span className={`${engineOnline ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'} flex items-center gap-1.5`}>
-                  API: {engineOnline === null ? 'CHECKING' : engineOnline ? 'ONLINE' : 'OFFLINE'}
+
+            <footer className="flex-shrink-0 border-t border-line bg-field p-3">
+              <div className="flex items-center justify-between text-xs text-muted">
+                <span>Camera FPS <span className={`font-semibold tabular-nums ${connectionState === 'LIVE' ? 'text-ink-2' : 'text-muted'}`}>{connectionState === 'LIVE' && cameraFps !== null ? formatNumber(cameraFps, { maximumFractionDigits: 1 }) : '--'}</span></span>
+                <span className={`flex items-center gap-2 font-semibold ${engineOnline ? 'text-positive' : engineOnline === null ? 'text-muted' : 'text-negative'}`}>
+                  <span aria-hidden="true" className={`h-2 w-2 rounded-full ${engineOnline ? 'bg-positive' : engineOnline === null ? 'bg-line-strong' : 'bg-negative'}`} />
+                  API {engineOnline === null ? 'checking' : engineOnline ? 'online' : 'offline'}
                 </span>
               </div>
-              <div className="mt-2 flex flex-wrap justify-between gap-1 text-[10px] font-semibold text-slate-500 dark:text-gray-400">
-                <span>Source: {getCameraSourceLabel(cameraSource)}</span>
+              <div className="mt-2 flex flex-wrap justify-between gap-1 text-xs text-muted">
+                <span>Source <span className="font-semibold text-ink-2">{getCameraSourceLabel(cameraSource)}</span></span>
                 <span>
                   {cameraStatusError
                     ? 'Camera status unavailable'
@@ -250,31 +253,19 @@ export default function GestureMonitor() {
                       : 'Camera connecting / unavailable'}
                 </span>
               </div>
-            </div>
-          </div>
+            </footer>
+          </section>
         </div>
 
       </div>
 
-      {/* --- CUSTOM ALERT MODAL --- */}
-      {alertDialog.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className={`bg-white dark:bg-[#252833] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border-2 ${alertDialog.type === 'error' ? 'border-red-500/30' : 'border-emerald-500/30'}`}>
-            <div className="p-6 text-center space-y-4">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border ${alertDialog.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-200 dark:border-emerald-500/30'}`}>
-                {alertDialog.type === 'error' ? <FiAlertCircle size={32} /> : <FiCheckCircle size={32} />}
-              </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-gray-200 uppercase tracking-wide">{alertDialog.title}</h3>
-              <p className="text-slate-500 dark:text-gray-400 font-medium whitespace-pre-line">{alertDialog.message}</p>
-            </div>
-            <div className="p-4 border-t-2 border-gray-100 dark:border-[#393e4f] bg-gray-50 dark:bg-[#191b22] flex justify-center">
-              <button onClick={() => setAlertDialog({ ...alertDialog, isOpen: false })} className="w-full px-8 py-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-900 text-white dark:bg-gray-200 dark:hover:bg-white dark:text-black transition-colors uppercase tracking-wide text-xs shadow-md active:scale-95">
-                Okay
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+      />
 
     </div>
   );
