@@ -27,6 +27,31 @@ CONTEXT_MARGIN = 0.25
 CACHE_VERSION = f"v2-j{ENROLL_JITTERS}-s{ALIGN_SCALE}-d{ALIGN_SHIFT_DOWN}-c{CONTEXT_MARGIN}"
 
 
+def resolve_face_path(backend_dir, image_file):
+    """Absolute path of an enrolled face photo, or None if it is missing.
+
+    Face photos are biometric data, so Laravel keeps them in
+    storage/app/private (not reachable from the web). Photos enrolled by
+    older versions may still be in public/ until "php artisan faces:secure"
+    is run, so both places are checked.
+    """
+    relative = str(image_file).lstrip('/\\')
+    for base in (os.path.join(backend_dir, 'storage', 'app', 'private'), os.path.join(backend_dir, 'public')):
+        root = os.path.abspath(base)
+        path = os.path.normpath(os.path.join(root, relative))
+        if path.startswith(root + os.sep) and os.path.isfile(path):
+            return path
+    return None
+
+
+def faces_signature(members):
+    """Changes whenever the enrolled faces, names or coach eligibility change."""
+    return sorted(
+        (member.get('id'), member.get('name'), member.get('image_file'), bool(member.get('workout_eligible', False)))
+        for member in members
+    )
+
+
 def encode_at(rgb_image, box, jitters=1, upscale=1.0):
     """Encode the face at box (top, right, bottom, left); None if it fails.
 

@@ -45,3 +45,6 @@ Gesture Engine/models/face_cache.pkl.tmp
 
 # Local credentials notes (never commit)
 OpenSesami.md
+
+# Check-ins waiting to be re-sent to Laravel
+Gesture Engine/data/

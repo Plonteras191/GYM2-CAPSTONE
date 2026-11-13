@@ -42,7 +42,9 @@ from pose_features import (
 from workout_prediction import select_assigned_prediction
 from face_matching import IdentityVote, align_box, best_member_match
 from face_matching import box_size as face_box_size
-from face_enrollment import EncodingCache, encode_at
+from face_enrollment import EncodingCache, encode_at, faces_signature, resolve_face_path
+from liveness import BlinkDetector, FaceMeshEyes, liveness_required_from_env
+from attendance_queue import SENT, AttendanceSender
 
 app = Flask(__name__)
 CORS(app)
@@ -55,7 +57,7 @@ AI_ENGINE_TOKEN = env_loader.ai_engine_token()
 if not AI_ENGINE_TOKEN:
     print("[WARNING] AI_ENGINE_TOKEN is not set. Laravel will reject attendance and workout updates.")
 LARAVEL_HEADERS = {"X-AI-Engine-Token": AI_ENGINE_TOKEN, "Accept": "application/json"}
-KNOWN_FACES_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'backend', 'public'))
+BACKEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'backend'))
 
 # Main Stream 720p H.264 (Channel 101) — reverted from 102 sub-stream which caused more lag on this camera
 # Camera URLs contain passwords, so they come only from the environment or
@@ -126,6 +128,19 @@ def _env_number(name, default, cast=float):
 # (encodings array, member ids, names, workout eligibility), one row per view.
 face_db = (np.empty((0, 128)), [], [], [])
 face_db_reload_lock = threading.Lock()
+# member id -> 'active' | 'expired' | 'none', refreshed every minute so the
+# Security Monitor can flag members whose subscription has expired.
+member_subscriptions = {}
+SUBSCRIPTION_REFRESH_SECONDS = 60
+# What the loaded faces were built from. When Laravel's list no longer
+# matches (new member, new face photo, coach membership change), the faces
+# are reloaded automatically; no need to press "Force AI Memory Sync".
+loaded_faces_signature = None
+# Anti-spoofing: when on, attendance is logged only after the face blinks
+# (a printed photo never does). Off by default; see liveness.py.
+LIVENESS_REQUIRED = liveness_required_from_env()
+BLINK_COLOR = (0, 215, 255)  # yellow (BGR)
+RENEW_COLOR = (0, 140, 255)  # orange (BGR)
 FACE_CACHE_PATH = os.path.join(BASE_DIR, 'models', 'face_cache.pkl')
 
 # Recognition tuning. Override in "Gesture Engine/.env"; calibrate with
@@ -253,8 +268,8 @@ if ml_model is not None:
         pass
 
 def member_face_path(member):
-    raw_path = member['image_file'].lstrip('/')
-    return os.path.normpath(os.path.join(KNOWN_FACES_DIR, raw_path))
+    """Path of the member's enrolled face photo, or None if it is missing."""
+    return resolve_face_path(BACKEND_DIR, member['image_file'])
 
 
 def load_registered_faces():
@@ -265,7 +280,7 @@ def load_registered_faces():
     frames. Encodings are cached in models/face_cache.pkl, so only new or
     changed enrollments pay the slower high-jitter encoding.
     """
-    global face_db
+    global face_db, member_subscriptions, loaded_faces_signature
 
     print("\n" + "="*50)
     print("🚀 [CAPSTONE READY] HIGH-ACCURACY AI ENGINE...")
@@ -286,7 +301,7 @@ def load_registered_faces():
 
         for member in members:
             filepath = member_face_path(member)
-            if not os.path.exists(filepath):
+            if filepath is None:
                 print(f"  [MISSING] Face image not found for {member['name']}")
                 continue
             seen_paths.append(filepath)
@@ -319,6 +334,10 @@ def load_registered_faces():
 
         matrix = np.array(encodings) if encodings else np.empty((0, 128))
         face_db = (matrix, ids, names, eligibility)
+        member_subscriptions = {
+            member['id']: member.get('subscription_status') for member in members
+        }
+        loaded_faces_signature = faces_signature(members)
         print(f"[SYNC] {len(set(ids))} members ready ({len(ids)} face views).")
     print("="*50 + "\n")
 
@@ -337,19 +356,40 @@ def compute_iou(boxA, boxB):
     areaB = (bottomB - topB) * (rightB - leftB)
     return inter_area / float(areaA + areaB - inter_area)
 
-def log_attendance_to_laravel(member_id, name):
+# Check-ins that could not be delivered (Laravel down or restarting) are
+# saved here and retried, so no arrival is lost. Git-ignored.
+ATTENDANCE_QUEUE_PATH = os.path.join(BASE_DIR, 'data', 'attendance_queue.jsonl')
+ATTENDANCE_RETRY_SECONDS = 30
+attendance_sender = AttendanceSender(
+    f"{LARAVEL_API}/ai/log-attendance", LARAVEL_HEADERS, ATTENDANCE_QUEUE_PATH
+)
+
+
+def log_attendance_to_laravel(member_id, name, match_distance=None):
     current_time = time.time()
     if member_id in logged_today and (current_time - logged_today[member_id]) < 10.0:
-        return 
-        
+        return
+
     logged_today[member_id] = current_time
-    
-    try:
-        res = requests.post(f"{LARAVEL_API}/ai/log-attendance", json={"member_id": member_id}, headers=LARAVEL_HEADERS, timeout=5)
-        if res.json().get('status') == 'logged':
-            print(f"\n>>> [ATTENDANCE SUCCESS] Logged: {name}!\n")
-    except Exception:
-        pass
+
+    outcome, detail = attendance_sender.submit(
+        member_id, name, camera_source=camera_mode, match_distance=match_distance
+    )
+    if outcome == SENT and detail == 'logged':
+        print(f"\n>>> [ATTENDANCE SUCCESS] Logged: {name}!\n")
+    elif outcome == SENT and detail == 'outside_hours':
+        print(f"[ATTENDANCE] {name} was recognized outside gym hours; not logged.")
+
+
+def attendance_retry_worker():
+    """Retry saved check-ins until Laravel accepts them."""
+    while True:
+        try:
+            attendance_sender.flush()
+        except Exception as error:
+            print(f"[ATTENDANCE ERROR] Retry failed: {error}")
+        time.sleep(ATTENDANCE_RETRY_SECONDS)
+
 
 def log_workout_to_laravel(member_id, athlete_name, exercise):
     if not member_id: return
@@ -494,6 +534,8 @@ def face_ai_worker():
 def _face_ai_loop():
     global current_raw_frame, shared_faces, tracked_faces, next_track_id
     last_processed_sequence = -1
+    # Created here because Face Mesh must be used from this thread only.
+    face_mesh_eyes = FaceMeshEyes() if LIVENESS_REQUIRED else None
     
     while True:
         # FIX #1: Read frame under lock to prevent partial reads
@@ -629,6 +671,9 @@ def _face_ai_loop():
                     window=FACE_VOTE_WINDOW,
                     required=FACE_VOTES_REQUIRED,
                 ),
+                'blink': BlinkDetector(),
+                'attendance_pending': False,
+                'pending_distance': None,
             }
             next_track_id += 1
             updated_tracks.append(new_track)
@@ -639,6 +684,19 @@ def _face_ai_loop():
         # samples agree, so one bad frame cannot assign the wrong member.
         known_matrix, known_ids, known_names, known_eligibility = face_db
         rgb_frame = None
+        if face_mesh_eyes is not None:
+            for track in updated_tracks:
+                if (
+                    track['last_seen'] == now
+                    and not track['blink'].blinked
+                    and face_box_size(track['aligned_box']) >= FACE_NEAR_SIZE
+                ):
+                    if rgb_frame is None:
+                        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    try:
+                        track['blink'].add(face_mesh_eyes.ear(rgb_frame, track['aligned_box']), now)
+                    except Exception:
+                        pass
         for track in updated_tracks:
             if len(known_ids) == 0 or track['last_seen'] != now:
                 continue
@@ -677,7 +735,7 @@ def _face_ai_loop():
                 continue
 
             distances = face_recognition.face_distance(known_matrix, encoding)
-            sample_id, _, _ = best_member_match(
+            sample_id, sample_distance, _ = best_member_match(
                 distances, known_ids,
                 FACE_FAR_THRESHOLD if is_far else FACE_MATCH_THRESHOLD,
                 FACE_MATCH_MARGIN,
@@ -693,19 +751,44 @@ def _face_ai_loop():
                 track['member_id'] = vote.confirmed
                 track['name'] = known_names[idx]
                 track['workout_eligible'] = known_eligibility[idx]
-                track['color'] = (0, 255, 0)
+                # Expired members are still logged; the orange tag tells
+                # staff to ask them to renew.
+                track['needs_renewal'] = member_subscriptions.get(vote.confirmed) == 'expired'
+                track['color'] = RENEW_COLOR if track['needs_renewal'] else (0, 255, 0)
                 if newly_confirmed:
-                    threading.Thread(
-                        target=log_attendance_to_laravel,
-                        args=(vote.confirmed, known_names[idx]),
-                        daemon=True,
-                    ).start()
+                    track['attendance_pending'] = True
+                    track['pending_distance'] = sample_distance if sample_id == vote.confirmed else None
             else:
                 track['member_id'] = None
                 track['name'] = 'Unknown'
                 track['workout_eligible'] = False
+                track['needs_renewal'] = False
+                track['attendance_pending'] = False
                 track['color'] = (0, 0, 255)
 
+        # Keep the renew flag current for faces already on screen (e.g. the
+        # member renews at the desk while standing in view).
+        for track in updated_tracks:
+            if track.get('member_id') is not None:
+                track['needs_renewal'] = member_subscriptions.get(track['member_id']) == 'expired'
+                track['color'] = RENEW_COLOR if track['needs_renewal'] else (0, 255, 0)
+
+        # Send each confirmed member's check-in once. With the blink check
+        # on, it waits until this face has blinked.
+        for track in updated_tracks:
+            track['awaiting_blink'] = False
+            if not track.get('attendance_pending') or track.get('member_id') is None:
+                continue
+            if LIVENESS_REQUIRED and not track['blink'].blinked:
+                track['awaiting_blink'] = True
+                track['color'] = BLINK_COLOR
+                continue
+            track['attendance_pending'] = False
+            threading.Thread(
+                target=log_attendance_to_laravel,
+                args=(track['member_id'], track['name'], track.get('pending_distance')),
+                daemon=True,
+            ).start()
 
         tracked_faces = updated_tracks
         # Update shared_faces for Security Monitor HUD and skeleton binding
@@ -714,6 +797,14 @@ def _face_ai_loop():
                 'id': t['id'],
                 'box': t['box'],
                 'name': t['name'],
+                # Text drawn on the Security Monitor; 'name' stays the plain
+                # member name for attendance and the Gesture Monitor.
+                'label': t['name']
+                + (
+                    (" - BLINK" if face_box_size(t['aligned_box']) >= FACE_NEAR_SIZE else " - COME CLOSER")
+                    if t.get('awaiting_blink') else ""
+                )
+                + (" - RENEW" if t.get('needs_renewal') else ""),
                 'member_id': t.get('member_id'),
                 'workout_eligible': t.get('workout_eligible', False),
                 'color': t['color'],
@@ -765,9 +856,31 @@ def refresh_workout_plans():
     except (requests.RequestException, ValueError) as e:
         print(f"[ERROR] Could not refresh assigned workout targets: {e}")
 
+def refresh_member_subscriptions():
+    """Re-read each member's subscription status (no face re-encoding)."""
+    global member_subscriptions
+    try:
+        response = requests.get(f"{LARAVEL_API}/ai/members-faces", headers=LARAVEL_HEADERS, timeout=5)
+        response.raise_for_status()
+        members = response.json()
+        if isinstance(members, list):
+            member_subscriptions = {
+                member['id']: member.get('subscription_status') for member in members
+            }
+            if loaded_faces_signature is not None and faces_signature(members) != loaded_faces_signature:
+                print("[SYNC] Member list changed in Laravel; reloading faces...")
+                threading.Thread(target=load_registered_faces, daemon=True).start()
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        pass  # keep the last known statuses; retried on the next cycle
+
+
 def workout_plan_worker():
+    last_subscription_refresh = time.monotonic()
     while True:
         refresh_workout_plans()
+        if time.monotonic() - last_subscription_refresh >= SUBSCRIPTION_REFRESH_SECONDS:
+            refresh_member_subscriptions()
+            last_subscription_refresh = time.monotonic()
         time.sleep(15)
 
 def pose_bounding_box(landmarks, frame_width, frame_height):
@@ -1229,7 +1342,7 @@ def video_stream_worker():
         athletes = shared_athletes.copy()
         for face in faces:
             (top, right, bottom, left) = face['box']
-            name, color = face['name'], face['color']
+            name, color = face.get('label', face['name']), face['color']
             cv2.rectangle(sec_frame, (left, top), (right, bottom), color, 3)
             cv2.rectangle(sec_frame, (left, max(0, top - 35)), (right, top), color, cv2.FILLED)
             cv2.putText(sec_frame, name, (left + 6, max(20, top - 10)), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255, 255, 255), 1)
@@ -1276,6 +1389,7 @@ def start_background_workers():
     threading.Thread(target=gesture_ai_worker, daemon=True).start()
     threading.Thread(target=video_stream_worker, daemon=True).start()
     threading.Thread(target=workout_plan_worker, daemon=True).start()
+    threading.Thread(target=attendance_retry_worker, daemon=True).start()
 
 
 # Listen only on this computer by default. Set AI_ENGINE_HOST=0.0.0.0 in

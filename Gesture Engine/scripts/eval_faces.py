@@ -37,11 +37,11 @@ import mediapipe as mp  # noqa: E402
 import numpy as np  # noqa: E402
 import requests  # noqa: E402
 
-from face_enrollment import EncodingCache, encode_at  # noqa: E402
+from face_enrollment import EncodingCache, encode_at, resolve_face_path  # noqa: E402
 from face_matching import align_box, best_member_match, box_size  # noqa: E402
 
 LARAVEL_API = os.getenv("LARAVEL_API_URL", "http://127.0.0.1:8000/api")
-KNOWN_FACES_DIR = os.path.abspath(os.path.join(ENGINE_DIR, "..", "backend", "public"))
+BACKEND_DIR = os.path.abspath(os.path.join(ENGINE_DIR, "..", "backend"))
 CACHE_PATH = os.path.join(ENGINE_DIR, "models", "face_cache.pkl")
 THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.50"))
 MARGIN = float(os.getenv("FACE_MATCH_MARGIN", "0.05"))
@@ -60,8 +60,8 @@ def load_enrollments(detector):
     cache = EncodingCache(CACHE_PATH)
     enrolled = {}
     for member in fetch_members():
-        path = os.path.normpath(os.path.join(KNOWN_FACES_DIR, member["image_file"].lstrip("/")))
-        if not os.path.exists(path):
+        path = resolve_face_path(BACKEND_DIR, member["image_file"])
+        if path is None:
             print(f"  missing image: {member['name']}")
             continue
         encodings, views, _ = cache.get_or_encode(path, detector)
