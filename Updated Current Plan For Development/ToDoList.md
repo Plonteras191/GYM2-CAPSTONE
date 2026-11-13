@@ -33,6 +33,7 @@
 6. Reports
 7. Attendance Monitor
     - (Must do) Set a returning member back to Active automatically. When an Inactive member checks in, their profile becomes Active again, so the rule works both ways: gone 1 month → Inactive, comes back → Active. (Backend: AttendanceController.php)
+    - (Must do) Add a manual Active/Inactive switch in Edit Member as a backup, so the admin can fix a member's status when the camera missed them. The backend should only accept "Active" or "Inactive". (Right now there is no way to change status by hand.)
     - (Must do) Run the 1-month Inactive check every day. Add a daily scheduled job so members become Inactive on time, not only when someone opens the Members page. Keeps Dashboard and Reports counts correct. Reuses the existing check.
     - (Recommended) Flag expired subscriptions at the door. Keep logging them, but show an orange name tag on the camera feed and an "Expired" badge in today's log so staff can ask the member to renew. Nothing is blocked.
     - (Nice to have) Show status in today's log. A small badge next to each check-in: Active, "Returned (was Inactive)" or Expired.

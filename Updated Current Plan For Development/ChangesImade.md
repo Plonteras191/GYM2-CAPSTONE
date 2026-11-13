@@ -150,3 +150,5 @@
   - **Adaptive Viewport Height:** Updated outer container wrapper from rigid `h-full` to `min-h-full h-auto lg:h-full` with `min-h-[380px]` attendance panel, eliminating log truncation and clipping on mobile and tablet screens when the video feed is displayed in aspect-video mode.
 - **Dark Mode Design Tokens Harmonization:**
   - Standardized all card backgrounds, borders, and input boxes across Reports, Monitors, and Subscription views to the unified dark mode palette: `#191b22` (inputs/table headers), `#252833` (cards/modals), `#393e4f` (borders/dividers), and `#f1f5f9` (text).
+
+---
