@@ -12,9 +12,22 @@ class Attendance extends Model
 
     protected $fillable = [
         'member_id',
+        'member_name_snapshot',
         'date',
         'time_in',
-        'time_out'
+        'source',
+        'camera_source',
+        'match_distance',
+        'subscription_status',
+        'plan_snapshot',
+        'reactivated',
+        'recorded_by_admin_id',
+        'reason',
+    ];
+
+    protected $casts = [
+        'reactivated' => 'boolean',
+        'match_distance' => 'float',
     ];
 
     public function member()

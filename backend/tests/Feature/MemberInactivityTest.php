@@ -24,6 +24,7 @@ class MemberInactivityTest extends TestCase
             $table->string('phone');
             $table->string('plan')->default('None');
             $table->string('status')->default('Active');
+            $table->timestamp('status_updated_at')->nullable();
             $table->string('profile_pic')->nullable();
             $table->longText('enrolled_face_id')->nullable();
             $table->timestamps();
@@ -31,6 +32,7 @@ class MemberInactivityTest extends TestCase
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('member_id');
+            $table->string('member_name_snapshot')->nullable();
             $table->date('date');
             $table->time('time_in')->nullable();
             $table->timestamps();

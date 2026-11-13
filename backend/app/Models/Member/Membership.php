@@ -42,6 +42,19 @@ class Membership extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    /** Subscriptions that are active (not cancelled, within their dates) on a date. */
+    public function scopeActiveOn(Builder $query, string $date): Builder
+    {
+        return $query
+            ->where('status', 'Active')
+            ->where(function (Builder $query) use ($date) {
+                $query->whereNull('start_date')->orWhereDate('start_date', '<=', $date);
+            })
+            ->where(function (Builder $query) use ($date) {
+                $query->whereNull('end_date')->orWhereDate('end_date', '>=', $date);
+            });
+    }
+
     public function scopeActiveWithCoach(Builder $query): Builder
     {
         return $query

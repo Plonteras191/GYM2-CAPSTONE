@@ -92,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- 8. ATTENDANCE ---
     Route::get('/members/{id}/attendance', [AttendanceController::class, 'getMemberAttendance']);
     Route::get('/attendance/today', [AttendanceController::class, 'getTodayAttendance']);
+    Route::post('/attendance/manual', [AttendanceController::class, 'manualCheckIn']);
 
     // --- 9. WORKOUTS (SUPERVISOR MODE) ---
     Route::post('/members/{id}/assign-task', [WorkoutController::class, 'assignTask']);

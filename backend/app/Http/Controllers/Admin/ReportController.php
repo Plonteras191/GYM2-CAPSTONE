@@ -69,8 +69,11 @@ class ReportController extends Controller
         $expiredCount = $statusCounts['Expired'] ?? 0;
 
         // 5. Attendance records in date range
-        $attendances = Attendance::select('id', 'member_id', 'date', 'time_in')
-            ->with('member:id,first_name,last_name,email,profile_pic,plan')
+        $attendances = Attendance::select(
+                'id', 'member_id', 'member_name_snapshot', 'date', 'time_in', 'source',
+                'camera_source', 'subscription_status', 'plan_snapshot'
+            )
+            ->with('member:id,first_name,last_name,email,profile_pic')
             ->whereBetween('date', [$start, $end])
             ->orderBy('date', 'desc')
             ->orderBy('time_in', 'desc')
@@ -147,13 +150,41 @@ class ReportController extends Controller
             $m->status,
         ]);
 
-        $attendanceRows = $attendances->map(function ($a) use ($memberDetails) {
-            $name       = $memberDetails($a->member, 'Unknown Face');
-            $memberType = ($a->member && $a->member->plan && $a->member->plan !== 'None')
-                ? $a->member->plan
-                : 'Walk-in Guest';
-            return [$a->date . ' / ' . $a->time_in, $name, $memberType, 'Verified'];
-        });
+        // Each row shows what was true at check-in (plan, subscription), not
+        // the member's current data, so past reports do not change over time.
+        $attendanceRows = $attendances->map(fn ($a) => [
+            $a->date . ' / ' . Carbon::parse($a->time_in)->format('g:i A'),
+            $memberDetails($a->member, 'Deleted Member', $a->member_name_snapshot),
+            $a->plan_snapshot ?: 'No plan',
+            match ($a->subscription_status) {
+                'active' => 'Active',
+                'expired' => 'Expired',
+                'none' => 'No Subscription',
+                default => 'Not Recorded',
+            },
+            $a->source === 'manual' ? 'Manual' : 'Face',
+            $this->cameraLabel($a->camera_source),
+        ]);
+
+        $uniqueMembers = $attendances->map(fn ($a) => $a->member_id ?? 'deleted:' . $a->member_name_snapshot)
+            ->unique()
+            ->count();
+
+        // Average over the days in the range that have already happened.
+        $rangeEnd = Carbon::parse($end)->min(Carbon::today());
+        $daysInRange = max(1, Carbon::parse($start)->diffInDays($rangeEnd) + 1);
+        $avgDailyVisits = round($totalCheckIns / $daysInRange, 1);
+
+        $busiestHour = $attendances
+            ->groupBy(fn ($a) => (int) substr((string) $a->time_in, 0, 2))
+            ->map->count()
+            ->sortDesc()
+            ->keys()
+            ->first();
+        $busiestHourLabel = $busiestHour === null
+            ? 'No check-ins'
+            : Carbon::createFromTime($busiestHour)->format('g A') . ' - '
+                . Carbon::createFromTime($busiestHour)->addHour()->format('g A');
 
         return response()->json([
             'Payments' => [
@@ -177,14 +208,28 @@ class ReportController extends Controller
             ],
             'Attendance' => [
                 'kpis' => [
-                    ['label' => 'Total Check-ins',   'value' => (string) $totalCheckIns, 'trend' => 'Live'],
-                    ['label' => 'Avg. Daily Visits',  'value' => 'Tracking Active',       'trend' => 'Live'],
-                    ['label' => 'System Status',      'value' => 'Online',                'trend' => 'Live'],
+                    ['label' => 'Total Check-ins',   'value' => (string) $totalCheckIns,   'trend' => 'Live'],
+                    ['label' => 'Unique Members',    'value' => (string) $uniqueMembers,   'trend' => 'Live'],
+                    ['label' => 'Avg. Daily Visits', 'value' => (string) $avgDailyVisits,  'trend' => 'Live'],
+                    ['label' => 'Busiest Hour',      'value' => $busiestHourLabel,         'trend' => 'Live'],
                 ],
-                'columns' => ['Date / Time', 'Member Details', 'Member Type', 'Status'],
+                'columns' => ['Date / Time', 'Member Details', 'Plan', 'Subscription Status', 'Method', 'Camera'],
                 'rows'    => $attendanceRows,
             ],
         ]);
+    }
+
+    private function cameraLabel(?string $source): string
+    {
+        return match ($source) {
+            'cctv' => 'CCTV 1',
+            'cctv_2' => 'CCTV 2',
+            'cctv_3' => 'CCTV 3',
+            'webcam' => 'Webcam',
+            'phone' => 'Phone Camera',
+            null, '' => '-',
+            default => $source,
+        };
     }
 
     private function formatAmount(float|int|string $amount): string

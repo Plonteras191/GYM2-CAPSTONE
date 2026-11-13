@@ -30,6 +30,8 @@ class MemberMediaSecurityTest extends TestCase
             $table->string('phone');
             $table->string('plan')->default('None');
             $table->string('status')->default('Active');
+            $table->timestamp('status_updated_at')->nullable();
+            $table->timestamp('biometric_consent_at')->nullable();
             $table->string('profile_pic')->nullable();
             $table->longText('enrolled_face_id')->nullable();
             $table->timestamps();
@@ -79,6 +81,7 @@ class MemberMediaSecurityTest extends TestCase
             'phone' => '09170000000',
             'plan' => 'Monthly',
             'status' => 'Active',
+            'biometric_consent' => true,
         ], $overrides);
     }
 
@@ -108,19 +111,19 @@ class MemberMediaSecurityTest extends TestCase
             ->assertCreated();
 
         $path = $response->json('member.enrolled_face_id');
-        $this->createdFiles[] = public_path(ltrim($path, '/'));
+        $this->createdFiles[] = storage_path('app/private/' . ltrim($path, '/'));
 
         $this->assertMatchesRegularExpression('#^/faces/\d+_face_[A-Za-z0-9]{16}\.png$#', $path);
-        $this->assertFileExists(public_path(ltrim($path, '/')));
+        $this->assertFileExists(storage_path('app/private/' . ltrim($path, '/')));
     }
 
     public function test_replacing_a_face_never_deletes_files_outside_faces(): void
     {
         $member = $this->memberWithFacePath('/' . basename($this->sentinel));
 
-        $response = $this->putJson("/api/members/{$member->id}", ['enrolled_face_id' => self::PNG_DATA_URI])
+        $response = $this->putJson("/api/members/{$member->id}", ['enrolled_face_id' => self::PNG_DATA_URI, 'biometric_consent' => true])
             ->assertOk();
-        $this->createdFiles[] = public_path(ltrim($response->json('member.enrolled_face_id'), '/'));
+        $this->createdFiles[] = storage_path('app/private/' . ltrim($response->json('member.enrolled_face_id'), '/'));
 
         $this->assertFileExists($this->sentinel);
     }
@@ -148,6 +151,6 @@ class MemberMediaSecurityTest extends TestCase
 
         $facePath = $media->storeFace(self::PNG_DATA_URI);
         $this->assertTrue($media->deleteFace($facePath));
-        $this->assertFileDoesNotExist(public_path(ltrim($facePath, '/')));
+        $this->assertFileDoesNotExist(storage_path('app/private/' . ltrim($facePath, '/')));
     }
 }

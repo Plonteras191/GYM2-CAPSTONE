@@ -25,6 +25,7 @@ class MembershipUpgradeHistoryTest extends TestCase
             $table->string('phone')->nullable();
             $table->string('plan')->default('None');
             $table->string('status')->default('Active');
+            $table->timestamp('status_updated_at')->nullable();
             $table->longText('enrolled_face_id')->nullable();
             $table->string('profile_pic')->nullable();
             $table->timestamps();
@@ -82,6 +83,7 @@ class MembershipUpgradeHistoryTest extends TestCase
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('member_id')->nullable();
+            $table->string('member_name_snapshot')->nullable();
             $table->date('date');
             $table->time('time_in')->nullable();
         });

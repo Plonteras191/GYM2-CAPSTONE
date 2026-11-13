@@ -8,11 +8,18 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Stores and deletes member photos under public/faces and public/profiles.
+ * Stores and deletes member photos.
+ *
+ * Profile pictures live under public/profiles (shown in the dashboard).
+ * Face enrollment photos are biometric data, so they live under
+ * storage/app/private/faces, which the web server does not serve; only the
+ * Python engine on the same machine reads them. Faces saved before this
+ * change may still be in public/faces until "php artisan faces:secure" moves
+ * them, so reads and deletes check both places.
  *
  * Paths saved in the database are only ever generated here, and deletes are
  * refused for anything that does not resolve to a file directly inside one
- * of those two folders, so a crafted path such as "/../.env" can never be
+ * of those folders, so a crafted path such as "/../.env" can never be
  * removed.
  */
 class MemberMediaStorage
@@ -56,10 +63,44 @@ class MemberMediaStorage
         }
 
         $filename = time() . '_face_' . Str::random(16) . '.' . $extension;
-        File::ensureDirectoryExists(public_path(self::FACES_DIR), 0755);
-        File::put(public_path(self::FACES_DIR . DIRECTORY_SEPARATOR . $filename), $binary);
+        File::ensureDirectoryExists($this->privateFacesPath(), 0755);
+        File::put($this->privateFacesPath() . DIRECTORY_SEPARATOR . $filename, $binary);
 
         return '/' . self::FACES_DIR . '/' . $filename;
+    }
+
+    /** Folder for face photos that is not reachable from the web. */
+    public function privateFacesPath(): string
+    {
+        return storage_path('app' . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR . self::FACES_DIR);
+    }
+
+    /** Where face photos were stored before they were made private. */
+    public function legacyFacesPath(): string
+    {
+        return public_path(self::FACES_DIR);
+    }
+
+    /**
+     * Move face photos out of the public folder. Returns the number moved.
+     * Database paths ("/faces/<name>") stay the same.
+     */
+    public function moveLegacyFacesToPrivate(): int
+    {
+        if (!is_dir($this->legacyFacesPath())) {
+            return 0;
+        }
+
+        File::ensureDirectoryExists($this->privateFacesPath(), 0755);
+        $moved = 0;
+        foreach (File::files($this->legacyFacesPath()) as $file) {
+            $target = $this->privateFacesPath() . DIRECTORY_SEPARATOR . $file->getFilename();
+            if (!file_exists($target) && File::move($file->getPathname(), $target)) {
+                $moved++;
+            }
+        }
+
+        return $moved;
     }
 
     /** Save an uploaded profile picture under a server-generated name. */
@@ -76,27 +117,30 @@ class MemberMediaStorage
 
     public function deleteFace(?string $storedPath): bool
     {
-        return $this->deleteInside(self::FACES_DIR, $storedPath);
+        $deletedPrivate = $this->deleteInside(dirname($this->privateFacesPath()), self::FACES_DIR, $storedPath);
+        $deletedLegacy = $this->deleteInside(public_path(), self::FACES_DIR, $storedPath);
+
+        return $deletedPrivate || $deletedLegacy;
     }
 
     public function deleteProfilePicture(?string $storedPath): bool
     {
-        return $this->deleteInside(self::PROFILES_DIR, $storedPath);
+        return $this->deleteInside(public_path(), self::PROFILES_DIR, $storedPath);
     }
 
     /**
      * Delete $storedPath only if it is a regular file located directly inside
-     * public/$directory. Anything else (traversal, other folders, symlinked
+     * $root/$directory. Anything else (traversal, other folders, symlinked
      * escapes, nested paths) is ignored.
      */
-    private function deleteInside(string $directory, ?string $storedPath): bool
+    private function deleteInside(string $root, string $directory, ?string $storedPath): bool
     {
         if (!is_string($storedPath) || $storedPath === '') {
             return false;
         }
 
-        $baseDir = realpath(public_path($directory));
-        $target = realpath(public_path(ltrim($storedPath, '/\\')));
+        $baseDir = realpath($root . DIRECTORY_SEPARATOR . $directory);
+        $target = realpath($root . DIRECTORY_SEPARATOR . ltrim($storedPath, '/\\'));
 
         if ($baseDir === false || $target === false || !is_file($target)) {
             return false;

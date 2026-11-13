@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Member\Member;
 use App\Models\Member\Membership;
 use App\Models\Member\Transaction;
+use App\Models\Tracking\Attendance;
 use App\Models\Tracking\WorkoutLog;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -14,6 +15,9 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        // Keeps member statuses current even when the scheduler is not running.
+        app(\App\Services\MemberStatusService::class)->demoteOncePerDay();
+
         // 1. Top Stats Cards
         $totalIncome = Transaction::where('status', 'Complete')->where('amount', '>', 0)->sum('amount');
         $totalRefunds = Transaction::where('type', 'Refund')->sum('amount');
@@ -67,7 +71,22 @@ class DashboardController extends Controller
             ];
         }
 
+        // 6. Today's attendance: total, and check-ins per hour of the gym day.
+        $todayTimes = Attendance::where('date', Carbon::today()->toDateString())->pluck('time_in');
+        $perHour = $todayTimes->countBy(fn ($time) => (int) substr((string) $time, 0, 2));
+        $openHour = (int) substr((string) config('gym.open_time', '09:00'), 0, 2);
+        $closeHour = (int) substr((string) config('gym.close_time', '21:30'), 0, 2);
+        $checkInsByHour = [];
+        for ($hour = $openHour; $hour <= $closeHour; $hour++) {
+            $checkInsByHour[] = [
+                'hour' => Carbon::createFromTime($hour)->format('g A'),
+                'checkIns' => $perHour[$hour] ?? 0,
+            ];
+        }
+
         return response()->json([
+            'todayCheckIns' => $todayTimes->count(),
+            'checkInsByHour' => $checkInsByHour,
             'stats' => [
                 'revenue' => $netRevenue,
                 'members' => $totalMembers,

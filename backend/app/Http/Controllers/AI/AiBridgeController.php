@@ -25,6 +25,10 @@ class AiBridgeController extends Controller
             ->withExists(['memberships as has_active_coach_membership' => function ($query) {
                 $query->activeWithCoach();
             }])
+            ->withExists(['memberships as has_active_membership' => function ($query) {
+                $query->activeOn(Carbon::today()->toDateString());
+            }])
+            ->withExists('memberships as has_any_membership')
             ->get()
             ->map(function ($member) {
                 return [
@@ -32,6 +36,10 @@ class AiBridgeController extends Controller
                     'name' => $member->first_name . ' ' . $member->last_name,
                     'image_file' => $member->enrolled_face_id,
                     'workout_eligible' => (bool) $member->has_active_coach_membership,
+                    // Lets the Security Monitor flag members who need to renew.
+                    'subscription_status' => $member->has_active_membership
+                        ? 'active'
+                        : ($member->has_any_membership ? 'expired' : 'none'),
                 ];
             });
     }
