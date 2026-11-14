@@ -1,11 +1,13 @@
 import React, { useRef, useState } from 'react';
-import { FiX, FiSave, FiLoader, FiUpload, FiPlus, FiEdit2 } from 'react-icons/fi';
+import { FiX, FiSave, FiLoader, FiUpload, FiUserPlus, FiEdit2, FiAlertCircle } from 'react-icons/fi';
 import AvatarEditor from 'react-avatar-editor';
 import CameraCapture from './CameraCapture';
 import api from '../../../api';
 import { aiEngineFetch } from '../../../utils/aiEngine';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 import { formatNumber } from '../../../utils/numberFormat';
+import Button from '../../../components/ui/Button';
+import { fieldClass, labelClass } from '../../../components/ui/field';
 
 // The first view is also used as the profile picture, so keep Front first.
 // Side views are slight turns: the face recognizer cannot use full profiles.
@@ -35,6 +37,30 @@ const defaultForm = {
   id: '', firstName: '', lastName: '', email: '', phone: '', address: '', plan: 'Walk-in', status: 'Active',
   enrolledFaceId: null, profilePicUrl: null, dob: '', height: '', weight: ''
 };
+
+/* ── Presentation helpers ── */
+const Required = () => <span aria-hidden="true" className="ml-0.5 text-negative">*</span>;
+
+const FieldError = ({ children }) => (
+  <span className="mt-1.5 flex items-center gap-1.5 text-[13px] text-negative">
+    <FiAlertCircle size={13} aria-hidden="true" className="shrink-0" /> {children}
+  </span>
+);
+
+function FormSection({ step, title, hint, children }) {
+  return (
+    <section className="rounded-2xl border border-line bg-panel p-4 sm:p-5">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-dark text-[13px] font-medium text-brand-white dark:bg-brand-gold dark:text-brand-dark">{step}</span>
+        <div className="min-w-0">
+          <h4 className="text-base font-medium leading-tight text-ink">{title}</h4>
+          {hint && <p className="mt-0.5 text-[13px] text-muted">{hint}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function MemberFormModal({ isOpen, isEditing, initialData, onClose, onSaved, onShowAlert }) {
   const [formData, setFormData] = useState(initialData || defaultForm);
@@ -256,12 +282,8 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
     setInvalidFields(previous => ({ ...previous, [field]: !input.checkValidity() }));
   };
 
-  const inputClass = "w-full px-4 py-2.5 bg-field border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus dark:text-ink-2 font-medium transition-all shadow-sm";
-  const labelClass = "block text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-2";
-  const getInputClass = field => `${inputClass}${invalidFields[field] ? ' !border-warn/40 !ring-1 !ring-orange-400 dark:!border-warn/40' : ''}`;
-  const primaryBtn = "flex items-center justify-center gap-2 bg-brand-dark hover:bg-brand-slate text-brand-white px-6 py-2.5 rounded-xl font-semibold shadow-sm transition-colors active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed text-sm";
-  const saveMemberBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
-  const saveChangesBtn = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const inputClass = fieldClass;
+  const getInputClass = field => `${fieldClass}${invalidFields[field] ? ' !border-negative !ring-2 !ring-negative/20' : ''}`;
   const bmiData = getBmiInfo(formData.height, formData.weight);
   const isDirty = Boolean(profilePic)
     || JSON.stringify({ form: formData, faceImage, capturedFaceViews }) !== initialSnapshotRef.current;
@@ -273,12 +295,19 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
 
   if (!isOpen) return null;
 
+  const phoneLength = (formData.phone || '').length;
+
   return (
     <>
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
-        
-        {/* ADDED: Style block to completely hide the number input spinner arrows */}
+    <div className="animate-fade-in fixed inset-0 z-60 flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="member-form-title"
+        className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
+      >
+
+        {/* Hide the number input spinner arrows */}
         <style>{`
           input[type='number']::-webkit-inner-spin-button,
           input[type='number']::-webkit-outer-spin-button {
@@ -291,121 +320,145 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         `}</style>
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
-          <h3 className="flex items-center gap-2 text-xl font-bold text-ink">
-            {isEditing ? <FiEdit2 size={19} /> : <FiPlus size={20} />}
-            {isEditing ? 'Edit Member Profile' : 'Add New Member'}
-          </h3>
+        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <h3 id="member-form-title" className="flex items-center gap-2.5 text-xl font-medium tracking-[-0.01em] text-ink">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-warn-soft text-warn">
+                {isEditing ? <FiEdit2 size={17} /> : <FiUserPlus size={18} />}
+              </span>
+              {isEditing ? 'Edit member' : 'Register a member'}
+            </h3>
+            <p className="mt-1.5 text-[13px] text-muted">
+              Fields marked <span className="text-negative">*</span> are required. Face photos are needed for camera check-in.
+            </p>
+          </div>
           <button
             type="button"
             onClick={requestClose}
             disabled={isSaving}
             aria-label="Close member form"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative disabled:opacity-50 dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
+            className="press flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:border-negative/40 hover:bg-negative-soft hover:text-negative disabled:opacity-50"
           >
-            <FiX size={24} />
+            <FiX size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-5 overflow-y-auto bg-hover p-4 dark:bg-field sm:p-5">
-          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
-            {/* Profile Pic */}
-            <div className="flex min-h-72 flex-col items-center gap-3 rounded-xl border border-line bg-panel p-4 text-center shadow-sm dark:border-line dark:bg-panel">
-              <h4 className="flex h-6 items-center font-bold text-ink uppercase tracking-wide text-sm">Display Picture</h4>
-              {profilePic ? (
-                <div className="flex w-full flex-1 flex-col items-center justify-center gap-4">
-                  <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-full border-4 border-warn/40 shadow-lg">
-                    <AvatarEditor ref={editorRef} image={profilePic} width={150} height={150} border={0} borderRadius={75} color={[255,255,255,0.6]} scale={editorScale} rotate={0} />
-                  </div>
-                  <div className="w-full max-w-50 flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted">-</span>
-                    <input type="range" min="1" max="3" step="0.01" value={editorScale} onChange={e => setEditorScale(parseFloat(e.target.value))} className="w-full accent-brand-gold cursor-pointer" />
-                    <span className="text-xs font-bold text-muted">+</span>
-                  </div>
-                  <button type="button" onClick={() => { setProfilePic(null); setEditorScale(1.2); }} className="text-[10px] font-bold text-negative uppercase tracking-widest hover:underline">Cancel / Pick New Image</button>
+        <div className="flex-1 space-y-4 overflow-y-auto bg-canvas p-4 sm:p-6">
+          <FormSection step={1} title="Photos" hint="A profile photo and the face photos used for camera check-in.">
+            <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+              {/* Profile photo */}
+              <div className="flex min-h-72 flex-col gap-4 rounded-xl border border-line bg-panel p-4 sm:p-5">
+                <div>
+                  <h4 className="text-[15px] font-medium text-ink">Profile photo</h4>
+                  <p className="mt-0.5 text-[13px] text-muted">Optional. The front face photo is used if you skip this.</p>
                 </div>
-              ) : (
-                <label className="group relative mt-2 flex flex-1 cursor-pointer items-center justify-center">
-                  <div className="h-40 w-40 overflow-hidden rounded-full border-4 border-dashed border-line-strong bg-panel transition-colors group-hover:border-focus dark:border-line-strong dark:bg-panel">
-                    {formData.profilePicUrl ? (
-                      <img src={formData.profilePicUrl} alt="Existing Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <FiUpload className="text-muted group-hover:text-amber-500" size={24} />
-                      </div>
-                    )}
+                {profilePic ? (
+                  <div className="flex w-full flex-1 flex-col items-center justify-center gap-4">
+                    <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-full ring-4 ring-brand-gold/40">
+                      <AvatarEditor ref={editorRef} image={profilePic} width={150} height={150} border={0} borderRadius={75} color={[255,255,255,0.6]} scale={editorScale} rotate={0} />
+                    </div>
+                    <div className="flex w-full max-w-52 items-center gap-2.5 text-muted">
+                      <span aria-hidden="true" className="text-sm">−</span>
+                      <input type="range" min="1" max="3" step="0.01" value={editorScale} onChange={e => setEditorScale(parseFloat(e.target.value))} aria-label="Zoom profile photo" className="w-full cursor-pointer accent-brand-gold" />
+                      <span aria-hidden="true" className="text-sm">+</span>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => { setProfilePic(null); setEditorScale(1.2); }}>Choose a different photo</Button>
                   </div>
-                  <input type="file" accept="image/*" className="hidden" onChange={e => { setProfilePic(e.target.files[0]); setEditorScale(1.2); }} />
+                ) : (
+                  <label className="group flex flex-1 cursor-pointer flex-col items-center justify-center gap-3">
+                    <span className="h-40 w-40 overflow-hidden rounded-full border-2 border-dashed border-line-strong bg-field transition-[border-color,transform] duration-200 group-hover:-translate-y-0.5 group-hover:border-focus">
+                      {formData.profilePicUrl ? (
+                        <img src={formData.profilePicUrl} alt="Current profile" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-muted transition-colors group-hover:text-warn">
+                          <FiUpload size={26} />
+                        </span>
+                      )}
+                    </span>
+                    <span className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-ink-2 transition-colors group-hover:bg-hover group-hover:text-ink">
+                      <FiUpload size={14} aria-hidden="true" /> {formData.profilePicUrl ? 'Upload a new photo' : 'Upload a photo'}
+                    </span>
+                    <input type="file" accept="image/*" className="sr-only" onChange={e => { setProfilePic(e.target.files[0]); setEditorScale(1.2); }} />
+                  </label>
+                )}
+              </div>
+
+              {/* Face photos for check-in */}
+              <CameraCapture
+                isCameraActive={isCameraActive}
+                faceImage={faceImage}
+                capturedViews={capturedFaceViews}
+                captureViews={FACE_CAPTURE_VIEWS}
+                videoRef={videoRef}
+                canvasRef={canvasRef}
+                onStart={startCamera}
+                onCapture={captureFace}
+                onStop={stopCamera}
+                onRetake={() => { setCapturedFaceViews([]); startCamera(); }}
+              />
+              {faceImage !== 'existing_data' && (
+                <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-left transition-colors md:col-span-2 ${biometricConsent ? 'border-positive/40 bg-positive-soft' : 'border-line bg-panel hover:bg-field'}`}>
+                  <input
+                    type="checkbox"
+                    checked={biometricConsent}
+                    onChange={e => setBiometricConsent(e.target.checked)}
+                    className="mt-0.5 h-4.5 w-4.5 shrink-0 cursor-pointer accent-brand-gold"
+                  />
+                  <span className="text-[13px] leading-snug text-ink-2">
+                    <span className="font-medium text-ink">The member agrees to face photos.<Required /></span>{' '}
+                    The gym stores them only for attendance and workout monitoring (Data Privacy Act of 2012, RA 10173).
+                  </span>
                 </label>
               )}
             </div>
+          </FormSection>
 
-            {/* Camera Capture */}
-            <CameraCapture
-              isCameraActive={isCameraActive}
-              faceImage={faceImage}
-              capturedViews={capturedFaceViews}
-              captureViews={FACE_CAPTURE_VIEWS}
-              videoRef={videoRef}
-              canvasRef={canvasRef}
-              onStart={startCamera}
-              onCapture={captureFace}
-              onStop={stopCamera}
-              onRetake={() => { setCapturedFaceViews([]); startCamera(); }}
-            />
-            {faceImage !== 'existing_data' && (
-              <label className="mt-3 flex cursor-pointer items-start gap-2 text-left">
-                <input
-                  type="checkbox"
-                  checked={biometricConsent}
-                  onChange={e => setBiometricConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-amber-600"
-                />
-                <span className="text-[11px] font-medium leading-snug text-muted">
-                  The member consents to the gym storing their face photo and using it only for attendance and workout monitoring (Data Privacy Act of 2012, RA 10173).
-                </span>
-              </label>
-            )}
-          </div>
-
-          {/* Personal Details Form */}
-          <form id="memberForm" className="space-y-5" onSubmit={handleSave} onInvalidCapture={event => {
+          <form id="memberForm" className="space-y-4" onSubmit={handleSave} onInvalidCapture={event => {
+            // Our own message shows under each field, so hide the browser's bubble
+            // (the save is still blocked) and move to the first field to fix.
+            event.preventDefault();
+            const firstInvalid = event.currentTarget.querySelector(':invalid');
+            if (firstInvalid === event.target) {
+              event.target.focus();
+              event.target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
             setHasAttemptedSubmit(true);
             const field = event.target.name;
             if (field) setInvalidFields(previous => ({ ...previous, [field]: true }));
           }}>
-            <div className="rounded-xl border border-line bg-panel p-4 shadow-sm dark:border-line dark:bg-panel">
-              <h4 className="mb-4 border-b border-line pb-2 text-base font-bold text-ink dark:border-line dark:text-ink-2">Personal Details</h4>
+            <FormSection step={2} title="Personal details" hint="Used to find the member and to contact them.">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <label className="block">
-                  <span className={labelClass}>First Name</span>
+                  <span className={labelClass}>First name<Required /></span>
                   <input name="firstName" type="text" required value={formData.firstName} onChange={e => { handleNameChange(e, 'firstName'); trackFieldValidity('firstName', e.currentTarget); }} aria-invalid={Boolean(invalidFields.firstName)} className={getInputClass('firstName')} placeholder="Juan" />
-                  {invalidFields.firstName && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter the member's first name.</span>}
+                  {invalidFields.firstName && <FieldError>Enter the member's first name.</FieldError>}
                 </label>
                 <label className="block">
-                  <span className={labelClass}>Last Name</span>
+                  <span className={labelClass}>Last name<Required /></span>
                   <input name="lastName" type="text" required value={formData.lastName} onChange={e => { handleNameChange(e, 'lastName'); trackFieldValidity('lastName', e.currentTarget); }} aria-invalid={Boolean(invalidFields.lastName)} className={getInputClass('lastName')} placeholder="Dela Cruz" />
-                  {invalidFields.lastName && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter the member's last name.</span>}
+                  {invalidFields.lastName && <FieldError>Enter the member's last name.</FieldError>}
                 </label>
                 <label className="block">
-                  <span className={labelClass}>Email</span>
+                  <span className={labelClass}>Email<Required /></span>
                   <input name="email" type="email" required value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); trackFieldValidity('email', e.currentTarget); }} aria-invalid={Boolean(invalidFields.email)} className={getInputClass('email')} placeholder="juan@email.com" />
-                  {invalidFields.email && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter a valid email address.</span>}
+                  {invalidFields.email && <FieldError>Enter a valid email address.</FieldError>}
                 </label>
                 <label className="block lg:col-span-2">
                   <span className={labelClass}>Address</span>
                   <input type="text" value={formData.address} onChange={handleAddressChange} className={inputClass} placeholder="123 Gym Street, Tagoloan" />
                 </label>
                 <label className="block">
-                  <span className={labelClass}>Phone Number</span>
-                  <input name="phone" type="tel" inputMode="numeric" pattern="[0-9]{11}" minLength={11} maxLength={11} required value={formData.phone || ''} onChange={e => { handlePhoneChange(e); trackFieldValidity('phone', e.currentTarget); }} aria-invalid={Boolean(invalidFields.phone)} className={getInputClass('phone')} placeholder="09123456789" />
-                  {invalidFields.phone && <span className="mt-1 block text-xs font-medium text-warn dark:text-warn">Enter all 11 digits of the phone number.</span>}
-                  <span className="text-[10px] text-muted font-medium float-right mt-1">{(formData.phone || '').length}/11</span>
+                  <span className="mb-1.5 flex items-baseline justify-between gap-2">
+                    <span className="text-[13px] font-medium text-ink-2">Phone number<Required /></span>
+                    <span className={`text-xs tabular-nums ${phoneLength === 11 ? 'text-positive' : 'text-muted'}`}>{phoneLength} of 11 digits</span>
+                  </span>
+                  <input name="phone" type="tel" inputMode="numeric" pattern="[0-9]{11}" minLength={11} maxLength={11} required value={formData.phone || ''} onChange={e => { handlePhoneChange(e); trackFieldValidity('phone', e.currentTarget); }} aria-invalid={Boolean(invalidFields.phone)} className={`${getInputClass('phone')} tabular-nums`} placeholder="09123456789" />
+                  {invalidFields.phone && <FieldError>Enter all 11 digits of the phone number.</FieldError>}
                 </label>
                 {isEditing && (
                   <label className="block">
-                    <span className={labelClass}>Member Status</span>
+                    <span className={labelClass}>Member status</span>
                     <select
                       name="status"
                       value={formData.status === 'Inactive' ? 'Inactive' : 'Active'}
@@ -415,44 +468,53 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                       <option value="Active">Active</option>
                       <option value="Inactive">Inactive</option>
                     </select>
-                    <span className="mt-1 block text-[10px] font-medium text-muted">
+                    <span className="mt-1.5 block text-xs text-muted">
                       Set automatically: Inactive after 1 month without a visit, Active again on check-in.
                     </span>
                   </label>
                 )}
-                <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 items-end gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <label className="block"><span className={labelClass}>Date of Birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>
-                  <label className="block">
-                    <span className={labelClass}>Height (cm)</span>
-                    <input type="number" min="1" value={formData.height || ''} onChange={e => setFormData({...formData, height: e.target.value})} className={inputClass} placeholder="170" />
-                    {Number(formData.height) > 0 && (
-                      <span className="mt-1 block text-xs font-medium text-muted">
-                        Approx. {Math.floor(Math.round(Number(formData.height) / 2.54) / 12)} ft {Math.round(Number(formData.height) / 2.54) % 12} in
-                      </span>
-                    )}
-                  </label>
-                  <label className="block"><span className={labelClass}>Weight (kg)</span><input type="number" value={formData.weight || ''} onChange={e => setFormData({...formData, weight: e.target.value})} className={inputClass} placeholder="65" /></label>
+              </div>
+            </FormSection>
 
-                  <label className="block min-w-0">
-                    <span className={labelClass}>Body Mass Index</span>
-                    <div className={`flex min-h-11.5 items-center justify-between gap-3 rounded-xl border-2 p-2.5 shadow-sm ${bmiData.color}`}>
-                      <span className="min-w-0 truncate text-sm font-medium">{bmiData.label}</span>
-                      <span className="shrink-0 text-sm font-bold tabular-nums">{bmiData.value}</span>
-                    </div>
-                  </label>
+            <FormSection step={3} title="Body measurements" hint="Optional. Height and weight work out the body mass index (BMI).">
+              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <label className="block"><span className={labelClass}>Date of birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>
+                <label className="block">
+                  <span className={labelClass}>Height (cm)</span>
+                  <input type="number" min="1" value={formData.height || ''} onChange={e => setFormData({...formData, height: e.target.value})} className={`${inputClass} tabular-nums`} placeholder="170" />
+                  {Number(formData.height) > 0 && (
+                    <span className="mt-1.5 block text-xs text-muted">
+                      About {Math.floor(Math.round(Number(formData.height) / 2.54) / 12)} ft {Math.round(Number(formData.height) / 2.54) % 12} in
+                    </span>
+                  )}
+                </label>
+                <label className="block"><span className={labelClass}>Weight (kg)</span><input type="number" value={formData.weight || ''} onChange={e => setFormData({...formData, weight: e.target.value})} className={`${inputClass} tabular-nums`} placeholder="65" /></label>
+
+                <div className="block min-w-0">
+                  <span className={labelClass}>Body mass index</span>
+                  <div aria-live="polite" className={`flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 transition-colors duration-200 ${bmiData.color}`}>
+                    <span className="min-w-0 truncate text-sm font-medium">{bmiData.label === 'Need Data' ? 'Add height and weight' : bmiData.label}</span>
+                    <span className="shrink-0 text-sm font-medium tabular-nums">{bmiData.value === 'N/A' ? '—' : bmiData.value}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </FormSection>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-line bg-field p-4 dark:border-line dark:bg-hover sm:p-5">
-          <button type="button" onClick={requestClose} disabled={isSaving} className="px-6 py-2.5 rounded-xl font-bold text-ink-2 hover:bg-hover transition-colors disabled:opacity-50 uppercase tracking-wide text-sm">Cancel</button>
-          <button form="memberForm" type="submit" disabled={isSaving || ((formData.phone || '').length > 0 && (formData.phone || '').length < 11)} className={isEditing ? saveChangesBtn : saveMemberBtn}>
-            {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
-            {isSaving ? 'Processing...' : (isEditing ? 'Save Changes' : 'Save Member')}
-          </button>
+        <div className="flex flex-col-reverse gap-2 border-t border-line px-4 py-3.5 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+          <Button variant="outline" onClick={requestClose} disabled={isSaving} className="w-full sm:w-auto">Cancel</Button>
+          <Button
+            form="memberForm"
+            type="submit"
+            size="lg"
+            disabled={isSaving || (phoneLength > 0 && phoneLength < 11)}
+            icon={isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
+            className="w-full sm:w-auto"
+          >
+            {isSaving ? 'Saving…' : (isEditing ? 'Save changes' : 'Save member')}
+          </Button>
         </div>
       </div>
     </div>

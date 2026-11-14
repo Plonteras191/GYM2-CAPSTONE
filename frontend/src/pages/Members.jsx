@@ -11,6 +11,7 @@ export default function Members() {
   const location = useLocation();
   const openedMemberIdRef = React.useRef(null);
   const {
+    members,
     filteredMembers,
     isLoading,
     searchTerm,
@@ -55,6 +56,7 @@ export default function Members() {
     <>
       <MemberTable
         members={filteredMembers}
+        allMembers={members}
         isLoading={isLoading}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}

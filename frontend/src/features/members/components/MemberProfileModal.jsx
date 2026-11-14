@@ -343,33 +343,33 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const profileBmi = getBmiInfo(member.height, member.weight);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 lg:p-8 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-panel rounded-3xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col overflow-hidden border border-line relative">
+    <div className="animate-fade-in fixed inset-0 z-[70] flex items-center justify-center bg-brand-dark/70 p-4 backdrop-blur-sm lg:p-8">
+      <div role="dialog" aria-modal="true" aria-labelledby="member-profile-name" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 relative flex h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
 
         <div className="absolute top-4 right-4 z-20">
-          <button onClick={onClose} className="p-2 bg-black/10 dark:bg-white/10 hover:bg-brand-red hover:text-white rounded-full transition-colors text-ink-2 backdrop-blur-md">
-            <FiX size={24} />
+          <button onClick={onClose} aria-label="Close member profile" className="press flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-panel/90 text-muted backdrop-blur-md hover:border-negative/40 hover:bg-negative-soft hover:text-negative">
+            <FiX size={20} />
           </button>
         </div>
 
         <div className="flex flex-col lg:flex-row h-full overflow-y-auto lg:overflow-hidden">
 
           {/* LEFT SIDEBAR */}
-          <div className="w-full lg:w-[32%] bg-field border-r-2 border-line p-4 sm:p-6 lg:p-8 flex flex-col items-center flex-shrink-0 lg:overflow-y-auto">
+          <div className="w-full lg:w-[32%] bg-field border-r border-line p-4 sm:p-6 lg:p-8 flex flex-col items-center flex-shrink-0 lg:overflow-y-auto">
             <div className="flex w-full items-center justify-between gap-4 lg:flex-col lg:justify-center lg:gap-0">
               <div className="flex items-center gap-3 lg:flex-col">
                 <div className="relative group mt-0 lg:mt-2 shrink-0">
                   {member.profilePicUrl ? (
                     <img src={member.profilePicUrl} alt="Avatar" className="w-16 h-16 lg:w-36 lg:h-36 rounded-full object-cover border-2 lg:border-4 border-white dark:border-line shadow-md lg:shadow-lg" />
                   ) : (
-                    <div className="w-16 h-16 lg:w-36 lg:h-36 rounded-full bg-line dark:bg-hover flex items-center justify-center text-ink-2 font-bold text-lg lg:text-4xl border-2 lg:border-4 border-white dark:border-line shadow-md lg:shadow-lg">
+                    <div className="w-16 h-16 lg:w-36 lg:h-36 rounded-full bg-line dark:bg-hover flex items-center justify-center text-ink-2 font-medium text-lg lg:text-4xl border-2 lg:border-4 border-white dark:border-line shadow-md lg:shadow-lg">
                       {getInitials(member.firstName, member.lastName)}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 text-left lg:text-center">
-                  <h2 className="text-lg font-semibold tracking-tight text-ink lg:text-2xl">{member.firstName} {member.lastName}</h2>
-                  <p className="mt-0.5 border-b border-line pb-3 text-[10px] font-semibold uppercase tracking-wide text-warn dark:border-line dark:text-warn lg:mt-1 lg:text-xs">{member.plan}</p>
+                  <h2 id="member-profile-name" className="text-lg font-medium tracking-[-0.02em] text-ink lg:text-2xl">{member.firstName} {member.lastName}</h2>
+                  <p className="mt-0.5 border-b border-line pb-3 text-xs font-medium text-warn dark:border-line dark:text-warn lg:mt-1 lg:text-xs">{member.plan}</p>
                 </div>
               </div>
             </div>
@@ -379,7 +379,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               <div className="w-full space-y-3 mb-6">
                 <div className="flex items-center gap-3 text-sm text-ink-2 bg-panel p-3 rounded-xl border border-line shadow-sm">
                   <FiMapPin className="text-ink flex-shrink-0" size={16} />
-                  <span className="truncate">{member.address || 'No Address Provided'}</span>
+                  <span className="truncate">{member.address || 'No address provided'}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-ink-2 bg-panel p-3 rounded-xl border border-line shadow-sm">
                   <FiPhone className="text-ink flex-shrink-0" size={16} />
@@ -398,34 +398,34 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
               {/* Body Metrics */}
               <div className="w-full bg-panel rounded-xl border border-line p-4 shadow-sm mb-6">
-                <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3 border-b border-line pb-2">Body Metrics</h4>
+                <h4 className="text-xs font-medium text-muted mb-3 border-b border-line pb-2">Body Metrics</h4>
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <p className="text-[10px] text-muted uppercase font-bold">Age</p>
-                    <p className="text-lg font-bold text-ink">{calculateAge(member.dob)}</p>
+                    <p className="text-xs text-muted font-medium">Age</p>
+                    <p className="text-lg font-medium text-ink">{calculateAge(member.dob)}</p>
                   </div>
                   <div className="flex flex-col items-center justify-center">
-                    <p className="text-[10px] text-muted uppercase font-bold">BMI</p>
-                    <p className="text-[17px] font-bold leading-none my-1.5 text-ink tracking-tighter">{profileBmi.value}</p>
-                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${profileBmi.color}`}>{profileBmi.label}</span>
+                    <p className="text-xs text-muted font-medium">BMI</p>
+                    <p className="text-[17px] font-medium leading-none my-1.5 text-ink tracking-tighter">{profileBmi.value}</p>
+                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium ${profileBmi.color}`}>{profileBmi.label}</span>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted uppercase font-bold">Height</p>
-                    <p className="text-sm font-bold text-ink">{member.height || '-'} cm</p>
+                    <p className="text-xs text-muted font-medium">Height</p>
+                    <p className="text-sm font-medium text-ink">{member.height || '-'} cm</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted uppercase font-bold">Weight</p>
-                    <p className="text-sm font-bold text-ink">{member.weight || '-'} kg</p>
+                    <p className="text-xs text-muted font-medium">Weight</p>
+                    <p className="text-sm font-medium text-ink">{member.weight || '-'} kg</p>
                   </div>
                 </div>
               </div>
 
               {/* Coach Notes */}
               <div className="w-full bg-panel rounded-xl border border-line p-4 shadow-sm mb-2">
-                <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3 border-b border-line pb-2">Coach Notes</h4>
+                <h4 className="text-xs font-medium text-muted mb-3 border-b border-line pb-2">Coach Notes</h4>
                 <textarea
-                  className="w-full bg-field border border-line rounded-lg p-3 text-sm focus:outline-none focus:border-amber-500 text-ink transition-colors min-h-[90px]"
-                  placeholder="Add Additional Notes here..."
+                  className="w-full bg-field border border-line rounded-lg p-3 text-sm focus:outline-none focus:border-focus focus:ring-2 focus:ring-focus/25 text-ink transition-colors min-h-[90px]"
+                  placeholder="Add notes about this member…"
                   value={coachNotes}
                   onChange={(e) => { setCoachNotes(e.target.value); localStorage.setItem(`notes_${member.id}`, e.target.value); }}
                 />
@@ -438,9 +438,9 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
             {/* Tabs */}
             <div className="flex items-center gap-6 px-8 pt-6 border-b border-line flex-shrink-0 overflow-x-auto">
               {[['workouts', 'Workout Logs'], ['attendance', 'Attendance Calendar'], ['plan', "Coach's Training Plan"]].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} className={`pb-4 font-bold tracking-wide transition-colors whitespace-nowrap relative ${activeTab === key ? 'text-warn dark:text-warn' : 'text-ink hover:text-black/50 dark:text-muted dark:hover:text-ink'}`}>
+                <button key={key} onClick={() => setActiveTab(key)} className={`press relative whitespace-nowrap pb-4 text-[15px] font-medium transition-colors ${activeTab === key ? 'text-ink' : 'text-muted hover:text-ink'}`}>
                   {label}
-                  {activeTab === key && <div className="absolute bottom-0 left-0 w-full h-1 bg-brand-gold rounded-t-full" />}
+                  {activeTab === key && <div className="animate-in fade-in absolute bottom-0 left-0 h-1 w-full rounded-t-full bg-brand-gold" />}
                 </button>
               ))}
             </div>
@@ -451,7 +451,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                   {profileDataError || 'Loading member activity...'}
                 </p>
                 {profileDataError && (
-                  <button type="button" onClick={() => setProfileDataRetry(retry => retry + 1)} className="shrink-0 font-bold underline">
+                  <button type="button" onClick={() => setProfileDataRetry(retry => retry + 1)} className="shrink-0 font-medium underline">
                     Retry
                   </button>
                 )}
@@ -466,13 +466,13 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                 <div className="animate-in fade-in slide-in-from-bottom-2 h-full flex flex-col min-h-0">
                   <div className="border border-line rounded-xl p-4 bg-panel shadow-sm relative flex-1 overflow-hidden flex flex-col min-h-0">
                     <p className="mb-2 text-xs font-semibold text-muted">
-                      Visits this month: <span className="font-bold text-ink">{visitsThisMonth}</span>
-                      <span className="mx-2 text-brand-white dark:text-muted">|</span>
-                      Last 2 years: <span className="font-bold text-ink">{attendance.length}</span>
+                      Visits this month: <span className="font-medium text-ink">{visitsThisMonth}</span>
+                      <span aria-hidden="true" className="mx-2 text-line-strong">|</span>
+                      Last 2 years: <span className="font-medium text-ink">{attendance.length}</span>
                       <button
                         type="button"
                         onClick={() => setIsManualCheckInOpen(true)}
-                        className="float-right rounded-lg border border-line px-2.5 py-1 text-[11px] font-bold text-ink-2 hover:bg-hover dark:border-line dark:text-ink-2 dark:hover:bg-hover"
+                        className="float-right rounded-lg border border-line px-2.5 py-1 text-[11px] font-medium text-ink-2 hover:bg-hover dark:border-line dark:text-ink-2 dark:hover:bg-hover"
                       >
                         Manual check-in
                       </button>
@@ -626,7 +626,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     `}</style>
                     <div className="mb-3 sm:hidden">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="min-w-0 flex-1 truncate text-left text-sm font-bold uppercase tracking-wide text-ink">
+                        <h3 className="min-w-0 flex-1 truncate text-left text-sm font-medium text-ink">
                           {attendanceCalendarTitle}
                         </h3>
                         <div className="flex items-center gap-0 shrink-0">
@@ -647,7 +647,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                           <button
                             onClick={() => attendanceCalendarRef.current?.getApi().today()}
                             aria-label="Today"
-                            className={`mx-1 flex min-h-[38px] shrink-0 items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 text-[15px] font-sans font-bold normal-case text-brand-dark shadow-sm transition-colors active:scale-95 ${isCurrentMonth ? 'opacity-100' : 'opacity-50'}`}
+                            className={`mx-1 flex min-h-[38px] shrink-0 items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 text-[15px] font-sans font-medium normal-case text-brand-dark shadow-sm transition-colors active:scale-95 ${isCurrentMonth ? 'opacity-100' : 'opacity-50'}`}
                           >
                             Today
                           </button>
@@ -714,9 +714,9 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     <table className="w-full text-left border-collapse">
                       <thead className="sticky top-0 z-10 bg-field border-b border-line">
                         <tr>
-                          <th className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted w-1/4 text-center">Date</th>
-                          <th className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted text-center">Exercises Logged</th>
-                          <th className="px-6 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted w-1/4 text-center">Verification</th>
+                          <th className="px-6 py-3 text-xs font-medium text-muted w-1/4 text-center">Date</th>
+                          <th className="px-6 py-3 text-xs font-medium text-muted text-center">Exercises Logged</th>
+                          <th className="px-6 py-3 text-xs font-medium text-muted w-1/4 text-center">Verification</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-line">
@@ -731,24 +731,24 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
                           let groupBadge;
                           if (verifiedTasks === totalTasks) {
-                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-positive-soft text-positive border border-positive/40 dark:bg-positive-soft dark:text-positive">VERIFIED</span>;
+                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium bg-positive-soft text-positive border border-positive/40 dark:bg-positive-soft dark:text-positive">VERIFIED</span>;
                           } else if (verifiedTasks > 0) {
-                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-brand-navy-50 text-brand-navy border border-brand-navy/30 dark:bg-brand-navy-200/10 dark:text-brand-navy-200">INCOMPLETE</span>;
+                            groupBadge = <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium bg-brand-navy-50 text-brand-navy border border-brand-navy/30 dark:bg-brand-navy-200/10 dark:text-brand-navy-200">INCOMPLETE</span>;
                           } else {
                             const hasPending = group.exercises.some(log => getTaskStatus(log) === 'PENDING');
                             const hasScheduled = group.exercises.some(log => getTaskStatus(log) === 'SCHEDULED');
                             groupBadge = hasPending
-                              ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-warn-soft text-warn border border-warn/40 dark:bg-warn-soft dark:text-warn">PENDING</span>
+                              ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium bg-warn-soft text-warn border border-warn/40 dark:bg-warn-soft dark:text-warn">PENDING</span>
                               : hasScheduled
-                                ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-brand-navy-50 text-brand-navy border border-brand-navy/30 dark:bg-brand-navy-200/10 dark:text-brand-navy-200">SCHEDULED</span>
-                                : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-negative-soft text-negative border border-negative/40 dark:bg-negative-soft dark:text-negative">MISSED</span>;
+                                ? <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium bg-brand-navy-50 text-brand-navy border border-brand-navy/30 dark:bg-brand-navy-200/10 dark:text-brand-navy-200">SCHEDULED</span>
+                                : <span className="inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium bg-negative-soft text-negative border border-negative/40 dark:bg-negative-soft dark:text-negative">MISSED</span>;
                           }
 
                           return (
                             <React.Fragment key={idx}>
                               <tr onClick={() => setExpandedDate(prev => prev === group.date ? null : group.date)} className="hover:bg-hover transition-colors cursor-pointer group">
-                                <td className="px-6 py-4 whitespace-nowrap text-center"><div className="font-bold text-ink dark:text-muted text-sm">{group.date}</div></td>
-                                <td className="px-6 py-4 text-center"><span className="text-sm font-bold text-muted group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">{group.exercises.length} Exercises Recorded</span></td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center"><div className="font-medium text-ink dark:text-muted text-sm">{group.date}</div></td>
+                                <td className="px-6 py-4 text-center"><span className="text-sm font-medium text-muted group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">{group.exercises.length} Exercises Recorded</span></td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center justify-center gap-3">
                                     {groupBadge}
@@ -786,15 +786,15 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                               }} />}
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                              <p className="font-bold text-xs truncate">{formatExerciseName(exName)}</p>
+                                              <p className="font-medium text-xs truncate">{formatExerciseName(exName)}</p>
                                               <p className="text-[10px] opacity-70 mt-0.5">{timeFormatted}</p>
-                                              {log.sets && log.reps && <p className="text-[10px] font-bold mt-1">{log.sets} sets x {log.reps} reps</p>}
+                                              {log.sets && log.reps && <p className="text-[10px] font-medium mt-1">{log.sets} sets x {log.reps} reps</p>}
                                             </div>
                                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                               {taskStatus === 'PENDING' && (hasFaceIdToday
-                                                ? <button onClick={() => handleManualVerify(log.id)} className="bg-brand-gold hover:bg-brand-gold-500 text-brand-dark text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors active:scale-95 shadow-sm">VERIFY</button>
+                                                ? <button onClick={() => handleManualVerify(log.id)} className="bg-brand-gold hover:bg-brand-gold-500 text-brand-dark text-white px-2 py-1 rounded-md text-[10px] font-medium transition-colors active:scale-95 shadow-sm">VERIFY</button>
                                                 : <span className="opacity-50" title="Locked: No Face ID Today"><FiLock size={12} /></span>)}
-                                              {taskStatus !== 'PENDING' && <span className="text-[10px] font-bold uppercase tracking-wide">{taskStatus}</span>}
+                                              {taskStatus !== 'PENDING' && <span className="text-xs font-medium">{taskStatus}</span>}
                                             </div>
                                           </div>
                                         );
@@ -828,14 +828,14 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     <button
                       onClick={() => setMobileCoachView('library')}
                       aria-pressed={mobileCoachView === 'library'}
-                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'library' ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
+                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-medium normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'library' ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
                     >
                       Browse Exercises
                     </button>
                     <button
                       onClick={() => setMobileCoachView('routine')}
                       aria-pressed={mobileCoachView === 'routine'}
-                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'routine' ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
+                      className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-medium normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'routine' ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
                     >
                       Weekly Routine ({activeDay.slice(0, 3)})
                     </button>
@@ -889,7 +889,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                 }} />}
                               </div>
                               <div className="flex-1 min-w-0 px-3">
-                                <span className="font-bold text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
+                                <span className="font-medium text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
                                 <span className="text-[10px] text-muted capitalize truncate block mt-0.5">{ex.target || ex.body_part} · {ex.equipment}</span>
                               </div>
                               <button onClick={() => handleAddExercise(ex)} aria-label={`Add ${ex.name} to ${activeDay}`} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 font-semibold text-brand-dark shadow-sm transition-all active:scale-95">+</button>
@@ -912,7 +912,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col bg-panel sm:min-h-0 ${mobileCoachView === 'routine' ? 'flex flex-1' : 'hidden sm:flex'}`}>
                       <div className="grid w-full flex-shrink-0 grid-cols-7 border-b border-line bg-field dark:border-line dark:bg-field">
                         {daysOfWeek.map(day => (
-                          <button key={day} title={day} onClick={() => setActiveDay(day)} className={`w-full min-w-0 px-1 py-3 text-[10px] font-bold uppercase tracking-wide transition-colors border-b-2 sm:px-2 sm:text-[10px] sm:tracking-widest ${activeDay === day ? 'border-brand-gold text-brand-gold-700 dark:text-brand-gold bg-panel' : 'border-transparent text-muted hover:text-ink dark:hover:text-ink'}`}>
+                          <button key={day} title={day} onClick={() => setActiveDay(day)} className={`w-full min-w-0 px-1 py-3 text-xs font-medium transition-colors border-b-2 sm:px-2 sm:text-[10px] sm:tracking-widest ${activeDay === day ? 'border-brand-gold text-brand-gold-700 dark:text-brand-gold bg-panel' : 'border-transparent text-muted hover:text-ink dark:hover:text-ink'}`}>
                             {day.slice(0, 3)}
                           </button>
                         ))}
@@ -935,19 +935,19 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                     }} />}
                                   </div>
                                   <div className="min-w-0">
-                                    <span className="font-bold text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
+                                    <span className="font-medium text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
                                     <span className="text-[10px] text-muted">{ex.sets} sets x {ex.reps} reps</span>
                                     <span className={`text-[10px] font-semibold block mt-0.5 ${getGestureClass(ex) ? 'text-positive dark:text-positive' : 'text-warn dark:text-warn'}`}>
                                       {getGestureClass(ex) ? `AI tracks ${getGestureClass(ex)}` : 'Manual verification'}
                                     </span>
                                   </div>
                                 </div>
-                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="text-[10px] text-negative dark:text-negative hover:text-white font-bold px-2 py-1 bg-negative-soft dark:bg-negative-soft hover:bg-brand-red rounded-md transition-colors flex-shrink-0">X</button>
+                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="text-[10px] text-negative dark:text-negative hover:text-white font-medium px-2 py-1 bg-negative-soft dark:bg-negative-soft hover:bg-brand-red rounded-md transition-colors flex-shrink-0">X</button>
                               </div>
                               
                               {/* --- REPS & SETS INPUTS --- */}
                               <div className="flex items-center gap-4 mt-3 pl-[3.25rem]">
-                                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
+                                <label className="flex items-center gap-2 text-xs font-medium text-ink-2">
                                   Sets: 
                                   <input 
                                     type="number" 
@@ -957,7 +957,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                     className="w-14 px-2 py-1 rounded-md bg-field border border-line focus:outline-none focus:ring-1 focus:ring-focus/25 focus:border-focus text-ink shadow-sm text-center"
                                   />
                                 </label>
-                                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-2">
+                                <label className="flex items-center gap-2 text-xs font-medium text-ink-2">
                                   Reps: 
                                   <input 
                                     type="number" 
@@ -974,7 +974,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       </div>
 
                       <div className="p-3 border-t border-line bg-field dark:bg-field flex-shrink-0">
-                        <button onClick={handleAssignWeeklyPlan} disabled={isSavingPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70">
+                        <button onClick={handleAssignWeeklyPlan} disabled={isSavingPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-medium normal-case text-brand-dark shadow-sm transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70">
                           {isSavingPlan ? 'Saving Plan...' : 'Save Weekly Plan'}
                         </button>
                       </div>
