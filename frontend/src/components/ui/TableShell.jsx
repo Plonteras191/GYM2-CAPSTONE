@@ -30,11 +30,11 @@ export default function TableShell({ title, icon: Icon, count, action, index, cl
   );
 }
 
-/** The filter row above a table. */
+/** The filter row above a table. z-20 keeps its dropdowns above the table below. */
 export function Toolbar({ index, className = '', children }) {
   return (
     <div
-      className={`rise flex flex-col gap-3 rounded-2xl border border-line bg-panel p-3 sm:p-4 ${className}`}
+      className={`rise relative z-20 flex flex-col gap-3 rounded-2xl border border-line bg-panel p-3 sm:p-4 ${className}`}
       style={index != null ? { '--i': index } : undefined}
     >
       {children}

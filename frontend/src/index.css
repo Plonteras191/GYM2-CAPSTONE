@@ -279,25 +279,29 @@ select:not(.camera-source-select) option {
   60% { box-shadow: 0 0 0 6px rgb(242 183 5 / 0); }
 }
 
-/* Page-load stagger: add .rise and set --i on siblings. */
+/* Page-load stagger: add .rise and set --i on siblings.
+   Fill mode is "backwards": the start state holds during the delay, and once
+   the animation ends the element is released. "both" would keep every panel
+   on its own stacking layer for good, which put dropdowns behind the next
+   panel and page dialogs behind the sidebar. */
 .rise {
-  animation: ui-rise 560ms var(--ease-out-quint) both;
+  animation: ui-rise 560ms var(--ease-out-quint) backwards;
   animation-delay: calc(var(--i, 0) * 70ms);
 }
 
 /* Route change: the page fades in (opacity only, so fixed modals inside a
    page are never re-anchored by a transform). */
 main > div {
-  animation: ui-fade 280ms ease-out both;
+  animation: ui-fade 280ms ease-out backwards;
 }
 
 /* Enter utilities. These class names were already used across the app
    (animate-in fade-in zoom-in-95 slide-in-from-*) but had no plugin
    behind them; they now animate. */
 .animate-in {
-  animation: ui-enter var(--tw-duration, 220ms) var(--ease-out-quint) both;
+  animation: ui-enter var(--tw-duration, 220ms) var(--ease-out-quint) backwards;
 }
-.animate-fade-in { animation: ui-fade 220ms ease-out both; }
+.animate-fade-in { animation: ui-fade 220ms ease-out backwards; }
 .fade-in { --ui-enter-opacity: 0; }
 .zoom-in-95 { --ui-enter-scale: 0.95; }
 .slide-in-from-top-2 { --ui-enter-y: -0.5rem; }
