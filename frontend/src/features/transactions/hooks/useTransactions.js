@@ -7,6 +7,7 @@ import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
 import { getPackageDetails } from '../../../utils/packageDisplay';
 import { isValidPackagePrice, sanitizePackagePrice } from '../../../utils/priceInput';
 import { formatNumber } from '../../../utils/numberFormat';
+import { normalizeTransactions } from '../transactionData';
 
 export function useTransactions() {
   const { getCache, setCache, invalidateCache } = useDataCache();
@@ -50,19 +51,7 @@ export function useTransactions() {
       };
 
       if (txnResult.status === 'fulfilled') {
-        const responseTransactions = Array.isArray(txnResult.value.data)
-          ? txnResult.value.data
-          : (txnResult.value.data?.data || []);
-        nextCache.transactions = responseTransactions.map(transaction => {
-          const dailyPlanPayment = transaction.type === 'Subscription Payment'
-            && (
-              (transaction.membership?.plan_type || '').toLowerCase().includes('daily')
-              || (transaction.description || '').toLowerCase().includes('daily')
-            );
-          return dailyPlanPayment
-            ? { ...transaction, type: 'Walk-in Guest', description: 'Walk-in Guest' }
-            : transaction;
-        });
+        nextCache.transactions = normalizeTransactions(txnResult.value.data);
         setTransactions(nextCache.transactions);
       } else {
         console.error('Failed to load transactions:', txnResult.reason);

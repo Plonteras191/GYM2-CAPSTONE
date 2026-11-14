@@ -44,12 +44,7 @@ class DashboardController extends Controller
             ->orderBy('end_date', 'asc')
             ->get();
 
-        // 4. Calendar Events (Pulling directly from Subscriptions)
-        $calendarEvents = Membership::with('member:id,first_name,last_name')
-            ->whereNotNull('member_id')
-            ->get();
-
-        // 5. Dynamic Sales Chart (Last 6 Months of Revenue)
+        // 4. Dynamic Sales Chart (Last 6 Months of Revenue)
         $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
         $txnsForChart = Transaction::where('status', 'Complete')
             ->where('type', '!=', 'Refund')
@@ -71,7 +66,7 @@ class DashboardController extends Controller
             ];
         }
 
-        // 6. Today's attendance: total, and check-ins per hour of the gym day.
+        // 5. Today's attendance: total, and check-ins per hour of the gym day.
         $todayTimes = Attendance::where('date', Carbon::today()->toDateString())->pluck('time_in');
         $perHour = $todayTimes->countBy(fn ($time) => (int) substr((string) $time, 0, 2));
         $openHour = (int) substr((string) config('gym.open_time', '09:00'), 0, 2);
@@ -97,7 +92,6 @@ class DashboardController extends Controller
             'recentMembers' => $recentMembers,
             'recentTxns' => $recentTxns,
             'expiringSoon' => $expiringSoon,
-            'calendarEvents' => $calendarEvents
         ]);
     }
 
@@ -129,26 +123,25 @@ class DashboardController extends Controller
         }
 
         // ── ALERT TYPE 2: Active Members With No Valid Subscription ──────────
-        $activeMembers = Member::where('status', 'Active')->get();
-        $activeSubMemberIds = Membership::where('status', 'Active')
-            ->whereNotNull('member_id')
-            ->where('end_date', '>=', $today->toDateString())
-            ->pluck('member_id')
-            ->toArray();
-
+        // The database picks out only the members to flag, instead of
+        // loading every active member and checking each one here.
         $oneMonthAgo = Carbon::now()->subMonth();
-        foreach ($activeMembers as $member) {
-            if (!in_array($member->id, $activeSubMemberIds)) {
-                if ($member->created_at < $oneMonthAgo) {
-                    $alerts->push([
-                        'id'          => 'nosub_' . $member->id,
-                        'type'        => 'no_sub',
-                        'member_name' => $member->first_name . ' ' . $member->last_name,
-                        'message'     => 'No active subscription. Registered over 30 days ago.',
-                        'days_left'   => null,
-                    ]);
-                }
-            }
+        $membersWithoutSub = Member::where('status', 'Active')
+            ->where('created_at', '<', $oneMonthAgo)
+            ->whereNotIn('id', Membership::select('member_id')
+                ->where('status', 'Active')
+                ->whereNotNull('member_id')
+                ->where('end_date', '>=', $today->toDateString()))
+            ->get(['id', 'first_name', 'last_name']);
+
+        foreach ($membersWithoutSub as $member) {
+            $alerts->push([
+                'id'          => 'nosub_' . $member->id,
+                'type'        => 'no_sub',
+                'member_name' => $member->first_name . ' ' . $member->last_name,
+                'message'     => 'No active subscription. Registered over 30 days ago.',
+                'days_left'   => null,
+            ]);
         }
 
         // ── ALERT TYPE 3: Unverified CCTV Workout Tasks (Today) ─────────────

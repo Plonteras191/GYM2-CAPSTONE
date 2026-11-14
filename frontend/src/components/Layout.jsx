@@ -7,7 +7,7 @@ import {
   FiFileText, FiShield, FiCamera, FiUser, FiSun, FiMoon, FiLogOut,
   FiMenu, FiX, FiBell, FiChevronDown, FiAlertCircle, FiClock, FiLogIn, FiCheckCircle, FiCalendar
 } from 'react-icons/fi';
-import api from '../api'; 
+import api, { whenPageSettled } from '../api'; 
 import { usePrefetch } from '../hooks/usePrefetch'; 
 import { useSystemLogo } from '../hooks/useSystemLogo';
 
@@ -58,14 +58,21 @@ export default function Layout() {
     return () => window.removeEventListener('admin-profile-updated', handleProfileUpdate);
   }, []);
 
+  const lastNotificationsFetch = useRef(0);
+
   const fetchNotifications = async () => {
+    lastNotificationsFetch.current = Date.now();
+    // Both lists are requested together; the coach-events answer is shared
+    // with the calendar when that page asks for it at the same time.
+    const eventsRequest = api.get('/coach-events');
+    eventsRequest.catch(() => {}); // a failure is reported below
     try {
       const res = await api.get('/notifications');
       let combinedAlerts = Array.isArray(res.data) ? [...res.data] : [];
 
       // ── Upcoming coach events ──
       try {
-        const eventsResponse = await api.get('/coach-events');
+        const eventsResponse = await eventsRequest;
         const events = Array.isArray(eventsResponse.data) ? eventsResponse.data : [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -136,9 +143,26 @@ export default function Layout() {
   };
 
   useEffect(() => {
-    fetchNotifications();
+    // Moving between pages refreshes the bell, at most once a minute. It
+    // waits for the page's own data first, so the page is never queued
+    // behind it on the server.
+    let cancelled = false;
+    let waiting = false;
+    if (Date.now() - lastNotificationsFetch.current > 60 * 1000) {
+      waiting = true;
+      lastNotificationsFetch.current = Date.now();
+      whenPageSettled(400).then(() => {
+        waiting = false;
+        if (!cancelled) fetchNotifications();
+      });
+    }
     const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      // Left before it was sent: let the next page send it instead.
+      if (waiting) lastNotificationsFetch.current = 0;
+      clearInterval(interval);
+    };
   }, [location.pathname]);
 
   const visibleNotifications = notifications.filter(n => !dismissedIds.includes(n.id));

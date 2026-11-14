@@ -1,10 +1,9 @@
 import api from '../api';
 import { getMediaUrl } from '../utils/mediaUrl';
 
-export const memberService = {
-  async getAll() {
-    const response = await api.get('/members');
-    const dataArray = Array.isArray(response.data) ? response.data : (response.data.data || []);
+/** The /members list in the shape the Member registration page uses. */
+export function toMembers(responseData) {
+    const dataArray = Array.isArray(responseData) ? responseData : (responseData?.data || []);
     return dataArray.map(dbMember => ({
       id: dbMember.id,
       firstName: dbMember.first_name,
@@ -22,6 +21,12 @@ export const memberService = {
       weight: dbMember.weight || '',
       customerSince: new Date(dbMember.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     }));
+}
+
+export const memberService = {
+  async getAll() {
+    const response = await api.get('/members');
+    return toMembers(response.data);
   },
 
   async create(formData) {

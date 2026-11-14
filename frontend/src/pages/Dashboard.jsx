@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useCallback, useContext, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -11,22 +11,34 @@ import Avatar from '../components/ui/Avatar';
 import { tintStyle } from '../components/ui/ColorTile';
 import ManualCheckInModal from '../components/ui/ManualCheckInModal';
 import api from '../api';
-import { getPaymentMethodLabel } from '../utils/paymentMethod';
 import { formatNumber } from '../utils/numberFormat';
-import { getPackageDetails } from '../utils/packageDisplay';
+import { mapDashboardResponse } from '../utils/dashboardData';
 import { useDataCache } from '../context/DataCacheContext';
 import { useSubscriptions } from '../features/subscriptions/hooks/useSubscriptions';
-import SubscriptionsCalendarView from '../features/subscriptions/components/SubscriptionsCalendarView';
 import CoachEventModal from '../features/subscriptions/components/CoachEventModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
-import bandPhoto from '../assets/Login.jpg';
+import bandPhoto from '../assets/overview-band.jpg';
 
 import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   FiCheckCircle, FiTrendingUp, FiClock, FiUserPlus, FiCalendar, FiArrowRight,
   FiUserCheck, FiCreditCard, FiRefreshCw, FiChevronRight, FiActivity, FiUsers
 } from 'react-icons/fi';
+
+// The calendar library is large; it loads on its own so the figures above it
+// do not wait for it.
+const SubscriptionsCalendarView = lazy(() => import('../features/subscriptions/components/SubscriptionsCalendarView'));
+
+function CalendarLoading() {
+  return (
+    <div role="status" className="space-y-3">
+      <span className="sr-only">Loading calendar</span>
+      <div className="skeleton h-9 w-56 rounded-lg" />
+      <div className="skeleton h-[28rem] w-full rounded-xl" />
+    </div>
+  );
+}
 
 /* ── Presentation helpers (display only) ─────────────────────────────── */
 
@@ -160,6 +172,43 @@ export default function Dashboard() {
   const chartTheme = isDarkMode ? CHART_THEME.dark : CHART_THEME.light;
 
   const { getCache, setCache } = useDataCache();
+
+  // The key figures are requested first: the local API answers one request
+  // at a time, so whatever is asked for first appears first.
+  const cachedDash = getCache('dashboard');
+  const [isLoading, setIsLoading] = useState(!cachedDash);
+  const [salesData, setSalesData] = useState(cachedDash?.salesData || []);
+  const [todayCheckIns, setTodayCheckIns] = useState(cachedDash?.todayCheckIns ?? 0);
+  const [checkInsByHour, setCheckInsByHour] = useState(cachedDash?.checkInsByHour || []);
+  const [stats, setStats] = useState(cachedDash?.stats || { revenue: 0, members: 0, activeSubs: 0, reports: 0 });
+  const [recentMembers, setRecentMembers] = useState(cachedDash?.recentMembers || []);
+  const [recentTxns, setRecentTxns] = useState(cachedDash?.recentTxns || []);
+  const [expiringSoon, setExpiringSoon] = useState(cachedDash?.expiringSoon || []);
+  const fetchDashboardData = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setIsLoading(true);
+    try {
+      const response = await api.get('/dashboard');
+      const next = mapDashboardResponse(response.data);
+      setStats(next.stats);
+      setSalesData(next.salesData);
+      setTodayCheckIns(next.todayCheckIns);
+      setCheckInsByHour(next.checkInsByHour);
+      setRecentMembers(next.recentMembers);
+      setRecentTxns(next.recentTxns);
+      setExpiringSoon(next.expiringSoon);
+      setCache('dashboard', next);
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setCache]);
+
+  useEffect(() => {
+    const hasCached = !!getCache('dashboard');
+    fetchDashboardData(!hasCached);
+  }, [fetchDashboardData, getCache]);
+
   const {
     subscriptions,
     coachEvents,
@@ -188,71 +237,6 @@ export default function Dashboard() {
     setAlertDialog
   } = useSubscriptions();
 
-  const cachedDash = getCache('dashboard');
-  const [isLoading, setIsLoading] = useState(!cachedDash);
-  const [salesData, setSalesData] = useState(cachedDash?.salesData || []);
-  const [todayCheckIns, setTodayCheckIns] = useState(cachedDash?.todayCheckIns ?? 0);
-  const [checkInsByHour, setCheckInsByHour] = useState(cachedDash?.checkInsByHour || []);
-  const [stats, setStats] = useState(cachedDash?.stats || { revenue: 0, members: 0, activeSubs: 0, reports: 0 });
-  const [recentMembers, setRecentMembers] = useState(cachedDash?.recentMembers || []);
-  const [recentTxns, setRecentTxns] = useState(cachedDash?.recentTxns || []);
-  const [expiringSoon, setExpiringSoon] = useState(cachedDash?.expiringSoon || []);
-  const fetchDashboardData = useCallback(async (showSpinner = true) => {
-    if (showSpinner) setIsLoading(true);
-    try {
-      const response = await api.get('/dashboard');
-      const data = response.data;
-
-      const newStats = data.stats;
-      const newSalesData = data.salesData;
-      const newRecentMembers = data.recentMembers.map(m => ({
-        id: m.id,
-        name: `${m.first_name} ${m.last_name}`
-      }));
-      const newRecentTxns = data.recentTxns.map(t => ({
-        id: t.id,
-        transactionId: t.transaction_id,
-        packageDetails: getPackageDetails(t),
-        amount: t.amount,
-        status: t.status,
-        method: getPaymentMethodLabel(t.payment_method),
-        memberName: t.member ? `${t.member.first_name} ${t.member.last_name}` : 'Walk-in Guest'
-      }));
-      const newExpiringSoon = data.expiringSoon.map(sub => {
-        const daysLeft = Math.ceil((new Date(sub.end_date) - new Date()) / (1000 * 60 * 60 * 24));
-        return {
-          name: sub.member ? `${sub.member.first_name} ${sub.member.last_name}` : 'Unknown Member',
-          days: daysLeft
-        };
-      });
-      setStats(newStats);
-      setSalesData(newSalesData);
-      setTodayCheckIns(data.todayCheckIns ?? 0);
-      setCheckInsByHour(data.checkInsByHour || []);
-      setRecentMembers(newRecentMembers);
-      setRecentTxns(newRecentTxns);
-      setExpiringSoon(newExpiringSoon);
-      setCache('dashboard', {
-        stats: newStats,
-        salesData: newSalesData,
-        todayCheckIns: data.todayCheckIns ?? 0,
-        checkInsByHour: data.checkInsByHour || [],
-        recentMembers: newRecentMembers,
-        recentTxns: newRecentTxns,
-        expiringSoon: newExpiringSoon,
-      });
-
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [setCache]);
-
-  useEffect(() => {
-    const hasCached = !!getCache('dashboard');
-    fetchDashboardData(!hasCached);
-  }, [fetchDashboardData, getCache]);
 
   /* ── Display-only state ─────────────────────────────────────────────── */
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
@@ -670,6 +654,7 @@ export default function Dashboard() {
       </div>
 
       <Panel index={8} id="overview-calendar" title="Subscriptions & events calendar" icon={FiCalendar} className="relative w-full scroll-mt-4">
+        <Suspense fallback={<CalendarLoading />}>
         <SubscriptionsCalendarView
           subscriptions={subscriptions}
           coachEvents={coachEvents}
@@ -685,6 +670,7 @@ export default function Dashboard() {
           calendarOnly
           readOnly
         />
+        </Suspense>
       </Panel>
 
       <CoachEventModal
