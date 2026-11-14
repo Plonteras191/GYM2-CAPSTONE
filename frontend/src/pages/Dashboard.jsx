@@ -5,7 +5,11 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useCountUp } from '../hooks/useCountUp';
 import Panel, { PanelLink } from '../components/ui/Panel';
 import { StatStrip, StatCell } from '../components/ui/StatStrip';
-import api from '../api'; 
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import Avatar from '../components/ui/Avatar';
+import ManualCheckInModal from '../components/ui/ManualCheckInModal';
+import api from '../api';
 import { getPaymentMethodLabel } from '../utils/paymentMethod';
 import { formatNumber } from '../utils/numberFormat';
 import { getPackageDetails } from '../utils/packageDisplay';
@@ -15,48 +19,90 @@ import SubscriptionsCalendarView from '../features/subscriptions/components/Subs
 import CoachEventModal from '../features/subscriptions/components/CoachEventModal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
+import bandPhoto from '../assets/Login.jpg';
 
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
-  FiCheckCircle, FiDollarSign, FiTrendingUp, FiClock, FiUserPlus, FiCalendar, FiArrowRight
+  FiCheckCircle, FiTrendingUp, FiClock, FiUserPlus, FiCalendar, FiArrowRight,
+  FiUserCheck, FiCreditCard, FiRefreshCw, FiChevronRight, FiActivity, FiUsers
 } from 'react-icons/fi';
 
 /* ── Presentation helpers (display only) ─────────────────────────────── */
 
+// The busiest hour is the one coloured bar; every other bar is neutral.
 const CHART_THEME = {
-  light: { revenue: '#D97A07', bars: '#A61F2B', grid: '#DCDDE1', tick: '#5B6170', cursor: 'rgba(13,13,13,0.05)' },
-  dark: { revenue: '#F2B705', bars: '#E25563', grid: '#353A47', tick: '#8B93A7', cursor: 'rgba(139,147,167,0.12)' },
+  light: { revenue: '#D97A07', busiest: '#A61F2B', bars: '#9AA0AB', grid: '#E4E5E8', tick: '#5B6170', cursor: 'rgba(13,13,13,0.05)', dotRing: '#FFFFFF' },
+  dark: { revenue: '#F2B705', busiest: '#E25563', bars: '#5E6577', grid: '#30343F', tick: '#8B93A7', cursor: 'rgba(139,147,167,0.12)', dotRing: '#22252D' },
 };
 
-const initialsOf = (name = '') =>
-  name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || '?';
+const peso = (v) => `₱ ${formatNumber(v, Number.isInteger(Number(v)) ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2 })}`;
 
-const methodTone = (method = '') => {
+const plural = (n, one, many) => `${formatNumber(n)} ${n === 1 ? one : many}`;
+
+const greetingFor = (date) => {
+  const hour = date.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const endsLabel = (days) => {
+  if (days <= 0) return 'Ends today';
+  if (days === 1) return 'Ends tomorrow';
+  return `Ends in ${days} days`;
+};
+
+const relativeTime = (from, now) => {
+  const minutes = Math.floor((now - from) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes === 1) return '1 minute ago';
+  if (minutes < 60) return `${minutes} minutes ago`;
+  return from.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
+const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const parseDateKey = (value) => {
+  const [y, m, d] = String(value || '').slice(0, 10).split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : null;
+};
+
+const formatTime = (value) => {
+  const [h, m] = String(value || '').split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return '';
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+const methodVariant = (method = '') => {
   const key = method.toLowerCase();
-  if (key === 'gcash') return 'bg-brand-navy-50 text-brand-navy dark:bg-brand-navy-200/10 dark:text-brand-navy-200';
-  if (key === 'cash') return 'bg-positive-soft text-positive';
-  return 'bg-hover text-ink-2';
+  if (key === 'gcash') return 'info';
+  if (key === 'cash') return 'success';
+  return 'default';
 };
 
 function ChartTooltip({ active, payload, label, format = (v) => v, unit }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-line bg-panel px-3 py-2 shadow-[0_8px_24px_rgb(13_13_13/0.12)]">
-      <p className="text-xs font-medium text-muted">{label}</p>
-      <p className="font-display text-lg font-semibold leading-tight text-ink tabular-nums">
-        {format(payload[0].value)}{unit ? <span className="ml-1 font-sans text-xs font-medium text-muted">{unit}</span> : null}
+    <div className="animate-in fade-in zoom-in-95 rounded-xl border border-line bg-panel px-3.5 py-2.5 shadow-[0_12px_28px_-8px_rgb(13_13_13/0.18)]">
+      <p className="text-[13px] text-muted">{label}</p>
+      <p className="mt-0.5 font-display text-lg font-medium leading-tight tracking-[-0.02em] text-ink">
+        {format(payload[0].value)}{unit ? <span className="ml-1.5 font-sans text-[13px] font-normal text-muted">{unit}</span> : null}
       </p>
     </div>
   );
 }
 
-function EmptyState({ icon: Icon, children }) {
+function EmptyState({ icon: Icon, title, children, action }) {
   return (
-    <div className="flex h-full min-h-32 flex-col items-center justify-center gap-3 py-6 text-center">
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-hover text-muted">
-        <Icon size={18} aria-hidden="true" />
+    <div className="flex h-full min-h-40 flex-col items-center justify-center gap-3 py-6 text-center">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-muted">
+        <Icon size={19} aria-hidden="true" />
       </span>
-      <p className="text-sm font-medium text-muted">{children}</p>
+      <div>
+        <p className="text-[15px] font-medium text-ink">{title}</p>
+        {children && <p className="mx-auto mt-1 max-w-xs text-[13px] text-muted">{children}</p>}
+      </div>
+      {action}
     </div>
   );
 }
@@ -66,12 +112,44 @@ function ListSkeleton({ rows = 4 }) {
     <div className="space-y-4 py-1" aria-label="Loading" role="status">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3">
-          <span className="skeleton h-8 w-8 rounded-full" />
+          <span className="skeleton h-9 w-9 rounded-full" />
           <span className="skeleton h-3.5 flex-1" style={{ maxWidth: `${70 - i * 8}%` }} />
-          <span className="skeleton h-3.5 w-14" />
+          <span className="skeleton h-6 w-20 rounded-full" />
         </div>
       ))}
     </div>
+  );
+}
+
+/** A whole list row that is one large link: easy to hit, arrow travels on hover. */
+function RowLink({ to, state, index = 0, label, className = '', children }) {
+  return (
+    <li className="rise" style={{ '--i': index }}>
+      <Link
+        to={to}
+        state={state}
+        aria-label={label}
+        className={`group press -mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-hover ${className}`}
+      >
+        {children}
+        <FiChevronRight size={17} aria-hidden="true" className="nudge shrink-0 text-muted group-hover:text-ink" />
+      </Link>
+    </li>
+  );
+}
+
+/** Shortcut on the dark welcome band that opens another page. */
+function BandLink({ to, icon: Icon, hint, children }) {
+  return (
+    <Link
+      to={to}
+      title={hint}
+      className="group press btn-step inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl border border-white/20 bg-white/[0.06] px-5 text-[15px] font-medium text-white hover:border-white/40 hover:bg-white/[0.12]"
+    >
+      <Icon size={18} aria-hidden="true" className="text-brand-gold" />
+      {children}
+      <span className="sr-only">({hint})</span>
+    </Link>
   );
 }
 
@@ -175,6 +253,35 @@ export default function Dashboard() {
     fetchDashboardData(!hasCached);
   }, [fetchDashboardData, getCache]);
 
+  /* ── Display-only state ─────────────────────────────────────────────── */
+  const [isCheckInOpen, setIsCheckInOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
+  const [firstName] = useState(() => {
+    try {
+      return (localStorage.getItem('admin_name') || '').trim().split(/\s+/)[0] || '';
+    } catch {
+      return '';
+    }
+  });
+
+  // Every fetch hands back a new stats object, so this marks each refresh.
+  useEffect(() => { setUpdatedAt(new Date()); }, [stats]);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchDashboardData(false);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   /* ── Display-only derivations ─────────────────────────────────────── */
   const checkInsShown = useCountUp(todayCheckIns, { enabled: !isLoading });
   const busiestHour = checkInsByHour.reduce(
@@ -182,114 +289,338 @@ export default function Dashboard() {
     null
   );
   const sixMonthRevenue = salesData.reduce((sum, row) => sum + (Number(row?.revenue) || 0), 0);
+  const thisMonth = salesData[salesData.length - 1];
+  const thisMonthShown = useCountUp(Number(thisMonth?.revenue) || 0, { enabled: !isLoading });
   const chartMotion = { isAnimationActive: !reducedMotion, animationDuration: 1100, animationEasing: 'ease-out' };
   const axisProps = { stroke: chartTheme.tick, fontSize: 12, tickLine: false, axisLine: false };
+
+  const todayKey = dateKey(now);
+  const weekEndKey = dateKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7));
+  const eventsThisWeek = (coachEvents || [])
+    .filter(event => {
+      const start = String(event.start_date || '').slice(0, 10);
+      const end = String(event.end_date || event.start_date || '').slice(0, 10);
+      return start && end >= todayKey && start <= weekEndKey;
+    })
+    .sort((a, b) =>
+      String(a.start_date).localeCompare(String(b.start_date))
+      || String(a.start_time || '').localeCompare(String(b.start_time || ''))
+    );
+
+  const summary = [
+    [todayCheckIns, 'check-in so far today', 'check-ins so far today'],
+    [expiringSoon.length, 'membership ending this week', 'memberships ending this week'],
+    [eventsThisWeek.length, 'coach event coming up', 'coach events coming up'],
+  ];
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 p-6 lg:space-y-6">
 
-      <StatStrip index={0}>
-        <StatCell label="Total Revenue" tone="gold" to="/transactions" isLoading={isLoading} value={stats.revenue} format={(v) => `₱ ${formatNumber(v)}`} />
-        <StatCell label="Total Members" tone="red" to="/members" isLoading={isLoading} value={stats.members} format={(v) => formatNumber(v)} />
-        <StatCell label="Active Subs" tone="orange" to="/subscriptions" isLoading={isLoading} value={stats.activeSubs} format={(v) => formatNumber(v)} />
-        <StatCell label="Transactions" tone="slate" to="/reports" isLoading={isLoading} value={stats.reports} format={(v) => formatNumber(v)} />
-      </StatStrip>
+      {/* ── Welcome band: who, what today looks like, what to do next ── */}
+      <section aria-label="Today at a glance" className="rise relative isolate overflow-hidden rounded-2xl bg-brand-dark text-white" style={{ '--i': 0 }}>
+        <img
+          src={bandPhoto}
+          alt=""
+          aria-hidden="true"
+          className="settle pointer-events-none absolute inset-y-0 right-0 -z-10 hidden h-full w-[62%] object-cover object-[32%_28%] opacity-70 md:block"
+        />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,#0D0D0D_38%,rgb(13_13_13/0.82)_58%,rgb(13_13_13/0.25)_100%)]" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_120%,rgb(166_3_3/0.42),transparent_55%)]" />
 
-      <Panel
-        index={1}
-        title="Today's Check-ins"
-        icon={FiCheckCircle}
-        action={
-          <PanelLink as={Link} to="/reports" state={{ defaultTab: 'Attendance' }} icon={FiArrowRight}>
-            Attendance report
-          </PanelLink>
-        }
-      >
-        <div className="grid gap-5 md:grid-cols-[minmax(10rem,12rem)_minmax(0,1fr)]">
-          <div className="flex items-end justify-between gap-4 md:flex-col md:items-start md:border-r md:border-line md:pr-5">
-            <div>
-              {isLoading ? (
-                <span className="skeleton h-14 w-20" />
-              ) : (
-                <p className="flex items-center gap-3 font-display text-6xl font-semibold leading-none tracking-tight text-ink tabular-nums">
-                  {formatNumber(checkInsShown)}
-                  {todayCheckIns > 0 && <span aria-hidden="true" className="live-dot h-2.5 w-2.5 rounded-full bg-brand-gold" />}
-                </p>
-              )}
-              <p className="mt-2 text-sm text-muted">check-ins so far today</p>
-            </div>
-            {!isLoading && busiestHour && (
-              <p className="text-right md:text-left">
-                <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-muted">Busiest hour</span>
-                <span className="font-display text-2xl font-semibold text-ink-2">{busiestHour.hour}</span>
-              </p>
-            )}
+        <div className="flex flex-col gap-6 p-5 sm:p-7 lg:px-9 lg:py-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-[13px] font-medium text-white/70">
+              <span aria-hidden="true" className="live-dot h-2 w-2 rounded-full bg-brand-gold" />
+              Today at Double Alpha
+            </p>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="group press inline-flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-[13px] text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-70"
+              title="Load the latest numbers"
+            >
+              <FiRefreshCw size={14} aria-hidden="true" className={isRefreshing ? 'animate-spin' : ''} />
+              <span aria-live="polite">{isRefreshing ? 'Updating…' : `Updated ${relativeTime(updatedAt, now)}`}</span>
+            </button>
           </div>
 
-          <div className="relative h-[180px] min-w-0">
-            {isLoading ? (
-              <span className="skeleton absolute inset-0" />
-            ) : todayCheckIns === 0 ? (
-              <EmptyState icon={FiClock}>No check-ins yet today.</EmptyState>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={checkInsByHour} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke={chartTheme.grid} />
-                  <XAxis dataKey="hour" {...axisProps} fontSize={11} />
-                  <YAxis {...axisProps} allowDecimals={false} width={28} />
-                  <Tooltip cursor={{ fill: chartTheme.cursor, radius: 4 }} content={<ChartTooltip unit="check-ins" />} />
-                  <Bar dataKey="checkIns" name="Check-ins" fill={chartTheme.bars} radius={[4, 4, 0, 0]} maxBarSize={36} {...chartMotion} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          <div className="max-w-2xl">
+            <p className="rise text-[clamp(1.75rem,3.4vw,2.6rem)] font-medium leading-[1.08] tracking-[-0.03em]" style={{ '--i': 1 }}>
+              {greetingFor(now)}{firstName ? `, ${firstName}` : ''}.
+            </p>
+            <p className="rise mt-3 max-w-xl text-[15px] leading-relaxed text-white/70 sm:text-base" style={{ '--i': 2 }}>
+              {isLoading ? 'Loading today’s numbers…' : summary.map(([count, one, many], i) => (
+                <span key={one}>
+                  <strong className="font-medium text-white">{formatNumber(count)}</strong> {count === 1 ? one : many}
+                  {i < summary.length - 2 ? ', ' : i === summary.length - 2 ? ' and ' : '.'}
+                </span>
+              ))}
+            </p>
+          </div>
+
+          <div className="rise grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2 xl:flex xl:flex-wrap" style={{ '--i': 3 }}>
+            <Button size="lg" icon={<FiUserCheck size={18} />} onClick={() => setIsCheckInOpen(true)} title="Use when the camera does not recognise a member">
+              Check in a member
+            </Button>
+            <BandLink to="/members" icon={FiUserPlus} hint="Opens Member Registration">Register a member</BandLink>
+            <BandLink to="/transactions" icon={FiCreditCard} hint="Opens Transactions">Record a payment</BandLink>
+            <Button size="lg" variant="onDark" icon={<FiCalendar size={18} className="text-brand-gold" />} onClick={() => handleOpenNewCoachEvent()}>
+              Add a coach event
+            </Button>
           </div>
         </div>
-      </Panel>
+      </section>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
+      {/* ── Key figures, each with a plain-language caption ── */}
+      <StatStrip index={1} columns="xl:grid-cols-4">
+        <StatCell label="Net revenue" hint="All time, after refunds" tone="gold" to="/transactions" isLoading={isLoading} value={stats.revenue} format={peso} />
+        <StatCell label="Members" hint="Registered in total" tone="red" to="/members" isLoading={isLoading} value={stats.members} format={(v) => formatNumber(v)} />
+        <StatCell label="Active subscriptions" hint="Running right now" tone="orange" to="/subscriptions" isLoading={isLoading} value={stats.activeSubs} format={(v) => formatNumber(v)} />
+        <StatCell label="Transactions" hint="Recorded all time" tone="slate" to="/reports" isLoading={isLoading} value={stats.reports} format={(v) => formatNumber(v)} />
+      </StatStrip>
+
+      {/* ── Today: attendance and who needs a renewal ── */}
+      <div className="grid grid-cols-1 gap-5 lg:gap-6 xl:grid-cols-3">
         <Panel
           index={2}
-          className="lg:col-span-2"
-          title="Revenue Growth"
-          icon={FiTrendingUp}
-          meta={<span className="text-xs font-medium text-muted">Last 6 months</span>}
+          className="xl:col-span-2"
+          title="Today's check-ins"
+          icon={FiActivity}
           action={
-            !isLoading && (
-              <span className="text-right">
-                <span className="sr-only">Six-month total: </span>
-                <span className="font-display text-xl font-semibold text-ink tabular-nums">₱ {formatNumber(sixMonthRevenue)}</span>
-              </span>
-            )
+            <PanelLink as={Link} to="/reports" state={{ defaultTab: 'Attendance' }} icon={FiArrowRight}>
+              Attendance report
+            </PanelLink>
           }
-          bodyClassName="flex flex-col"
         >
-          <div className="relative min-h-[260px] flex-1">
+          <div className="grid gap-5 md:grid-cols-[minmax(10rem,12rem)_minmax(0,1fr)]">
+            <div className="flex items-end justify-between gap-4 md:flex-col md:items-start md:justify-between md:border-r md:border-line md:pr-5">
+              <div>
+                {isLoading ? (
+                  <span className="skeleton h-14 w-24" />
+                ) : (
+                  <p className="font-display text-[3.5rem] font-medium leading-none tracking-[-0.04em] text-ink">
+                    {formatNumber(checkInsShown)}
+                  </p>
+                )}
+                <p className="mt-2 text-[13px] text-muted">check-ins so far today</p>
+              </div>
+              {!isLoading && busiestHour && (
+                <div className="text-right md:text-left">
+                  <p className="flex items-center gap-2 text-[13px] text-muted md:justify-start">
+                    <span aria-hidden="true" className="h-2.5 w-2.5 rounded-xs" style={{ background: chartTheme.busiest }} />
+                    Busiest hour
+                  </p>
+                  <p className="mt-1 text-xl font-medium tracking-[-0.02em] text-ink">{busiestHour.hour}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="relative h-[200px] min-w-0">
+              {isLoading ? (
+                <span className="skeleton absolute inset-0" />
+              ) : todayCheckIns === 0 ? (
+                <EmptyState
+                  icon={FiClock}
+                  title="No check-ins yet today"
+                  action={<Button size="sm" variant="outline" icon={<FiUserCheck size={14} />} onClick={() => setIsCheckInOpen(true)}>Check in a member</Button>}
+                >
+                  Members appear here as the camera recognises them.
+                </EmptyState>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={checkInsByHour} margin={{ top: 6, right: 4, left: -10, bottom: 0 }}>
+                    <CartesianGrid vertical={false} stroke={chartTheme.grid} />
+                    <XAxis dataKey="hour" {...axisProps} fontSize={11} interval="preserveStartEnd" />
+                    <YAxis {...axisProps} allowDecimals={false} width={30} />
+                    <Tooltip cursor={{ fill: chartTheme.cursor, radius: 6 }} content={<ChartTooltip unit="check-ins" />} />
+                    <Bar dataKey="checkIns" name="Check-ins" radius={[5, 5, 0, 0]} maxBarSize={34} {...chartMotion}>
+                      {checkInsByHour.map((slot) => (
+                        <Cell key={slot.hour} fill={slot === busiestHour ? chartTheme.busiest : chartTheme.bars} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel
+          index={3}
+          title="Ending this week"
+          icon={FiClock}
+          meta={!isLoading && expiringSoon.length > 0 && (
+            <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[13px] font-medium text-warn">{expiringSoon.length}</span>
+          )}
+          action={<PanelLink as={Link} to="/subscriptions" icon={FiArrowRight}>Packages</PanelLink>}
+          bodyClassName="xl:max-h-[330px] overflow-y-auto"
+        >
+          {isLoading ? (
+            <ListSkeleton rows={4} />
+          ) : expiringSoon.length === 0 ? (
+            <EmptyState icon={FiCheckCircle} title="Nothing ending this week">
+              No memberships end in the next 7 days.
+            </EmptyState>
+          ) : (
+            <ul className="-my-1 space-y-0.5">
+              {expiringSoon.map((item, i) => {
+                const urgent = item.days <= 2;
+                return (
+                  <RowLink
+                    key={i}
+                    index={i * 0.6 + 3}
+                    to="/members"
+                    state={{ searchTerm: item.name }}
+                    label={`${item.name}, ${endsLabel(item.days).toLowerCase()}. Open in Members`}
+                  >
+                    <span aria-hidden="true" className={`h-9 w-1 shrink-0 rounded-full ${urgent ? 'bg-accent' : 'bg-brand-gold'}`} />
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-ink">{item.name}</span>
+                    <Badge variant={urgent ? 'danger' : 'warning'}>{endsLabel(item.days)}</Badge>
+                  </RowLink>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      {/* ── Recent activity ── */}
+      <div className="grid grid-cols-1 gap-5 lg:gap-6 xl:grid-cols-3">
+        <Panel
+          index={4}
+          className="xl:col-span-2"
+          title="Recent payments"
+          icon={FiCreditCard}
+          action={<PanelLink as={Link} to="/transactions" icon={FiArrowRight}>All transactions</PanelLink>}
+        >
+          {isLoading ? (
+            <ListSkeleton rows={5} />
+          ) : recentTxns.length === 0 ? (
+            <EmptyState icon={FiCreditCard} title="No payments yet">Recorded payments show up here.</EmptyState>
+          ) : (
+            <ul className="-my-1 space-y-0.5">
+              {recentTxns.map((txn, i) => {
+                const isNegative = txn.status === 'Refunded' || Number(txn.amount) < 0;
+                return (
+                  <RowLink
+                    key={txn.id || i}
+                    index={i * 0.6 + 4}
+                    to="/transactions"
+                    state={{ searchTerm: txn.transactionId || txn.memberName }}
+                    label={`${txn.memberName}, ${Number(txn.amount) > 0 ? '' : 'minus '}₱${formatNumber(Math.abs(txn.amount))}. Open in Transactions`}
+                  >
+                    <Avatar name={txn.memberName === 'Walk-in Guest' ? '' : txn.memberName} fallback={<FiUsers size={15} />} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-medium text-ink">{txn.memberName}</span>
+                      <span className="mt-0.5 block truncate text-[13px] text-muted">
+                        {txn.packageDetails?.title || 'Package Payment'}
+                        {txn.packageDetails?.category && <> · {txn.packageDetails.category}</>}
+                      </span>
+                    </span>
+                    <span className="hidden sm:inline-flex"><Badge variant={methodVariant(txn.method)}>{txn.method}</Badge></span>
+                    <span className={`w-24 shrink-0 text-right font-display text-base font-medium tracking-[-0.01em] ${isNegative ? 'text-negative' : 'text-positive'}`}>
+                      {Number(txn.amount) > 0 ? '+' : '−'} ₱{formatNumber(Math.abs(txn.amount))}
+                    </span>
+                  </RowLink>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          index={5}
+          title="New members"
+          icon={FiUserPlus}
+          action={<PanelLink as={Link} to="/members" icon={FiArrowRight}>All members</PanelLink>}
+        >
+          {isLoading ? (
+            <ListSkeleton rows={5} />
+          ) : recentMembers.length === 0 ? (
+            <EmptyState icon={FiUserPlus} title="No members yet">Newly registered members show up here.</EmptyState>
+          ) : (
+            <ul className="-my-1 space-y-0.5">
+              {recentMembers.map((member, i) => {
+                const name = typeof member === 'string' ? member : member.name;
+                return (
+                  <RowLink
+                    key={member.id || name || i}
+                    index={i * 0.5 + 5}
+                    to="/members"
+                    state={{ searchTerm: name }}
+                    label={`${name}. Open in Members`}
+                    className="min-h-12 py-2"
+                  >
+                    <Avatar name={name} size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-ink">{name}</span>
+                  </RowLink>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      {/* ── Trends and what is coming ── */}
+      <div className="grid grid-cols-1 gap-5 lg:gap-6 xl:grid-cols-3">
+        <Panel
+          index={6}
+          className="xl:col-span-2"
+          title="Monthly income"
+          icon={FiTrendingUp}
+          meta={<span className="text-[13px] font-normal text-muted">Last 6 months</span>}
+          action={<PanelLink as={Link} to="/reports" icon={FiArrowRight}>Reports</PanelLink>}
+          bodyClassName="flex flex-col gap-4"
+        >
+          <dl className="flex flex-wrap items-end gap-x-10 gap-y-3">
+            <div>
+              <dt className="flex items-center gap-2 text-[13px] text-muted">
+                <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: chartTheme.revenue }} />
+                {thisMonth?.name ? `${thisMonth.name} so far` : 'This month so far'}
+              </dt>
+              <dd className="mt-1 font-display text-3xl font-medium tracking-[-0.03em] text-ink">
+                {isLoading ? <span className="skeleton h-8 w-36" /> : peso(thisMonthShown)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[13px] text-muted">6-month total</dt>
+              <dd className="mt-1 text-lg font-medium tracking-[-0.02em] text-ink-2">
+                {isLoading ? <span className="skeleton h-5 w-24" /> : peso(sixMonthRevenue)}
+              </dd>
+            </div>
+          </dl>
+          <div className="relative min-h-[230px] flex-1">
             {isLoading ? (
               <span className="skeleton absolute inset-0" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={salesData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <AreaChart data={salesData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={chartTheme.revenue} stopOpacity={0.28} />
+                      <stop offset="0%" stopColor={chartTheme.revenue} stopOpacity={0.26} />
                       <stop offset="100%" stopColor={chartTheme.revenue} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid vertical={false} stroke={chartTheme.grid} />
                   <XAxis dataKey="name" {...axisProps} />
-                  <YAxis {...axisProps} width={64} tickFormatter={(val) => `₱${formatNumber(val, { notation: 'compact', maximumFractionDigits: 1 })}`} />
+                  <YAxis {...axisProps} width={56} tickFormatter={(val) => `₱${formatNumber(val, { notation: 'compact', maximumFractionDigits: 1 })}`} />
                   <Tooltip
                     cursor={{ stroke: chartTheme.tick, strokeDasharray: '3 3' }}
-                    content={<ChartTooltip format={(v) => `₱ ${formatNumber(v)}`} />}
+                    content={<ChartTooltip format={peso} />}
                   />
                   <Area
                     type="monotone"
                     dataKey="revenue"
+                    name="Income"
                     stroke={chartTheme.revenue}
                     strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#colorRev)"
-                    activeDot={{ r: 5, strokeWidth: 2, stroke: isDarkMode ? '#22252D' : '#FFFFFF' }}
+                    dot={(props) => (props.index === salesData.length - 1
+                      ? <circle key="current" cx={props.cx} cy={props.cy} r={5} fill={chartTheme.revenue} stroke={chartTheme.dotRing} strokeWidth={2.5} />
+                      : <g key={props.index} />)}
+                    activeDot={{ r: 6, strokeWidth: 2.5, stroke: chartTheme.dotRing }}
                     {...chartMotion}
                   />
                 </AreaChart>
@@ -299,102 +630,52 @@ export default function Dashboard() {
         </Panel>
 
         <Panel
-          index={3}
-          title="Expiring within 7 Days"
-          icon={FiClock}
-          meta={!isLoading && expiringSoon.length > 0 && (
-            <span className="rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn tabular-nums">{expiringSoon.length}</span>
-          )}
-          bodyClassName="lg:max-h-[340px] overflow-y-auto"
+          index={7}
+          title="Coming up this week"
+          icon={FiCalendar}
+          action={<PanelLink as="a" href="#overview-calendar" icon={FiArrowRight}>Calendar</PanelLink>}
         >
-          {isLoading ? (
-            <ListSkeleton rows={4} />
-          ) : expiringSoon.length === 0 ? (
-            <EmptyState icon={FiCheckCircle}>No memberships expiring soon.</EmptyState>
+          {eventsThisWeek.length === 0 ? (
+            <EmptyState
+              icon={FiCalendar}
+              title="No coach events this week"
+              action={<Button size="sm" variant="outline" icon={<FiCalendar size={14} />} onClick={() => handleOpenNewCoachEvent()}>Add a coach event</Button>}
+            >
+              Classes and sessions you add show up here.
+            </EmptyState>
           ) : (
-            <ul className="-my-1 divide-y divide-line">
-              {expiringSoon.map((item, i) => {
-                const urgent = item.days <= 2;
+            <ul className="-my-1 space-y-2">
+              {eventsThisWeek.slice(0, 4).map((event, i) => {
+                const start = parseDateKey(event.start_date);
+                const color = event.color || event.category?.color || '#3F454D';
+                const category = typeof event.category === 'string' ? event.category : event.category?.name;
+                const time = [formatTime(event.start_time), formatTime(event.end_time)].filter(Boolean).join('–');
                 return (
-                  <li key={i} className="rise flex items-center justify-between gap-3 py-3" style={{ '--i': i * 0.6 + 3 }}>
-                    <span className="flex min-w-0 items-center gap-3">
-                      <span aria-hidden="true" className={`h-8 w-1 shrink-0 rounded-full ${urgent ? 'bg-accent' : 'bg-brand-gold'}`} />
-                      <span className="truncate text-sm font-medium text-ink">{item.name}</span>
-                    </span>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${urgent ? 'bg-accent-soft text-accent' : 'bg-warn-soft text-warn'}`}>
-                      {item.days} days left
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Panel>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5 lg:gap-6">
-        <Panel index={4} className="lg:col-span-2" title="Recently Added Members" icon={FiUserPlus}>
-          {isLoading ? (
-            <ListSkeleton rows={4} />
-          ) : recentMembers.length === 0 ? (
-            <EmptyState icon={FiUserPlus}>No members found.</EmptyState>
-          ) : (
-            <ul className="-my-1 divide-y divide-line">
-              {recentMembers.map((member, i) => {
-                const name = typeof member === 'string' ? member : member.name;
-                return (
-                  <li key={member.id || name || i} className="rise flex items-center justify-between gap-3 py-2.5" style={{ '--i': i * 0.6 + 4 }}>
-                    <span className="flex min-w-0 items-center gap-3">
-                      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-hover font-display text-sm font-semibold text-ink-2">
-                        {initialsOf(name)}
-                      </span>
-                      <Link to="/members" state={{ searchTerm: name }} className="link-draw min-w-0 truncate py-1 text-sm font-semibold text-ink hover:text-accent">
-                        {name}
-                      </Link>
-                    </span>
-                    <span className="shrink-0 rounded-full bg-positive-soft px-2.5 py-1 text-xs font-semibold text-positive">New</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel index={5} className="lg:col-span-3" title="Recent Transactions" icon={FiDollarSign}>
-          {isLoading ? (
-            <ListSkeleton rows={4} />
-          ) : recentTxns.length === 0 ? (
-            <EmptyState icon={FiDollarSign}>No transactions found.</EmptyState>
-          ) : (
-            <ul className="-my-1 divide-y divide-line">
-              {recentTxns.map((txn, i) => {
-                const isNegative = txn.status === 'Refunded' || Number(txn.amount) < 0;
-                return (
-                  <li key={txn.id || i} className="rise grid grid-cols-[minmax(0,1fr)_4.75rem_6.5rem] items-center gap-3 py-3" style={{ '--i': i * 0.6 + 5 }}>
-                    <div className="min-w-0">
-                      <Link to="/transactions" state={{ searchTerm: txn.transactionId || txn.memberName }} className="link-draw block w-fit max-w-full truncate text-sm font-semibold text-ink hover:text-accent">
-                        {txn.memberName}
-                      </Link>
-                      <p className="mt-0.5 truncate text-xs text-muted">
-                        {txn.packageDetails?.title || 'Package Payment'}
-                        {txn.packageDetails?.category && <span> · {txn.packageDetails.category}</span>}
+                  <li key={event.id || i} className="rise flex items-stretch gap-3.5 rounded-xl border border-line p-3" style={{ '--i': i * 0.6 + 7 }}>
+                    <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-lg border-l-[3px] bg-field py-1.5" style={{ borderLeftColor: color }}>
+                      <span className="text-xs font-medium uppercase text-muted">{start ? start.toLocaleDateString('en-US', { weekday: 'short' }) : ''}</span>
+                      <span className="text-xl font-medium leading-none tracking-[-0.02em] text-ink">{start ? start.getDate() : '—'}</span>
+                    </div>
+                    <div className="min-w-0 flex-1 py-0.5">
+                      <p className="truncate text-[15px] font-medium text-ink">{event.title || 'Coach event'}</p>
+                      <p className="mt-0.5 truncate text-[13px] text-muted">
+                        {time && <span className="font-mono text-[12.5px] tracking-tight text-ink-2">{time}</span>}
+                        {time && (event.location || category) && <span aria-hidden="true"> · </span>}
+                        {event.location || category || (!time && start ? start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : '')}
                       </p>
                     </div>
-                    <span className={`inline-flex w-full items-center justify-center rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide ${methodTone(txn.method)}`}>
-                      {txn.method}
-                    </span>
-                    <span className={`whitespace-nowrap text-right font-display text-base font-semibold tabular-nums ${isNegative ? 'text-negative' : 'text-positive'}`}>
-                      {Number(txn.amount) > 0 ? '+' : '-'} ₱{formatNumber(Math.abs(txn.amount))}
-                    </span>
                   </li>
                 );
               })}
+              {eventsThisWeek.length > 4 && (
+                <li className="pt-1 text-center text-[13px] text-muted">+ {plural(eventsThisWeek.length - 4, 'more event', 'more events')} in the calendar</li>
+              )}
             </ul>
           )}
         </Panel>
       </div>
 
-      <Panel index={6} title="Subscriptions & Events" icon={FiCalendar} className="relative w-full">
+      <Panel index={8} id="overview-calendar" title="Subscriptions & events calendar" icon={FiCalendar} className="relative w-full scroll-mt-4">
         <SubscriptionsCalendarView
           subscriptions={subscriptions}
           coachEvents={coachEvents}
@@ -410,36 +691,45 @@ export default function Dashboard() {
           calendarOnly
           readOnly
         />
-        <CoachEventModal
-          isOpen={isEventModalOpen}
-          onClose={() => setIsEventModalOpen(false)}
-          eventForm={eventForm}
-          setEventForm={setEventForm}
-          recentColors={recentColors}
-          eventCategories={eventCategories}
-          isSaving={isSavingEvent}
-          isSavingCategory={isSavingCategory}
-          onUpdateCategory={handleUpdateCoachEventCategory}
-          onDeleteCategory={handleDeleteCoachEventCategory}
-          onSave={handleSaveCoachEvent}
-        />
-        <ConfirmDialog
-          isOpen={confirmDialog.isOpen}
-          title={confirmDialog.title}
-          message={confirmDialog.message}
-          onConfirm={confirmDialog.onConfirm}
-          onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-          confirmText="Confirm"
-          isDanger
-        />
-        <AlertDialog
-          isOpen={alertDialog.isOpen}
-          title={alertDialog.title}
-          message={alertDialog.message}
-          type={alertDialog.type}
-          onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
-        />
       </Panel>
+
+      <CoachEventModal
+        isOpen={isEventModalOpen}
+        onClose={() => setIsEventModalOpen(false)}
+        eventForm={eventForm}
+        setEventForm={setEventForm}
+        recentColors={recentColors}
+        eventCategories={eventCategories}
+        isSaving={isSavingEvent}
+        isSavingCategory={isSavingCategory}
+        onUpdateCategory={handleUpdateCoachEventCategory}
+        onDeleteCategory={handleDeleteCoachEventCategory}
+        onSave={handleSaveCoachEvent}
+      />
+      <ManualCheckInModal
+        isOpen={isCheckInOpen}
+        onClose={() => setIsCheckInOpen(false)}
+        onDone={(title, message, type) => {
+          setAlertDialog({ isOpen: true, title, message, type });
+          fetchDashboardData(false);
+        }}
+      />
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        confirmText="Confirm"
+        isDanger
+      />
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+      />
 
     </div>
   );
