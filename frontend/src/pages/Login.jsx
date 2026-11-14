@@ -223,7 +223,7 @@ export default function Login() {
               <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-brand-gold">Double Alpha Fitness</p>
             </div>
 
-            <div className="rise mb-8 border-l-[3px] border-brand-gold py-1 pl-5 sm:mb-10" style={{ '--i': 1 }}>
+            <div className="rise mb-8 sm:mb-10" style={{ '--i': 1 }}>
               <h2 className="font-display text-4xl font-semibold uppercase leading-none tracking-tight text-white sm:text-5xl">
                 System <span className="text-brand-gold">Login</span>
               </h2>

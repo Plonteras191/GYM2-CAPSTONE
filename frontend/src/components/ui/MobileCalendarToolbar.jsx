@@ -1,68 +1,77 @@
 import React from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
+/** Calendar controls for phones (the desktop toolbar is FullCalendar's own). */
 export default function MobileCalendarToolbar({
   title,
   onPrevious,
   onNext,
+  onToday,
+  isOnToday = false,
   actionLabel = 'Today',
-  actionActive = true,
   onAction,
   actionIcon,
   views = [],
   activeView,
   onViewChange
 }) {
+  const navButton = 'press flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-panel text-ink-2 hover:border-line-strong hover:text-ink';
+
   return (
-    <div className="mb-3 sm:hidden space-y-2.5">
-      {/* Top Row: Title on Left, Controls on Right */}
+    <div className="mb-3 space-y-2.5 sm:hidden">
+      {/* Month on its own line so it never gets cut off */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="min-w-0 flex-1 truncate text-left text-sm font-bold uppercase tracking-wide text-ink">
-          {title}
-        </h3>
-        <div className="flex items-center gap-0 shrink-0">
-          <button 
-            onClick={onPrevious} 
-            aria-label="Previous month" 
-            className="calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-hover text-ink shadow-sm transition-colors active:scale-95"
-          >
-            <FiChevronLeft size={16} />
+        <h3 className="min-w-0 flex-1 truncate text-lg font-medium tracking-[-0.02em] text-ink">{title}</h3>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button onClick={onPrevious} aria-label="Previous month" className={navButton}>
+            <FiChevronLeft size={18} />
           </button>
-          <button 
-            onClick={onNext} 
-            aria-label="Next month" 
-            className="calendar-nav-button mx-1 flex h-8 w-8 items-center justify-center rounded-lg border border-transparent bg-hover text-ink shadow-sm transition-colors active:scale-95"
-          >
-            <FiChevronRight size={16} />
+          <button onClick={onNext} aria-label="Next month" className={navButton}>
+            <FiChevronRight size={18} />
           </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        {views.length > 1 && (
+          <div role="group" aria-label="Calendar view" className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-xl border border-line bg-field p-1">
+            {views.map(view => {
+              const active = activeView === view.id;
+              return (
+                <button
+                  key={view.id}
+                  onClick={() => onViewChange(view.id)}
+                  aria-pressed={active}
+                  className={`press flex min-h-8 items-center justify-center rounded-lg text-sm font-medium ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08),0_0_0_1px_var(--ui-line)]' : 'text-muted hover:text-ink'}`}
+                >
+                  {view.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onToday && (
+            <button
+              onClick={onToday}
+              disabled={isOnToday}
+              className={`press h-10 rounded-xl px-3.5 text-sm font-medium disabled:cursor-default ${isOnToday ? 'border border-line bg-panel text-muted opacity-60' : 'bg-brand-gold text-brand-dark hover:bg-brand-gold-500'}`}
+            >
+              Today
+            </button>
+          )}
           {onAction && (
-            <button 
-              onClick={onAction} 
-              aria-label={actionLabel} 
-              title={actionLabel} 
-              className={`calendar-action-button flex shrink-0 items-center justify-center rounded-lg border-0 shadow-sm transition-colors active:scale-95 ${actionIcon ? 'h-8 w-8' : 'mx-1 min-h-[38px] px-3.5 py-2 font-sans text-[15px] font-bold normal-case'} ${actionActive ? 'bg-brand-dark text-brand-white hover:bg-brand-slate' : 'bg-line text-ink-2 opacity-70 hover:bg-line dark:bg-hover dark:text-muted dark:hover:bg-slate-600'}`}
+            <button
+              onClick={onAction}
+              aria-label={actionLabel}
+              title={actionLabel}
+              className={`press flex h-10 shrink-0 items-center justify-center rounded-xl bg-brand-dark text-brand-white hover:bg-brand-slate dark:bg-brand-gold dark:text-brand-dark dark:hover:bg-brand-gold-500 ${actionIcon ? 'w-10' : 'px-3.5 text-sm font-medium'}`}
             >
               {actionIcon || actionLabel}
             </button>
           )}
         </div>
       </div>
-
-      {/* Segmented View Switcher */}
-      {views.length > 1 && (
-        <div className="grid w-full grid-cols-2 rounded-xl border border-line bg-hover p-1 shadow-sm dark:border-line dark:bg-field">
-          {views.map(view => (
-            <button 
-              key={view.id} 
-              onClick={() => onViewChange(view.id)} 
-              aria-pressed={activeView === view.id}
-              className={`calendar-view-button mx-1 flex min-h-[38px] items-center justify-center rounded-lg border-l border-line-strong px-3.5 py-2 font-sans text-[15px] font-bold normal-case transition-all active:scale-[0.98] dark:border-line-strong ${activeView === view.id ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
-            >
-              {view.label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

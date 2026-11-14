@@ -8,6 +8,7 @@ import { StatStrip, StatCell } from '../components/ui/StatStrip';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
+import { tintStyle } from '../components/ui/ColorTile';
 import ManualCheckInModal from '../components/ui/ManualCheckInModal';
 import api from '../api';
 import { getPaymentMethodLabel } from '../utils/paymentMethod';
@@ -258,13 +259,6 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(() => new Date());
   const [now, setNow] = useState(() => new Date());
-  const [firstName] = useState(() => {
-    try {
-      return (localStorage.getItem('admin_name') || '').trim().split(/\s+/)[0] || '';
-    } catch {
-      return '';
-    }
-  });
 
   // Every fetch hands back a new stats object, so this marks each refresh.
   useEffect(() => { setUpdatedAt(new Date()); }, [stats]);
@@ -347,7 +341,7 @@ export default function Dashboard() {
 
           <div className="max-w-2xl">
             <p className="rise text-[clamp(1.75rem,3.4vw,2.6rem)] font-medium leading-[1.08] tracking-[-0.03em]" style={{ '--i': 1 }}>
-              {greetingFor(now)}{firstName ? `, ${firstName}` : ''}.
+              {greetingFor(now)}.
             </p>
             <p className="rise mt-3 max-w-xl text-[15px] leading-relaxed text-white/70 sm:text-base" style={{ '--i': 2 }}>
               {isLoading ? 'Loading today’s numbers…' : summary.map(([count, one, many], i) => (
@@ -474,7 +468,7 @@ export default function Dashboard() {
                     state={{ searchTerm: item.name }}
                     label={`${item.name}, ${endsLabel(item.days).toLowerCase()}. Open in Members`}
                   >
-                    <span aria-hidden="true" className={`h-9 w-1 shrink-0 rounded-full ${urgent ? 'bg-accent' : 'bg-brand-gold'}`} />
+                    <Avatar name={item.name} size="sm" />
                     <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-ink">{item.name}</span>
                     <Badge variant={urgent ? 'danger' : 'warning'}>{endsLabel(item.days)}</Badge>
                   </RowLink>
@@ -652,7 +646,7 @@ export default function Dashboard() {
                 const time = [formatTime(event.start_time), formatTime(event.end_time)].filter(Boolean).join('–');
                 return (
                   <li key={event.id || i} className="rise flex items-stretch gap-3.5 rounded-xl border border-line p-3" style={{ '--i': i * 0.6 + 7 }}>
-                    <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-lg border-l-[3px] bg-field py-1.5" style={{ borderLeftColor: color }}>
+                    <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-lg py-1.5" style={tintStyle(color)}>
                       <span className="text-xs font-medium uppercase text-muted">{start ? start.toLocaleDateString('en-US', { weekday: 'short' }) : ''}</span>
                       <span className="text-xl font-medium leading-none tracking-[-0.02em] text-ink">{start ? start.getDate() : '—'}</span>
                     </div>

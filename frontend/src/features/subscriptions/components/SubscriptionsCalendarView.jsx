@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiFilter, FiPlus, FiTrash2, FiMapPin, FiEdit2, FiEye, FiCalendar, FiMoreVertical, FiLoader } from 'react-icons/fi';
+import { FiFilter, FiPlus, FiTrash2, FiEdit2, FiCalendar, FiLoader } from 'react-icons/fi';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -10,8 +10,11 @@ import MobileCalendarDaySheet from '../../../components/ui/MobileCalendarDayShee
 import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 import CalendarCategoryFilters from './CalendarCategoryFilters';
 import { getActivePackageCategoryOptions, getCoachEventCategoryOptions, getPackageColor } from '../packageCategories';
-import { getCalendarEventTextColor } from '../../../utils/calendarContrast';
 import { getLocalDateString } from '../../../utils/dateFormat';
+import Panel from '../../../components/ui/Panel';
+import Button from '../../../components/ui/Button';
+import IconButton from '../../../components/ui/IconButton';
+import { tintStyle } from '../../../components/ui/ColorTile';
 
 export default function SubscriptionsCalendarView({
   subscriptions,
@@ -40,7 +43,6 @@ export default function SubscriptionsCalendarView({
   const [isCalendarCurrentMonth, setIsCalendarCurrentMonth] = React.useState(true);
   const [selectedDay, setSelectedDay] = React.useState(null);
   const [selectedDayEvents, setSelectedDayEvents] = React.useState([]);
-  const [openActionsEventId, setOpenActionsEventId] = React.useState(null);
   const todayStr = getLocalDateString();
   const allCalendarEvents = [];
   const categoryIsVisible = (category, selected) =>
@@ -200,170 +202,21 @@ export default function SubscriptionsCalendarView({
   };
 
   return (
-    <div className={`grid w-full min-w-0 grid-cols-1 items-start gap-4 animate-in fade-in duration-300 lg:gap-5 ${calendarOnly ? '' : 'xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_340px]'}`}>
-      <div 
+    <div className={`grid w-full min-w-0 grid-cols-1 items-start gap-5 lg:gap-6 ${calendarOnly ? '' : 'xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_370px]'}`}>
+      <div
         onMouseMove={handleCalendarMouseMove}
         onMouseLeave={handleCalendarMouseLeave}
-        className={`mobile-calendar-grid calendar-nav-style relative flex h-auto sm:min-h-[clamp(28rem,75svh,46rem)] min-w-0 flex-col xl:col-start-1 xl:row-start-1 ${calendarOnly ? '' : 'rounded-2xl border border-line bg-panel p-3 shadow-sm dark:border-line dark:bg-panel sm:p-5'} ${isCalendarCurrentMonth ? 'calendar-current-month' : 'calendar-other-month'}`}
+        className={`cal-theme mobile-calendar-grid relative flex h-auto min-w-0 flex-col sm:min-h-[clamp(28rem,75svh,46rem)] xl:col-start-1 xl:row-start-1 ${calendarOnly ? '' : 'rise rounded-2xl border border-line bg-panel p-3 sm:p-5'}`}
+        style={calendarOnly ? undefined : { '--i': 2 }}
       >
-        <style>{`
-          .fc { --fc-border-color: #e7eaf0; --fc-page-bg-color: transparent; --fc-list-event-hover-bg-color: rgba(0,0,0,0.05); --fc-today-bg-color: rgba(245,158,11,.08); color: #4b5563; }
-          .dark .fc { --fc-border-color: #3c4352; --fc-neutral-text-color: #cbd5e1; --fc-today-bg-color: rgba(245, 158, 11, 0.09); color: #d1d5db; }
-          .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000 !important; text-transform: none !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; margin: 0 4px !important; }
-          .dark .fc .fc-button-primary { background-color: #1e293b !important; border-color: #374151 !important; color: #d1d5db !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #e5e7eb !important; border-color: transparent !important; border-radius: 0.5rem !important; color: #000 !important; padding: .4em .65em !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #e5e7eb !important; border-color: #000 !important; color: #000 !important; }
-          .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #4b5563 !important; border-color: transparent !important; color: #d1d5db !important; }
-          .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #4b5563 !important; border-color: #d1d5db !important; color: #d1d5db !important; }
-          .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { background-color: #0f172a !important; border: 1px solid #0f172a !important; color: #fff !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 700 !important; }
-          .fc .fc-button.fc-button-primary.fc-today-button { background-color: #0f172a !important; border: 1px solid #0f172a !important; color: #fff !important; font-weight: 700 !important; border-radius: 0.5rem !important; text-transform: none !important; letter-spacing: 0 !important; }
-          .fc .fc-button-primary.fc-dayGridMonth-button:hover:not(:disabled), .fc .fc-button-primary.fc-listWeek-button:hover:not(:disabled), .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-color: #1e293b !important; border-color: #1e293b !important; color: #fff !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 700 !important; }
-          .fc .fc-button-primary.fc-dayGridMonth-button, .fc .fc-button-primary.fc-listWeek-button { text-transform: capitalize !important; }
-          @media (min-width: 640px) {
-            .mobile-calendar-grid .fc .fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button-primary.fc-dayGridMonth-button, .mobile-calendar-grid .fc .fc-button-primary.fc-listWeek-button { min-height: 38px !important; padding: 8px 14px !important; margin: 0 4px !important; }
-          }
-          .calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #0f172a !important; border-color: #0f172a !important; color: #fff !important; opacity: 1 !important; }
-          .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-color: #f1f5f9 !important; border-color: #e2e8f0 !important; color: #4b5563 !important; opacity: 0.5 !important; }
-          .dark .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .dark .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-color: #1e293b !important; border-color: #374151 !important; color: #9ca3af !important; }
-          .dark .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .dark .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { border-color: #f59e0b !important; color: #000 !important; }
-          .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:disabled { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; border-color: #f59e0b !important; color: #000 !important; }
-          .mobile-calendar-grid.calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { opacity: 1 !important; }
-          .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; border-color: #f59e0b !important; color: #000 !important; opacity: 0.5 !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-dayGridMonth-button, .mobile-calendar-grid .fc .fc-button-primary.fc-dayGridMonth-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-listWeek-button, .mobile-calendar-grid .fc .fc-button-primary.fc-listWeek-button:hover:not(:disabled) { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; border-color: #f59e0b !important; color: #000 !important; opacity: 0.5 !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-dayGridMonth-button:not(:disabled).fc-button-active, .mobile-calendar-grid .fc .fc-button-primary.fc-listWeek-button:not(:disabled).fc-button-active { opacity: 1 !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button-primary.fc-dayGridMonth-button, .mobile-calendar-grid .fc .fc-button-primary.fc-listWeek-button { font-family: ui-sans-serif, system-ui, sans-serif !important; font-size: 15px !important; font-weight: 700 !important; text-transform: none !important; }
-          .mobile-calendar-grid .calendar-action-button[aria-label="Today"] { font-family: ui-sans-serif, system-ui, sans-serif !important; font-size: 15px !important; font-weight: 700 !important; text-transform: none !important; }
-          @media (max-width: 639px) {
-            .mobile-calendar-grid .calendar-action-button[aria-label="Add Event"], .mobile-calendar-grid .calendar-action-button[aria-label="Add Event"]:hover, .mobile-calendar-grid .calendar-action-button[aria-label="Add Event"]:active { background-color: #f59e0b !important; background-image: linear-gradient(to right, #facc15, #f59e0b) !important; color: #000 !important; }
-          }
-          .mobile-calendar-grid .calendar-nav-button { background-color: #e5e7eb !important; border: 2px solid #D1D5DB !important; color: #000 !important; }
-          .mobile-calendar-grid .calendar-nav-button:hover, .mobile-calendar-grid .calendar-nav-button:active { background-color: #e5e7eb !important; border-color: #D1D5DB !important; color: #000 !important; }
-          .dark .mobile-calendar-grid .calendar-nav-button { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
-          .dark .mobile-calendar-grid .calendar-nav-button:hover, .dark .mobile-calendar-grid .calendar-nav-button:active { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
-          .fc-toolbar-title { font-size: 1.15rem !important; font-weight: 800 !important; letter-spacing: .045em !important; text-transform: uppercase !important; color: #111827; }
-          .dark .fc-toolbar-title { color: #d1d5db !important; }
-          .fc-scrollgrid { border: none !important; }
-          .fc-theme-standard th, .fc-theme-standard td { border-color: var(--fc-border-color) !important; }
-          .fc-theme-standard td { border-right: 1px solid var(--fc-border-color) !important; }
-          .fc-theme-standard td:last-child { border-right: none !important; }
-          .fc .fc-col-header { border-bottom: 1px solid var(--fc-border-color); }
-          .fc-col-header-cell-cushion { font-weight: 700 !important; font-size: .73rem !important; letter-spacing: .06em !important; color: #64748b !important; text-transform: uppercase; text-decoration: none !important; }
-          .dark .fc-col-header-cell-cushion { color: #aab3c2 !important; }
-          .fc .fc-daygrid-day { transition: background-color .16s ease; }
-          .fc .fc-daygrid-day:hover { background: rgba(148,163,184,.08); }
-          .dark .fc .fc-daygrid-day:hover { background: rgba(148,163,184,.07); }
-          .fc .fc-day-today { background: rgba(245,158,11,.08) !important; }
-          .fc-daygrid-day-number { font-weight: 700; font-size: .76rem; padding: 7px !important; color: #64748b !important; text-decoration: none !important; }
-          .dark .fc-daygrid-day-number { color: #d1d5db !important; }
-          .fc .fc-day-other .fc-daygrid-day-number { color: #a1aab8 !important; opacity: .62; }
-          .fc-daygrid-event { border-radius: 7px !important; padding: 2px 5px !important; margin: 2px 3px !important; border: 1px solid rgba(255,255,255,.25) !important; box-shadow: 0 1px 2px rgba(15,23,42,.14) !important; transition: transform .16s ease, box-shadow .16s ease; }
-          .fc-daygrid-event:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(15,23,42,.2) !important; }
-          .fc-event-main { color: var(--event-preview-text-color, #111827) !important; font-weight: 500 !important; font-size: .72rem !important; line-height: 1.25 !important; text-shadow: none !important; }
-          .fc-daygrid-more-link { color: #b45309 !important; font-weight: 700 !important; font-size: .72rem !important; }
-          .dark .fc-daygrid-more-link { color: #fbbf24 !important; }
-          .fc-popover { border: 1px solid var(--fc-border-color) !important; border-radius: 12px !important; background: #fff !important; box-shadow: 0 10px 25px -5px rgba(0,0,0,.15) !important; overflow: hidden; }
-          .dark .fc-popover { background: #1e293b !important; border-color: #334155 !important; }
-          .fc-popover-header { background: #f8fafc !important; padding: 12px !important; border-bottom: 1px solid var(--fc-border-color) !important; }
-          .dark .fc-popover-header { background: #0f172a !important; border-color: #334155 !important; }
-          .fc-popover-title { font-weight: 600 !important; font-size: .9rem !important; color: #000 !important; }
-          .dark .fc-popover-title { color: #d1d5db !important; }
-          .fc-popover-body { padding: 12px !important; }
-          .mobile-calendar-grid { --calendar-control-bg: #f8fafc; --calendar-control-border: #dbe2ea; --calendar-control-text: #334155; --calendar-control-hover: #eef2f7; }
-          .dark .mobile-calendar-grid { --calendar-control-bg: #303643; --calendar-control-border: #454e5e; --calendar-control-text: #e2e8f0; --calendar-control-hover: #3c4554; }
-          .mobile-calendar-grid .fc .fc-button-primary { background-color: var(--calendar-control-bg) !important; border-color: var(--calendar-control-border) !important; color: var(--calendar-control-text) !important; box-shadow: 0 1px 2px rgba(15,23,42,.08) !important; }
-          .mobile-calendar-grid .fc .fc-button-primary:hover:not(:disabled) { background-color: var(--calendar-control-hover) !important; border-color: var(--calendar-control-border) !important; color: var(--calendar-control-text) !important; }
-          .mobile-calendar-grid .fc .fc-button-primary:not(:disabled).fc-button-active, .mobile-calendar-grid .fc .fc-button-primary:not(:disabled):active { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; background-color: #f59e0b !important; border-color: #f59e0b !important; color: #111827 !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-today-button { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; background-color: #f59e0b !important; border-color: #f59e0b !important; color: #111827 !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-today-button:hover:not(:disabled) { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; background-color: #f59e0b !important; border-color: #f59e0b !important; color: #111827 !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: var(--calendar-control-bg) !important; border-color: var(--calendar-control-border) !important; color: var(--calendar-control-text) !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled) { background-color: var(--calendar-control-hover) !important; border-color: var(--calendar-control-border) !important; color: var(--calendar-control-text) !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { border: 2px solid #D1D5DB !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled) { border-color: #D1D5DB !important; }
-          .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { border-color: #4b5563 !important; }
-          .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled) { border-color: #4b5563 !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-dayGridMonth-button, .mobile-calendar-grid .fc .fc-button-primary.fc-listWeek-button { background-image: none !important; background-color: var(--calendar-control-bg) !important; border-color: var(--calendar-control-border) !important; color: var(--calendar-control-text) !important; }
-          .mobile-calendar-grid .fc .fc-button-primary.fc-dayGridMonth-button:not(:disabled).fc-button-active, .mobile-calendar-grid .fc .fc-button-primary.fc-listWeek-button:not(:disabled).fc-button-active { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; background-color: #f59e0b !important; border-color: #f59e0b !important; color: #111827 !important; opacity: 1 !important; }
-          @media (min-width: 640px) {
-            .mobile-calendar-grid .fc .fc-button-group > .fc-button-primary.fc-dayGridMonth-button {
-              position: relative !important;
-              z-index: 1 !important;
-              border: 2px solid #D1D5DB !important;
-            }
-            .dark .mobile-calendar-grid .fc .fc-button-group > .fc-button-primary.fc-dayGridMonth-button {
-              border-color: #4b5563 !important;
-            }
-            .mobile-calendar-grid .fc .fc-button-group > .fc-button-primary.fc-listWeek-button {
-              position: relative !important;
-              z-index: 1 !important;
-              border: 2px solid #D1D5DB !important;
-            }
-            .dark .mobile-calendar-grid .fc .fc-button-group > .fc-button-primary.fc-listWeek-button {
-              border-color: #4b5563 !important;
-            }
-          }
-          .calendar-nav-style .calendar-nav-button,
-          .calendar-nav-style .fc .fc-button-primary.fc-prev-button,
-          .calendar-nav-style .fc .fc-button-primary.fc-next-button {
-            border: 2px solid #D1D5DB !important;
-            border-radius: 0.5rem !important;
-            background-color: #f8fafc !important;
-            color: #334155 !important;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12) !important;
-            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease !important;
-          }
-          .calendar-nav-style .fc .fc-button-primary.fc-prev-button,
-          .calendar-nav-style .fc .fc-button-primary.fc-next-button {
-            width: 38px !important;
-            height: 38px !important;
-            padding: 0 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            line-height: 1 !important;
-          }
-          .calendar-nav-style .fc .fc-button-primary.fc-prev-button .fc-icon,
-          .calendar-nav-style .fc .fc-button-primary.fc-next-button .fc-icon {
-            margin: 0 !important;
-            vertical-align: middle !important;
-          }
-          .calendar-nav-style .calendar-nav-button:hover,
-          .calendar-nav-style .calendar-nav-button:active,
-          .calendar-nav-style .fc .fc-button-primary.fc-prev-button:hover:not(:disabled),
-          .calendar-nav-style .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
-          .calendar-nav-style .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
-          .calendar-nav-style .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
-            border-color: #d97706 !important;
-            background-color: #fef3c7 !important;
-            color: #92400e !important;
-            box-shadow: 0 2px 5px rgba(217, 119, 6, 0.2) !important;
-          }
-          .dark .calendar-nav-style .calendar-nav-button,
-          .dark .calendar-nav-style .fc .fc-button-primary.fc-prev-button,
-          .dark .calendar-nav-style .fc .fc-button-primary.fc-next-button {
-            border-color: #4b5563 !important;
-            background-color: #303643 !important;
-            color: #e2e8f0 !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
-          }
-          .dark .calendar-nav-style .calendar-nav-button:hover,
-          .dark .calendar-nav-style .calendar-nav-button:active,
-          .dark .calendar-nav-style .fc .fc-button-primary.fc-prev-button:hover:not(:disabled),
-          .dark .calendar-nav-style .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
-          .dark .calendar-nav-style .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
-          .dark .calendar-nav-style .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
-            border-color: #f59e0b !important;
-            background-color: #3c4554 !important;
-            color: #fbbf24 !important;
-            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.18) !important;
-          }
-        `}</style>
-
         <MobileCalendarToolbar
           title={calendarTitle}
           onPrevious={() => calendarRef.current?.getApi().prev()}
           onNext={() => calendarRef.current?.getApi().next()}
-          actionLabel={calendarOnly || readOnly ? undefined : 'Add Event'}
-          actionIcon={calendarOnly || readOnly ? undefined : <FiPlus size={20} />}
+          onToday={() => calendarRef.current?.getApi().today()}
+          isOnToday={isCalendarCurrentMonth}
+          actionLabel={calendarOnly || readOnly ? undefined : 'Add event'}
+          actionIcon={calendarOnly || readOnly ? undefined : <FiPlus size={18} />}
           onAction={calendarOnly || readOnly ? undefined : onOpenEventModal}
           views={[{ id: 'dayGridMonth', label: 'Month' }, { id: 'listWeek', label: 'List' }]}
           activeView={calendarView}
@@ -381,8 +234,9 @@ export default function SubscriptionsCalendarView({
           headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' }}
           events={allCalendarEvents}
           eventDidMount={info => {
-            const backgroundColor = getComputedStyle(info.el).backgroundColor;
-            info.el.style.setProperty('--event-preview-text-color', getCalendarEventTextColor(backgroundColor));
+            // The chip is tinted from its own colour (see .cal-theme in index.css).
+            const color = info.event.backgroundColor || info.event.borderColor || getComputedStyle(info.el).backgroundColor;
+            info.el.style.setProperty('--ev', color);
           }}
           height="auto"
           datesSet={dateInfo => {
@@ -403,140 +257,109 @@ export default function SubscriptionsCalendarView({
         />
       </div>
 
-      {!calendarOnly && <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2 lg:gap-5 xl:col-start-2 xl:row-start-1 xl:grid-cols-1 xl:content-start">
-        <div className="hidden w-full min-w-0 rounded-2xl border border-line bg-panel p-4 shadow-sm dark:border-line dark:bg-panel xl:col-span-1 xl:flex xl:flex-col">
-          <div className="mb-3 border-b border-line pb-1 dark:border-line">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-ink">
-              <FiFilter size={18} className="shrink-0 text-ink" /> View Filters
-            </h3>
+      {!calendarOnly && (
+        <div className="grid min-w-0 grid-cols-1 items-start gap-5 lg:gap-6 xl:col-start-2 xl:row-start-1">
+          <div className="hidden xl:block">
+            <Panel index={3} title="Show on calendar" icon={FiFilter} bodyClassName="space-y-3">
+              <CalendarCategoryFilters
+                title="Client subscriptions"
+                categories={subscriptionCategoryOptions}
+                selectedCategories={selectedSubscriptionCategories}
+                onChange={setSelectedSubscriptionCategories}
+                enabled={showSubscriptions}
+                onEnabledChange={setShowSubscriptions}
+              />
+              <CalendarCategoryFilters
+                title="Coach events & sessions"
+                categories={coachCategoryOptions}
+                selectedCategories={selectedCoachCategories}
+                onChange={setSelectedCoachCategories}
+                enabled={showCoachEvents}
+                onEnabledChange={setShowCoachEvents}
+              />
+            </Panel>
           </div>
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-1">
-            <CalendarCategoryFilters
-              title="Client Subscriptions"
-              categories={subscriptionCategoryOptions}
-              selectedCategories={selectedSubscriptionCategories}
-              onChange={setSelectedSubscriptionCategories}
-              enabled={showSubscriptions}
-              onEnabledChange={setShowSubscriptions}
-            />
-            <CalendarCategoryFilters
-              title="Coach Events & Sessions"
-              categories={coachCategoryOptions}
-              selectedCategories={selectedCoachCategories}
-              onChange={setSelectedCoachCategories}
-              enabled={showCoachEvents}
-              onEnabledChange={setShowCoachEvents}
-            />
-          </div>
-        </div>
 
-        <div className="flex max-h-[36rem] min-h-[18rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-panel p-4 shadow-sm dark:border-line dark:bg-panel">
-          <div className="mb-3 flex flex-shrink-0 items-center justify-between gap-2 border-b border-line pb-1 dark:border-line">
-            <h3 className="flex min-w-0 items-center gap-2 text-lg font-bold text-ink">
-              <FiCalendar size={18} className="shrink-0 text-ink" />
-              <span className="truncate">Coach Events</span>
-            </h3>
-            {!readOnly && <button onClick={onOpenEventModal} aria-label="Add Event" title="Add Event" className="flex min-h-[36px] items-center justify-center gap-2 rounded-xl bg-brand-gold hover:bg-brand-gold-500 px-3 py-2 text-xs font-bold text-brand-dark shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed">
-              <FiPlus size={16} strokeWidth={3} /> <span className="sr-only sm:not-sr-only">Add Event</span>
-            </button>}
-          </div>
-          <div
-            aria-label="Upcoming coach events"
-            tabIndex={0}
-            className="coach-event-list-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain space-y-2.5 pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus/60"
+          <Panel
+            index={4}
+            title="Coach events"
+            icon={FiCalendar}
+            meta={upcomingCoachEvents.length > 0 && (
+              <span className="rounded-full bg-hover px-2 py-0.5 text-[13px] font-medium tabular-nums text-ink-2">{upcomingCoachEvents.length}</span>
+            )}
+            action={!readOnly && (
+              <Button size="sm" icon={<FiPlus size={15} />} onClick={onOpenEventModal}>Add event</Button>
+            )}
+            bodyClassName="max-h-[34rem] overflow-y-auto overscroll-contain coach-event-list-scroll"
           >
             {upcomingCoachEvents.length === 0 ? (
-              <p className="rounded-xl bg-field px-3 py-8 text-center text-xs text-muted dark:bg-white/[.03] dark:text-muted">No scheduled events.</p>
-            ) : upcomingCoachEvents.map(event => {
-              const eventDetails = {
-                id: event.id,
-                title: event.title,
-                color: event.category?.color || event.color,
-                time: formatTime(event.start_time),
-                location: event.location,
-                type: 'coach',
-                category: event.category?.name || '',
-                description: event.description || '',
-                detail: 'Coach event',
-                startDate: event.start_date,
-                endDate: event.end_date,
-              };
-              const eventColor = event.category?.color || event.color || '#eab308';
-
-              return (
-                <div key={event.id} className="relative flex min-w-0 items-center gap-2 rounded-xl border border-line bg-panel p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-line dark:bg-field" style={{ borderLeft: `4px solid ${eventColor}` }}>
-                  <button onClick={() => openDayDetails(event.start_date, [eventDetails])} className="flex min-w-0 flex-1 flex-col gap-1 text-left">
-                    <span className="truncate text-sm font-semibold leading-tight text-ink">{event.title}</span>
-                      <span className="truncate text-[10px] font-medium uppercase tracking-wide text-ink-2">{event.category?.name || 'Coach Event'}</span>
-                      {event.location && <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px] font-medium text-ink-2">
-                        <FiMapPin size={12} className="shrink-0 text-muted" />
-                      <span className="truncate">{event.location}</span>
-                    </span>}
-                  </button>
-                  <div className="flex w-[48px] shrink-0 flex-col items-center justify-center border-l border-line pl-2 dark:border-line">
-                    <span className="text-xl font-bold leading-none text-ink">{new Date(event.start_date + 'T00:00:00').getDate()}</span>
-                    <span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">{new Date(event.start_date + 'T00:00:00').toLocaleString('default', { month: 'short' })}</span>
-                    <span className="mt-1.5 rounded-md bg-hover px-1.5 py-1 text-[10px] font-bold text-ink-2 dark:bg-hover dark:text-muted">{formatTime(event.start_time)}</span>
-                  </div>
-                  <div className="relative shrink-0 border-l border-line pl-2 dark:border-line">
-                    {!readOnly && <button
-                      type="button"
-                      onClick={() => setOpenActionsEventId(openActionsEventId === event.id ? null : event.id)}
-                      title="Event actions"
-                      aria-label={`${openActionsEventId === event.id ? 'Close' : 'Open'} actions for ${event.title}`}
-                      aria-expanded={openActionsEventId === event.id}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-ink-2 shadow-sm transition-colors hover:border-warn/40 hover:bg-warn-soft dark:border-line dark:bg-field dark:text-ink dark:hover:bg-warn-soft"
-                    >
-                      <FiMoreVertical size={18} />
-                    </button>}
-                    {openActionsEventId === event.id && (
-                      <div className="absolute right-0 top-full z-20 mt-1 flex items-center gap-1 rounded-xl border border-line bg-panel p-1.5 shadow-xl dark:border-line dark:bg-field">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            openDayDetails(event.start_date, [eventDetails]);
-                            setOpenActionsEventId(null);
-                          }}
-                          title="View event"
-                          aria-label={`View ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-brand-navy shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-navy/30 hover:bg-brand-navy-50 dark:border-line dark:bg-panel dark:text-brand-navy-200 dark:hover:bg-brand-navy-200/10"
-                        >
-                          <FiEye size={16} />
-                        </button>
-                        {!readOnly && <button
-                          type="button"
-                          onClick={() => {
-                            onEditCoachEvent(event);
-                            setOpenActionsEventId(null);
-                          }}
-                          title="Edit event"
-                          aria-label={`Edit ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-warn shadow-sm transition-all hover:-translate-y-0.5 hover:border-warn/40 hover:bg-warn-soft dark:border-line dark:bg-panel dark:text-warn dark:hover:bg-warn-soft"
-                        >
-                          <FiEdit2 size={16} />
-                        </button>}
-                        {!readOnly && <button
-                          type="button"
-                          onClick={() => {
-                            onDeleteCoachEvent(event.id);
-                            setOpenActionsEventId(null);
-                          }}
-                          disabled={deletingEventId === event.id}
-                          title="Delete event"
-                          aria-label={`Delete ${event.title}`}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-negative shadow-sm transition-all hover:-translate-y-0.5 hover:border-negative/40 hover:bg-negative-soft disabled:opacity-50 dark:border-line dark:bg-panel dark:text-negative dark:hover:bg-negative-soft"
-                        >
-                          {deletingEventId === event.id ? <FiLoader size={16} className="animate-spin" /> : <FiTrash2 size={16} />}
-                        </button>}
-                      </div>
-                    )}
-                  </div>
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-muted"><FiCalendar size={19} /></span>
+                <div>
+                  <p className="text-[15px] font-medium text-ink">No upcoming coach events</p>
+                  <p className="mt-1 text-[13px] text-muted">Classes and sessions you add show up here and on the calendar.</p>
                 </div>
-              );
-            })}
-          </div>
+                {!readOnly && <Button size="sm" variant="outline" icon={<FiPlus size={14} />} onClick={onOpenEventModal}>Add event</Button>}
+              </div>
+            ) : (
+              <ul aria-label="Upcoming coach events" className="-my-1 space-y-2">
+                {upcomingCoachEvents.map((event, index) => {
+                  const eventDetails = {
+                    id: event.id,
+                    title: event.title,
+                    color: event.category?.color || event.color,
+                    time: formatTime(event.start_time),
+                    location: event.location,
+                    type: 'coach',
+                    category: event.category?.name || '',
+                    description: event.description || '',
+                    detail: 'Coach event',
+                    startDate: event.start_date,
+                    endDate: event.end_date,
+                  };
+                  const eventColor = event.category?.color || event.color || '#F2B705';
+                  const start = new Date(`${String(event.start_date).slice(0, 10)}T00:00:00`);
+                  const meta = [start.toLocaleDateString('en-US', { weekday: 'short' }), event.category?.name, event.location].filter(Boolean).join(' · ');
+
+                  return (
+                    <li key={event.id} className="rise group flex items-stretch gap-2 rounded-xl border border-line p-2 transition-colors duration-150 hover:bg-hover" style={{ '--i': Math.min(index, 8) * 0.5 + 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => openDayDetails(event.start_date, [eventDetails])}
+                        className="press flex min-w-0 flex-1 items-stretch gap-3 rounded-lg p-1 text-left"
+                        aria-label={`${event.title}, ${start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. Open details`}
+                      >
+                        <span className="flex w-12 shrink-0 flex-col items-center justify-center rounded-lg py-1.5" style={tintStyle(eventColor)}>
+                          <span className="text-xs text-muted">{start.toLocaleDateString('en-US', { month: 'short' })}</span>
+                          <span className="text-xl font-medium leading-none tracking-[-0.02em] text-ink">{start.getDate()}</span>
+                        </span>
+                        <span className="min-w-0 flex-1 py-0.5">
+                          <span className="block truncate text-[15px] font-medium text-ink">{event.title}</span>
+                          {event.start_time && <span className="mt-0.5 block font-mono text-[12.5px] tracking-tight text-ink-2">{formatTime(event.start_time)}{event.end_time ? `–${formatTime(event.end_time)}` : ''}</span>}
+                          <span className="mt-0.5 block truncate text-[13px] text-muted">{meta}</span>
+                        </span>
+                      </button>
+                      {!readOnly && (
+                        <div className="flex shrink-0 flex-col justify-center gap-1.5">
+                          <IconButton tone="warn" label={`Edit ${event.title}`} icon={<FiEdit2 size={14} />} onClick={() => onEditCoachEvent(event)} className="h-8 min-w-8" />
+                          <IconButton
+                            tone="danger"
+                            label={`Delete ${event.title}`}
+                            icon={deletingEventId === event.id ? <FiLoader size={14} className="animate-spin" /> : <FiTrash2 size={14} />}
+                            onClick={() => onDeleteCoachEvent(event.id)}
+                            disabled={deletingEventId === event.id}
+                            className="h-8 min-w-8"
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Panel>
         </div>
-      </div>}
+      )}
       <MobileCalendarDaySheet
         date={selectedDay}
         events={selectedDayEvents}

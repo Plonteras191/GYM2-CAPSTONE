@@ -53,7 +53,7 @@ export function StatCell({ label, value, format = (v) => v, hint, to, state, ton
         {isLoading ? (
           <span className="skeleton h-10 w-3/4 max-w-40" aria-label="Loading" />
         ) : (
-          <span className="block font-display text-[clamp(1.75rem,2.4vw,2.5rem)] font-medium leading-none tracking-[-0.03em] text-ink wrap-anywhere">
+          <span className="block font-display text-[clamp(1.35rem,2.4vw,2.5rem)] font-medium leading-none tracking-[-0.03em] text-ink wrap-anywhere">
             {shown}
           </span>
         )}
@@ -62,7 +62,7 @@ export function StatCell({ label, value, format = (v) => v, hint, to, state, ton
     </>
   );
 
-  const base = `flex min-h-32 min-w-0 flex-col justify-between gap-5 bg-panel p-4 sm:p-5 ${className}`;
+  const base = `flex min-h-32 min-w-0 flex-col justify-between gap-5 bg-panel p-4 sm:p-5 min-[360px]:max-lg:[&:last-child:nth-child(odd)]:col-span-2 ${className}`;
 
   if (!to) return <div className={base}>{body}</div>;
 

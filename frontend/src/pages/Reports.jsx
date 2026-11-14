@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiDownload, FiPrinter, FiList, FiClock, FiRefreshCw, FiFileText } from 'react-icons/fi';
+import { FiDownload, FiPrinter, FiRefreshCw, FiFileText, FiCreditCard, FiCheckSquare, FiActivity, FiSearch, FiX, FiCalendar } from 'react-icons/fi';
 import api from '../api';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import SearchInput from '../components/ui/SearchInput';
-import TableShell, { Toolbar, TableEmpty, CardListEmpty, MobileCard } from '../components/ui/TableShell';
+import TableShell, { Toolbar, MobileCard } from '../components/ui/TableShell';
 import { StatStrip, StatCell } from '../components/ui/StatStrip';
 import { fieldClass, labelClass, thClass, tdClass } from '../components/ui/field';
 import { useLocation } from 'react-router-dom';
@@ -16,13 +16,22 @@ import { getMediaUrl } from '../utils/mediaUrl';
 import { getPaymentMethodLabel } from '../utils/paymentMethod';
 import { useNavigate } from 'react-router-dom';
 import { formatNumber } from '../utils/numberFormat';
-import StyledSelect from '../components/ui/StyledSelect';
 
 const reportTypeOptions = [
-  { value: 'Payments', label: 'Payment Transactions' },
-  { value: 'Memberships', label: 'Membership Status' },
-  { value: 'Attendance', label: 'Attendance' },
+  { value: 'Payments', label: 'Payments', title: 'Payment transactions', icon: FiCreditCard },
+  { value: 'Memberships', label: 'Memberships', title: 'Membership status', icon: FiCheckSquare },
+  { value: 'Attendance', label: 'Attendance', title: 'Attendance', icon: FiActivity },
 ];
+
+/* ── Display-only helpers ── */
+// Labels arrive from the API in Title Case ("Total Income"); show them like the rest of the app.
+const sentenceCase = (text = '') => text.charAt(0) + text.slice(1).toLowerCase();
+const toDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const formatDateKey = (value, withYear = false) => {
+  const [y, m, d] = String(value || '').split('-').map(Number);
+  if (!y || !m || !d) return value;
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}) });
+};
 
 export default function Reports() {
   const { getCache, setCache } = useDataCache();
@@ -206,6 +215,37 @@ export default function Reports() {
     return variant ? <Badge variant={variant}>{val}</Badge> : val;
   };
 
+  const shiftDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return toDateKey(d); };
+  const datePresets = [
+    { label: 'Today', start: today, end: today },
+    { label: 'Last 7 days', start: shiftDays(-6), end: today },
+    { label: 'This month', start: currentMonthStart, end: today },
+  ];
+  const rangeLabel = isTodaySelected
+    ? `Today, ${formatDateKey(today, true)}`
+    : startDate === endDate ? formatDateKey(startDate, true) : `${formatDateKey(startDate)} – ${formatDateKey(endDate, true)}`;
+  const reportTitle = reportTypeOptions.find(option => option.value === reportType)?.title || reportType;
+  const emptyState = (
+    <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-hover text-muted">
+        {searchTerm.trim() ? <FiSearch size={20} aria-hidden="true" /> : <FiFileText size={20} aria-hidden="true" />}
+      </span>
+      <div>
+        <p className="text-[15px] font-medium text-ink">
+          {searchTerm.trim() ? `No records match “${searchTerm.trim()}”` : 'No records in this period'}
+        </p>
+        <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">
+          {searchTerm.trim() ? 'Check the spelling or clear the search.' : 'Try a wider date range.'}
+        </p>
+      </div>
+      {searchTerm.trim()
+        ? <Button size="sm" variant="outline" icon={<FiX size={14} />} onClick={() => setSearchTerm('')}>Clear search</Button>
+        : !(startDate === currentMonthStart && endDate === today) && (
+          <Button size="sm" variant="outline" icon={<FiCalendar size={14} />} onClick={() => { setStartDate(currentMonthStart); setEndDate(today); }}>Show this month</Button>
+        )}
+    </div>
+  );
+
   const kpiTone = (label) => {
     const key = label.toLowerCase();
     if (key.includes('refund') || key.includes('expire')) return 'crimson';
@@ -343,58 +383,82 @@ export default function Reports() {
             </div>
           )}
 
-          {/* KPI summary first, matching the Overview page hierarchy. */}
-          <StatStrip index={0} columns={currentData.kpis.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}>
+          {/* Choose what and when, then read the totals and the rows. */}
+          <Toolbar index={0} className="gap-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div role="tablist" aria-label="Report type" className="grid w-full grid-cols-3 gap-1 rounded-xl border border-line bg-field p-1 lg:inline-flex lg:w-auto">
+                {reportTypeOptions.map(({ value, label, icon: Icon }) => {
+                  const active = reportType === value;
+                  return (
+                    <button
+                      key={value}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setReportType(value)}
+                      className={`press flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-2 text-[13px] font-medium sm:px-4 sm:text-sm lg:flex-none ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08),0_0_0_1px_var(--ui-line)]' : 'text-muted hover:text-ink'}`}
+                    >
+                      <Icon size={15} aria-hidden="true" className={`hidden shrink-0 sm:block ${active ? 'text-accent' : ''}`} />
+                      <span className="truncate">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-2 gap-2 lg:flex">
+                <Button variant="outline" onClick={handleExportCSV} disabled={isExporting || !reportData} isLoading={isExporting} icon={<FiDownload size={16} />} className="whitespace-nowrap">
+                  {isExporting ? 'Exporting…' : 'Export CSV'}
+                </Button>
+                <Button onClick={handlePrint} icon={<FiPrinter size={16} />} className="whitespace-nowrap">
+                  Print report
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-line pt-4 md:flex-row md:flex-wrap md:items-end">
+              <div className="grid grid-cols-2 gap-3 md:w-[22rem]">
+                <label className="block min-w-0">
+                  <span className={labelClass}>From</span>
+                  <input type="date" value={startDate} max={endDate || undefined} onChange={(e) => setStartDate(e.target.value)} className={fieldClass} />
+                </label>
+                <label className="block min-w-0">
+                  <span className={labelClass}>To</span>
+                  <input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} className={fieldClass} />
+                </label>
+              </div>
+              <div role="group" aria-label="Quick date ranges" className="flex flex-wrap gap-2">
+                {datePresets.map(preset => {
+                  const active = startDate === preset.start && endDate === preset.end;
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => { setStartDate(preset.start); setEndDate(preset.end); }}
+                      className={`press min-h-11 rounded-xl border px-3.5 text-sm font-medium ${active ? 'border-brand-gold bg-warn-soft text-ink' : 'border-line bg-panel text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink'}`}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="flex min-h-11 items-center gap-2 text-[13px] text-muted md:ml-auto" aria-live="polite">
+                {isLoading
+                  ? <><FiRefreshCw size={13} className="animate-spin" aria-hidden="true" /> Updating…</>
+                  : <><FiCalendar size={13} aria-hidden="true" /> {rangeLabel}</>}
+              </p>
+            </div>
+            {exportError && <p role="alert" className="text-sm font-medium text-negative">{exportError}</p>}
+          </Toolbar>
+
+          <StatStrip index={1} columns={currentData.kpis.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}>
             {currentData.kpis.map((kpi, index) => (
-              <StatCell key={index} label={kpi.label} value={kpi.value} tone={kpiTone(kpi.label)} />
+              <StatCell key={index} label={sentenceCase(kpi.label)} value={typeof kpi.value === 'string' ? kpi.value.replace('₱ ', '₱ ') : kpi.value} tone={kpiTone(kpi.label)} />
             ))}
           </StatStrip>
 
-          <Toolbar index={1}>
-            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,1fr))_repeat(3,auto)]">
-              <div className="min-w-0">
-                <label className={labelClass}>Report Type</label>
-                <StyledSelect value={reportType} onChange={event => setReportType(event.target.value)} aria-label="Report type" className={fieldClass}>
-                  {reportTypeOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </StyledSelect>
-              </div>
-              <div className="min-w-0">
-                <label className={labelClass}>Start Date</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={fieldClass} />
-              </div>
-              <div className="min-w-0">
-                <label className={labelClass}>End Date</label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={fieldClass} />
-              </div>
-
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setStartDate(today);
-                  setEndDate(today);
-                }}
-                aria-pressed={isTodaySelected}
-                icon={<FiClock size={16} />}
-                className={`w-full whitespace-nowrap ${isTodaySelected ? 'border-focus bg-warn-soft text-ink' : ''}`}
-              >
-                This Day
-              </Button>
-              <Button variant="outline" onClick={handleExportCSV} disabled={isExporting || !reportData} isLoading={isExporting} icon={<FiDownload size={16} />} className="w-full whitespace-nowrap">
-                {isExporting ? 'Exporting…' : 'Export CSV'}
-              </Button>
-              <Button onClick={handlePrint} icon={<FiPrinter size={16} />} className="w-full whitespace-nowrap">
-                Print All
-              </Button>
-              {exportError && <p role="alert" className="text-sm font-semibold text-negative sm:col-span-2 lg:col-span-3 xl:col-span-6">{exportError}</p>}
-            </div>
-          </Toolbar>
-
           <TableShell
             index={2}
-            title="Total Reports"
-            icon={FiList}
+            title={reportTitle}
+            icon={FiFileText}
             count={filteredRows.length}
             action={
               <SearchInput
@@ -444,7 +508,7 @@ export default function Reports() {
                     </tr>
                   ))}
                   {filteredRows.length === 0 && (
-                    <TableEmpty colSpan={reportDisplayColumns.length} icon={FiFileText}>No matching records found in the database.</TableEmpty>
+                    <tr><td colSpan={reportDisplayColumns.length}>{emptyState}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -458,7 +522,7 @@ export default function Reports() {
                       const isStatus = column.toLowerCase().includes('status');
                       return (
                         <div key={column} className="min-w-0">
-                          <dt className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">{column}</dt>
+                          <dt className="mb-1 text-[13px] text-muted">{column}</dt>
                           <dd className={`break-words text-sm text-ink-2${isStatus ? ' flex justify-start' : ''}`}>
                             {values.length === 2 ? (
                               <>
@@ -473,9 +537,7 @@ export default function Reports() {
                   </dl>
                 </MobileCard>
               ))}
-              {filteredRows.length === 0 && (
-                <CardListEmpty>No matching records found in the database.</CardListEmpty>
-              )}
+              {filteredRows.length === 0 && emptyState}
             </div>
             <Pagination
               currentPage={currentPage}

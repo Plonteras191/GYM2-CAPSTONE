@@ -1,4 +1,5 @@
 import React from 'react';
+import { fieldClass, labelClass as sharedLabelClass } from '../../../components/ui/field';
 import { FiX, FiCheckCircle, FiSave, FiLoader, FiPlus, FiEdit2 } from 'react-icons/fi';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 import SearchableMemberSelect from '../../../components/ui/SearchableMemberSelect.jsx';
@@ -60,18 +61,18 @@ export default function SubscriptionFormModal({
   const amountDue = isUpgrade
     ? Math.max(0, Number(selectedPlan.price || 0) - Number(activeMembership.amount_paid || 0))
     : calculatedPrice;
-  const inputClass = "w-full px-4 py-2.5 bg-panel border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus text-ink font-medium transition-all shadow-sm";
-  const labelClass = "block text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-2";
-  const primaryButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const inputClass = fieldClass;
+  const labelClass = sharedLabelClass;
+  const primaryButtonClass = "press btn-step inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 text-sm font-medium text-brand-dark shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)] hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-55";
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-sm animate-fade-in">
+      <div className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
         <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
-          <h3 className="flex items-center gap-2 text-xl font-bold text-ink">
+          <h3 className="flex items-center gap-2 text-xl font-medium text-ink">
             {isEditing ? <FiEdit2 size={19} /> : <FiPlus size={20} />}
-            {isEditing ? 'Edit Subscriber' : 'Add Subscriber'}
+            {isEditing ? 'Edit subscription' : 'Add subscriber'}
           </h3>
           <button
             type="button"
@@ -86,7 +87,7 @@ export default function SubscriptionFormModal({
         <div className="flex-1 overflow-y-auto bg-hover p-4 dark:bg-field sm:p-5">
           <form id="subForm" className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={onSave}>
               <label className="block">
-                <span className={labelClass}>Select Member</span>
+                <span className={labelClass}>Member</span>
                 <SearchableMemberSelect
                   required
                   members={membersList}
@@ -98,7 +99,7 @@ export default function SubscriptionFormModal({
                 />
               </label>
               <label className="block">
-                <span className={labelClass}>Subscription Type</span>
+                <span className={labelClass}>Subscription type</span>
                 <StyledSelect
                   required 
                   value={formData.plan_type} 
@@ -106,7 +107,7 @@ export default function SubscriptionFormModal({
                   aria-label="Subscription Type"
                   className={`${inputClass} ${formData.plan_type ? '' : '!text-muted dark:!text-muted'}`}
                 >
-                  <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="" disabled>Select Subscription Type</option>
+                  <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="" disabled>Choose a subscription type</option>
                   {filteredDropdownPlans.map(p => <option className="bg-panel text-ink dark:bg-field dark:text-ink" key={p.id} value={p.name}>{p.name} (₱{formatNumber(p.price)})</option>)}
                 </StyledSelect>
                 {activeMembership && !isUpgrade && (
@@ -116,7 +117,7 @@ export default function SubscriptionFormModal({
                 )}
               </label>
               <label className="block">
-                <span className={labelClass}>Payment Method</span>
+                <span className={labelClass}>Payment method</span>
                 <StyledSelect
                   required
                   value={formData.payment_method || ''}
@@ -124,14 +125,14 @@ export default function SubscriptionFormModal({
                   aria-label="Payment Method"
                   className={`${inputClass} ${formData.payment_method ? '' : '!text-muted dark:!text-muted'}`}
                 >
-                  <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="" disabled>Select Payment Method</option>
+                  <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="" disabled>Choose a payment method</option>
                   <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="Cash">Cash</option>
                   <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="Gcash">Gcash</option>
                   <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="Maya">Maya</option>
                 </StyledSelect>
               </label>
               <label className="block">
-              <span className={labelClass}>Reference Number</span>
+              <span className={labelClass}>Reference number</span>
               <input 
                 type="text" 
                 value={formData.reference_number} 
@@ -142,7 +143,7 @@ export default function SubscriptionFormModal({
             </label>
 
             {!activeMembership && loyalDiscount > 0 && (
-              <div className="md:col-span-2 flex items-center gap-2 rounded-lg border border-positive/40 bg-positive-soft p-3 text-sm font-bold text-positive dark:border-positive/40 dark:bg-positive-soft dark:text-positive">
+              <div className="md:col-span-2 flex items-center gap-2 rounded-lg border border-positive/40 bg-positive-soft p-3 text-sm font-medium text-positive dark:border-positive/40 dark:bg-positive-soft dark:text-positive">
                 <FiCheckCircle size={18} />
                 Loyal Client Detected! A &#8369;{formatNumber(loyalDiscount)} discount has been applied. Final Auto-Billed Price: &#8369;{formatNumber(calculatedPrice)}
               </div>
@@ -154,7 +155,7 @@ export default function SubscriptionFormModal({
             )}
 
               <label className="block">
-                <span className={labelClass}>Start Date</span>
+                <span className={labelClass}>Start date</span>
                 <input 
                   type="date" 
                   required 
@@ -164,7 +165,7 @@ export default function SubscriptionFormModal({
                 />
               </label>
               <label className="block">
-                <span className={labelClass}>Expiration Date (Auto-calculated)</span>
+                <span className={labelClass}>Expiry date (worked out for you)</span>
                 <input 
                   type="date" 
                   value={formData.end_date} 
@@ -179,12 +180,12 @@ export default function SubscriptionFormModal({
             type="button" 
             onClick={requestClose}
             disabled={isSaving} 
-            className="px-6 py-2.5 rounded-xl font-bold text-ink-2 hover:bg-hover transition-colors disabled:opacity-50 uppercase tracking-wide text-sm"
+            className="press btn-step inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel px-5 text-sm font-medium text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink disabled:opacity-50"
           >
             Cancel
           </button>
           <button form="subForm" type="submit" disabled={isSaving} className={primaryButtonClass}>
-            {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />} {isSaving ? 'Processing...' : (isEditing ? 'Save Changes' : 'Save Subscription')}
+            {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />} {isSaving ? 'Processing...' : (isEditing ? 'Save changes' : 'Save subscription')}
           </button>
         </div>
       </div>
@@ -192,4 +193,4 @@ export default function SubscriptionFormModal({
     {unsavedChangesGuard.dialog}
     </>
   );
-}
+}

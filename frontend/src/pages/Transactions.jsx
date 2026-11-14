@@ -11,6 +11,7 @@ import AlertDialog from '../components/ui/AlertDialog';
 export default function Transactions() {
   const location = useLocation();
   const {
+    transactions,
     membersList,
     plansList,
     isLoading,
@@ -61,6 +62,7 @@ export default function Transactions() {
 
           <TransactionTable
             transactions={filteredTxns}
+            totalCount={transactions.length}
             isLoading={isLoading}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}

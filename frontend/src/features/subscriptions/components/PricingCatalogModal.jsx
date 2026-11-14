@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { fieldClass, labelClass as sharedLabelClass } from '../../../components/ui/field';
 import { createPortal } from 'react-dom';
-import { FiX, FiPlus, FiSave, FiTrash2, FiLoader, FiEdit2, FiEye, FiMoreVertical, FiSettings } from 'react-icons/fi';
+import { FiX, FiPlus, FiSave, FiTrash2, FiLoader, FiEdit2, FiEye, FiMoreVertical, FiSettings, FiTag } from 'react-icons/fi';
+import ColorTile from '../../../components/ui/ColorTile';
 import { sanitizePackagePrice } from '../../../utils/priceInput';
 import { formatNumber } from '../../../utils/numberFormat';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
@@ -17,7 +19,8 @@ const planSnapshot = (plan) => ({
   color: plan.color || getPackageColor(plan),
 });
 
-const formatDuration = duration => `${duration} ${Number(duration) === 1 ? 'day' : 'days'}`;
+// Hide the line when a package has no length set (instead of "undefined days").
+const formatDuration = duration => (Number.isFinite(Number(duration)) && Number(duration) > 0 ? `${duration} ${Number(duration) === 1 ? 'day' : 'days'}` : '');
 
 export default function PricingCatalogModal({
   isOpen,
@@ -69,9 +72,9 @@ export default function PricingCatalogModal({
 
   if (!isOpen) return null;
 
-  const inputClass = "w-full px-4 py-2.5 bg-panel border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus text-ink font-medium transition-all shadow-sm";
-  const labelClass = "block text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-2";
-  const catalogActionButtonClass = "mx-1 flex min-h-[38px] items-center justify-center gap-2 rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-bold normal-case text-brand-dark shadow-sm transition-all  active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed";
+  const inputClass = fieldClass;
+  const labelClass = sharedLabelClass;
+  const catalogActionButtonClass = "press btn-step inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 text-sm font-medium text-brand-dark shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)] hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-55";
   const handlePriceInput = (value, onChange) => {
     const sanitizedValue = sanitizePackagePrice(value.replace(/,/g, ''));
     if (sanitizedValue !== null) onChange(sanitizedValue);
@@ -99,7 +102,7 @@ export default function PricingCatalogModal({
       aria-label="Package Category"
       className={`${inputClass} ${plan.category ? '' : '!text-muted dark:!text-muted'}`}
     >
-      <option value="" disabled>Select Package Category</option>
+      <option value="" disabled>Choose a package category</option>
       <option value="normal">Normal Subscription</option>
       <option value="with_coach">With Coach Subscription</option>
       <option value="walk_in">Walk-In</option>
@@ -108,7 +111,7 @@ export default function PricingCatalogModal({
   const recentColorButtons = (selectedColor, onSelect) => (
     recentColors.length > 0 && (
       <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-line bg-white/70 px-2.5 py-2 dark:border-line dark:bg-night-field/70" aria-label="Recently used colors">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Recent</span>
+        <span className="text-xs font-medium text-muted">Recent</span>
         {recentColors.map(color => (
           <button
             key={color}
@@ -128,8 +131,8 @@ export default function PricingCatalogModal({
   );
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-panel rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-line flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-sm animate-fade-in">
+      <div className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 bg-panel rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-line flex flex-col max-h-[90vh]">
         
         <style>{`
           input[type='number']::-webkit-inner-spin-button,
@@ -143,13 +146,13 @@ export default function PricingCatalogModal({
         `}</style>
 
         <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-ink">
-            <FiSettings size={19} /> Manage Packages
+          <h3 className="flex items-center gap-2 text-lg font-medium text-ink">
+            <FiSettings size={19} /> Manage packages
           </h3>
           <button
             type="button"
             onClick={requestClose}
-            aria-label="Close Manage Packages"
+            aria-label="Close manage packages"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
           >
             <FiX size={24} />
@@ -162,17 +165,17 @@ export default function PricingCatalogModal({
               Update existing packages or create a new subscription package.
             </p>
             <button onClick={() => setIsAddingPlan(true)} className={`${catalogActionButtonClass} w-auto shrink-0`}>
-              <FiPlus size={16} strokeWidth={3} /> New Package
+              <FiPlus size={16} strokeWidth={3} /> New package
             </button>
           </div>
 
           {isAddingPlan && createPortal(
-            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={event => {
+            <div className="animate-fade-in fixed inset-0 z-[70] flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm" onMouseDown={event => {
               if (event.target === event.currentTarget) setIsAddingPlan(false);
             }}>
-              <section role="dialog" aria-modal="true" aria-labelledby="new-package-title" className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
+              <section role="dialog" aria-modal="true" aria-labelledby="new-package-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
                 <div className="flex shrink-0 items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
-                  <h4 id="new-package-title" className="flex items-center gap-2 text-base font-bold text-ink">
+                  <h4 id="new-package-title" className="flex items-center gap-2 text-base font-medium text-ink">
                     <FiPlus size={18} /> Create Custom Package
                   </h4>
                   <button
@@ -186,7 +189,7 @@ export default function PricingCatalogModal({
                 </div>
                 <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
                   <label className="block">
-                    <span className={labelClass}>Package Name</span>
+                    <span className={labelClass}>Package name</span>
                     <input
                       type="text"
                       value={newPlan.name}
@@ -196,11 +199,11 @@ export default function PricingCatalogModal({
                     />
                   </label>
                   <label className="block">
-                    <span className={labelClass}>Package Category</span>
+                    <span className={labelClass}>Package category</span>
                     {categorySelect(newPlan, setNewPlan)}
                   </label>
                   <label className="block">
-                    <span className={labelClass}>Package Color</span>
+                    <span className={labelClass}>Package colour</span>
                     <div className="space-y-2">
                       <div className="flex min-w-0 items-center gap-3">
                         <input
@@ -220,7 +223,7 @@ export default function PricingCatalogModal({
                   </label>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <label className="block">
-                      <span className={labelClass}>Duration (Day/s)</span>
+                      <span className={labelClass}>Duration (days)</span>
                       <input
                         type="number"
                         value={newPlan.duration_days}
@@ -251,7 +254,7 @@ export default function PricingCatalogModal({
                 <div className="flex shrink-0 justify-end border-t border-line bg-field p-3 dark:border-line dark:bg-hover">
                   <button onClick={onAddNewPlan} disabled={isSaving} className={`${catalogActionButtonClass} mx-0 w-full sm:w-auto`}>
                     {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
-                    {isSaving ? 'Creating...' : 'Save New Package'}
+                    {isSaving ? 'Creating...' : 'Save new package'}
                   </button>
                 </div>
               </section>
@@ -262,8 +265,8 @@ export default function PricingCatalogModal({
           {plans.length === 0 && (
             <div className="text-center py-8 border-2 border-dashed border-line rounded-xl">
               <p className="text-muted font-medium">No plans found in the database.</p>
-              <p className="text-sm text-warn dark:text-warn font-bold mt-1 cursor-pointer hover:underline" onClick={() => setIsAddingPlan(true)}>
-                Click 'New Package' to create one!
+              <p className="text-sm text-warn dark:text-warn font-medium mt-1 cursor-pointer hover:underline" onClick={() => setIsAddingPlan(true)}>
+                Click “New package” to create one.
               </p>
             </div>
           )}
@@ -271,15 +274,16 @@ export default function PricingCatalogModal({
           <div className="space-y-3">
             {plans.map(plan => (
               <div key={plan.id} className="space-y-2">
-                <div className="flex flex-col gap-3 rounded-xl border border-line border-l-4 bg-panel p-3 transition-all hover:shadow-sm dark:border-line dark:bg-hover sm:flex-row sm:items-center sm:justify-between" style={{ borderLeftColor: getPackageColor(plan) }}>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="font-bold text-ink dark:text-muted">{plan.name}</span>
-                    <span className="mt-1 inline-flex max-w-full items-center gap-1.5">
-                      <span className="truncate text-xs font-semibold text-muted">{formatDuration(plan.duration_days)}</span>
-                    </span>
+                <div className="flex flex-col gap-3 rounded-xl border border-line bg-panel p-3 transition-colors duration-150 hover:border-line-strong sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ColorTile color={getPackageColor(plan)} icon={FiTag} size="sm" />
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate font-medium text-ink">{plan.name}</span>
+                      {formatDuration(plan.duration_days) && <span className="truncate text-[13px] text-muted">{formatDuration(plan.duration_days)}</span>}
+                    </div>
                   </div>
                   <div className="flex min-w-0 items-center justify-end gap-1.5 sm:shrink-0">
-                    <span className="px-1 text-lg font-bold text-ink dark:text-muted">&#8369;</span>
+                    <span className="px-1 text-lg font-medium text-ink dark:text-muted">&#8369;</span>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -291,7 +295,7 @@ export default function PricingCatalogModal({
                       onFocus={() => setFocusedPriceInput(`price-${plan.id}`)}
                       onBlur={() => setFocusedPriceInput(null)}
                       aria-label={`Price for ${plan.name}`}
-                      className="w-28 px-2.5 py-2 bg-field border border-line rounded-xl text-right font-bold text-ink dark:text-muted focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus transition-all"
+                      className="w-28 px-2.5 py-2 bg-field border border-line rounded-xl text-right font-medium text-ink dark:text-muted focus:outline-none focus:ring-2 focus:ring-focus/25 focus:border-focus transition-all"
                     />
                     <div className="relative">
                     <button
@@ -359,25 +363,25 @@ export default function PricingCatalogModal({
           <button 
             onClick={requestClose}
             disabled={isSaving} 
-            className="px-6 py-2.5 rounded-xl font-bold text-ink-2 hover:bg-hover transition-colors disabled:opacity-50 uppercase tracking-wide text-sm"
+            className="press btn-step inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel px-5 text-sm font-medium text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink disabled:opacity-50"
           >
             Close
           </button>
           <button onClick={onSavePlans} disabled={isSaving || plans.length === 0} className={catalogActionButtonClass}>
             {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
-            {isSaving ? 'Saving...' : 'Save Updated Prices'}
+            {isSaving ? 'Saving...' : 'Save updated prices'}
           </button>
         </div>
       </div>
     </div>
     {viewingPlan && (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={event => {
+      <div className="animate-fade-in fixed inset-0 z-[60] flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm" onMouseDown={event => {
         if (event.target === event.currentTarget) setViewingPlanId(null);
       }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="package-view-title" className="w-full max-w-lg overflow-hidden rounded-2xl border-2 border-line-strong bg-panel shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-line dark:bg-panel dark:shadow-black/60 dark:ring-white/10">
+        <section role="dialog" aria-modal="true" aria-labelledby="package-view-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 w-full max-w-lg overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-line dark:bg-panel dark:shadow-black/60 dark:ring-white/10">
           <div className="h-1.5" style={{ backgroundColor: getPackageColor(viewingPlan) }} />
           <div className="flex items-center justify-between gap-3 border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover sm:px-5">
-            <h4 id="package-view-title" className="flex min-w-0 items-center gap-2 text-lg font-bold text-ink">
+            <h4 id="package-view-title" className="flex min-w-0 items-center gap-2 text-lg font-medium text-ink">
               <FiEye className="shrink-0" size={19} /> View Package Details
             </h4>
             <button type="button" onClick={() => setViewingPlanId(null)} aria-label="Close package details" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-panel text-ink-2 shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-field dark:text-ink dark:hover:border-red-500 dark:hover:bg-negative-soft dark:hover:text-negative">
@@ -387,18 +391,18 @@ export default function PricingCatalogModal({
           <div className="space-y-4 p-4 sm:p-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
-                <p className={`${labelClass} mb-1.5`}>Package Name</p>
+                <p className={`${labelClass} mb-1.5`}>Package name</p>
                 <div className="flex min-h-10 items-center rounded-xl border border-line bg-field px-3 text-sm font-medium text-ink dark:border-line dark:bg-field dark:text-ink">{viewingPlan.name}</div>
               </div>
               <div className="min-w-0">
-                <p className={`${labelClass} mb-1.5`}>Package Category</p>
+                <p className={`${labelClass} mb-1.5`}>Package category</p>
                 <div className="flex min-h-10 items-center rounded-xl border border-line bg-field px-3 text-sm font-medium text-ink dark:border-line dark:bg-field dark:text-ink">{getPackageCategoryLabel(viewingPlan)}</div>
               </div>
             </div>
             <div className="rounded-xl border border-line bg-field p-3 dark:border-line dark:bg-field">
               <div className="flex items-center justify-between gap-3">
-                <p className={labelClass}>Package Color</p>
-                <span className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-[11px] font-semibold uppercase text-ink-2 dark:border-line dark:bg-panel dark:text-ink">{getPackageColor(viewingPlan)}</span>
+                <p className={labelClass}>Package colour</p>
+                <span className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-xs font-medium text-ink-2 dark:border-line dark:bg-panel dark:text-ink">{getPackageColor(viewingPlan)}</span>
               </div>
               <div className="mt-2 flex items-center gap-3">
                 <span className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border border-line bg-panel p-1 shadow-sm dark:border-line dark:bg-panel">
@@ -409,7 +413,7 @@ export default function PricingCatalogModal({
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
-                <p className={`${labelClass} mb-1.5`}>Duration (Days)</p>
+                <p className={`${labelClass} mb-1.5`}>Duration (days)</p>
                 <div className="flex min-h-10 items-center rounded-xl border border-line bg-field px-3 text-sm font-medium text-ink dark:border-line dark:bg-field dark:text-ink">{viewingPlan.duration_days}</div>
               </div>
               <div className="min-w-0">
@@ -427,13 +431,13 @@ export default function PricingCatalogModal({
       </div>
     )}
     {editingPlan && (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={event => {
+      <div className="animate-fade-in fixed inset-0 z-[60] flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm" onMouseDown={event => {
         if (event.target === event.currentTarget) editingPlanGuard.requestClose(() => setEditingPlan(null));
       }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="package-edit-title" className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border-2 border-line-strong bg-panel shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-line dark:bg-panel dark:shadow-black/60 dark:ring-white/10">
+        <section role="dialog" aria-modal="true" aria-labelledby="package-edit-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 dark:border-line dark:bg-panel dark:shadow-black/60 dark:ring-white/10">
           <div className="h-1.5 shrink-0" style={{ backgroundColor: getPackageColor(editingPlan) }} />
           <div className="flex items-center justify-between gap-3 border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover sm:px-5">
-            <h4 id="package-edit-title" className="flex min-w-0 items-center gap-2 text-lg font-bold text-ink">
+            <h4 id="package-edit-title" className="flex min-w-0 items-center gap-2 text-lg font-medium text-ink">
               <FiEdit2 className="shrink-0" size={19} /> Edit Package Details
             </h4>
             <button type="button" onClick={() => editingPlanGuard.requestClose(() => setEditingPlan(null))} aria-label="Close package editor" className="shrink-0 rounded-lg border border-line bg-panel p-1.5 text-ink-2 shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-panel dark:text-ink dark:hover:border-red-500 dark:hover:bg-negative-soft dark:hover:text-negative">
@@ -442,11 +446,11 @@ export default function PricingCatalogModal({
           </div>
           <div className="min-h-0 space-y-4 overflow-y-auto p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block min-w-0"><span className={labelClass}>Package Name</span><input value={editingPlan.name} onChange={event => setEditingPlan({ ...editingPlan, name: event.target.value })} className={inputClass} /></label>
+              <label className="block min-w-0"><span className={labelClass}>Package name</span><input value={editingPlan.name} onChange={event => setEditingPlan({ ...editingPlan, name: event.target.value })} className={inputClass} /></label>
               <label className="block min-w-0">
-                <span className={labelClass}>Package Category</span>
+                <span className={labelClass}>Package category</span>
                 <StyledSelect value={editingPlan.category === 'other' ? '' : editingPlan.category || ''} onChange={event => setEditingPlan({ ...editingPlan, category: event.target.value, category_detail: event.target.value === 'other' ? editingPlan.category_detail || '' : '' })} aria-label="Package Category" className={`${inputClass} ${editingPlan.category === 'other' ? '!text-muted dark:!text-muted' : ''}`}>
-                  {editingPlan.category === 'other' && <option value="" disabled>Select Package Category</option>}
+                  {editingPlan.category === 'other' && <option value="" disabled>Choose a package category</option>}
                   <option value="normal">Normal Subscription</option><option value="with_coach">With Coach Subscription</option><option value="walk_in">Walk-In</option>
                 </StyledSelect>
                 {editingPlan.category === 'other' && <span className="mt-1 block text-xs text-muted">This legacy category is kept unless you choose a new category.</span>}
@@ -454,8 +458,8 @@ export default function PricingCatalogModal({
             </div>
             <div className="rounded-xl border border-line bg-field p-3 dark:border-line dark:bg-night-field/70">
               <div className="flex items-center justify-between gap-3">
-                <span className={`${labelClass} mb-0`}>Package Color</span>
-                <span className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-[11px] font-semibold uppercase text-ink-2 dark:border-line dark:bg-panel dark:text-ink">{editingPlan.color || getPackageColor(editingPlan)}</span>
+                <span className={`${labelClass} mb-0`}>Package colour</span>
+                <span className="rounded-md border border-line bg-panel px-2 py-1 font-mono text-xs font-medium text-ink-2 dark:border-line dark:bg-panel dark:text-ink">{editingPlan.color || getPackageColor(editingPlan)}</span>
               </div>
               <div className="mt-2 space-y-2.5">
                 <div className="flex items-center gap-3">
@@ -468,12 +472,12 @@ export default function PricingCatalogModal({
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block"><span className={labelClass}>Duration (Days)</span><input type="number" min="1" value={editingPlan.duration_days} onChange={event => setEditingPlan({ ...editingPlan, duration_days: event.target.value })} className={inputClass} /></label>
+              <label className="block"><span className={labelClass}>Duration (days)</span><input type="number" min="1" value={editingPlan.duration_days} onChange={event => setEditingPlan({ ...editingPlan, duration_days: event.target.value })} className={inputClass} /></label>
               <label className="block"><span className={labelClass}>Price (₱)</span><input type="text" inputMode="decimal" pattern="\\d+(\\.\\d{1,2})?" min="0" max="9999999.99" value={displayPrice(editingPlan.price, focusedPriceInput === `edit-${editingPlan.id}`)} onChange={event => handlePriceInput(event.target.value, price => setEditingPlan({ ...editingPlan, price }))} onFocus={() => setFocusedPriceInput(`edit-${editingPlan.id}`)} onBlur={() => setFocusedPriceInput(null)} className={inputClass} /></label>
             </div>
           </div>
           <div className="flex justify-end gap-2 border-t border-line bg-field p-3 dark:border-line dark:bg-hover">
-            <button type="button" onClick={() => editingPlanGuard.requestClose(() => setEditingPlan(null))} className="rounded-lg border border-line bg-panel px-4 py-2 text-sm font-bold text-ink-2 transition-colors hover:border-line-strong hover:bg-hover dark:border-line dark:bg-panel dark:text-ink dark:hover:border-line-strong dark:hover:bg-hover">Cancel</button>
+            <button type="button" onClick={() => editingPlanGuard.requestClose(() => setEditingPlan(null))} className="press btn-step inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel px-5 text-sm font-medium text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink disabled:opacity-50">Cancel</button>
             <button type="button" disabled={isSaving} onClick={async () => {
               if (await onSavePlan(editingPlan)) {
                 initialPlansRef.current = initialPlansRef.current.map(plan => plan.id === editingPlan.id ? planSnapshot(editingPlan) : plan);
@@ -490,4 +494,4 @@ export default function PricingCatalogModal({
     {editingPlanGuard.dialog}
     </>
   );
-}
+}
