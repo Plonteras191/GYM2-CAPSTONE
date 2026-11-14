@@ -205,7 +205,7 @@ export default function Login() {
               <img src={systemLogo} alt="System logo" className="h-14 w-14 rounded-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="bg-linear-to-r from-brand-red-300 to-brand-orange-300 bg-clip-text pr-1 font-display text-[1.75rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent">Double Alpha</span>
+              <span className="bg-linear-to-r from-brand-red-300 to-brand-orange-300 bg-clip-text pr-1 font-brand text-[1.75rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent">Double Alpha</span>
               <span className="mt-1.5 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Fitness</span>
             </div>
           </div>

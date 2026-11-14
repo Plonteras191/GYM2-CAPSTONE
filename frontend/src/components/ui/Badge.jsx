@@ -4,14 +4,15 @@ export default function Badge({
   children,
   variant = 'default', // 'success' | 'danger' | 'warning' | 'info' | 'default'
   size = 'md', // 'sm' | 'md'
+  dot = false, // a small status dot before the text
   className = ''
 }) {
-  const baseClasses = "inline-flex items-center justify-center rounded-full font-semibold uppercase tracking-wide";
+  // Sentence case, 12px at the smallest: easier to read than tiny capitals.
+  const baseClasses = "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium";
 
-  // 10px is the floor for legibility (was 8px).
   const sizeClasses = {
-    sm: "px-2 py-0.5 text-[10px]",
-    md: "px-2.5 py-1 text-[11px]"
+    sm: "px-2 py-0.5 text-xs",
+    md: "px-2.5 py-0.5 text-[13px]"
   };
 
   const variantClasses = {
@@ -24,6 +25,7 @@ export default function Badge({
 
   return (
     <span className={`${baseClasses} ${sizeClasses[size] || sizeClasses.md} ${variantClasses[variant] || variantClasses.default} ${className}`}>
+      {dot && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />}
       {children}
     </span>
   );

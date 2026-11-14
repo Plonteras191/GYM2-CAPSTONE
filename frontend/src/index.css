@@ -2,10 +2,14 @@
 
 @theme {
   /* ── Type ───────────────────────────────────────────────────────────
-     Barlow for UI text, Barlow Condensed for figures and titles.
+     Dealt by the taste skill for software: Instrument Sans for text and
+     headings (one family, display at weight 500) + DM Mono for times and IDs.
+     Barlow Condensed is kept only for the "Double Alpha" wordmark (logo).
      Self-hosted via @fontsource (imported in main.jsx), works offline. */
-  --font-sans: "Barlow", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
-  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans Variable", "Instrument Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-display: "Instrument Sans Variable", "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-brand: "Barlow Condensed", "Instrument Sans Variable", sans-serif;
 
   /* ── Brand palette (original hues, unchanged) ─────────────────────── */
   --color-brand-red: #A60303;
@@ -235,7 +239,12 @@ select:not(.camera-source-select) option {
 
   body {
     @apply bg-canvas font-sans text-ink antialiased transition-colors duration-300;
-    font-feature-settings: "ss01";
+  }
+
+  /* Figures line up in columns and never jitter while counting. */
+  .tabular-nums,
+  .font-display {
+    font-variant-numeric: tabular-nums;
   }
 
   /* One visible focus ring everywhere; components that draw their own ring
@@ -342,12 +351,60 @@ main > div {
   animation: ui-pulse-dot 2.4s ease-out infinite;
 }
 
-/* Press feedback for any element that opts in */
+/* ── Hover and press layer (taste skill motion tokens) ─────────────────
+   hover in 150ms, hover out 120ms, press 90ms. Hover moves only for a fine
+   pointer; keyboard focus shows the same state through the focus ring. */
+
+/* .press: anything clickable. Press sinks 1px and scales .985. */
 .press {
-  transition: transform 140ms var(--ease-out-quint), background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  transition: transform 120ms var(--ease-out-quint), background-color 120ms ease, color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.press:hover {
+  transition-duration: 150ms;
 }
 .press:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: translateY(1px) scale(0.985);
+  transition-duration: 90ms;
+}
+
+/* .btn-step: buttons also step up 1px on hover. */
+@media (hover: hover) and (pointer: fine) {
+  .btn-step:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .btn-step:active:not(:disabled) {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  /* .lift: a linked card lifts 2px, its border darkens, a soft shadow. */
+  .lift:hover {
+    transform: translateY(-2px);
+    border-color: var(--ui-line-strong);
+    box-shadow: 0 14px 24px -14px rgb(13 13 13 / 0.10);
+  }
+}
+.lift {
+  transition: transform 120ms var(--ease-out-quint), border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.lift:hover {
+  transition-duration: 180ms;
+}
+
+/* A trailing arrow travels 3px when its row or button is hovered. */
+.nudge {
+  transition: transform 150ms var(--ease-out-quint);
+}
+.group:hover .nudge,
+.group:focus-visible .nudge {
+  transform: translateX(3px);
+}
+
+/* Welcome band photograph settles in once on load. */
+@keyframes ui-settle {
+  from { opacity: 0; transform: scale(1.04); }
+}
+.settle {
+  animation: ui-settle 1200ms var(--ease-out-quint) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -368,7 +425,16 @@ main > div {
   }
 
   .skeleton { animation: none !important; }
-  .press:active:not(:disabled) { transform: none; }
+
+  /* Nothing moves; a press still shows as a deeper tone (colours change). */
+  .press:active:not(:disabled),
+  .btn-step:hover:not(:disabled),
+  .btn-step:active:not(:disabled),
+  .lift:hover,
+  .group:hover .nudge,
+  .group:focus-visible .nudge {
+    transform: none !important;
+  }
 }
 
 @media (max-width: 639px) {

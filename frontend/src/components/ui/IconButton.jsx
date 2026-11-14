@@ -12,11 +12,11 @@ export default function IconButton({ tone = 'neutral', label, icon, children, cl
       type="button"
       aria-label={label}
       title={label}
-      className={`press inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-panel px-2 text-muted disabled:cursor-not-allowed disabled:opacity-50 ${TONES[tone] || TONES.neutral} ${className}`}
+      className={`press btn-step inline-flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-panel px-2 text-muted disabled:cursor-not-allowed disabled:opacity-50 ${TONES[tone] || TONES.neutral} ${className}`}
       {...props}
     >
       {icon}
-      {children && <span className="text-xs font-semibold">{children}</span>}
+      {children && <span className="text-[13px] font-medium">{children}</span>}
     </button>
   );
 }

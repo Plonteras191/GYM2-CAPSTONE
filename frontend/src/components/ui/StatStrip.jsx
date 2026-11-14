@@ -26,7 +26,11 @@ export function StatStrip({ children, columns = 'lg:grid-cols-4', index = 0, cla
   );
 }
 
-export function StatCell({ label, value, format = (v) => v, to, state, tone = 'slate', isLoading = false, className = '' }) {
+/**
+ * `hint` is a plain-language line under the figure ("All time, after refunds")
+ * so the number reads without a manual.
+ */
+export function StatCell({ label, value, format = (v) => v, hint, to, state, tone = 'slate', isLoading = false, className = '' }) {
   // A preformatted string (e.g. "₱ 12,000" from the reports API) is shown as is.
   const numeric = typeof value === 'number' || (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)));
   const counted = useCountUp(numeric ? Number(value) : 0, { enabled: !isLoading && numeric });
@@ -35,29 +39,30 @@ export function StatCell({ label, value, format = (v) => v, to, state, tone = 's
   const body = (
     <>
       <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted">
-          <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-[2px] ${MARKERS[tone] || MARKERS.slate}`} />
-          <span className="truncate">{label}</span>
+        <span className="flex min-w-0 items-start gap-2 text-[13px] font-medium text-ink-2">
+          <span aria-hidden="true" className={`mt-1 h-2 w-2 shrink-0 rounded-xs ${MARKERS[tone] || MARKERS.slate}`} />
+          <span className="leading-tight">{label}</span>
         </span>
         {to && (
-          <FiArrowUpRight
-            size={16}
-            aria-hidden="true"
-            className="shrink-0 text-muted transition-transform duration-300 ease-out-quint group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ink"
-          />
+          <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-150 group-hover:bg-panel group-hover:text-ink">
+            <FiArrowUpRight size={16} className="transition-transform duration-150 ease-out-quint group-hover:-translate-y-[3px] group-hover:translate-x-[3px]" />
+          </span>
         )}
       </div>
-      {isLoading ? (
-        <span className="skeleton mt-1 h-9 w-3/4 max-w-36" aria-label="Loading" />
-      ) : (
-        <span className="font-display text-[clamp(1.6rem,2.3vw,2.4rem)] font-semibold leading-none tracking-tight text-ink tabular-nums [overflow-wrap:anywhere]">
-          {shown}
-        </span>
-      )}
+      <div className="min-w-0">
+        {isLoading ? (
+          <span className="skeleton h-10 w-3/4 max-w-40" aria-label="Loading" />
+        ) : (
+          <span className="block font-display text-[clamp(1.75rem,2.4vw,2.5rem)] font-medium leading-none tracking-[-0.03em] text-ink wrap-anywhere">
+            {shown}
+          </span>
+        )}
+        {hint && <span className="mt-2 block text-[13px] text-muted">{hint}</span>}
+      </div>
     </>
   );
 
-  const base = `flex min-h-28 min-w-0 flex-col justify-between gap-5 bg-panel p-4 sm:p-5 ${className}`;
+  const base = `flex min-h-32 min-w-0 flex-col justify-between gap-5 bg-panel p-4 sm:p-5 ${className}`;
 
   if (!to) return <div className={base}>{body}</div>;
 

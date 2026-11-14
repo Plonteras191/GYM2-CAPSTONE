@@ -305,7 +305,7 @@ export default function Layout() {
               <img src={systemLogo} alt="System logo" className="h-full w-full rounded-full bg-white object-cover p-0.5" />
             </div>
             <div className="flex min-w-0 flex-col justify-center">
-              <h1 className="bg-gradient-to-r from-brand-red to-brand-orange-700 bg-clip-text pr-1 font-display text-[1.65rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent dark:from-brand-red-300 dark:to-brand-orange-300">
+              <h1 className="bg-gradient-to-r from-brand-red to-brand-orange-700 bg-clip-text pr-1 font-brand text-[1.65rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent dark:from-brand-red-300 dark:to-brand-orange-300">
                 Double Alpha
               </h1>
               <span className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-muted">
@@ -321,7 +321,7 @@ export default function Layout() {
         <nav aria-label="Main navigation" className="hidden-scrollbar flex-1 space-y-7 overflow-y-auto px-3 py-6">
           {navGroups.map((group, index) => (
             <div key={index}>
-              <h3 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+              <h3 className="mb-2 px-3 text-[13px] font-medium text-muted">
                 {group.title}
               </h3>
               <ul className="space-y-0.5">
@@ -375,7 +375,7 @@ export default function Layout() {
             </button>
 
             <div className="flex min-w-0 flex-col">
-              <h2 key={location.pathname} className="animate-in fade-in slide-in-from-bottom-2 max-w-[170px] truncate font-display text-xl font-semibold leading-tight tracking-tight text-ink sm:max-w-xs sm:text-2xl md:max-w-none lg:text-[1.75rem]">
+              <h2 key={location.pathname} className="animate-in fade-in slide-in-from-bottom-2 max-w-[170px] truncate font-display text-xl font-medium leading-tight tracking-[-0.02em] text-ink sm:max-w-xs sm:text-2xl md:max-w-none lg:text-[1.75rem]">
                 {getPageTitle(location.pathname)}
               </h2>
               <span className="mt-0.5 hidden truncate text-xs font-medium text-muted sm:block">
@@ -395,7 +395,7 @@ export default function Layout() {
                 aria-controls="notification-panel"
                 className={`${iconButton} group ${showNotifications ? 'bg-hover text-ink' : ''}`}
               >
-                <FiBell size={19} strokeWidth={2.2} className="origin-top transition-transform duration-300 group-hover:rotate-12" />
+                <FiBell size={19} strokeWidth={2.2} />
                 {visibleNotifications.length > 0 && (
                   <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-gold px-1 text-[10px] font-bold leading-none text-brand-dark tabular-nums ring-2 ring-raised">
                     {visibleNotifications.length > 99 ? '99+' : visibleNotifications.length}
