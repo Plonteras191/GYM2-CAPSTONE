@@ -40,6 +40,7 @@ from pose_features import (
     static_exercises_from_env,
 )
 from workout_prediction import select_assigned_prediction
+from rep_counter import RepCounter, countable_exercises_from_env
 from face_matching import IdentityVote, align_box, best_member_match
 from face_matching import box_size as face_box_size
 from face_enrollment import EncodingCache, encode_at, face_region, faces_signature, resolve_face_path
@@ -183,7 +184,20 @@ next_pose_track_id = 1
 workout_states = {}
 workout_plans = {}
 ambiguous_workout_plans = {}
+# member id -> exercise class -> {'id', 'sets', 'reps', 'counted'}: the
+# target of today's assigned task, and repetitions already saved for it.
+workout_targets = {}
 workout_plans_lock = threading.Lock()
+# Exercises whose repetitions are counted from joint angles (rep_counter.py).
+# A task for one of these is verified only once sets x reps are counted.
+COUNTED_EXERCISES = countable_exercises_from_env()
+# Counted repetitions are saved to Laravel at most this often while a
+# member is still working, so the coach sees progress even if they stop early.
+REP_PROGRESS_SECONDS = 3.0
+# (member id, exercise) -> repetitions counted so far today. Kept per member,
+# not per tracked body, so a member who steps out of view (or rests out of
+# frame between sets) resumes from their count instead of zero.
+member_rep_counts = {}
 WORKOUT_CONFIDENCE_THRESHOLD = 0.70
 MAX_POSES = 12
 # Body motion (in torso lengths over ~1.5s) below which a monitored member
@@ -412,25 +426,42 @@ def attendance_retry_worker():
         time.sleep(ATTENDANCE_RETRY_SECONDS)
 
 
-def log_workout_to_laravel(member_id, athlete_name, exercise):
+def log_workout_to_laravel(member_id, athlete_name, exercise, counted_reps=None, completed=True):
+    """Tell Laravel a member performed an exercise.
+
+    completed=True verifies today's assigned task (or logs an unassigned
+    exercise). completed=False only saves the repetitions counted so far,
+    so the coach can see progress even when the member stops early.
+    """
     if not member_id: return
 
     key = f"{member_id}_{exercise}"
+    payload = {"member_id": member_id, "exercise": exercise}
+    if counted_reps is not None:
+        payload["counted_reps"] = int(counted_reps)
+    if not completed:
+        payload["completed"] = False
     try:
         res = requests.post(
             f"{LARAVEL_API}/ai/log-workout",
-            json={"member_id": member_id, "exercise": exercise},
+            json=payload,
             headers=LARAVEL_HEADERS,
             timeout=5,
         )
         res.raise_for_status()
-        if res.json().get('status') == 'logged':
+        status = res.json().get('status')
+        if not completed:
+            if status not in ('progress', 'ignored'):
+                print(f"[WORKOUT] {athlete_name}: progress API returned status '{status}'.")
+            return
+        if status == 'logged':
             with workout_cooldowns_lock:
                 workout_cooldowns[key] = time.time()
             with workout_plans_lock:
                 pending = workout_plans.get(str(member_id), set())
                 pending.discard(exercise)
-            print(f"\n💪 [WORKOUT VERIFIED IN DATABASE] {athlete_name} performed {exercise}!\n")
+            reps_text = f" ({counted_reps} reps counted)" if counted_reps is not None else ""
+            print(f"\n💪 [WORKOUT VERIFIED IN DATABASE] {athlete_name} performed {exercise}{reps_text}!\n")
         else:
             with workout_cooldowns_lock:
                 workout_cooldowns.pop(key, None)
@@ -901,7 +932,7 @@ def _face_ai_loop():
         time.sleep(0.02)
 
 def refresh_workout_plans():
-    global workout_plans, ambiguous_workout_plans
+    global workout_plans, ambiguous_workout_plans, workout_targets
     try:
         response = requests.get(f"{LARAVEL_API}/ai/workout-plans", headers=LARAVEL_HEADERS, timeout=5)
         response.raise_for_status()
@@ -914,6 +945,7 @@ def refresh_workout_plans():
             for label in (ml_classes if ml_classes is not None else [])
         }
         refreshed_counts = collections.defaultdict(collections.Counter)
+        refreshed_targets = collections.defaultdict(dict)
         for task in tasks:
             member_id = task.get('member_id')
             assigned_class = task.get('gesture_class') or task.get('exercise', '')
@@ -922,6 +954,14 @@ def refresh_workout_plans():
             model_class = classes_by_key.get(class_key)
             if member_id is not None and model_class:
                 refreshed_counts[str(member_id)][model_class] += 1
+                # The task's target, and reps already counted (e.g. before
+                # an engine restart), so counting resumes where it stopped.
+                refreshed_targets[str(member_id)].setdefault(model_class, {
+                    'id': task.get('id'),
+                    'sets': task.get('sets'),
+                    'reps': task.get('reps'),
+                    'counted': int(task.get('counted_reps') or 0),
+                })
 
         with workout_plans_lock:
             workout_plans = {
@@ -936,6 +976,7 @@ def refresh_workout_plans():
                 }
                 for member_id, class_counts in refreshed_counts.items()
             }
+            workout_targets = dict(refreshed_targets)
         print(f"[SYNC] Loaded today's workout targets for {len(workout_plans)} member(s).")
     except (requests.RequestException, ValueError) as e:
         print(f"[ERROR] Could not refresh assigned workout targets: {e}")
@@ -1174,6 +1215,7 @@ def gesture_ai_worker():
                 member_id: set(exercises)
                 for member_id, exercises in ambiguous_workout_plans.items()
             }
+            current_targets = {member_id: dict(targets) for member_id, targets in workout_targets.items()}
 
         athletes = []
         for person in poses:
@@ -1206,6 +1248,10 @@ def gesture_ai_worker():
                 state['exercise'] = 'SCANNING'
                 state['confidence'] = 0.0
                 state['target_signature'] = target_signature
+                # The plan changed (a task was verified or reassigned):
+                # start any repetition count afresh for the new task.
+                for key in ('counting_for', 'counter', 'counter_active', 'reps_done'):
+                    state.pop(key, None)
 
             points = landmarks_array(person['landmarks'])
             state['motion'].add(points)
@@ -1270,7 +1316,71 @@ def gesture_ai_worker():
                 'requires_confirmation': requires_confirmation,
             })
 
-            if target_match:
+            # Repetition counting (rep_counter.py) for the selected
+            # exercises. Once the camera has confirmed the assigned exercise,
+            # every full bend-and-straighten of the joint is counted, and the
+            # task is verified only when the target (sets x reps) is reached.
+            # Other exercises are verified as soon as they are recognized.
+            target = current_targets.get(str(member_id), {}).get(exercise)
+            target_total = (
+                int(target['sets']) * int(target['reps'])
+                if target and target.get('sets') and target.get('reps') else None
+            )
+            counting = (
+                exercise in expected
+                and exercise in COUNTED_EXERCISES
+                and exercise not in ambiguous
+                and target_total is not None
+            )
+            if counting:
+                rep_key = (member_id, exercise)
+                if state.get('counting_for') != exercise:
+                    saved = int(target.get('counted') or 0)  # already saved in Laravel
+                    state['counting_for'] = exercise
+                    state['counter'] = RepCounter(exercise, start=max(saved, member_rep_counts.get(rep_key, 0)))
+                    # A member already confirmed on this exercise today (count
+                    # in memory or saved) resumes at once; a new one must first
+                    # be recognized doing the exercise.
+                    state['counter_active'] = rep_key in member_rep_counts or saved > 0
+                    state['reps_reported'] = saved
+                    state['reps_reported_at'] = 0.0
+                    state['reps_done'] = state['counter'].count >= target_total
+                    state['rep_target'] = (target_total, int(target['sets']), int(target['reps']))
+                if target_match:
+                    state['counter_active'] = True
+                if state['counter_active'] and not state['reps_done']:
+                    state['counter'].update(points, time.monotonic(), aspect=width / height)
+
+                counted = state['counter'].count
+                member_rep_counts[rep_key] = counted
+                now_monotonic = time.monotonic()
+                if counted >= target_total and not state['reps_done']:
+                    state['reps_done'] = True
+                    state['reps_reported'] = counted
+                    member_rep_counts.pop(rep_key, None)
+                    cooldown_key = f"{person['member_id']}_{exercise}"
+                    with workout_cooldowns_lock:
+                        should_submit = time.time() - workout_cooldowns.get(cooldown_key, 0) >= 20
+                        if should_submit:
+                            workout_cooldowns[cooldown_key] = time.time()
+                    if should_submit:
+                        threading.Thread(
+                            target=log_workout_to_laravel,
+                            args=(person['member_id'], person['name'], exercise, counted, True),
+                            daemon=True,
+                        ).start()
+                elif (
+                    counted > state['reps_reported']
+                    and now_monotonic - state['reps_reported_at'] >= REP_PROGRESS_SECONDS
+                ):
+                    state['reps_reported'] = counted
+                    state['reps_reported_at'] = now_monotonic
+                    threading.Thread(
+                        target=log_workout_to_laravel,
+                        args=(person['member_id'], person['name'], exercise, counted, False),
+                        daemon=True,
+                    ).start()
+            elif target_match:
                 cooldown_key = f"{person['member_id']}_{exercise}"
                 with workout_cooldowns_lock:
                     should_submit = time.time() - workout_cooldowns.get(cooldown_key, 0) >= 20
@@ -1282,6 +1392,19 @@ def gesture_ai_worker():
                         args=(person['member_id'], person['name'], exercise),
                         daemon=True,
                     ).start()
+
+            # Keep showing the count while the label flickers (e.g. "NOT
+            # MOVING" between sets), as long as the task is still assigned.
+            if state.get('counter') is not None and state.get('counting_for') in expected:
+                total, sets_target, reps_per_set = state['rep_target']
+                person.update({
+                    'reps': state['counter'].count,
+                    'reps_target': total,
+                    'sets_target': sets_target,
+                    'reps_per_set': reps_per_set,
+                    'reps_done': state.get('reps_done', False),
+                    'counting_exercise': state['counting_for'],
+                })
             athletes.append(person)
 
         shared_athletes = athletes
@@ -1363,6 +1486,23 @@ def draw_athlete_overlay(frame, athlete):
         exercise_label = athlete['exercise']
 
     caption_lines = [f"EXERCISE: {exercise_label}", f"NAME: {athlete['name']}"]
+    line_colors = [
+        (0, 190, 255) if athlete['requires_confirmation']
+        else (100, 255, 100) if athlete['target_match'] else (255, 255, 255),
+        (255, 255, 255),
+    ]
+    if athlete.get('reps_target'):
+        # Live repetition count for the selected exercises.
+        reps, total = athlete['reps'], athlete['reps_target']
+        if athlete.get('reps_done'):
+            caption_lines.append(f"{athlete['counting_exercise']} DONE: {reps} / {total} REPS")
+            line_colors.append((100, 255, 100))
+        else:
+            current_set = min(athlete['sets_target'], reps // athlete['reps_per_set'] + 1)
+            caption_lines.append(
+                f"{athlete['counting_exercise']} REPS: {reps} / {total}  (SET {current_set} OF {athlete['sets_target']})"
+            )
+            line_colors.append((0, 215, 255))
     caption_font = cv2.FONT_HERSHEY_DUPLEX
     caption_scale = 0.45
     caption_thickness = 1
@@ -1374,9 +1514,6 @@ def draw_athlete_overlay(frame, athlete):
     caption_height = line_height * len(caption_lines) + 8
     caption_x = min(max(0, left), max(0, width - caption_width))
     caption_y = top - caption_height if top >= caption_height else min(height - caption_height, bottom + 2)
-    exercise_color = (100, 255, 100) if athlete['target_match'] else (255, 255, 255)
-    if athlete['requires_confirmation']:
-        exercise_color = (0, 190, 255)
     cv2.rectangle(
         frame,
         (caption_x, caption_y),
@@ -1384,24 +1521,16 @@ def draw_athlete_overlay(frame, athlete):
         (24, 25, 33),
         cv2.FILLED,
     )
-    cv2.putText(
-        frame,
-        caption_lines[0],
-        (caption_x + 6, caption_y + 17),
-        caption_font,
-        caption_scale,
-        exercise_color,
-        caption_thickness,
-    )
-    cv2.putText(
-        frame,
-        caption_lines[1],
-        (caption_x + 6, caption_y + 17 + line_height),
-        caption_font,
-        caption_scale,
-        (255, 255, 255),
-        caption_thickness,
-    )
+    for index, (line, color) in enumerate(zip(caption_lines, line_colors)):
+        cv2.putText(
+            frame,
+            line,
+            (caption_x + 6, caption_y + 17 + line_height * index),
+            caption_font,
+            caption_scale,
+            color,
+            caption_thickness,
+        )
 
 def _scale_box(box, scale):
     """Scale a (top, right, bottom, left) pixel box; None stays None."""
