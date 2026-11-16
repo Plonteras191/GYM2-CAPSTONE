@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Gym\PackageCategory;
 use App\Models\Gym\Plan;
+use App\Models\Member\Membership;
 use Illuminate\Http\Request;
 
 class PlanController extends Controller
@@ -39,9 +40,37 @@ class PlanController extends Controller
     }
 
     // 3. Delete a plan
+    //
+    // A package that members are still subscribed to cannot be deleted: their
+    // subscriptions would lose their package (and, for a With Coach package,
+    // the member would stop being tracked by the Gesture Monitor). Once those
+    // subscriptions have ended, the package can go; ended subscriptions keep
+    // the package name saved on them.
     public function destroy($id)
     {
-        Plan::findOrFail($id)->delete();
+        $plan = Plan::findOrFail($id);
+
+        $running = Membership::query()
+            ->where(function ($query) use ($plan) {
+                $query->where('plan_id', $plan->id)
+                    ->orWhere(function ($legacy) use ($plan) {
+                        $legacy->whereNull('plan_id')->where('plan_type', $plan->name);
+                    });
+            })
+            ->where('status', 'Active')
+            ->whereDate('end_date', '>=', today())
+            ->count();
+
+        if ($running > 0) {
+            return response()->json([
+                'message' => $running === 1
+                    ? "“{$plan->name}” cannot be deleted: 1 member is still subscribed to it. Delete it after that subscription ends."
+                    : "“{$plan->name}” cannot be deleted: {$running} members are still subscribed to it. Delete it after those subscriptions end.",
+                'running_subscriptions' => $running,
+            ], 422);
+        }
+
+        $plan->delete();
         return response()->json(['message' => 'Plan deleted!']);
     }
 

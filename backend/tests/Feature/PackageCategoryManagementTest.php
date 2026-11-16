@@ -30,10 +30,23 @@ class PackageCategoryManagementTest extends TestCase
             $table->string('color', 7);
             $table->timestamps();
         });
+
+        // Deleting a package checks for running subscriptions to it.
+        Schema::create('memberships', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('member_id')->nullable();
+            $table->unsignedBigInteger('plan_id')->nullable();
+            $table->string('plan_type')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->string('status')->default('Active');
+            $table->timestamps();
+        });
     }
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('memberships');
         Schema::dropIfExists('package_categories');
         Schema::dropIfExists('plans');
         parent::tearDown();
