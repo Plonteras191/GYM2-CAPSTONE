@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiUserPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiUsers, FiSearch, FiX, FiChevronRight } from 'react-icons/fi';
+import { FiUserPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiUsers, FiSearch, FiX, FiChevronRight, FiArrowRight } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import SearchInput from '../../../components/ui/SearchInput';
 import SegmentedFilter from '../../../components/ui/SegmentedFilter';
@@ -21,11 +21,31 @@ const getActivePackageName = (member) => {
   return membership?.plan?.name || membership?.plan_type || 'None';
 };
 
-function PackageName({ member }) {
+/** True while the member has a running With Coach package (the only members the camera tracks for workouts). */
+const hasCoachPackage = (member) => {
+  const membership = member.activeMembership || member.active_membership;
+  if (!membership) return false;
+  return membership.plan?.category === 'with_coach'
+    || (!membership.plan && String(membership.plan_type || '').toLowerCase().includes('with coach'));
+};
+
+function PackageName({ member, onOpenTrainingPlan }) {
   const name = getActivePackageName(member);
-  return name === 'None'
-    ? <span className="text-muted">No package</span>
-    : <span className="font-medium text-ink">{name}</span>;
+  if (name === 'None') return <span className="text-muted">No package</span>;
+  return (
+    <>
+      <span className="font-medium text-ink">{name}</span>
+      {onOpenTrainingPlan && hasCoachPackage(member) && (
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); onOpenTrainingPlan(member); }}
+          className="link-draw mt-0.5 flex items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink"
+        >
+          Training plan <FiArrowRight size={13} aria-hidden="true" />
+        </button>
+      )}
+    </>
+  );
 }
 
 const fullName = (member) => `${member.firstName || ''} ${member.lastName || ''}`.trim();
@@ -76,6 +96,7 @@ export default function MemberTable({
   onEditMember,
   onDeleteMember,
   onViewProfile,
+  onOpenTrainingPlan,
 }) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 10;
@@ -190,7 +211,7 @@ export default function MemberTable({
                     </td>
                     <td className={`${tdClass} font-mono text-[13px] text-muted`}>{member.id}</td>
                     <td className={`${tdClass} truncate whitespace-nowrap tabular-nums`}>{member.phone || <span className="text-muted">—</span>}</td>
-                    <td className={`${tdClass} truncate`}><PackageName member={member} /></td>
+                    <td className={`${tdClass} truncate`}><PackageName member={member} onOpenTrainingPlan={onOpenTrainingPlan} /></td>
                     <td className={`${tdClass} whitespace-nowrap`}>{getStatusBadge(member.status)}</td>
                     <td className={`${tdClass} whitespace-nowrap text-muted`}>{member.customerSince}</td>
                     <td className={`${tdClass} truncate text-muted`} title={member.address || undefined}>{member.address || '—'}</td>
@@ -228,7 +249,16 @@ export default function MemberTable({
                 </span>
                 <FiChevronRight size={18} aria-hidden="true" className="nudge mt-3 shrink-0 text-muted" />
               </button>
-              <div className="flex justify-end border-t border-line px-4 py-3">{rowActions(member, true)}</div>
+              <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
+                {hasCoachPackage(member) && onOpenTrainingPlan
+                  ? (
+                    <button type="button" onClick={() => onOpenTrainingPlan(member)} className="link-draw inline-flex items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink">
+                      Training plan <FiArrowRight size={13} aria-hidden="true" />
+                    </button>
+                  )
+                  : <span />}
+                {rowActions(member, true)}
+              </div>
             </MobileCard>
           ))}
         </div>

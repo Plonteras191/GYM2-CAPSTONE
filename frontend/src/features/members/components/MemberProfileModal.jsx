@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   FiX, FiMapPin, FiPhone, FiCalendar, FiActivity, FiChevronLeft, FiChevronRight,
-  FiChevronDown, FiChevronUp, FiLock
+  FiChevronDown, FiChevronUp, FiLock, FiPlus, FiTrash2, FiInfo, FiCamera, FiCheck, FiCopy
 } from 'react-icons/fi';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -13,6 +13,7 @@ import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 import Pagination from '../../../components/ui/Pagination';
 import StyledSelect from '../../../components/ui/StyledSelect';
 import ManualCheckInModal from '../../../components/ui/ManualCheckInModal';
+import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 import { formatNumber } from '../../../utils/numberFormat';
 
 const getBmiInfo = (height, weight) => {
@@ -79,8 +80,24 @@ const getGestureClass = (exercise) => {
   return null;
 };
 
-export default function MemberProfileModal({ isOpen, member, onClose, onShowAlert }) {
-  const [activeTab, setActiveTab] = useState('workouts');
+/** True while the member has a running With Coach package: the only members the camera tracks for workouts. */
+const hasCoachPackage = (member) => {
+  const membership = member?.activeMembership || member?.active_membership;
+  if (!membership) return false;
+  return membership.plan?.category === 'with_coach'
+    || (!membership.plan && String(membership.plan_type || '').toLowerCase().includes('with coach'));
+};
+
+/** The date a weekday's tasks are scheduled for: today, or the next upcoming one (same rule the save uses). */
+const getPlanDate = (dayIndex) => {
+  const today = new Date();
+  const todayIndex = (today.getDay() + 6) % 7;
+  const daysUntil = (dayIndex - todayIndex + 7) % 7;
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntil);
+};
+
+export default function MemberProfileModal({ isOpen, member, onClose, onShowAlert, initialTab = 'workouts' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [attendance, setAttendance] = useState([]);
   const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
   const [workouts, setWorkouts] = useState([]);
@@ -93,6 +110,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const [exercisesLib, setExercisesLib] = useState([]);
   const [exSearch, setExSearch] = useState('');
   const [selectedBodyPart, setSelectedBodyPart] = useState('all');
+  const [cameraOnly, setCameraOnly] = useState(false);
+  const [isCopyOpen, setIsCopyOpen] = useState(false);
   const [exercisePage, setExercisePage] = useState(1);
   const attendanceCalendarRef = React.useRef(null);
   const [attendanceCalendarTitle, setAttendanceCalendarTitle] = useState('');
@@ -109,7 +128,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   React.useEffect(() => {
     if (!isOpen || !member) return;
     let isCurrent = true;
-    setActiveTab('workouts');
+    setActiveTab(initialTab || 'workouts');
     setWorkoutPage(1);
     setExpandedDate(null);
     setCoachNotes(localStorage.getItem(`notes_${member.id}`) || '');
@@ -144,7 +163,12 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
       .then(d => setExercisesLib(d.data || d))
       .catch(() => {});
     return () => { isCurrent = false; };
-  }, [isOpen, member, profileDataRetry]);
+  }, [isOpen, member, profileDataRetry, initialTab]);
+
+  // The routine as last loaded from, or saved to, the server. Anything different is unsaved.
+  const savedRoutineRef = React.useRef('');
+  const isPlanDirty = isOpen && planLogs !== null && JSON.stringify(weeklyRoutine) !== savedRoutineRef.current;
+  const unsavedChangesGuard = useUnsavedChangesGuard(isPlanDirty);
 
   React.useEffect(() => {
     if (planLogs === null) return;
@@ -162,6 +186,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
       });
     });
     setWeeklyRoutine(routine);
+    savedRoutineRef.current = JSON.stringify(routine);
   }, [planLogs, exercisesLib]);
 
   const handleManualVerify = async (logId) => {
@@ -194,7 +219,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
       });
 
       await api.post(`/members/${member.id}/workout-plan`, { tasks });
-      onShowAlert('Plan Saved', `${tasks.length} workout task${tasks.length === 1 ? '' : 's'} synchronized for the next seven days. AI-supported movements will be verified by the Gesture Engine; other tasks remain available for manual verification.`, 'success');
+      savedRoutineRef.current = JSON.stringify(weeklyRoutine);
+      onShowAlert('Plan saved', `${tasks.length} exercise${tasks.length === 1 ? ' is' : 's are'} now scheduled for the next 7 days. The camera checks the exercises marked “Camera checks”; for the others, confirm them yourself with Verify.`, 'success');
 
       try {
         const res = await api.get(`/members/${member.id}/workouts`);
@@ -246,9 +272,19 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const bodyPartOptions = [...new Set(exercisesLib.map(ex => ex.body_part).filter(Boolean))].sort();
   const matchingExercises = exercisesLib.filter(ex =>
     (selectedBodyPart === 'all' || ex.body_part === selectedBodyPart) &&
+    (!cameraOnly || getGestureClass(ex)) &&
     [ex.name, ex.target, ex.body_part, ex.equipment]
       .some(value => value?.toLowerCase().includes(exSearch.trim().toLowerCase()))
   );
+  const plannedExerciseCount = daysOfWeek.reduce((total, day) => total + weeklyRoutine[day].length, 0);
+  const plannedCameraCount = daysOfWeek.reduce((total, day) => total + weeklyRoutine[day].filter(ex => getGestureClass(ex)).length, 0);
+  // Copies the open day's exercises (with their sets and reps) onto another day, skipping ones already there.
+  const copyDayTo = (targetDay) => {
+    const existingIds = new Set(weeklyRoutine[targetDay].map(ex => ex.id));
+    const additions = weeklyRoutine[activeDay].filter(ex => !existingIds.has(ex.id)).map(ex => ({ ...ex }));
+    setWeeklyRoutine({ ...weeklyRoutine, [targetDay]: [...weeklyRoutine[targetDay], ...additions] });
+    setIsCopyOpen(false);
+  };
   const exercisesPerPage = 50;
   const totalExercisePages = Math.ceil(matchingExercises.length / exercisesPerPage);
   const currentExercises = matchingExercises.slice((exercisePage - 1) * exercisesPerPage, exercisePage * exercisesPerPage);
@@ -341,13 +377,15 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   if (!isOpen || !member) return null;
 
   const profileBmi = getBmiInfo(member.height, member.weight);
+  const requestClose = () => unsavedChangesGuard.requestClose(onClose);
 
   return (
+    <>
     <div className="animate-fade-in fixed inset-0 z-[70] flex items-center justify-center bg-brand-dark/70 p-4 backdrop-blur-sm lg:p-8">
       <div role="dialog" aria-modal="true" aria-labelledby="member-profile-name" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 relative flex h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl">
 
         <div className="absolute top-4 right-4 z-20">
-          <button onClick={onClose} aria-label="Close member profile" className="press flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-panel/90 text-muted backdrop-blur-md hover:border-negative/40 hover:bg-negative-soft hover:text-negative">
+          <button onClick={requestClose} aria-label="Close member profile" className="press flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-panel/90 text-muted backdrop-blur-md hover:border-negative/40 hover:bg-negative-soft hover:text-negative">
             <FiX size={20} />
           </button>
         </div>
@@ -441,7 +479,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
           <div className="w-full lg:w-[68%] flex flex-col h-full bg-panel">
             {/* Tabs */}
             <div className="flex items-center gap-6 px-8 pt-6 border-b border-line flex-shrink-0 overflow-x-auto">
-              {[['workouts', 'Workout Logs'], ['attendance', 'Attendance Calendar'], ['plan', "Coach's Training Plan"]].map(([key, label]) => (
+              {[['workouts', 'Workout Logs'], ['attendance', 'Attendance Calendar'], ['plan', 'Training plan']].map(([key, label]) => (
                 <button key={key} onClick={() => setActiveTab(key)} className={`press relative whitespace-nowrap pb-4 text-[15px] font-medium transition-colors ${activeTab === key ? 'text-ink' : 'text-muted hover:text-ink'}`}>
                   {label}
                   {activeTab === key && <div className="animate-in fade-in absolute bottom-0 left-0 h-1 w-full rounded-t-full bg-brand-gold" />}
@@ -843,12 +881,31 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       aria-pressed={mobileCoachView === 'routine'}
                       className={`mx-1 flex min-h-[38px] flex-1 items-center justify-center rounded-lg px-3.5 py-2 font-sans text-[15px] font-medium normal-case transition-all active:scale-[0.98] ${mobileCoachView === 'routine' ? 'bg-brand-gold hover:bg-brand-gold-500 text-brand-dark shadow-sm' : 'text-ink-2 hover:bg-white dark:text-ink-2 dark:hover:bg-hover'}`}
                     >
-                      Weekly Routine ({activeDay.slice(0, 3)})
+                      Plan ({activeDay.slice(0, 3)})
                     </button>
                   </div>
 
+                  {!hasCoachPackage(member) && (
+                    <div role="note" className="mb-2 flex items-start gap-3 rounded-xl border border-warn/40 bg-warn-soft px-4 py-3 text-sm text-ink">
+                      <FiInfo size={18} className="mt-0.5 shrink-0 text-warn" aria-hidden="true" />
+                      <p>
+                        <span className="font-semibold">{member.firstName} is not on a With Coach package right now.</span>{' '}
+                        You can still save a plan, but the camera only checks exercises for members with an active With Coach package, so each task will need the coach to confirm it with Verify.
+                      </p>
+                    </div>
+                  )}
+                  <p className="mb-2 px-1 text-sm text-ink-2">
+                    Pick exercises on the left and choose the day on the right. A saved plan covers the next 7 days, starting today.
+                    {' '}<span className="font-semibold text-ink">
+                      {plannedExerciseCount === 0
+                        ? 'Nothing planned yet.'
+                        : `${plannedExerciseCount} exercise${plannedExerciseCount === 1 ? '' : 's'} planned, ${plannedCameraCount} checked by the camera.`}
+                    </span>
+                  </p>
+
+                  <div className="relative flex min-h-[520px] flex-1 flex-col lg:min-h-0">
                   <div className="lg:absolute lg:inset-0 border border-line rounded-xl bg-panel shadow-sm flex flex-col sm:flex-row flex-1 overflow-y-auto sm:overflow-hidden min-h-[520px] lg:min-h-0">
-                    
+
                     {/* Exercise Library */}
                     <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col border-b sm:border-b-0 sm:border-r border-line bg-field dark:bg-field sm:min-h-0 ${mobileCoachView === 'library' ? 'flex flex-1' : 'hidden sm:flex'}`}>
                       <div className="p-3 border-b border-line flex-shrink-0 bg-panel">
@@ -878,6 +935,18 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             {bodyPartOptions.map(bodyPart => <option key={bodyPart} value={bodyPart}>{formatExerciseName(bodyPart)}</option>)}
                           </StyledSelect>
                         </label>
+                        <p className="mt-2 text-sm text-ink-2">
+                          Adding to <span className="font-semibold text-ink">{activeDay}, {getPlanDate(daysOfWeek.indexOf(activeDay)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        </p>
+                        <label className="mt-2 flex min-h-9 cursor-pointer items-center gap-2 text-sm text-ink-2">
+                          <input
+                            type="checkbox"
+                            checked={cameraOnly}
+                            onChange={event => { setCameraOnly(event.target.checked); setExercisePage(1); }}
+                            className="h-4 w-4 accent-[var(--ui-accent,#d4a017)]"
+                          />
+                          <FiCamera size={14} aria-hidden="true" /> Only exercises the camera can check
+                        </label>
                       </div>
                       <div className="p-3 flex-1 overflow-y-auto space-y-2">
                         {currentExercises.length === 0 ? (
@@ -895,10 +964,17 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                 }} />}
                               </div>
                               <div className="flex-1 min-w-0 px-3">
-                                <span className="font-medium text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
-                                <span className="text-[10px] text-muted capitalize truncate block mt-0.5">{ex.target || ex.body_part} · {ex.equipment}</span>
+                                <span className="font-medium text-sm text-ink truncate block">{formatExerciseName(ex.name)}</span>
+                                <span className="text-xs text-muted capitalize truncate block mt-0.5">{ex.target || ex.body_part} · {ex.equipment}</span>
+                                {getGestureClass(ex) && (
+                                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-positive">
+                                    <FiCamera size={12} aria-hidden="true" /> Camera checks this
+                                  </span>
+                                )}
                               </div>
-                              <button onClick={() => handleAddExercise(ex)} aria-label={`Add ${ex.name} to ${activeDay}`} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 font-semibold text-brand-dark shadow-sm transition-all active:scale-95">+</button>
+                              <button onClick={() => handleAddExercise(ex)} aria-label={`Add ${ex.name} to ${activeDay}`} className="inline-flex min-h-9 flex-shrink-0 items-center gap-1 rounded-lg bg-brand-gold px-3 text-sm font-medium text-brand-dark shadow-sm transition-all hover:bg-brand-gold-500 active:scale-95">
+                                <FiPlus size={15} aria-hidden="true" /> Add
+                              </button>
                             </div>
                           );
                         })}
@@ -917,16 +993,66 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     {/* Selected Routine */}
                     <div className={`w-full sm:w-1/2 min-h-[14rem] min-w-0 flex flex-col bg-panel sm:min-h-0 ${mobileCoachView === 'routine' ? 'flex flex-1' : 'hidden sm:flex'}`}>
                       <div className="grid w-full flex-shrink-0 grid-cols-7 border-b border-line bg-field dark:border-line dark:bg-field">
-                        {daysOfWeek.map(day => (
-                          <button key={day} title={day} onClick={() => setActiveDay(day)} className={`w-full min-w-0 px-1 py-3 text-xs font-medium transition-colors border-b-2 sm:px-2 sm:text-[10px] sm:tracking-widest ${activeDay === day ? 'border-brand-gold text-brand-gold-700 dark:text-brand-gold bg-panel' : 'border-transparent text-muted hover:text-ink dark:hover:text-ink'}`}>
-                            {day.slice(0, 3)}
-                          </button>
-                        ))}
+                        {daysOfWeek.map((day, dayIndex) => {
+                          const date = getPlanDate(dayIndex);
+                          const isToday = dayIndex === (new Date().getDay() + 6) % 7;
+                          const count = weeklyRoutine[day].length;
+                          const dateLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          return (
+                            <button
+                              key={day}
+                              aria-pressed={activeDay === day}
+                              aria-label={`${day}, ${dateLabel}${isToday ? ' (today)' : ''}, ${count} exercise${count === 1 ? '' : 's'}`}
+                              title={`${day}, ${dateLabel}`}
+                              onClick={() => { setActiveDay(day); setIsCopyOpen(false); }}
+                              className={`flex w-full min-w-0 flex-col items-center gap-0.5 border-b-2 px-1 py-2 transition-colors ${activeDay === day ? 'border-brand-gold bg-panel text-ink' : 'border-transparent text-muted hover:text-ink'}`}
+                            >
+                              <span className="text-sm font-semibold">{day.slice(0, 3)}</span>
+                              <span className="text-[11px] opacity-80">{dateLabel}</span>
+                              <span className="flex h-5 items-center gap-1 text-[11px] font-medium">
+                                {isToday && <span className="text-brand-gold-700 dark:text-brand-gold">Today</span>}
+                                {count > 0 && <span className="min-w-5 rounded-full bg-brand-gold px-1.5 text-center text-brand-dark">{count}</span>}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
-                      
+
                       <div className="p-3 flex-1 overflow-y-auto space-y-2 bg-field dark:bg-black/10">
+                        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                          <h4 className="text-sm font-semibold text-ink">
+                            {activeDay}, {getPlanDate(daysOfWeek.indexOf(activeDay)).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                          </h4>
+                          {weeklyRoutine[activeDay].length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setIsCopyOpen(open => !open)}
+                              aria-expanded={isCopyOpen}
+                              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line bg-panel px-3 text-sm font-medium text-ink-2 transition-colors hover:border-line-strong hover:text-ink"
+                            >
+                              <FiCopy size={14} aria-hidden="true" /> Copy to other days
+                            </button>
+                          )}
+                        </div>
+                        {isCopyOpen && weeklyRoutine[activeDay].length > 0 && (
+                          <div role="group" aria-label={`Copy ${activeDay}'s exercises to`} className="rounded-xl border border-line bg-panel p-3">
+                            <p className="mb-2 text-sm text-ink-2">Copy all {weeklyRoutine[activeDay].length} exercise{weeklyRoutine[activeDay].length === 1 ? '' : 's'} from {activeDay} to:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {daysOfWeek.filter(day => day !== activeDay).map(day => (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  onClick={() => copyDayTo(day)}
+                                  className="min-h-9 rounded-lg border border-line bg-field px-3 text-sm font-medium text-ink transition-colors hover:border-brand-gold hover:bg-warn-soft"
+                                >
+                                  {day}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {weeklyRoutine[activeDay].length === 0
-                          ? <p className="text-xs text-center text-muted mt-6 font-medium">No exercises assigned for {activeDay}</p>
+                          ? <p className="mt-4 text-center text-sm font-medium text-muted">Nothing planned for {activeDay} yet. Press “Add” next to an exercise on the left.</p>
                           : weeklyRoutine[activeDay].map((ex, i) => (
                             <div key={i} className="flex flex-col bg-panel p-3 rounded-xl border border-line shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md animate-in fade-in zoom-in-95 duration-200">
                               <div className="flex justify-between items-center">
@@ -941,36 +1067,39 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                     }} />}
                                   </div>
                                   <div className="min-w-0">
-                                    <span className="font-medium text-xs text-ink truncate block">{formatExerciseName(ex.name)}</span>
-                                    <span className="text-[10px] text-muted">{ex.sets} sets x {ex.reps} reps</span>
-                                    <span className={`text-[10px] font-semibold block mt-0.5 ${getGestureClass(ex) ? 'text-positive dark:text-positive' : 'text-warn dark:text-warn'}`}>
-                                      {getGestureClass(ex) ? `AI tracks ${getGestureClass(ex)}` : 'Manual verification'}
+                                    <span className="font-medium text-sm text-ink truncate block">{formatExerciseName(ex.name)}</span>
+                                    <span className={`mt-0.5 flex items-center gap-1 text-xs font-medium ${getGestureClass(ex) ? 'text-positive' : 'text-warn'}`}>
+                                      {getGestureClass(ex)
+                                        ? <><FiCamera size={12} aria-hidden="true" /> Camera checks this</>
+                                        : 'Coach confirms it by hand'}
                                     </span>
                                   </div>
                                 </div>
-                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="text-[10px] text-negative dark:text-negative hover:text-white font-medium px-2 py-1 bg-negative-soft dark:bg-negative-soft hover:bg-brand-red rounded-md transition-colors flex-shrink-0">X</button>
+                                <button onClick={() => { const arr = [...weeklyRoutine[activeDay]]; arr.splice(i, 1); setWeeklyRoutine({ ...weeklyRoutine, [activeDay]: arr }); }} aria-label={`Remove ${ex.name}`} className="inline-flex min-h-9 flex-shrink-0 items-center gap-1 rounded-lg bg-negative-soft px-2.5 text-xs font-medium text-negative transition-colors hover:bg-brand-red hover:text-white">
+                                  <FiTrash2 size={14} aria-hidden="true" /> Remove
+                                </button>
                               </div>
-                              
+
                               {/* --- REPS & SETS INPUTS --- */}
-                              <div className="flex items-center gap-4 mt-3 pl-[3.25rem]">
-                                <label className="flex items-center gap-2 text-xs font-medium text-ink-2">
-                                  Sets: 
-                                  <input 
-                                    type="number" 
-                                    min="1" 
-                                    value={ex.sets || ''} 
-                                    onChange={(e) => updateExerciseDetail(i, 'sets', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded-md bg-field border border-line focus:outline-none focus:ring-1 focus:ring-focus/25 focus:border-focus text-ink shadow-sm text-center"
+                              <div className="flex flex-wrap items-center gap-4 mt-3 pl-[3.25rem]">
+                                <label className="flex items-center gap-2 text-sm font-medium text-ink-2">
+                                  Sets
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={ex.sets || ''}
+                                    onChange={(e) => updateExerciseDetail(i, 'sets', e.target.value)}
+                                    className="w-16 px-2 py-1.5 rounded-md bg-field border border-line focus:outline-none focus:ring-1 focus:ring-focus/25 focus:border-focus text-ink shadow-sm text-center"
                                   />
                                 </label>
-                                <label className="flex items-center gap-2 text-xs font-medium text-ink-2">
-                                  Reps: 
-                                  <input 
+                                <label className="flex items-center gap-2 text-sm font-medium text-ink-2">
+                                  Reps per set
+                                  <input
                                     type="number" 
                                     min="1" 
                                     value={ex.reps || ''} 
-                                    onChange={(e) => updateExerciseDetail(i, 'reps', e.target.value)} 
-                                    className="w-14 px-2 py-1 rounded-md bg-field border border-line focus:outline-none focus:ring-1 focus:ring-focus/25 focus:border-focus text-ink shadow-sm text-center"
+                                    onChange={(e) => updateExerciseDetail(i, 'reps', e.target.value)}
+                                    className="w-16 px-2 py-1.5 rounded-md bg-field border border-line focus:outline-none focus:ring-1 focus:ring-focus/25 focus:border-focus text-ink shadow-sm text-center"
                                   />
                                 </label>
                               </div>
@@ -980,11 +1109,17 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       </div>
 
                       <div className="p-3 border-t border-line bg-field dark:bg-field flex-shrink-0">
-                        <button onClick={handleAssignWeeklyPlan} disabled={isSavingPlan} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-medium normal-case text-brand-dark shadow-sm transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70">
-                          {isSavingPlan ? 'Saving Plan...' : 'Save Weekly Plan'}
+                        <p aria-live="polite" className={`mb-2 flex items-center gap-1.5 px-1 text-sm font-medium ${isPlanDirty ? 'text-warn' : 'text-muted'}`}>
+                          {isPlanDirty
+                            ? <>Not saved yet. Press “Save plan” to keep your changes.</>
+                            : <><FiCheck size={14} aria-hidden="true" /> All changes saved</>}
+                        </p>
+                        <button onClick={handleAssignWeeklyPlan} disabled={isSavingPlan || !isPlanDirty} className="mx-1 flex min-h-[38px] w-[calc(100%-8px)] items-center justify-center rounded-lg border-0 bg-brand-gold hover:bg-brand-gold-500 px-3.5 py-2 font-sans text-[15px] font-medium normal-case text-brand-dark shadow-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
+                          {isSavingPlan ? 'Saving plan…' : 'Save plan'}
                         </button>
                       </div>
                     </div>
+                  </div>
                   </div>
                 </div>
               )}
@@ -993,5 +1128,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
         </div>
       </div>
     </div>
+    {unsavedChangesGuard.dialog}
+    </>
   );
 }

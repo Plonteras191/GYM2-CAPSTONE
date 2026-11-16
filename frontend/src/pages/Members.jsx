@@ -10,6 +10,9 @@ import AlertDialog from '../components/ui/AlertDialog';
 export default function Members() {
   const location = useLocation();
   const openedMemberIdRef = React.useRef(null);
+  // Which tab the profile opens on: the member list's "Training plan" link and the
+  // Packages page open it directly on the plan.
+  const [profileTab, setProfileTab] = React.useState('workouts');
   const {
     members,
     filteredMembers,
@@ -44,9 +47,19 @@ export default function Members() {
     const member = filteredMembers.find(item => String(item.id) === String(requestedMemberId));
     if (member) {
       openedMemberIdRef.current = requestedMemberId;
+      setProfileTab(location.state?.tab || 'workouts');
       handleViewProfile(member);
     }
-  }, [location.state?.memberId, filteredMembers, handleViewProfile]);
+  }, [location.state?.memberId, location.state?.tab, filteredMembers, handleViewProfile]);
+
+  const openProfile = (member) => {
+    setProfileTab('workouts');
+    handleViewProfile(member);
+  };
+  const openTrainingPlan = (member) => {
+    setProfileTab('plan');
+    handleViewProfile(member);
+  };
 
   React.useEffect(() => {
     if (location.state?.searchTerm) setSearchTerm(location.state.searchTerm);
@@ -66,7 +79,8 @@ export default function Members() {
         onAddMember={handleAddMember}
         onEditMember={handleEditMember}
         onDeleteMember={handleDeleteMember}
-        onViewProfile={handleViewProfile}
+        onViewProfile={openProfile}
+        onOpenTrainingPlan={openTrainingPlan}
       />
 
       <MemberFormModal
@@ -81,6 +95,7 @@ export default function Members() {
       <MemberProfileModal
         isOpen={isProfileOpen}
         member={selectedProfile}
+        initialTab={profileTab}
         onClose={() => setIsProfileOpen(false)}
         onShowAlert={showAlert}
       />
