@@ -6,12 +6,14 @@ import { getPackageColor } from '../packageCategories';
 import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
 import { getLocalDateString } from '../../../utils/dateFormat';
 import { formatNumber } from '../../../utils/numberFormat';
+import { getLoyaltyPrice, countRunningSubscriptions, isSubscriptionOfPackage } from '../pricing';
 
 export function useSubscriptions() {
   const { getCache, setCache, invalidateCache, invalidateCachePrefix } = useDataCache();
 
   const cachedData = getCache('subscriptions_data');
-  const [activeView, setActiveView] = useState('calendar');
+  // The subscriber list is what staff use most (renew, edit, find a member).
+  const [activeView, setActiveView] = useState('list');
   const [isLoading, setIsLoading] = useState(!cachedData);
   
   const [subscriptions, setSubscriptions] = useState(cachedData?.subscriptions || []);
@@ -23,14 +25,17 @@ export function useSubscriptions() {
   const [filterPlan, setFilterPlan] = useState('All');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
-  const [isAddingPlan, setIsAddingPlan] = useState(false); 
+  const [isAddingPlan, setIsAddingPlan] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(null);
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false); // Sync guard to prevent double-submit race conditions
   const [deletingId, setDeletingId] = useState(null);
   const [deletingPlanId, setDeletingPlanId] = useState(null);
+  const [renewTarget, setRenewTarget] = useState(null);
+  const [isRenewing, setIsRenewing] = useState(false);
+  const isRenewingRef = useRef(false);
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventCategories, setEventCategories] = useState([]);
@@ -245,14 +250,9 @@ export function useSubscriptions() {
     let finalPrice = Number(selectedPlan.price);
     let discount = 0;
 
-    if (!activeMembership && finalPrice > 300) {
+    if (!activeMembership) {
       const pastSubs = subscriptions.filter(s => s.member_id === parseInt(formData.member_id, 10)).length;
-      discount = pastSubs * 20;
-      finalPrice = finalPrice - discount;
-      if (finalPrice < 300) {
-        finalPrice = 300;
-        discount = Number(selectedPlan.price) - 300;
-      }
+      ({ price: finalPrice, discount } = getLoyaltyPrice(selectedPlan, pastSubs));
     }
     setLoyalDiscount(discount);
     setCalculatedPrice(finalPrice);
@@ -392,6 +392,50 @@ export function useSubscriptions() {
     } finally { 
       isSavingRef.current = false;
       setIsSaving(false); 
+    }
+  };
+
+  const handleOpenRenew = (sub) => setRenewTarget(sub);
+  const handleCloseRenew = () => { if (!isRenewingRef.current) setRenewTarget(null); };
+
+  /** Renew a subscription: extends a running one, or starts a new one when it has ended. */
+  const handleRenew = async ({ plan_id, payment_method, reference_number, amount }) => {
+    if (!renewTarget || isRenewingRef.current) return;
+    isRenewingRef.current = true;
+    setIsRenewing(true);
+    try {
+      const response = await api.post(`/memberships/${renewTarget.id}/renew`, {
+        plan_id,
+        payment_method,
+        reference_number: reference_number?.trim() || null,
+        amount,
+      });
+      invalidateCache('transactions_data');
+      invalidateCachePrefix('reports_v2_');
+      invalidateCachePrefix('reports_v3_');
+      invalidateCache('subscriptions_data');
+      invalidateCache('members');
+      invalidateCache('dashboard');
+      await fetchData(false);
+      setRenewTarget(null);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Subscription renewed',
+        message: `${response.data.message} Amount received: ₱${formatNumber(response.data.amount_charged)}.`,
+        type: 'success',
+      });
+    } catch (error) {
+      const errors = error.response?.data?.errors;
+      setAlertDialog({
+        isOpen: true,
+        title: 'Could not renew',
+        message: errors?.plan_id?.[0] || errors?.member_id?.[0] || errors?.payment_method?.[0]
+          || error.response?.data?.message || 'The subscription could not be renewed. Please try again.',
+        type: 'error',
+      });
+    } finally {
+      isRenewingRef.current = false;
+      setIsRenewing(false);
     }
   };
 
@@ -541,111 +585,109 @@ export function useSubscriptions() {
     });
   };
 
-  const handleUpdatePlanPrice = (id, newPrice) => {
-    setPlans(prev => prev.map(p => p.id === id ? { ...p, price: newPrice } : p));
+  const emptyPlan = () => ({ name: '', price: '', duration_days: 30, category: '', category_detail: '', color: '#10b981' });
+
+  const handleOpenNewPlan = () => {
+    setNewPlan(emptyPlan());
+    setIsAddingPlan(true);
+  };
+  const handleOpenEditPlan = (plan) => setEditingPlan({
+    ...plan,
+    price: String(plan.price ?? ''),
+    duration_days: String(plan.duration_days ?? ''),
+    category_detail: plan.category_detail || '',
+    color: plan.color || getPackageColor(plan),
+  });
+
+  /** Why a package form cannot be saved yet, or '' when it can. */
+  const packageFormProblem = (plan) => {
+    if (!plan.name?.trim()) return 'Enter a name for the package.';
+    if (!plan.category) return 'Choose a category for the package.';
+    if (!Number(plan.duration_days) || Number(plan.duration_days) < 1) return 'Enter how many days the package lasts.';
+    if (!isValidPackagePrice(plan.price)) return 'Enter a price using digits with up to two decimal places, from ₱0 to ₱9,999,999.99.';
+    return '';
   };
 
+  const packageErrorMessage = (error, fallback) => {
+    const errors = error.response?.data?.errors;
+    return (errors && Object.values(errors).flat()[0]) || error.response?.data?.message || fallback;
+  };
+
+  /** Save changes to an existing package. Returns true when saved. */
   const handleSavePlan = async (plan) => {
+    const problem = packageFormProblem(plan);
+    if (problem) {
+      setAlertDialog({ isOpen: true, title: 'Check the package details', message: problem, type: 'error' });
+      return false;
+    }
     setIsSaving(true);
     try {
-      await api.put(`/plans/${plan.id}`, plan);
+      await api.put(`/plans/${plan.id}`, { ...plan, name: plan.name.trim() });
       saveRecentColor(plan.color || getPackageColor(plan));
       invalidateCache('subscriptions_data');
       await fetchData(false);
-      setAlertDialog({ isOpen: true, title: 'Success', message: 'Package updated successfully!', type: 'success' });
+      setAlertDialog({ isOpen: true, title: 'Package saved', message: `“${plan.name.trim()}” was updated. Existing subscriptions keep what they already paid.`, type: 'success' });
       return true;
     } catch (error) {
       console.error('Failed to update package:', error);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Error',
-        message: error.response?.data?.message || 'Failed to update package.',
-        type: 'error'
-      });
+      setAlertDialog({ isOpen: true, title: 'Could not save the package', message: packageErrorMessage(error, 'Failed to update the package.'), type: 'error' });
       return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleSavePlans = async () => {
-    if (plans.some(plan => !isValidPackagePrice(plan.price))) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Invalid Package Price',
-        message: 'Enter a price using digits with up to two decimal places, from ₱0 to ₱9,999,999.99.',
-        type: 'error'
-      });
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await api.post('/plans/bulk-update', { plans: plans });
-      setIsPlanModalOpen(false);
-      setAlertDialog({ isOpen: true, title: 'Success', message: 'Subscription Plans updated successfully!', type: 'success' });
-    } catch (error) { 
-      console.error("Failed to update plans:", error); 
-      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to update subscription plans.', type: 'error' });
-    } finally { setIsSaving(false); }
-  };
-
   const handleAddNewPlan = async () => {
-    if (!newPlan.name || newPlan.price === '' || !newPlan.duration_days) {
-      setAlertDialog({ isOpen: true, title: 'Incomplete Data', message: 'Please fill out all plan fields.', type: 'error' });
-      return;
-    }
-    if (!newPlan.category) {
-      setAlertDialog({ isOpen: true, title: 'Select a Package Category', message: 'Choose a category before creating the package.', type: 'error' });
-      return;
-    }
-    if (!isValidPackagePrice(newPlan.price)) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Invalid Package Price',
-        message: 'Enter a price using digits with up to two decimal places, from ₱0 to ₱9,999,999.99.',
-        type: 'error'
-      });
-      return;
-    }
-    if (newPlan.category === 'other' && !newPlan.category_detail.trim()) {
-      setAlertDialog({ isOpen: true, title: 'Specify Plan Type', message: 'Please specify the other subscription type.', type: 'error' });
+    const problem = packageFormProblem(newPlan);
+    if (problem) {
+      setAlertDialog({ isOpen: true, title: 'Check the package details', message: problem, type: 'error' });
       return;
     }
     setIsSaving(true);
     try {
-      await api.post('/plans', newPlan);
+      await api.post('/plans', { ...newPlan, name: newPlan.name.trim() });
       saveRecentColor(newPlan.color || getPackageColor(newPlan));
-      setNewPlan({
-        name: '',
-        price: '',
-        duration_days: 30,
-        category: '',
-        category_detail: '',
-        color: '#10b981',
-      });
-      setIsAddingPlan(false); 
-      await fetchData(); 
-    } catch (error) { 
-      console.error("Failed to add new plan:", error); 
-      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to create the new plan.', type: 'error' });
+      setNewPlan(emptyPlan());
+      setIsAddingPlan(false);
+      invalidateCache('subscriptions_data');
+      await fetchData(false);
+      setAlertDialog({ isOpen: true, title: 'Package created', message: `“${newPlan.name.trim()}” is now available when subscribing a member.`, type: 'success' });
+    } catch (error) {
+      console.error('Failed to add new plan:', error);
+      setAlertDialog({ isOpen: true, title: 'Could not create the package', message: packageErrorMessage(error, 'Failed to create the package.'), type: 'error' });
     } finally { setIsSaving(false); }
   };
 
-  const handleDeletePlan = async (id) => {
+  const handleDeletePlan = (plan) => {
+    const running = countRunningSubscriptions(plan, subscriptions);
+    if (running > 0) {
+      // The server refuses too; saying so here avoids a pointless confirm step.
+      setAlertDialog({
+        isOpen: true,
+        title: 'This package is in use',
+        message: `“${plan.name}” cannot be deleted while ${running} ${running === 1 ? 'member is' : 'members are'} still subscribed to it. Delete it after ${running === 1 ? 'that subscription ends' : 'those subscriptions end'}.`,
+        type: 'error',
+      });
+      return;
+    }
+    const earlier = subscriptions.filter(sub => isSubscriptionOfPackage(sub, plan)).length;
     setConfirmDialog({
       isOpen: true,
-      title: 'Delete Pricing Plan',
-      message: 'Are you sure you want to permanently delete this pricing plan?',
+      title: 'Delete package',
+      message: `Delete “${plan.name}”?${earlier > 0 ? ` ${earlier} earlier ${earlier === 1 ? 'subscription' : 'subscriptions'} used it and will keep their record.` : ''} This cannot be undone.`,
       onConfirm: async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false })); 
-        setDeletingPlanId(id); 
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setDeletingPlanId(plan.id);
         try {
-          await api.delete(`/plans/${id}`);
-        } catch (error) { 
-          console.warn("API threw an error, catching silently to prevent stuck popup.", error);
-        } finally { 
-          setPlans(prev => prev.filter(p => p.id !== id));
-          setDeletingPlanId(null); 
+          await api.delete(`/plans/${plan.id}`);
+          setPlans(prev => prev.filter(item => item.id !== plan.id));
+          invalidateCache('subscriptions_data');
+          setAlertDialog({ isOpen: true, title: 'Package deleted', message: `“${plan.name}” was deleted.`, type: 'success' });
+        } catch (error) {
+          console.error('Failed to delete package:', error);
+          setAlertDialog({ isOpen: true, title: 'Could not delete the package', message: packageErrorMessage(error, 'The package could not be deleted.'), type: 'error' });
+        } finally {
+          setDeletingPlanId(null);
         }
       }
     });
@@ -661,8 +703,8 @@ export function useSubscriptions() {
     filterStatus, setFilterStatus,
     filterPlan, setFilterPlan,
     isModalOpen, setIsModalOpen,
-    isPlanModalOpen, setIsPlanModalOpen,
     isAddingPlan, setIsAddingPlan,
+    editingPlan, setEditingPlan,
     isEditing,
     isSaving,
     deletingId,
@@ -697,10 +739,15 @@ export function useSubscriptions() {
     handleOpenNewCoachEvent,
     handleEditCoachEvent,
     handleDeleteCoachEvent,
-    handleUpdatePlanPrice,
+    handleOpenNewPlan,
+    handleOpenEditPlan,
     handleSavePlan,
-    handleSavePlans,
     handleAddNewPlan,
-    handleDeletePlan
+    handleDeletePlan,
+    renewTarget,
+    isRenewing,
+    handleOpenRenew,
+    handleCloseRenew,
+    handleRenew
   };
 }

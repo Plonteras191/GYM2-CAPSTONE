@@ -72,7 +72,7 @@ export default function SubscriptionFormModal({
         <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
           <h3 className="flex items-center gap-2 text-xl font-medium text-ink">
             {isEditing ? <FiEdit2 size={19} /> : <FiPlus size={20} />}
-            {isEditing ? 'Edit subscription' : 'Add subscriber'}
+            {isEditing ? 'Edit subscription' : 'Subscribe a member'}
           </h3>
           <button
             type="button"
@@ -99,15 +99,15 @@ export default function SubscriptionFormModal({
                 />
               </label>
               <label className="block">
-                <span className={labelClass}>Subscription type</span>
+                <span className={labelClass}>Package</span>
                 <StyledSelect
-                  required 
-                  value={formData.plan_type} 
-                  onChange={(e) => setFormData({ ...formData, plan_type: e.target.value })} 
-                  aria-label="Subscription Type"
+                  required
+                  value={formData.plan_type}
+                  onChange={(e) => setFormData({ ...formData, plan_type: e.target.value })}
+                  aria-label="Package"
                   className={`${inputClass} ${formData.plan_type ? '' : '!text-muted dark:!text-muted'}`}
                 >
-                  <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="" disabled>Choose a subscription type</option>
+                  <option className="bg-panel text-ink dark:bg-field dark:text-ink" value="" disabled>Choose a package</option>
                   {filteredDropdownPlans.map(p => <option className="bg-panel text-ink dark:bg-field dark:text-ink" key={p.id} value={p.name}>{p.name} (₱{formatNumber(p.price)})</option>)}
                 </StyledSelect>
                 {activeMembership && !isUpgrade && (
@@ -132,8 +132,8 @@ export default function SubscriptionFormModal({
                 </StyledSelect>
               </label>
               <label className="block">
-              <span className={labelClass}>Reference number</span>
-              <input 
+              <span className={labelClass}>Reference number <span className="font-normal text-muted">(optional)</span></span>
+              <input
                 type="text" 
                 value={formData.reference_number} 
                 onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })} 
@@ -145,12 +145,26 @@ export default function SubscriptionFormModal({
             {!activeMembership && loyalDiscount > 0 && (
               <div className="md:col-span-2 flex items-center gap-2 rounded-lg border border-positive/40 bg-positive-soft p-3 text-sm font-medium text-positive dark:border-positive/40 dark:bg-positive-soft dark:text-positive">
                 <FiCheckCircle size={18} />
-                Loyal Client Detected! A &#8369;{formatNumber(loyalDiscount)} discount has been applied. Final Auto-Billed Price: &#8369;{formatNumber(calculatedPrice)}
+                Loyal member discount: &#8369;{formatNumber(loyalDiscount)} off, applied automatically.
               </div>
             )}
             {isUpgrade && (
               <div className="md:col-span-2 rounded-xl border border-brand-navy/30 bg-brand-navy-50 p-3 text-sm font-semibold text-brand-navy dark:border-brand-navy-200/30 dark:bg-brand-navy-200/10 dark:text-brand-navy-200">
                 Upgrade price: &#8369;{formatNumber(selectedPlan.price)} minus &#8369;{formatNumber(activeMembership.amount_paid || 0)} already paid = &#8369;{formatNumber(amountDue)} due.
+              </div>
+            )}
+
+            {selectedPlan && formData.member_id && (
+              <div className="md:col-span-2 rounded-xl border border-line bg-panel p-4" aria-live="polite">
+                <p className="mb-2 text-xs font-medium text-muted">Summary</p>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                  <dt className="text-muted">Package</dt>
+                  <dd className="text-right font-medium text-ink">{selectedPlan.name}</dd>
+                  <dt className="text-muted">Valid</dt>
+                  <dd className="text-right text-ink">{formData.start_date && formData.end_date ? `${formData.start_date} to ${formData.end_date}` : '—'}</dd>
+                  <dt className="border-t border-line pt-2 font-medium text-ink">Amount to receive</dt>
+                  <dd className="border-t border-line pt-2 text-right font-display text-lg font-semibold tabular-nums text-ink">&#8369;{formatNumber(amountDue)}</dd>
+                </dl>
               </div>
             )}
 

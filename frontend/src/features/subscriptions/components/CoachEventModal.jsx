@@ -81,7 +81,7 @@ export default function CoachEventModal({
           <div className="flex items-center gap-3">
             {eventForm.id ? <FiEdit2 size={19} /> : <FiCalendar size={20} />}
             <h3 className="text-lg font-medium tracking-tight text-ink">
-              {eventForm.id ? 'Edit coach event' : 'Schedule a coach event'}
+              {eventForm.id ? 'Edit class or event' : 'Add a class or event'}
             </h3>
           </div>
           <button 

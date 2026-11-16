@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiList, FiLoader, FiAlertCircle, FiSearch, FiX, FiCheckSquare } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiList, FiLoader, FiAlertCircle, FiSearch, FiX, FiCheckSquare, FiRefreshCw, FiArrowRight } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import StyledSelect from '../../../components/ui/StyledSelect';
 import SearchInput from '../../../components/ui/SearchInput';
@@ -93,7 +93,7 @@ function NoResults({ isFiltered, searchTerm, onClear, onAdd }) {
       </div>
       {isFiltered
         ? <Button size="sm" variant="outline" icon={<FiX size={14} />} onClick={onClear}>Clear search and filters</Button>
-        : <Button size="sm" icon={<FiPlus size={14} />} onClick={onAdd}>Add subscriber</Button>}
+        : <Button size="sm" icon={<FiPlus size={14} />} onClick={onAdd}>Subscribe a member</Button>}
     </div>
   );
 }
@@ -111,7 +111,9 @@ export default function SubscriptionsTable({
   deletingId,
   onAddSubscription,
   onEditSubscription,
-  onDeleteSubscription
+  onDeleteSubscription,
+  onRenewSubscription,
+  onOpenTrainingPlan
 }) {
   const navigate = useNavigate();
   const filteredSubs = subscriptions.filter(sub => {
@@ -139,14 +141,48 @@ export default function SubscriptionsTable({
     All: subscriptions.length,
     Active: subscriptions.filter(sub => sub.status === 'Active').length,
     Expired: subscriptions.filter(sub => sub.status === 'Expired').length,
+    Cancelled: subscriptions.filter(sub => sub.status === 'Cancelled').length,
   };
+  const statusOptions = [
+    { value: 'All', label: 'All', count: counts.All },
+    { value: 'Active', label: 'Active', count: counts.Active, dot: 'bg-positive' },
+    { value: 'Expired', label: 'Expired', count: counts.Expired, dot: 'bg-negative' },
+    // Only shown when there is one, so it does not add noise.
+    ...(counts.Cancelled > 0 ? [{ value: 'Cancelled', label: 'Cancelled', count: counts.Cancelled, dot: 'bg-line-strong' }] : []),
+  ];
+  // Package groups that actually exist, instead of a fixed Annual / Monthly / With Coach list.
+  const presentPackageGroups = ['Annual', 'Monthly', 'With Coach', 'Other'].filter(group =>
+    subscriptions.some(sub => getSubscriptionFilterGroup(sub, plans) === group)
+  );
   const isFiltered = searchTerm.trim() !== '' || filterStatus !== 'All' || filterPlan !== 'All';
   const clearFilters = () => { setSearchTerm(''); setFilterStatus('All'); setFilterPlan('All'); };
 
-  const getStatusBadge = (status) => (status === 'Active' ? <Badge variant="success" dot>Active</Badge> : <Badge variant="danger" dot>Expired</Badge>);
+  const getStatusBadge = (status) => (
+    status === 'Active' ? <Badge variant="success" dot>Active</Badge>
+      : status === 'Expired' ? <Badge variant="danger" dot>Expired</Badge>
+        : <Badge variant="default" dot>{status || 'Unknown'}</Badge>
+  );
+
+  // Renew is the main action once a subscription has ended or is about to.
+  const isDue = (sub) => {
+    const days = getDaysRemaining(sub.end_date);
+    return sub.status !== 'Active' || (days !== null && days <= 7);
+  };
 
   const rowActions = (sub, withLabels = false) => (
-    <div className="inline-flex items-center gap-1.5">
+    <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+      {sub.member && (
+        <Button
+          size="sm"
+          variant={isDue(sub) ? 'primary' : 'outline'}
+          icon={<FiRefreshCw size={14} />}
+          onClick={() => onRenewSubscription(sub)}
+          aria-label={`Renew subscription of ${memberNameOf(sub)}`}
+          title={sub.status === 'Active' ? 'Extend this subscription' : 'Start a new subscription'}
+        >
+          Renew
+        </Button>
+      )}
       <IconButton tone="warn" label={`Edit subscription of ${memberNameOf(sub)}`} icon={<FiEdit2 size={15} />} onClick={() => onEditSubscription(sub)} disabled={deletingId === sub.id}>{withLabels && 'Edit'}</IconButton>
       <IconButton tone="danger" label={`Delete subscription of ${memberNameOf(sub)}`} icon={deletingId === sub.id ? <FiLoader size={15} className="animate-spin" /> : <FiTrash2 size={15} />} onClick={() => onDeleteSubscription(sub.id)} disabled={deletingId === sub.id}>{withLabels && 'Delete'}</IconButton>
     </div>
@@ -169,6 +205,15 @@ export default function SubscriptionsTable({
         {sub.has_upgraded && <Badge variant="info" size="sm">Upgraded</Badge>}
       </div>
       <span className="mt-0.5 block truncate text-[13px] text-muted">{getPackageCategoryLabel(plans.find(item => item.name === sub.plan_type))}</span>
+      {sub.member && sub.status === 'Active' && getSubscriptionFilterGroup(sub, plans) === 'With Coach' && (
+        <button
+          type="button"
+          onClick={() => onOpenTrainingPlan(sub.member)}
+          className="link-draw mt-1 inline-flex items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink"
+        >
+          Training plan <FiArrowRight size={13} aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 
@@ -187,22 +232,16 @@ export default function SubscriptionsTable({
           value={filterStatus}
           onChange={setFilterStatus}
           className="w-full lg:w-auto"
-          options={[
-            { value: 'All', label: 'All', count: counts.All },
-            { value: 'Active', label: 'Active', count: counts.Active, dot: 'bg-positive' },
-            { value: 'Expired', label: 'Expired', count: counts.Expired, dot: 'bg-negative' },
-          ]}
+          options={statusOptions}
         />
         <div className="w-full min-w-0 lg:w-48">
-          <StyledSelect value={filterPlan} onChange={(e) => setFilterPlan(e.target.value)} aria-label="Filter subscriptions by type" className={fieldClass}>
-            <option value="All">All types</option>
-            <option value="Annual">Annual</option>
-            <option value="Monthly">Monthly</option>
-            <option value="With Coach">With coach</option>
+          <StyledSelect value={filterPlan} onChange={(e) => setFilterPlan(e.target.value)} aria-label="Filter subscriptions by package" className={fieldClass}>
+            <option value="All">All packages</option>
+            {presentPackageGroups.map(group => <option key={group} value={group}>{group}</option>)}
           </StyledSelect>
         </div>
         <Button onClick={onAddSubscription} icon={<FiPlus size={18} strokeWidth={2.5} />} className="w-full shrink-0 whitespace-nowrap lg:w-auto">
-          Add subscriber
+          Subscribe a member
         </Button>
       </Toolbar>
 
@@ -223,12 +262,12 @@ export default function SubscriptionsTable({
         <div className="hidden overflow-hidden xl:block">
           <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
-              <col className="w-[28%]" />
-              <col className="w-[8%]" />
-              <col className="w-[20%]" />
               <col className="w-[22%]" />
-              <col className="w-[10%]" />
-              <col className="w-[12%]" />
+              <col className="w-[7%]" />
+              <col className="w-[19%]" />
+              <col className="w-[19%]" />
+              <col className="w-[9%]" />
+              <col className="w-[24%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-line">

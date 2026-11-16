@@ -14,6 +14,7 @@ import { getLocalDateString } from '../../../utils/dateFormat';
 import Panel from '../../../components/ui/Panel';
 import Button from '../../../components/ui/Button';
 import IconButton from '../../../components/ui/IconButton';
+import SegmentedFilter from '../../../components/ui/SegmentedFilter';
 import { tintStyle } from '../../../components/ui/ColorTile';
 
 export default function SubscriptionsCalendarView({
@@ -209,6 +210,27 @@ export default function SubscriptionsCalendarView({
         className={`cal-theme mobile-calendar-grid relative flex h-auto min-w-0 flex-col sm:min-h-[clamp(28rem,75svh,46rem)] xl:col-start-1 xl:row-start-1 ${calendarOnly ? '' : 'rise rounded-2xl border border-line bg-panel p-3 sm:p-5'}`}
         style={calendarOnly ? undefined : { '--i': 2 }}
       >
+        {!calendarOnly && (
+          <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <SegmentedFilter
+              label="Show on the calendar"
+              value={showSubscriptions && showCoachEvents ? 'both' : showSubscriptions ? 'subscriptions' : showCoachEvents ? 'events' : ''}
+              onChange={choice => {
+                setShowSubscriptions(choice !== 'events');
+                setShowCoachEvents(choice !== 'subscriptions');
+              }}
+              options={[
+                { value: 'both', label: 'Everything' },
+                { value: 'subscriptions', label: 'Subscriptions' },
+                { value: 'events', label: 'Classes & events' },
+              ]}
+            />
+            {!readOnly && (
+              <p className="text-[13px] text-muted">Click an empty day to add a class or event. Click an event to see its details.</p>
+            )}
+          </div>
+        )}
+
         <MobileCalendarToolbar
           title={calendarTitle}
           onPrevious={() => calendarRef.current?.getApi().prev()}
@@ -270,7 +292,7 @@ export default function SubscriptionsCalendarView({
                 onEnabledChange={setShowSubscriptions}
               />
               <CalendarCategoryFilters
-                title="Coach events & sessions"
+                title="Classes & events"
                 categories={coachCategoryOptions}
                 selectedCategories={selectedCoachCategories}
                 onChange={setSelectedCoachCategories}
@@ -282,7 +304,7 @@ export default function SubscriptionsCalendarView({
 
           <Panel
             index={4}
-            title="Coach events"
+            title="Classes & events"
             icon={FiCalendar}
             meta={upcomingCoachEvents.length > 0 && (
               <span className="rounded-full bg-hover px-2 py-0.5 text-[13px] font-medium tabular-nums text-ink-2">{upcomingCoachEvents.length}</span>
@@ -296,13 +318,13 @@ export default function SubscriptionsCalendarView({
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-muted"><FiCalendar size={19} /></span>
                 <div>
-                  <p className="text-[15px] font-medium text-ink">No upcoming coach events</p>
-                  <p className="mt-1 text-[13px] text-muted">Classes and sessions you add show up here and on the calendar.</p>
+                  <p className="text-[15px] font-medium text-ink">No upcoming classes or events</p>
+                  <p className="mt-1 text-[13px] text-muted">Classes and events you add show up here and on the calendar.</p>
                 </div>
                 {!readOnly && <Button size="sm" variant="outline" icon={<FiPlus size={14} />} onClick={onOpenEventModal}>Add event</Button>}
               </div>
             ) : (
-              <ul aria-label="Upcoming coach events" className="-my-1 space-y-2">
+              <ul aria-label="Upcoming classes and events" className="-my-1 space-y-2">
                 {upcomingCoachEvents.map((event, index) => {
                   const eventDetails = {
                     id: event.id,
@@ -313,7 +335,7 @@ export default function SubscriptionsCalendarView({
                     type: 'coach',
                     category: event.category?.name || '',
                     description: event.description || '',
-                    detail: 'Coach event',
+                    detail: 'Class or event',
                     startDate: event.start_date,
                     endDate: event.end_date,
                   };

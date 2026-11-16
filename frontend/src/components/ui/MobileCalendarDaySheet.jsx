@@ -6,7 +6,7 @@ import IconButton from './IconButton';
 import ColorTile from './ColorTile';
 
 const GROUPS = [
-  { type: 'coach', label: 'Coach events', icon: FiAward },
+  { type: 'coach', label: 'Classes & events', icon: FiAward },
   { type: 'sub', label: 'Memberships', icon: FiUser },
   { type: 'attendance', label: 'Check-ins', icon: FiCheckCircle },
 ];

@@ -288,7 +288,7 @@ export default function Dashboard() {
   const summary = [
     [todayCheckIns, 'check-in so far today', 'check-ins so far today'],
     [expiringSoon.length, 'membership ending this week', 'memberships ending this week'],
-    [eventsThisWeek.length, 'coach event coming up', 'coach events coming up'],
+    [eventsThisWeek.length, 'class or event coming up', 'classes and events coming up'],
   ];
 
   return (
@@ -344,7 +344,7 @@ export default function Dashboard() {
             <BandLink to="/members" icon={FiUserPlus} hint="Opens Member Registration">Register a member</BandLink>
             <BandLink to="/transactions" icon={FiCreditCard} hint="Opens Transactions">Record a payment</BandLink>
             <Button size="lg" variant="onDark" icon={<FiCalendar size={18} className="text-brand-gold" />} onClick={() => handleOpenNewCoachEvent()}>
-              Add a coach event
+              Add a class or event
             </Button>
           </div>
         </div>
@@ -616,8 +616,8 @@ export default function Dashboard() {
           {eventsThisWeek.length === 0 ? (
             <EmptyState
               icon={FiCalendar}
-              title="No coach events this week"
-              action={<Button size="sm" variant="outline" icon={<FiCalendar size={14} />} onClick={() => handleOpenNewCoachEvent()}>Add a coach event</Button>}
+              title="No classes or events this week"
+              action={<Button size="sm" variant="outline" icon={<FiCalendar size={14} />} onClick={() => handleOpenNewCoachEvent()}>Add a class or event</Button>}
             >
               Classes and sessions you add show up here.
             </EmptyState>
@@ -635,7 +635,7 @@ export default function Dashboard() {
                       <span className="text-xl font-medium leading-none tracking-[-0.02em] text-ink">{start ? start.getDate() : '—'}</span>
                     </div>
                     <div className="min-w-0 flex-1 py-0.5">
-                      <p className="truncate text-[15px] font-medium text-ink">{event.title || 'Coach event'}</p>
+                      <p className="truncate text-[15px] font-medium text-ink">{event.title || 'Class or event'}</p>
                       <p className="mt-0.5 truncate text-[13px] text-muted">
                         {time && <span className="font-mono text-[12.5px] tracking-tight text-ink-2">{time}</span>}
                         {time && (event.location || category) && <span aria-hidden="true"> · </span>}

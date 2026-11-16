@@ -7,7 +7,7 @@ const MAX_ITEMS = 6;
 
 const GROUPS = [
   { type: 'sub', label: 'Memberships', icon: FiUser },
-  { type: 'coach', label: 'Coach events', icon: FiAward },
+  { type: 'coach', label: 'Classes & events', icon: FiAward },
   { type: 'attendance', label: 'Check-ins', icon: FiCheckCircle },
 ];
 

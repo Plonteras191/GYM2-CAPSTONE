@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiTag, FiList, FiCalendar, FiFilter } from 'react-icons/fi';
 import { useSubscriptions } from '../features/subscriptions/hooks/useSubscriptions';
 import SubscriptionsTable from '../features/subscriptions/components/SubscriptionsTable';
@@ -6,21 +7,24 @@ import SubscriptionsCalendarView from '../features/subscriptions/components/Subs
 import { getActivePackageCategoryOptions, getCoachEventCategoryOptions } from '../features/subscriptions/packageCategories';
 import SubscriptionFormModal from '../features/subscriptions/components/SubscriptionFormModal';
 import CoachEventModal from '../features/subscriptions/components/CoachEventModal';
-import PricingCatalogModal from '../features/subscriptions/components/PricingCatalogModal';
+import PriceListView from '../features/subscriptions/components/PriceListView';
+import PackageFormModal from '../features/subscriptions/components/PackageFormModal';
+import RenewSubscriptionModal from '../features/subscriptions/components/RenewSubscriptionModal';
 import CalendarCategoryFilters from '../features/subscriptions/components/CalendarCategoryFilters';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
-import Button from '../components/ui/Button';
 import Panel from '../components/ui/Panel';
 import { StatStrip, StatCell } from '../components/ui/StatStrip';
 import { getLocalDateString } from '../utils/dateFormat';
 
 const VIEWS = [
-  { id: 'list', label: 'List', icon: FiList },
+  { id: 'list', label: 'Subscriptions', icon: FiList },
   { id: 'calendar', label: 'Calendar', icon: FiCalendar },
+  { id: 'prices', label: 'Price list', icon: FiTag },
 ];
 
 export default function Subscriptions() {
+  const navigate = useNavigate();
   const {
     activeView, setActiveView,
     isLoading,
@@ -31,8 +35,8 @@ export default function Subscriptions() {
     filterStatus, setFilterStatus,
     filterPlan, setFilterPlan,
     isModalOpen, setIsModalOpen,
-    isPlanModalOpen, setIsPlanModalOpen,
     isAddingPlan, setIsAddingPlan,
+    editingPlan, setEditingPlan,
     isEditing,
     isSaving,
     deletingId,
@@ -66,11 +70,16 @@ export default function Subscriptions() {
     handleOpenNewCoachEvent,
     handleEditCoachEvent,
     handleDeleteCoachEvent,
-    handleUpdatePlanPrice,
+    handleOpenNewPlan,
+    handleOpenEditPlan,
     handleSavePlan,
-    handleSavePlans,
     handleAddNewPlan,
-    handleDeletePlan
+    handleDeletePlan,
+    renewTarget,
+    isRenewing,
+    handleOpenRenew,
+    handleCloseRenew,
+    handleRenew
   } = useSubscriptions();
   const todayStr = getLocalDateString();
 
@@ -90,11 +99,11 @@ export default function Subscriptions() {
   const upcomingEventCount = coachEvents.filter(event => String(event.end_date || event.start_date || '').slice(0, 10) >= todayStr).length;
 
   return (
-    <div className={`${activeView === 'list' ? 'max-w-7xl' : 'max-w-screen-2xl'} mx-auto space-y-5 p-6 lg:space-y-6`}>
+    <div className={`${activeView === 'calendar' ? 'max-w-screen-2xl' : 'max-w-7xl'} mx-auto space-y-5 p-6 lg:space-y-6`}>
 
       {/* Top Header Actions */}
       <div className="rise flex w-full flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ '--i': 0 }}>
-        <div role="tablist" aria-label="Subscriptions view" className="inline-flex w-full rounded-xl border border-line bg-field p-1 sm:w-auto">
+        <div role="tablist" aria-label="Packages page view" className="inline-flex w-full rounded-xl border border-line bg-field p-1 sm:w-auto">
           {VIEWS.map(({ id, label, icon: Icon }) => {
             const active = activeView === id;
             return (
@@ -110,17 +119,16 @@ export default function Subscriptions() {
             );
           })}
         </div>
-        <Button variant="outline" onClick={() => setIsPlanModalOpen(true)} icon={<FiTag size={16} />} className="whitespace-nowrap">
-          Manage packages
-        </Button>
       </div>
 
+      {activeView !== 'prices' && (
       <StatStrip index={1}>
         <StatCell label="Active subscriptions" hint="Running right now" tone="orange" isLoading={isLoading} value={activeCount} />
         <StatCell label="Ending in 7 days" hint="Members to remind about renewal" tone="red" isLoading={isLoading} value={endingSoonCount} />
         <StatCell label="Expired" hint="Not renewed yet" tone="slate" isLoading={isLoading} value={expiredCount} />
-        <StatCell label="Upcoming coach events" hint="From today onward" tone="gold" isLoading={isLoading} value={upcomingEventCount} />
+        <StatCell label="Upcoming classes & events" hint="From today onward" tone="gold" isLoading={isLoading} value={upcomingEventCount} />
       </StatStrip>
+      )}
 
       {activeView === 'calendar' && (
         <Panel index={2} title="Show on calendar" icon={FiFilter} className="xl:hidden">
@@ -134,7 +142,7 @@ export default function Subscriptions() {
               onEnabledChange={setShowSubscriptions}
             />
             <CalendarCategoryFilters
-              title="Coach events & sessions"
+              title="Classes & events"
               categories={getCoachEventCategoryOptions(eventCategories, coachEvents, todayStr)}
               selectedCategories={selectedCoachCategories}
               onChange={setSelectedCoachCategories}
@@ -161,6 +169,8 @@ export default function Subscriptions() {
           onAddSubscription={() => handleOpenAddModal()}
           onEditSubscription={handleOpenEditModal}
           onDeleteSubscription={handleDelete}
+          onRenewSubscription={handleOpenRenew}
+          onOpenTrainingPlan={(member) => navigate('/members', { state: { memberId: member.id, tab: 'plan' } })}
         />
       )}
 
@@ -186,6 +196,19 @@ export default function Subscriptions() {
           onDateClick={(info) => {
             handleOpenNewCoachEvent(info.dateStr);
           }}
+        />
+      )}
+
+      {/* Price list View */}
+      {activeView === 'prices' && (
+        <PriceListView
+          plans={plans}
+          subscriptions={subscriptions}
+          isLoading={isLoading}
+          deletingPlanId={deletingPlanId}
+          onAdd={handleOpenNewPlan}
+          onEdit={handleOpenEditPlan}
+          onDelete={handleDeletePlan}
         />
       )}
 
@@ -221,27 +244,38 @@ export default function Subscriptions() {
         onSave={handleSaveSubscription}
       />
 
-      {/* Pricing Catalog Modal */}
-      <PricingCatalogModal
-        isOpen={isPlanModalOpen}
-        isAddingPlan={isAddingPlan}
-        setIsAddingPlan={setIsAddingPlan}
-        isSaving={isSaving}
+      {/* Renew Subscription Modal */}
+      <RenewSubscriptionModal
+        subscription={renewTarget}
+        subscriptions={subscriptions}
         plans={plans}
+        isSaving={isRenewing}
+        onClose={handleCloseRenew}
+        onConfirm={handleRenew}
+      />
+
+      {/* New package / Edit package: one form */}
+      <PackageFormModal
+        isOpen={isAddingPlan}
+        mode="add"
+        plan={newPlan}
+        setPlan={setNewPlan}
+        isSaving={isSaving}
         recentColors={recentColors}
-        newPlan={newPlan}
-        setNewPlan={setNewPlan}
-        deletingPlanId={deletingPlanId}
-        onClose={() => {
-          setIsPlanModalOpen(false);
-          setIsAddingPlan(false);
-        }}
-        onUpdatePlanPrice={handleUpdatePlanPrice}
-        onSavePlans={handleSavePlans}
-        onSavePlan={handleSavePlan}
         onUseColor={saveRecentColor}
-        onAddNewPlan={handleAddNewPlan}
-        onDeletePlan={handleDeletePlan}
+        onSave={handleAddNewPlan}
+        onClose={() => setIsAddingPlan(false)}
+      />
+      <PackageFormModal
+        isOpen={Boolean(editingPlan)}
+        mode="edit"
+        plan={editingPlan}
+        setPlan={setEditingPlan}
+        isSaving={isSaving}
+        recentColors={recentColors}
+        onUseColor={saveRecentColor}
+        onSave={async () => { if (await handleSavePlan(editingPlan)) setEditingPlan(null); }}
+        onClose={() => setEditingPlan(null)}
       />
 
       {/* Confirm Dialog */}
@@ -266,4 +300,4 @@ export default function Subscriptions() {
 
     </div>
   );
-}
+}
