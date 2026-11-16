@@ -74,7 +74,10 @@ class WorkoutPlanFlowTest extends TestCase
             $table->date('date');
             $table->unsignedSmallInteger('sets')->nullable();
             $table->unsignedSmallInteger('reps')->nullable();
+            $table->unsignedSmallInteger('counted_reps')->nullable();
             $table->string('gesture_class')->nullable();
+            $table->string('verified_by', 10)->nullable();
+            $table->timestamp('verified_at')->nullable();
             $table->timestamps();
         });
     }
@@ -164,6 +167,7 @@ class WorkoutPlanFlowTest extends TestCase
             'sets' => 3,
             'reps' => 10,
             'gesture_class' => 'SQUAT',
+            'verified_by' => 'ai',
         ]);
 
         $this->getJson('/api/ai/workout-plans')
@@ -173,6 +177,104 @@ class WorkoutPlanFlowTest extends TestCase
         $this->getJson('/api/workouts/live')->assertOk()->assertJsonFragment([
             'name' => 'Test Member',
             'event' => 'AI detected · BARBELL FULL SQUAT · 3 sets x 10 reps',
+        ]);
+    }
+
+    public function test_camera_rep_progress_is_saved_and_the_target_verifies_the_task(): void
+    {
+        Carbon::setTestNow('2026-09-26 12:00:00');
+        $member = Member::create([
+            'first_name' => 'Rep',
+            'last_name' => 'Counter',
+            'email' => 'rep-counter@example.test',
+            'phone' => '0000000006',
+        ]);
+        $this->createCoachMembership($member);
+        $this->postJson("/api/members/{$member->id}/workout-plan", [
+            'tasks' => [[
+                'exercise' => 'Barbell Full Squat',
+                'sets' => 2,
+                'reps' => 3,
+                'date' => Carbon::today()->toDateString(),
+                'gesture_class' => 'SQUAT',
+            ]],
+        ])->assertOk();
+
+        // The camera reports progress while the member is still working.
+        $this->postJson('/api/ai/log-workout', [
+            'member_id' => $member->id,
+            'exercise' => 'SQUAT',
+            'counted_reps' => 4,
+            'completed' => false,
+        ])->assertOk()->assertJson(['status' => 'progress', 'counted_reps' => 4]);
+        // A lower count (e.g. after an engine restart) never reduces it.
+        $this->postJson('/api/ai/log-workout', [
+            'member_id' => $member->id,
+            'exercise' => 'SQUAT',
+            'counted_reps' => 2,
+            'completed' => false,
+        ])->assertOk()->assertJson(['status' => 'progress', 'counted_reps' => 4]);
+        $this->assertDatabaseHas('workout_logs', [
+            'member_id' => $member->id,
+            'exercise' => 'ASSIGNED: BARBELL FULL SQUAT',
+            'counted_reps' => 4,
+            'verified_by' => null,
+        ]);
+
+        // The engine learns the target and the saved count on its next refresh.
+        $this->getJson('/api/ai/workout-plans')
+            ->assertOk()
+            ->assertJsonFragment(['member_id' => $member->id, 'sets' => 2, 'reps' => 3, 'counted_reps' => 4]);
+        $this->getJson('/api/workouts/live')->assertOk()->assertJsonFragment([
+            'event' => 'Pending AI verification · BARBELL FULL SQUAT · 2 sets x 3 reps · 4 reps counted',
+        ]);
+
+        // Target reached: the task is verified with the final count.
+        $this->postJson('/api/ai/log-workout', [
+            'member_id' => $member->id,
+            'exercise' => 'SQUAT',
+            'counted_reps' => 6,
+        ])->assertOk()->assertJson(['status' => 'logged']);
+        $this->assertDatabaseHas('workout_logs', [
+            'member_id' => $member->id,
+            'exercise' => 'BARBELL FULL SQUAT',
+            'counted_reps' => 6,
+            'verified_by' => 'ai',
+            'verified_at' => '2026-09-26 12:00:00',
+        ]);
+        $this->getJson('/api/workouts/live')->assertOk()->assertJsonFragment([
+            'event' => 'AI detected · BARBELL FULL SQUAT · 2 sets x 3 reps · 6 reps counted',
+        ]);
+    }
+
+    public function test_coach_manual_verification_is_recorded(): void
+    {
+        Carbon::setTestNow('2026-09-26 12:00:00');
+        $member = Member::create([
+            'first_name' => 'Manual',
+            'last_name' => 'Verify',
+            'email' => 'manual-verify@example.test',
+            'phone' => '0000000007',
+        ]);
+        $this->createCoachMembership($member);
+        $this->postJson("/api/members/{$member->id}/assign-task", [
+            'exercise' => 'Plank',
+            'sets' => 3,
+            'reps' => 1,
+        ])->assertOk();
+        $task = \App\Models\Tracking\WorkoutLog::where('member_id', $member->id)->firstOrFail();
+
+        $this->putJson("/api/workouts/{$task->id}/manual-verify")->assertOk();
+
+        $this->assertDatabaseHas('workout_logs', [
+            'id' => $task->id,
+            'exercise' => 'PLANK',
+            'verified_by' => 'coach',
+            'verified_at' => '2026-09-26 12:00:00',
+            'counted_reps' => null,
+        ]);
+        $this->getJson('/api/workouts/live')->assertOk()->assertJsonFragment([
+            'event' => 'Coach verified · PLANK · 3 sets x 1 reps',
         ]);
     }
 

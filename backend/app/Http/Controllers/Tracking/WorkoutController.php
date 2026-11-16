@@ -144,6 +144,8 @@ class WorkoutController extends Controller
         $log->update([
             'exercise' => $cleanExerciseName,
             'date' => Carbon::today(),
+            'verified_by' => WorkoutLog::VERIFIED_BY_COACH,
+            'verified_at' => Carbon::now(),
             'created_at' => Carbon::now() // Log the exact time the coach verified it
         ]);
 
@@ -168,15 +170,16 @@ class WorkoutController extends Controller
                 $exerciseName = $isPending ? substr($log->exercise, strlen(self::ASSIGNED_PREFIX)) : $log->exercise;
                 $status = $isPending
                     ? ($log->gesture_class ? 'Pending AI verification' : 'Pending manual verification')
-                    : 'AI detected';
+                    : ($log->verified_by === WorkoutLog::VERIFIED_BY_COACH ? 'Coach verified' : 'AI detected');
                 $target = $log->sets && $log->reps ? " · {$log->sets} sets x {$log->reps} reps" : '';
+                $counted = $log->counted_reps !== null ? " · {$log->counted_reps} reps counted" : '';
 
                 return [
                     'id' => $log->id,
                     'member_id' => $log->member_id,
                     'time' => $isPending ? Carbon::parse($log->date)->format('M j') : Carbon::parse($log->created_at)->format('h:i:s A'),
                     'name' => $log->member ? $log->member->first_name . ' ' . $log->member->last_name : 'Unknown Athlete',
-                    'event' => "{$status} · {$exerciseName}{$target}",
+                    'event' => "{$status} · {$exerciseName}{$target}{$counted}",
                 ];
             });
     }

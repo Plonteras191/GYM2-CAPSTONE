@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Member\Member;
 use App\Models\Member\Membership;
 use App\Models\Tracking\Attendance;
+use App\Models\Tracking\WorkoutLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -155,5 +156,60 @@ class AttendanceReportingTest extends TestCase
         $this->assertSame('active', $statuses[$active->id]);
         $this->assertSame('expired', $statuses[$expired->id]);
         $this->assertSame('none', $statuses[$none->id]);
+    }
+
+    public function test_program_monitoring_report_lists_tasks_with_counted_reps(): void
+    {
+        $ana = $this->member('Ana');
+        $ben = $this->member('Ben');
+        $task = fn (Member $m, array $extra) => WorkoutLog::create($extra + ['member_id' => $m->id]);
+        // Verified by the camera, with the repetitions it counted.
+        $task($ana, ['exercise' => 'BARBELL FULL SQUAT', 'date' => '2026-11-12', 'sets' => 3, 'reps' => 10,
+            'gesture_class' => 'SQUAT', 'counted_reps' => 30, 'verified_by' => 'ai', 'verified_at' => '2026-11-12 17:30:00']);
+        // Assigned for a past day and never done.
+        $task($ana, ['exercise' => 'ASSIGNED: PLANK', 'date' => '2026-11-11', 'sets' => 1, 'reps' => 1]);
+        // Still pending today, partly counted.
+        $task($ben, ['exercise' => 'ASSIGNED: PUSH UP', 'date' => '2026-11-13', 'sets' => 2, 'reps' => 8,
+            'gesture_class' => 'PUSH UP', 'counted_reps' => 5]);
+        // Verified by the coach by hand.
+        $task($ben, ['exercise' => 'CURL', 'date' => '2026-11-12', 'sets' => 2, 'reps' => 12,
+            'verified_by' => 'coach', 'verified_at' => '2026-11-12 18:05:00']);
+        $task($ben, ['exercise' => 'ASSIGNED: SIT UP', 'date' => '2026-10-30', 'sets' => 1, 'reps' => 5]); // outside the range
+
+        $report = $this->actingAsAdmin()
+            ->getJson('/api/reports?start=2026-11-10&end=2026-11-13')
+            ->assertOk()
+            ->json('Workouts');
+
+        $kpis = collect($report['kpis'])->pluck('value', 'label');
+        $this->assertSame('4', $kpis['Assigned Tasks']);
+        $this->assertSame('1', $kpis['Verified by Camera']);
+        $this->assertSame('1', $kpis['Verified by Coach']);
+        $this->assertSame('50%', $kpis['Completion Rate']); // 2 verified of 4 due
+
+        $this->assertSame(
+            ['Date', 'Member Details', 'Exercise', 'Target', 'Reps Counted', 'Status', 'Verified By'],
+            $report['columns']
+        );
+        $rows = collect($report['rows']);
+        $this->assertCount(4, $rows);
+
+        $squat = $rows->first(fn ($row) => $row[2]['title'] === 'Barbell Full Squat');
+        $this->assertSame('2026-11-12', $squat[0]);
+        $this->assertSame('Ana Santos', $squat[1]['name']);
+        $this->assertSame('Camera checks: SQUAT', $squat[2]['category']);
+        $this->assertSame(['3 sets x 10 reps', '30', 'Verified'], array_slice($squat, 3, 3));
+        $this->assertSame(['title' => 'Camera (AI)', 'category' => 'Nov 12, 5:30 PM'], $squat[6]);
+
+        $plank = $rows->first(fn ($row) => $row[2]['title'] === 'Plank');
+        $this->assertSame(['1 sets x 1 reps', '-', 'Missed', '-'], array_slice($plank, 3));
+        $this->assertSame('Coach verification only', $plank[2]['category']);
+
+        $pushUp = $rows->first(fn ($row) => $row[2]['title'] === 'Push Up');
+        $this->assertSame(['2 sets x 8 reps', '5', 'Pending', '-'], array_slice($pushUp, 3));
+
+        $curl = $rows->first(fn ($row) => $row[2]['title'] === 'Curl');
+        $this->assertSame('Verified', $curl[5]);
+        $this->assertSame('Coach', $curl[6]['title']);
     }
 }

@@ -61,6 +61,7 @@ class MemberController extends Controller
             'dob' => 'nullable|date',
             'height' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
+            'body_type' => ['nullable', Rule::in(Member::BODY_TYPES)],
             'address' => 'nullable|string'
         ]);
 
@@ -108,6 +109,7 @@ class MemberController extends Controller
             'dob' => 'nullable|date',
             'height' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
+            'body_type' => ['nullable', Rule::in(Member::BODY_TYPES)],
             'address' => 'nullable|string'
         ]);
 

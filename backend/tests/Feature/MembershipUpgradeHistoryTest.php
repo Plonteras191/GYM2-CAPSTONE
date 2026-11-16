@@ -87,10 +87,25 @@ class MembershipUpgradeHistoryTest extends TestCase
             $table->date('date');
             $table->time('time_in')->nullable();
         });
+        // Read by the Program Monitoring tab of /api/reports.
+        Schema::create('workout_logs', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('member_id');
+            $table->string('exercise');
+            $table->date('date');
+            $table->unsignedSmallInteger('sets')->nullable();
+            $table->unsignedSmallInteger('reps')->nullable();
+            $table->unsignedSmallInteger('counted_reps')->nullable();
+            $table->string('gesture_class')->nullable();
+            $table->string('verified_by', 10)->nullable();
+            $table->timestamp('verified_at')->nullable();
+            $table->timestamps();
+        });
     }
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('workout_logs');
         Schema::dropIfExists('attendances');
         Schema::dropIfExists('transactions');
         Schema::dropIfExists('memberships');

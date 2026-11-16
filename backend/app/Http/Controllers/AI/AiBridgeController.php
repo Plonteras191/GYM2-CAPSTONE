@@ -55,16 +55,27 @@ class AiBridgeController extends Controller
                         $membershipQuery->activeWithCoach();
                     });
             })
-            ->get(['member_id', 'exercise', 'gesture_class']);
+            ->get(['id', 'member_id', 'exercise', 'gesture_class', 'sets', 'reps', 'counted_reps']);
     }
 
-    /** The AI saw a member perform an exercise: verify a task or log it. */
+    /**
+     * The AI saw a member perform an exercise: verify a task or log it.
+     *
+     * For the exercises whose repetitions the camera counts, the engine
+     * first sends progress (completed=false, counted_reps=N) while the
+     * member is still working, and then a completed request once the
+     * target sets x reps has been counted.
+     */
     public function logWorkout(Request $request)
     {
         $request->validate([
             'member_id' => 'required|exists:members,id',
-            'exercise' => 'required|string'
+            'exercise' => 'required|string',
+            'counted_reps' => 'nullable|integer|min:0|max:9999',
+            'completed' => 'nullable|boolean',
         ]);
+        $completed = $request->boolean('completed', true);
+        $countedReps = $request->filled('counted_reps') ? (int) $request->input('counted_reps') : null;
 
         $isEligibleForAi = Member::whereKey($request->member_id)
             ->where('status', 'Active')
@@ -103,12 +114,27 @@ class AiBridgeController extends Controller
             ], 409);
         }
 
+        if (!$completed) {
+            // Progress only: the camera is still counting repetitions. The
+            // count never goes down, so a restarted engine cannot undo reps.
+            $task = $assignedTasks->first();
+            if (!$task || $countedReps === null) {
+                return response()->json(['status' => 'ignored']);
+            }
+            $task->update(['counted_reps' => max((int) $task->counted_reps, $countedReps)]);
+
+            return response()->json(['status' => 'progress', 'counted_reps' => $task->counted_reps]);
+        }
+
         if ($assignedTasks->count() === 1) {
             $assignedTask = $assignedTasks->first();
             // Task Verified! Strip the "ASSIGNED: " tag to mark it completed
             $assignedTask->update([
                 'exercise' => substr($assignedTask->exercise, strlen(self::ASSIGNED_PREFIX)),
                 'date' => $today,
+                'counted_reps' => $countedReps ?? $assignedTask->counted_reps,
+                'verified_by' => WorkoutLog::VERIFIED_BY_AI,
+                'verified_at' => Carbon::now(),
                 'created_at' => Carbon::now() // Log the exact time it was verified
             ]);
             return response()->json(['status' => 'logged', 'message' => 'Task verified!']);
@@ -125,6 +151,9 @@ class AiBridgeController extends Controller
                 'member_id' => $request->member_id,
                 'exercise' => $exerciseName,
                 'date' => Carbon::today(),
+                'counted_reps' => $countedReps,
+                'verified_by' => WorkoutLog::VERIFIED_BY_AI,
+                'verified_at' => Carbon::now(),
             ]);
             return response()->json(['status' => 'logged']);
         }

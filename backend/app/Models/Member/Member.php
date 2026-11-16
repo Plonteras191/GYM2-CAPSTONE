@@ -9,6 +9,9 @@ class Member extends Model
 {
     use HasFactory;
 
+    /** Body types a member can be registered with (for program assignment). */
+    public const BODY_TYPES = ['Ectomorph', 'Mesomorph', 'Endomorph'];
+
     protected $fillable = [
         'first_name', 
         'last_name', 
@@ -19,8 +22,9 @@ class Member extends Model
         'enrolled_face_id', 
         'profile_pic', 
         'dob', 
-        'height', 
-        'weight', 
+        'height',
+        'weight',
+        'body_type',
         'address'
     ];
 

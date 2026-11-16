@@ -7,6 +7,8 @@ use App\Models\Member\Transaction;
 use App\Models\Member\Membership;
 use App\Models\Member\Member;
 use App\Models\Tracking\Attendance;
+use App\Models\Tracking\WorkoutLog;
+use App\Http\Controllers\Tracking\WorkoutController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -77,6 +79,17 @@ class ReportController extends Controller
             ->whereBetween('date', [$start, $end])
             ->orderBy('date', 'desc')
             ->orderBy('time_in', 'desc')
+            ->get();
+
+        // 6. Workout tasks and camera detections in date range (Program Monitoring)
+        $workouts = WorkoutLog::select(
+                'id', 'member_id', 'exercise', 'date', 'sets', 'reps', 'gesture_class',
+                'counted_reps', 'verified_by', 'verified_at', 'created_at'
+            )
+            ->with('member:id,first_name,last_name,email,profile_pic')
+            ->whereBetween('date', [$start, $end])
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
             ->get();
 
         // Build KPIs
@@ -186,6 +199,49 @@ class ReportController extends Controller
             : Carbon::createFromTime($busiestHour)->format('g A') . ' - '
                 . Carbon::createFromTime($busiestHour)->addHour()->format('g A');
 
+        // Program Monitoring rows: one per assigned task (pending, missed or
+        // verified) or camera detection, with the repetitions the camera
+        // counted and who verified the task.
+        $prefix = WorkoutController::ASSIGNED_PREFIX;
+        $today = Carbon::today()->toDateString();
+        $isTask = fn ($w) => $w->sets && $w->reps;
+        $isPending = fn ($w) => str_starts_with($w->exercise, $prefix);
+        $workoutStatus = function ($w) use ($isPending, $isTask, $today) {
+            if ($isPending($w)) {
+                return Carbon::parse($w->date)->toDateString() < $today ? 'Missed' : 'Pending';
+            }
+            return $isTask($w) ? 'Verified' : 'Detected';
+        };
+        $verifiedWhen = fn ($w) => Carbon::parse($w->verified_at ?: $w->created_at)->format('M j, g:i A');
+        $workoutRows = $workouts->map(function ($w) use ($memberDetails, $workoutStatus, $verifiedWhen, $isPending, $prefix) {
+            $status = $workoutStatus($w);
+            $name = $isPending($w) ? substr($w->exercise, strlen($prefix)) : $w->exercise;
+            $verifiedBy = match (true) {
+                in_array($status, ['Pending', 'Missed'], true) => '-',
+                $w->verified_by === WorkoutLog::VERIFIED_BY_AI => ['title' => 'Camera (AI)', 'category' => $verifiedWhen($w)],
+                $w->verified_by === WorkoutLog::VERIFIED_BY_COACH => ['title' => 'Coach', 'category' => $verifiedWhen($w)],
+                default => ['title' => 'Not recorded', 'category' => $verifiedWhen($w)],
+            };
+
+            return [
+                Carbon::parse($w->date)->toDateString(),
+                $memberDetails($w->member, 'Deleted Member'),
+                [
+                    'title' => ucwords(strtolower($name)),
+                    'category' => $w->gesture_class ? "Camera checks: {$w->gesture_class}" : 'Coach verification only',
+                ],
+                $w->sets && $w->reps ? "{$w->sets} sets x {$w->reps} reps" : '-',
+                $w->counted_reps === null ? '-' : (string) $w->counted_reps,
+                $status,
+                $verifiedBy,
+            ];
+        });
+
+        $tasks = $workouts->filter($isTask);
+        $verifiedTasks = $tasks->reject($isPending);
+        $dueTasks = $tasks->filter(fn ($w) => Carbon::parse($w->date)->toDateString() <= $today);
+        $completionRate = $dueTasks->count() ? round($verifiedTasks->count() / $dueTasks->count() * 100) : 0;
+
         return response()->json([
             'Payments' => [
                 'kpis' => [
@@ -215,6 +271,16 @@ class ReportController extends Controller
                 ],
                 'columns' => ['Date / Time', 'Member Details', 'Plan', 'Subscription Status', 'Method', 'Camera'],
                 'rows'    => $attendanceRows,
+            ],
+            'Workouts' => [
+                'kpis' => [
+                    ['label' => 'Assigned Tasks',     'value' => (string) $tasks->count(),                                                 'trend' => 'Live'],
+                    ['label' => 'Verified by Camera', 'value' => (string) $verifiedTasks->where('verified_by', WorkoutLog::VERIFIED_BY_AI)->count(),    'trend' => 'Live'],
+                    ['label' => 'Verified by Coach',  'value' => (string) $verifiedTasks->where('verified_by', WorkoutLog::VERIFIED_BY_COACH)->count(), 'trend' => 'Live'],
+                    ['label' => 'Completion Rate',    'value' => $completionRate . '%',                                                    'trend' => 'Live'],
+                ],
+                'columns' => ['Date', 'Member Details', 'Exercise', 'Target', 'Reps Counted', 'Status', 'Verified By'],
+                'rows'    => $workoutRows,
             ],
         ]);
     }
