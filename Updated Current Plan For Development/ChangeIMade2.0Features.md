@@ -88,6 +88,79 @@
 - **Tests:** 9 new backend tests (manual check-in, consent, private photo storage, moving old photos) and 17 new engine tests (blink detection, finding photos in both folders, automatic sync).
 - **Not done yet (Phase 4):** live test checklist with several people, and updating the README.
 
+---
+
+## Changes — November 16, 2026
+
+> No database changes, no migration needed. Restart the Python engine (`python main.py` in `Gesture Engine`) to apply items 18, 19 and 21. Item 20 works as soon as Laravel serves the next request.
+
+### 18. Attendance Monitor: Less Lag and Delay
+- **The Problem:** the Attendance Monitor (Security Monitor) video was slow and fell further behind the longer it ran, and the check-in list stayed empty for the first 3 seconds after opening the page.
+- **The Causes found:**
+  1. The second CCTV (`CCTV_2_URL`) points at the camera's 4K main stream (`Preview_01_main`). Every frame was decoded and copied at full size several times, which is heavy for the laptop's CPU.
+  2. The video feed drew name boxes on the full-size frame before shrinking it, always encoded the Gesture Monitor feed too (even with nobody watching), waited a fixed 33 ms after every frame, and often sent the previous frame instead of the newest one.
+  3. The page waited 3 seconds before its first attendance request, and if Laravel was slow the requests piled up every 3 seconds (`php artisan serve` handles one request at a time on Windows).
+- **The Solution:**
+  1. **Faster video feed (engine):**
+     - each frame is shrunk to 1280 px wide first, then the boxes are drawn;
+     - a feed is only encoded while someone is watching it;
+     - a frame is sent the moment it is ready, with no fixed wait;
+     - every open tab waits for its own frames, so several tabs no longer slow each other down.
+  2. **Page (`SecurityMonitor.jsx`):** today's check-ins load immediately; each request waits for the previous one to finish; polling pauses while the tab is hidden and refreshes when you come back.
+- **Result (simulated 4K camera at 25 fps, video feed only):** 10.7 fps before, 21.7 fps after.
+- **Still recommended:** in the Reolink app, set the main stream to 1920×1080 or 2560×1440 (H.264), or use `Preview_01_sub`. The code fixes cannot remove the cost of decoding 4K.
+
+---
+
+### 19. Webcam: No More Freezing While a Face Is Recognized
+- **The Problem:** on the webcam the video froze about once a second whenever a face was in view (6–9 fps with freezes of about 0.9 seconds).
+- **The Cause:** turning a face into a face "fingerprint" (dlib encoding) takes about 0.84 seconds on this laptop. While it ran, the rest of the engine (camera reader, pose tracking and both video feeds) had to wait.
+- **The Solution:** face encoding now runs in **2 separate helper processes** (new file `Gesture Engine/face_encoder_pool.py`). The engine sends them a small crop of the face and keeps running. Encoding new members' registration photos also goes through the helpers.
+  - The helpers give exactly the same result as before, so recognition accuracy is unchanged.
+  - Two people can now be recognized at the same time instead of one after the other.
+  - If a helper crashes it is restarted automatically. If the helpers cannot start, the engine falls back to the old way.
+  - New setting in `Gesture Engine/.env`: `FACE_ENCODER_PROCESSES` (default 2; 0 = old behaviour). Use 1 if the laptop struggles.
+- **Result (live webcam, face in view):**
+
+  | | Before | After |
+  |---|---|---|
+  | Camera frame rate | 6–9 fps | 15 fps |
+  | Longest freeze | ~0.9 s | 0.09 s |
+  | Freezes over 0.2 s (10–12 s test) | 7–8 | 0 |
+
+- **CCTV:** the same fix applies to every camera source, so the CCTVs also stop freezing. Not tested on the CCTVs themselves (they were not reachable).
+- **Limits that remain:**
+  - The laptop webcam itself only gives 15 fps at 640×480; the room was very dark during testing, and more light usually brings it to 30 fps.
+  - A name still takes a couple of seconds to appear (each check takes ~0.85 s and 3 must agree). The video stays smooth while it waits.
+  - `CAMERA_SOURCE=cctv_2` in `Gesture Engine/.env` makes the engine try the unreachable CCTV first. Set it to `webcam` while the CCTVs are away.
+
+---
+
+### 20. Gesture Monitor: Coach Members Were Not Monitored After Their Plan Was Deleted
+- **The Problem:** the Gesture Monitor showed no skeleton for a member with an active "With Coach" subscription.
+- **The Cause:** the "has an active coach subscription" rule only looked at the plan in the Plans list. That member's plan had been deleted from the Plans page, so the rule treated them as a normal member.
+- **The Solution:** when a subscription's plan no longer exists, the rule now uses the plan name saved on the subscription (anything containing "With Coach"). Changed in `backend/app/Models/Member/Membership.php` (`scopeActiveWithCoach`). Attendance is not affected.
+- **Data problems found (not fixed, need an admin):**
+  - One member with a valid "Monthly With Coach" subscription has a face enrollment where no face could be found in any view. Their face must be re-captured.
+  - 8 active subscriptions point at plans that were deleted (one "With Coach", seven "Monthly"). Deleting a plan that members still use leaves these broken links. A possible follow-up: refuse to delete a plan while active subscriptions use it.
+- **Tests:** 1 new backend test (a coach subscription stays eligible after its plan is deleted; a normal one does not).
+
+---
+
+### 21. Gesture Monitor: Shows Why a Recognized Member Is Not Monitored
+- **The Problem:** a recognized member without a coach subscription (for example on the Annual plan) got nothing drawn at all on the Gesture Monitor, so it looked like the camera could not identify them. Testing showed the face was in fact recognized (match distance about 0.34, the limit is 0.50).
+- **The Solution:** these members now get a small grey tag: **"NAME - no coach plan"**. Unrecognized people still show "Identifying...". Nothing else changes for them: no skeleton, no exercise check and no workout log. Only members with a With Coach subscription are monitored, as described in item 14.
+- **To see the skeleton on a member:** give them a With Coach subscription, assign a workout for today (otherwise the skeleton shows "NO PLAN TODAY"), and make sure the whole body is visible in good light.
+
+---
+
+### Summary for November 16
+- **Database changes:** **None.** No new tables and no new columns.
+- **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** **Not changed**, because there is no database change.
+- **Files changed:** `Gesture Engine/gesture_engine.py`, `Gesture Engine/face_enrollment.py`, `Gesture Engine/monitoring.py`, `Gesture Engine/.env.example`, `frontend/src/pages/SecurityMonitor.jsx`, `backend/app/Models/Member/Membership.php`, `backend/tests/Feature/WorkoutPlanFlowTest.php`.
+- **New files:** `Gesture Engine/face_encoder_pool.py`, `Gesture Engine/tests/test_face_encoder_pool.py`.
+- **Tests:** engine 70 tests pass (9 new). Backend: 75 pass, including the 1 new test. 2 older `SecurityTest` tests fail on this laptop because PHP's GD image extension is not installed. They fail the same way without these changes.
+
 
 # Documentation Changes Log
 **Date:** September 25, 2026
