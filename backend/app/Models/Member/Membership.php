@@ -64,10 +64,15 @@ class Membership extends Model
             ->where(function (Builder $query) {
                 $query->whereHas('plan', function (Builder $planQuery) {
                     $planQuery->where('category', 'with_coach');
-                })->orWhere(function (Builder $legacyQuery) {
-                    $legacyQuery
-                        ->whereNull('plan_id')
-                        ->whereRaw('LOWER(TRIM(plan_type)) = ?', ['with coach']);
+                })->orWhere(function (Builder $unlinkedQuery) {
+                    // No plan row to ask: an older membership saved without
+                    // a plan, or one whose plan was deleted afterwards. The
+                    // member still paid for a coach, so go by the plan name
+                    // saved on the membership ("With Coach", "Monthly With
+                    // Coach", ...).
+                    $unlinkedQuery
+                        ->whereDoesntHave('plan')
+                        ->whereRaw('LOWER(plan_type) LIKE ?', ['%with coach%']);
                 });
             });
     }

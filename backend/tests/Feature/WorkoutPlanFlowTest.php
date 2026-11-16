@@ -330,6 +330,44 @@ class WorkoutPlanFlowTest extends TestCase
         ])->assertForbidden()->assertJson(['status' => 'ineligible']);
     }
 
+    public function test_coach_membership_stays_eligible_after_its_plan_is_deleted(): void
+    {
+        Carbon::setTestNow('2026-09-26 12:00:00');
+        $coachMember = Member::create([
+            'first_name' => 'Deleted',
+            'last_name' => 'CoachPlan',
+            'email' => 'deleted-coach-plan@example.test',
+            'phone' => '0000000004',
+            'enrolled_face_id' => '/faces/deleted-coach-plan.png',
+        ]);
+        $regularMember = Member::create([
+            'first_name' => 'Deleted',
+            'last_name' => 'RegularPlan',
+            'email' => 'deleted-regular-plan@example.test',
+            'phone' => '0000000005',
+            'enrolled_face_id' => '/faces/deleted-regular-plan.png',
+        ]);
+        $this->createCoachMembership($coachMember, ['plan_type' => 'Monthly With Coach']);
+        $this->createCoachMembership($regularMember, ['plan_type' => 'Monthly']);
+        // The admin deletes both plans; the memberships still point at them.
+        \Illuminate\Support\Facades\DB::table('plans')->delete();
+        \App\Models\Tracking\WorkoutLog::create([
+            'member_id' => $coachMember->id,
+            'exercise' => 'ASSIGNED: SIT UP',
+            'date' => Carbon::today()->toDateString(),
+            'gesture_class' => 'SIT UP',
+        ]);
+
+        $this->getJson('/api/ai/members-faces')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $coachMember->id, 'workout_eligible' => true])
+            ->assertJsonFragment(['id' => $regularMember->id, 'workout_eligible' => false]);
+        $this->getJson('/api/ai/workout-plans')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonFragment(['member_id' => $coachMember->id]);
+    }
+
     public function test_custom_plan_requires_and_persists_an_explicit_category(): void
     {
         $this->postJson('/api/plans', [
