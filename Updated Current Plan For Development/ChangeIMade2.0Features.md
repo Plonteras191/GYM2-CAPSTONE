@@ -154,12 +154,33 @@
 
 ---
 
+### 22. Program Monitoring: Repetition Counting, Report Tab and Body Type
+> Needs `php artisan migrate` in `backend` (two new migrations) and a restart of the Python engine. Back up the database first.
+
+- **The Problem:** the approved paper (Chapters 1 and 3) promises three things the system did not have: the Gesture Monitor counts completed repetitions, Reports include a program monitoring report, and registration records the member's body type.
+- **The Solution:**
+  1. **Repetition counting** (new file `Gesture Engine/rep_counter.py`). For four selected exercises the camera counts each full bend-and-straighten of one joint: the knee for **Squat**, the elbow for **Push Up** and **Curl**, the hip for **Sit Up**. Once the camera has confirmed the assigned exercise, the Gesture Monitor shows a live line such as `SQUAT REPS: 7 / 30 (SET 1 OF 3)`, and the task is verified only when the target sets × reps has been counted. Other exercises are verified as before, as soon as the camera recognizes them.
+     - The count is saved to Laravel every few seconds while the member works, so the coach sees progress even if the member stops early. A saved count never goes down.
+     - The count follows the member, not the camera track: a member who steps out of view, or rests out of frame between sets, resumes from their count. After an engine restart, counting resumes from the saved count.
+     - **Setting:** `REP_EXERCISES` in `Gesture Engine/.env` chooses which exercises are counted (default: all four). Put the gym owner's approved list here.
+     - **Limits:** the counted joint must be visible (side or front view). It counts movements; it does not check form or depth. The angle limits are in `rep_counter.py` and may need tuning on the gym camera. Not yet tested with a real person on camera, only with simulated poses.
+  2. **Program Monitoring tab in Reports.** Columns: Date, Member Details, Exercise, Target, Reps Counted, Status (Pending, Missed, Verified or Detected) and Verified By (Camera (AI) or Coach, with the time). Figures: Assigned Tasks, Verified by Camera, Verified by Coach, Completion Rate. CSV export and print work like the other tabs.
+  3. **Body type at registration:** Ectomorph, Mesomorph or Endomorph (optional) in the Body measurements step of the member form, shown in the member profile's Body Metrics.
+  4. **Smaller changes:** the member profile's Workout Logs show "N reps counted by camera" and whether a task was verified by the camera or the coach; the Gesture Monitor's live log shows the counted reps.
+- **Database changes (no new tables):**
+  - `workout_logs`: 3 new columns, `counted_reps` (smallint, nullable), `verified_by` (varchar 10, nullable: `ai` or `coach`) and `verified_at` (timestamp, nullable). Tasks verified before this change have no `verified_by` and show "Not recorded" in the report.
+  - `members`: 1 new column, `body_type` (varchar 20, nullable).
+- **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** **Updated.** See "Diagram changes for item 22" at the end of this file.
+- **Tests:** 16 new engine tests (repetition counter) and 5 new backend tests (progress and completion, coach verification, report tab, body type).
+
+---
+
 ### Summary for November 16
-- **Database changes:** **None.** No new tables and no new columns.
-- **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** **Not changed**, because there is no database change.
-- **Files changed:** `Gesture Engine/gesture_engine.py`, `Gesture Engine/face_enrollment.py`, `Gesture Engine/monitoring.py`, `Gesture Engine/.env.example`, `frontend/src/pages/SecurityMonitor.jsx`, `backend/app/Models/Member/Membership.php`, `backend/tests/Feature/WorkoutPlanFlowTest.php`.
-- **New files:** `Gesture Engine/face_encoder_pool.py`, `Gesture Engine/tests/test_face_encoder_pool.py`.
-- **Tests:** engine 70 tests pass (9 new). Backend: 75 pass, including the 1 new test. 2 older `SecurityTest` tests fail on this laptop because PHP's GD image extension is not installed. They fail the same way without these changes.
+- **Database changes:** items 18–21 none; item 22 adds 4 columns (see item 22). Run `php artisan migrate`.
+- **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** updated for item 22 only.
+- **Files changed:** `Gesture Engine/gesture_engine.py`, `Gesture Engine/face_enrollment.py`, `Gesture Engine/monitoring.py`, `Gesture Engine/.env.example`, `frontend/src/pages/SecurityMonitor.jsx`, `frontend/src/pages/Reports.jsx`, `frontend/src/features/members/components/MemberFormModal.jsx`, `frontend/src/features/members/components/MemberProfileModal.jsx`, `frontend/src/features/members/hooks/useMembers.js`, `frontend/src/services/memberService.js`, `backend/app/Models/Member/Member.php`, `backend/app/Models/Member/Membership.php`, `backend/app/Models/Tracking/WorkoutLog.php`, `backend/app/Http/Controllers/AI/AiBridgeController.php`, `backend/app/Http/Controllers/Admin/ReportController.php`, `backend/app/Http/Controllers/Member/MemberController.php`, `backend/app/Http/Controllers/Tracking/WorkoutController.php`, plus tests.
+- **New files:** `Gesture Engine/face_encoder_pool.py`, `Gesture Engine/rep_counter.py`, `Gesture Engine/tests/test_face_encoder_pool.py`, `Gesture Engine/tests/test_rep_counter.py`, `backend/database/migrations/2026_11_16_000001_add_rep_counting_to_workout_logs_table.php`, `backend/database/migrations/2026_11_16_000002_add_body_type_to_members_table.php`, `backend/tests/Feature/MemberBodyTypeTest.php`.
+- **Tests:** engine 86 tests pass (25 new today). Backend: 80 pass (6 new today). 2 older `SecurityTest` tests fail on this laptop because PHP's GD image extension is not installed. They fail the same way without these changes.
 
 
 # Documentation Changes Log
@@ -348,3 +369,15 @@ Only the database change is drawn. Everything not listed here is unchanged.
 - Figure 4.6: new use case "Manually Check In Member"; "Capture Face" «include» "Record Member Consent".
 - Figure 4.3 and 4.6, Reports: three report types (Payment Transactions, Membership Status, Attendance) instead of two.
 
+## Diagram changes for item 22 (Program Monitoring)
+
+File: `Chapter4_Diagrams (2).md`.
+
+| # | Figure | Part | Change | Why |
+|---|---|---|---|---|
+| 1 | 4.9 Logical ERD | MEMBER | **New attribute:** `body_type` (text) | Registration records the body type for program assignment |
+| 2 | 4.9 Logical ERD | WORKOUT_LOG | **New attributes:** `counted_reps` (number), `verified_by` (text), `verified_at` (datetime) | Repetitions counted by the camera, and who verified the task and when |
+| 3 | 4.10 Physical ERD | `members` | **New column:** `body_type` varchar(20), nullable, after `weight` | Same as logical |
+| 4 | 4.10 Physical ERD | `workout_logs` | **New columns:** `counted_reps` smallint nullable after `reps`; `verified_by` varchar(10) nullable and `verified_at` timestamp nullable after `gesture_class` | Same as logical |
+
+**Not drawn (no new process):** repetition counting happens inside the existing "Gesture-based program monitoring" process, and the camera's progress updates use the same "log workout" data flow. If the team wants them shown: Figure 4.3 and 4.6, Reports: four report types (Payment Transactions, Membership Status, Attendance, Program Monitoring) instead of three.

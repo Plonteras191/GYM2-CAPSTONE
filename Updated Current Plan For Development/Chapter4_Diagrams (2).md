@@ -458,6 +458,7 @@ erDiagram
         date date_of_birth
         number height
         number weight
+        text body_type
         text status
         datetime status_updated_at
         text current_plan
@@ -512,7 +513,10 @@ erDiagram
         date date
         number sets
         number reps
+        number counted_reps
         text gesture_class
+        text verified_by
+        datetime verified_at
     }
     COACH_EVENT_CATEGORY {
         text name
@@ -602,6 +606,7 @@ erDiagram
         date dob "nullable"
         decimal height "nullable"
         decimal weight "nullable"
+        varchar body_type "nullable, Ectomorph/Mesomorph/Endomorph"
         text address "nullable"
         timestamp created_at
         timestamp updated_at
@@ -686,7 +691,10 @@ erDiagram
         date date
         smallint sets "nullable"
         smallint reps "nullable"
+        smallint counted_reps "nullable, counted by the camera"
         varchar gesture_class "nullable"
+        varchar verified_by "nullable, ai or coach"
+        timestamp verified_at "nullable"
         timestamp created_at
         timestamp updated_at
     }
