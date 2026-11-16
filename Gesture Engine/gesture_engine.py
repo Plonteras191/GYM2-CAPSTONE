@@ -1183,10 +1183,10 @@ def gesture_ai_worker():
             # Only members with an active coach membership are monitored.
             status = monitoring_status(member_id, workout_eligible)
             person['status'] = status
-            if status == EXCLUDED:
-                workout_states.pop(person['actor_id'], None)
-                continue
-            if status == IDENTIFYING:
+            if status in (EXCLUDED, IDENTIFYING):
+                # Not monitored: no skeleton, exercise check or workout log.
+                # Only a small tag is drawn, so staff can tell "recognized,
+                # but not on a coach plan" from "not recognized yet".
                 workout_states.pop(person['actor_id'], None)
                 athletes.append(person)
                 continue
@@ -1295,10 +1295,9 @@ def gesture_ai_worker():
 
         time.sleep(0.015)
 
-def draw_identifying_tag(frame, athlete):
-    """Small grey tag for a body whose face has not been recognized yet."""
+def draw_status_tag(frame, athlete, label):
+    """Small grey tag above a body that is tracked but not monitored."""
     top, right, bottom, left = athlete['box']
-    label = "Identifying..."
     font, scale, thickness = cv2.FONT_HERSHEY_DUPLEX, 0.42, 1
     (text_w, text_h), _ = cv2.getTextSize(label, font, scale, thickness)
     x = max(0, min((left + right) // 2 - text_w // 2 - 5, frame.shape[1] - text_w - 10))
@@ -1309,7 +1308,12 @@ def draw_identifying_tag(frame, athlete):
 
 def draw_athlete_overlay(frame, athlete):
     if athlete.get('status') == IDENTIFYING:
-        draw_identifying_tag(frame, athlete)
+        # Face not recognized yet.
+        draw_status_tag(frame, athlete, "Identifying...")
+        return
+    if athlete.get('status') == EXCLUDED:
+        # Recognized, but only with-coach members are monitored here.
+        draw_status_tag(frame, athlete, f"{athlete['name']} - no coach plan")
         return
     height, width = frame.shape[:2]
     landmarks = athlete['landmarks']
