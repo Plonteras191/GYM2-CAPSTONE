@@ -149,17 +149,42 @@ export default function SecurityMonitor() {
         clearTimeout(timeout);
       }
     };
-    fetchCameraStatus();
-    const statusInterval = setInterval(fetchCameraStatus, 3000);
-
-    const logInterval = setInterval(async () => {
+    const fetchTodayLogs = async () => {
       try {
         const res = await api.get('/attendance/today');
-        setLiveLogs(res.data); 
+        setLiveLogs(res.data);
       } catch (error) { console.error("Failed to refresh today's attendance logs:", error); }
-    }, 3000);
+    };
 
-    return () => { clearInterval(logInterval); clearInterval(statusInterval); };
+    // Each poll waits for the previous request to finish before scheduling
+    // the next, so a slow Laravel (single-threaded `php artisan serve`) never
+    // gets a pile of queued requests. Polling pauses while the tab is hidden
+    // and runs at once when it becomes visible again.
+    let stopped = false;
+    const timers = {};
+    const poll = (name, task, delay) => {
+      const run = async () => {
+        if (stopped) return;
+        if (!document.hidden) await task();
+        if (!stopped) timers[name] = setTimeout(run, delay);
+      };
+      run();
+    };
+    poll('status', fetchCameraStatus, 3000);
+    poll('logs', fetchTodayLogs, 3000);
+
+    const onVisible = () => {
+      if (document.hidden) return;
+      fetchCameraStatus();
+      fetchTodayLogs();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      stopped = true;
+      Object.values(timers).forEach(clearTimeout);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   const toggleFullScreen = () => {
