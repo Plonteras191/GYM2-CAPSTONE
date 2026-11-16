@@ -19,6 +19,7 @@ export function toMembers(responseData) {
       dob: dbMember.dob || '',
       height: dbMember.height || '',
       weight: dbMember.weight || '',
+      bodyType: dbMember.body_type || '',
       customerSince: new Date(dbMember.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     }));
 }
@@ -41,6 +42,7 @@ export const memberService = {
     if (formData.dob) data.append('dob', formData.dob);
     if (formData.height) data.append('height', formData.height);
     if (formData.weight) data.append('weight', formData.weight);
+    data.append('body_type', formData.bodyType || ''); // empty clears it
     if (formData.profilePicFile) data.append('profile_pic', formData.profilePicFile);
 
     return await api.post('/members', data, {
@@ -61,6 +63,7 @@ export const memberService = {
     if (formData.dob) data.append('dob', formData.dob);
     if (formData.height) data.append('height', formData.height);
     if (formData.weight) data.append('weight', formData.weight);
+    data.append('body_type', formData.bodyType || ''); // empty clears it
     if (formData.profilePicFile) data.append('profile_pic', formData.profilePicFile);
 
     return await api.post(`/members/${id}`, data, {

@@ -417,6 +417,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     <p className="text-xs text-muted font-medium">Weight</p>
                     <p className="text-sm font-medium text-ink">{member.weight || '-'} kg</p>
                   </div>
+                  <div className="col-span-2 border-t border-line pt-3">
+                    <p className="text-xs text-muted font-medium">Body type</p>
+                    <p className="text-sm font-medium text-ink">{member.bodyType || member.body_type || 'Not set'}</p>
+                  </div>
                 </div>
               </div>
 
@@ -789,12 +793,14 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                               <p className="font-medium text-xs truncate">{formatExerciseName(exName)}</p>
                                               <p className="text-[10px] opacity-70 mt-0.5">{timeFormatted}</p>
                                               {log.sets && log.reps && <p className="text-[10px] font-medium mt-1">{log.sets} sets x {log.reps} reps</p>}
+                                              {log.counted_reps != null && <p className="text-[10px] mt-0.5 opacity-80">{log.counted_reps} reps counted by camera</p>}
                                             </div>
                                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                               {taskStatus === 'PENDING' && (hasFaceIdToday
                                                 ? <button onClick={() => handleManualVerify(log.id)} className="bg-brand-gold hover:bg-brand-gold-500 text-brand-dark text-white px-2 py-1 rounded-md text-[10px] font-medium transition-colors active:scale-95 shadow-sm">VERIFY</button>
                                                 : <span className="opacity-50" title="Locked: No Face ID Today"><FiLock size={12} /></span>)}
                                               {taskStatus !== 'PENDING' && <span className="text-xs font-medium">{taskStatus}</span>}
+                                              {taskStatus === 'VERIFIED' && log.verified_by && <span className="text-[10px] opacity-70">{log.verified_by === 'coach' ? 'by coach' : 'by camera'}</span>}
                                             </div>
                                           </div>
                                         );

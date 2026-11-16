@@ -5,7 +5,7 @@ import { useDataCache } from '../../../context/DataCacheContext';
 
 const defaultForm = {
   id: '', firstName: '', lastName: '', email: '', phone: '', address: '', plan: 'Walk-in', status: 'Active',
-  enrolledFaceId: null, profilePicUrl: null, dob: '', height: '', weight: ''
+  enrolledFaceId: null, profilePicUrl: null, dob: '', height: '', weight: '', bodyType: ''
 };
 
 export function useMembers() {

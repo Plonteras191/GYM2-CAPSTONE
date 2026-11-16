@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiDownload, FiPrinter, FiRefreshCw, FiFileText, FiCreditCard, FiCheckSquare, FiActivity, FiSearch, FiX, FiCalendar } from 'react-icons/fi';
+import { FiDownload, FiPrinter, FiRefreshCw, FiFileText, FiCreditCard, FiCheckSquare, FiActivity, FiSearch, FiX, FiCalendar, FiTarget } from 'react-icons/fi';
 import api from '../api';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -21,6 +21,7 @@ const reportTypeOptions = [
   { value: 'Payments', label: 'Payments', title: 'Payment transactions', icon: FiCreditCard },
   { value: 'Memberships', label: 'Memberships', title: 'Membership status', icon: FiCheckSquare },
   { value: 'Attendance', label: 'Attendance', title: 'Attendance', icon: FiActivity },
+  { value: 'Workouts', label: 'Program Monitoring', title: 'Program monitoring', icon: FiTarget },
 ];
 
 /* ── Display-only helpers ── */
@@ -178,9 +179,9 @@ export default function Reports() {
 
   const statusVariant = (val) => {
     const key = String(val ?? '').toLowerCase();
-    if (key === 'active' || key === 'checked in' || key === 'complete' || key === 'cash') return 'success';
-    if (key === 'expired' || key === 'failed' || key === 'refunded') return 'danger';
-    if (key === 'gcash') return 'info';
+    if (key === 'active' || key === 'checked in' || key === 'complete' || key === 'cash' || key === 'verified') return 'success';
+    if (key === 'expired' || key === 'failed' || key === 'refunded' || key === 'missed') return 'danger';
+    if (key === 'gcash' || key === 'detected') return 'info';
     if (key === 'pending') return 'warning';
     if (key === 'maya' || key === 'other') return 'default';
     return null;
@@ -248,8 +249,8 @@ export default function Reports() {
 
   const kpiTone = (label) => {
     const key = label.toLowerCase();
-    if (key.includes('refund') || key.includes('expire')) return 'crimson';
-    if (key.includes('transaction') || key.includes('signup') || key.includes('visits')) return 'orange';
+    if (key.includes('refund') || key.includes('expire') || key.includes('missed')) return 'crimson';
+    if (key.includes('transaction') || key.includes('signup') || key.includes('visits') || key.includes('camera')) return 'orange';
     if (key.includes('time') || key.includes('pending')) return 'slate';
     return 'gold';
   };
@@ -287,7 +288,7 @@ export default function Reports() {
             </div>
             <div style={{ textAlign: 'right', fontSize: '11px', color: '#555' }}>
               <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#000', textTransform: 'uppercase' }}>
-                {reportType} Report
+                {reportTitle} Report
               </div>
               <div>Period: {startDate} &mdash; {endDate}</div>
               {searchTerm && <div>Search: {searchTerm}</div>}
@@ -386,7 +387,7 @@ export default function Reports() {
           {/* Choose what and when, then read the totals and the rows. */}
           <Toolbar index={0} className="gap-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div role="tablist" aria-label="Report type" className="grid w-full grid-cols-3 gap-1 rounded-xl border border-line bg-field p-1 lg:inline-flex lg:w-auto">
+              <div role="tablist" aria-label="Report type" className="grid w-full grid-cols-2 gap-1 rounded-xl border border-line bg-field p-1 sm:grid-cols-4 lg:inline-flex lg:w-auto">
                 {reportTypeOptions.map(({ value, label, icon: Icon }) => {
                   const active = reportType === value;
                   return (

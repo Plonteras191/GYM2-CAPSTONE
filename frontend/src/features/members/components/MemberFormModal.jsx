@@ -35,7 +35,7 @@ const getBmiInfo = (height, weight) => {
 
 const defaultForm = {
   id: '', firstName: '', lastName: '', email: '', phone: '', address: '', plan: 'Walk-in', status: 'Active',
-  enrolledFaceId: null, profilePicUrl: null, dob: '', height: '', weight: ''
+  enrolledFaceId: null, profilePicUrl: null, dob: '', height: '', weight: '', bodyType: ''
 };
 
 /* ── Presentation helpers ── */
@@ -94,6 +94,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         dob: initialData.dob || '',
         height: initialData.height || '',
         weight: initialData.weight || '',
+        bodyType: initialData.bodyType || initialData.body_type || '',
         profilePicUrl: initialData.profilePicUrl || initialData.profile_pic || null,
         enrolledFaceId: initialData.enrolledFaceId || initialData.enrolled_face_id || null
       } : defaultForm;
@@ -476,8 +477,8 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
               </div>
             </FormSection>
 
-            <FormSection step={3} title="Body measurements" hint="Optional. Height and weight work out the body mass index (BMI).">
-              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <FormSection step={3} title="Body measurements" hint="Optional. Height and weight work out the body mass index (BMI); the body type helps the coach assign a program.">
+              <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <label className="block"><span className={labelClass}>Date of birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>
                 <label className="block">
                   <span className={labelClass}>Height (cm)</span>
@@ -489,6 +490,20 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                   )}
                 </label>
                 <label className="block"><span className={labelClass}>Weight (kg)</span><input type="number" value={formData.weight || ''} onChange={e => setFormData({...formData, weight: e.target.value})} className={`${inputClass} tabular-nums`} placeholder="65" /></label>
+                <label className="block">
+                  <span className={labelClass}>Body type</span>
+                  <select
+                    name="bodyType"
+                    value={formData.bodyType || ''}
+                    onChange={e => setFormData({ ...formData, bodyType: e.target.value })}
+                    className={inputClass}
+                  >
+                    <option value="">Not set</option>
+                    <option value="Ectomorph">Ectomorph (lean, slim build)</option>
+                    <option value="Mesomorph">Mesomorph (muscular, medium build)</option>
+                    <option value="Endomorph">Endomorph (wider, heavier build)</option>
+                  </select>
+                </label>
 
                 <div className="block min-w-0">
                   <span className={labelClass}>Body mass index</span>
