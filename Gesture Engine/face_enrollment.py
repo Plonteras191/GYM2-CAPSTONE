@@ -52,11 +52,12 @@ def faces_signature(members):
     )
 
 
-def encode_at(rgb_image, box, jitters=1, upscale=1.0):
-    """Encode the face at box (top, right, bottom, left); None if it fails.
+def face_region(rgb_image, box):
+    """Crop the face at box (top, right, bottom, left) with its context margin.
 
-    upscale > 1 enlarges the face region first (used for small, far faces)
-    so the landmark predictor has more pixels to place the eyes and nose.
+    Returns (region, location of the face inside the region), or (None, None)
+    when the box is empty. The crop is a small copy, cheap to hand to a
+    helper process (see face_encoder_pool.py).
     """
     top, right, bottom, left = box
     height, width = rgb_image.shape[:2]
@@ -66,14 +67,32 @@ def encode_at(rgb_image, box, jitters=1, upscale=1.0):
 
     region = np.ascontiguousarray(rgb_image[crop_top:crop_bottom, crop_left:crop_right])
     if region.size == 0:
-        return None
+        return None, None
+    return region, (top - crop_top, right - crop_left, bottom - crop_top, left - crop_left)
+
+
+def encode_region(region, location, jitters=1, upscale=1.0):
+    """Encode the face at location inside a face_region() crop; None if it fails.
+
+    This is the slow dlib step. upscale > 1 enlarges the region first (used
+    for small, far faces) so the landmark predictor has more pixels to place
+    the eyes and nose.
+    """
     region = normalize_lighting(region)
-    location = [(top - crop_top, right - crop_left, bottom - crop_top, left - crop_left)]
+    locations = [tuple(location)]
     if upscale > 1.0:
         region = cv2.resize(region, None, fx=upscale, fy=upscale, interpolation=cv2.INTER_CUBIC)
-        location = [tuple(int(round(value * upscale)) for value in location[0])]
-    encodings = face_recognition.face_encodings(region, known_face_locations=location, num_jitters=jitters)
+        locations = [tuple(int(round(value * upscale)) for value in location)]
+    encodings = face_recognition.face_encodings(region, known_face_locations=locations, num_jitters=jitters)
     return encodings[0] if encodings else None
+
+
+def encode_at(rgb_image, box, jitters=1, upscale=1.0):
+    """Encode the face at box (top, right, bottom, left); None if it fails."""
+    region, location = face_region(rgb_image, box)
+    if region is None:
+        return None
+    return encode_region(region, location, jitters=jitters, upscale=upscale)
 
 
 def split_views(rgb_image):
@@ -112,8 +131,12 @@ def detect_face_box(rgb_image, detector):
     return None
 
 
-def encode_enrollment_image(filepath, detector, jitters=ENROLL_JITTERS):
-    """Return (encodings, total_views) for one enrollment image."""
+def encode_enrollment_image(filepath, detector, jitters=ENROLL_JITTERS, encode=encode_at):
+    """Return (encodings, total_views) for one enrollment image.
+
+    encode has encode_at's signature; the engine passes one that runs in a
+    helper process so enrolling a member does not freeze the live video.
+    """
     image = face_recognition.load_image_file(filepath)
     views = split_views(image)
     encodings = []
@@ -122,7 +145,7 @@ def encode_enrollment_image(filepath, detector, jitters=ENROLL_JITTERS):
         box = detect_face_box(view, detector)
         if box is None:
             continue
-        encoding = encode_at(view, box, jitters=jitters)
+        encoding = encode(view, box, jitters=jitters)
         if encoding is not None:
             encodings.append(encoding)
     return encodings, len(views)
@@ -150,14 +173,14 @@ class EncodingCache:
         stat = os.stat(filepath)
         return os.path.normcase(os.path.abspath(filepath)), stat.st_mtime_ns, stat.st_size
 
-    def get_or_encode(self, filepath, detector):
+    def get_or_encode(self, filepath, detector, encode=encode_at):
         """Return (encodings, total_views, from_cache)."""
         path_key, mtime, size = self._key(filepath)
         entry = self.entries.get(path_key)
         if entry and entry['mtime'] == mtime and entry['size'] == size:
             return entry['encodings'], entry['views'], True
 
-        encodings, views = encode_enrollment_image(filepath, detector)
+        encodings, views = encode_enrollment_image(filepath, detector, encode=encode)
         self.entries[path_key] = {'mtime': mtime, 'size': size, 'encodings': encodings, 'views': views}
         return encodings, views, False
 

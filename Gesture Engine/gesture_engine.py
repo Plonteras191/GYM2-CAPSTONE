@@ -42,7 +42,8 @@ from pose_features import (
 from workout_prediction import select_assigned_prediction
 from face_matching import IdentityVote, align_box, best_member_match
 from face_matching import box_size as face_box_size
-from face_enrollment import EncodingCache, encode_at, faces_signature, resolve_face_path
+from face_enrollment import EncodingCache, encode_at, face_region, faces_signature, resolve_face_path
+from face_encoder_pool import FaceEncoderPool
 from liveness import BlinkDetector, FaceMeshEyes, liveness_required_from_env
 from attendance_queue import SENT, AttendanceSender
 
@@ -164,6 +165,11 @@ FACE_VOTE_WINDOW = max(FACE_FAR_VOTES * 2, FACE_VOTES_REQUIRED * 2, 4)
 DETECTION_MAX_WIDTH = 1280
 RECOGNITION_INTERVAL_UNCONFIRMED = 0.3
 RECOGNITION_INTERVAL_CONFIRMED = 2.0
+# dlib face encoding runs in this many helper processes (face_encoder_pool.py).
+# One encoding can take most of a second and would otherwise freeze the
+# camera and video feeds for that long. 0 = encode inside the engine.
+FACE_ENCODER_PROCESSES = _env_number('FACE_ENCODER_PROCESSES', '2', int)
+face_encoder_pool = None  # started by start_background_workers()
 MOVE_CLOSER_LABEL = 'Move closer'
 logged_today = {}
 workout_cooldowns = {} # Prevents API spam!
@@ -256,8 +262,21 @@ enroll_face_detector = mp_face.FaceDetection(min_detection_confidence=0.5, model
 current_raw_frame = None
 current_frame_sequence = 0
 last_camera_placeholder = None
-latest_security_frame = None
-latest_gesture_frame = None
+
+# Encoded MJPEG frames for the two video feeds ('sec' = Attendance Monitor,
+# 'gest' = Gesture Monitor). video_stream_worker only draws and encodes a feed
+# while someone is watching it, and notifies feed_condition the moment a new
+# JPEG is ready, so each viewer gets it immediately.
+#   viewers: open connections; source_sequence: camera frame last encoded;
+#   sequence: counter of encoded frames; jpeg: latest encoded frame.
+feed_condition = threading.Condition()
+feed_state = {
+    feed: {'viewers': 0, 'source_sequence': -1, 'sequence': 0, 'jpeg': None}
+    for feed in ('sec', 'gest')
+}
+# Feeds are drawn and sent at most this wide. Shrinking first and drawing on
+# the small frame is much cheaper than drawing on a 2K/4K frame.
+STREAM_MAX_WIDTH = 1280
 
 # FIX #3: Pre-build ML column list once at startup (kept for reference; numpy path is used in worker)
 ml_classes = None
@@ -306,7 +325,9 @@ def load_registered_faces():
                 continue
             seen_paths.append(filepath)
             try:
-                member_encodings, total_views, cached = cache.get_or_encode(filepath, enroll_face_detector)
+                member_encodings, total_views, cached = cache.get_or_encode(
+                    filepath, enroll_face_detector, encode=encode_face
+                )
             except Exception as img_err:
                 print(f"  [ERROR] Could not process image for {member['name']}: {img_err}")
                 continue
@@ -515,6 +536,67 @@ def camera_reader_thread():
             cap = open_camera()
             fail_count = 0
 
+def encode_face(rgb_image, box, jitters=1, upscale=1.0):
+    """encode_at() that waits on a helper process when the pool is running.
+
+    Used for enrollment photos, so encoding a new member (several seconds of
+    dlib work) does not freeze the live video either.
+    """
+    pool = face_encoder_pool
+    if pool is not None:
+        region, location = face_region(rgb_image, box)
+        if region is None:
+            return None
+        try:
+            return pool.submit(region, location, jitters=jitters, upscale=upscale).result()
+        except Exception as error:
+            print(f"[FACE ENCODER] Helper failed ({error!r}); encoding in the engine instead.")
+    return encode_at(rgb_image, box, jitters=jitters, upscale=upscale)
+
+
+def apply_face_sample(track, encoding, is_far, db):
+    """Count one face encoding as a vote for who this track is.
+
+    A name is shown, and attendance logged, only once several samples agree.
+    db is the face_db snapshot to match against.
+    """
+    known_matrix, known_ids, known_names, known_eligibility = db
+    if len(known_ids) == 0:
+        return
+    vote = track['vote']
+    distances = face_recognition.face_distance(known_matrix, encoding)
+    sample_id, sample_distance, _ = best_member_match(
+        distances, known_ids,
+        FACE_FAR_THRESHOLD if is_far else FACE_MATCH_THRESHOLD,
+        FACE_MATCH_MARGIN,
+    )
+    newly_confirmed = vote.add(sample_id, weight=FACE_FAR_WEIGHT if is_far else 1.0)
+    if vote.confirmed is not None and vote.confirmed not in known_ids:
+        # Member was removed by a face reload while being tracked.
+        vote.confirmed = None
+        newly_confirmed = False
+
+    if vote.confirmed is not None:
+        idx = known_ids.index(vote.confirmed)
+        track['member_id'] = vote.confirmed
+        track['name'] = known_names[idx]
+        track['workout_eligible'] = known_eligibility[idx]
+        # Expired members are still logged; the orange tag tells
+        # staff to ask them to renew.
+        track['needs_renewal'] = member_subscriptions.get(vote.confirmed) == 'expired'
+        track['color'] = RENEW_COLOR if track['needs_renewal'] else (0, 255, 0)
+        if newly_confirmed:
+            track['attendance_pending'] = True
+            track['pending_distance'] = sample_distance if sample_id == vote.confirmed else None
+    else:
+        track['member_id'] = None
+        track['name'] = 'Unknown'
+        track['workout_eligible'] = False
+        track['needs_renewal'] = False
+        track['attendance_pending'] = False
+        track['color'] = (0, 0, 255)
+
+
 def face_ai_worker():
     """Run the face loop and restart it after an unexpected error.
 
@@ -672,6 +754,8 @@ def _face_ai_loop():
                     required=FACE_VOTES_REQUIRED,
                 ),
                 'blink': BlinkDetector(),
+                # Encodings a helper process is still working on.
+                'encoding_jobs': [],
                 'attendance_pending': False,
                 'pending_distance': None,
             }
@@ -682,7 +766,8 @@ def _face_ai_loop():
         # Unconfirmed tracks are sampled often; confirmed ones are re-verified
         # less often. A name is shown, and attendance logged, only once several
         # samples agree, so one bad frame cannot assign the wrong member.
-        known_matrix, known_ids, known_names, known_eligibility = face_db
+        db = face_db
+        known_ids = db[1]
         rgb_frame = None
         if face_mesh_eyes is not None:
             for track in updated_tracks:
@@ -697,9 +782,28 @@ def _face_ai_loop():
                         track['blink'].add(face_mesh_eyes.ear(rgb_frame, track['aligned_box']), now)
                     except Exception:
                         pass
+        # Encodings requested on earlier frames that the helpers have finished.
         for track in updated_tracks:
-            if len(known_ids) == 0 or track['last_seen'] != now:
-                continue
+            jobs = track['encoding_jobs']
+            for job in [job for job in jobs if job['future'].done()]:
+                jobs.remove(job)
+                try:
+                    encoding = job['future'].result()
+                except Exception:
+                    encoding = None
+                if encoding is not None:
+                    apply_face_sample(track, encoding, job['is_far'], db)
+
+        # Request a new sample for each face that is due. The slow dlib
+        # encoding runs in a helper process, so this loop (and the camera and
+        # video feeds) keep running while it works. Longest-waiting faces go
+        # first so one face cannot keep the helpers to itself.
+        pool = face_encoder_pool
+        visible = [track for track in updated_tracks if track['last_seen'] == now]
+        jobs_per_track = max(1, pool.size // max(1, len(visible))) if pool is not None else 1
+        for track in sorted(visible, key=lambda track: track['last_recon']):
+            if len(known_ids) == 0:
+                break
             vote = track['vote']
             interval = (
                 RECOGNITION_INTERVAL_CONFIRMED if vote.confirmed is not None
@@ -707,64 +811,44 @@ def _face_ai_loop():
             )
             if (now - track['last_recon']) < interval:
                 continue
-            track['last_recon'] = now
 
             aligned = track['aligned_box']
             face_size = face_box_size(aligned)
             if face_size < FACE_MIN_SIZE:
                 # Too small for a reliable descriptor: don't guess. A member
                 # already confirmed on this track keeps their name.
+                track['last_recon'] = now
                 if vote.confirmed is None:
                     track['name'] = MOVE_CLOSER_LABEL
                     track['color'] = (0, 165, 255)
                 continue
 
+            if pool is not None and (
+                len(track['encoding_jobs']) >= jobs_per_track or not pool.has_capacity()
+            ):
+                continue  # helpers are busy: try again on the next frame
+            track['last_recon'] = now
+
             # Far tier: enlarge before encoding, stricter distance, and each
             # sample counts as only part of a vote.
             is_far = face_size < FACE_NEAR_SIZE
+            upscale = FACE_FAR_UPSCALE if is_far else 1.0
             if rgb_frame is None:
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             try:
-                encoding = encode_at(
-                    rgb_frame, aligned, jitters=1,
-                    upscale=FACE_FAR_UPSCALE if is_far else 1.0,
-                )
+                if pool is not None:
+                    region, location = face_region(rgb_frame, aligned)
+                    if region is not None:
+                        track['encoding_jobs'].append({
+                            'future': pool.submit(region, location, jitters=1, upscale=upscale),
+                            'is_far': is_far,
+                        })
+                    continue
+                encoding = encode_at(rgb_frame, aligned, jitters=1, upscale=upscale)
             except Exception:
                 encoding = None
-            if encoding is None:
-                continue
-
-            distances = face_recognition.face_distance(known_matrix, encoding)
-            sample_id, sample_distance, _ = best_member_match(
-                distances, known_ids,
-                FACE_FAR_THRESHOLD if is_far else FACE_MATCH_THRESHOLD,
-                FACE_MATCH_MARGIN,
-            )
-            newly_confirmed = vote.add(sample_id, weight=FACE_FAR_WEIGHT if is_far else 1.0)
-            if vote.confirmed is not None and vote.confirmed not in known_ids:
-                # Member was removed by a face reload while being tracked.
-                vote.confirmed = None
-                newly_confirmed = False
-
-            if vote.confirmed is not None:
-                idx = known_ids.index(vote.confirmed)
-                track['member_id'] = vote.confirmed
-                track['name'] = known_names[idx]
-                track['workout_eligible'] = known_eligibility[idx]
-                # Expired members are still logged; the orange tag tells
-                # staff to ask them to renew.
-                track['needs_renewal'] = member_subscriptions.get(vote.confirmed) == 'expired'
-                track['color'] = RENEW_COLOR if track['needs_renewal'] else (0, 255, 0)
-                if newly_confirmed:
-                    track['attendance_pending'] = True
-                    track['pending_distance'] = sample_distance if sample_id == vote.confirmed else None
-            else:
-                track['member_id'] = None
-                track['name'] = 'Unknown'
-                track['workout_eligible'] = False
-                track['needs_renewal'] = False
-                track['attendance_pending'] = False
-                track['color'] = (0, 0, 255)
+            if encoding is not None:
+                apply_face_sample(track, encoding, is_far, db)
 
         # Keep the renew flag current for faces already on screen (e.g. the
         # member renews at the desk while standing in view).
@@ -1315,56 +1399,79 @@ def draw_athlete_overlay(frame, athlete):
         caption_thickness,
     )
 
-def video_stream_worker():
-    global latest_security_frame, latest_gesture_frame, current_raw_frame
-    last_processed_sequence = -1
+def _scale_box(box, scale):
+    """Scale a (top, right, bottom, left) pixel box; None stays None."""
+    if box is None or scale == 1.0:
+        return box
+    return tuple(int(value * scale) for value in box)
 
+
+def _stream_frame(raw, scale):
+    """A drawable copy of the camera frame at the feed's output size."""
+    if scale == 1.0:
+        return raw.copy()
+    height, width = raw.shape[:2]
+    return cv2.resize(raw, (max(1, int(width * scale)), max(1, int(height * scale))))
+
+
+def video_stream_worker():
     while True:
-        # FIX #1: Read frame under lock
+        # Woken by every new camera frame (and by a new viewer). There is no
+        # fixed sleep: a frame is drawn and encoded as soon as it arrives, so
+        # the feed adds no delay of its own. The timeout is a safety net.
+        new_frame_event.wait(timeout=0.5)
+        new_frame_event.clear()
         with frame_lock:
             raw = current_raw_frame
             frame_sequence = current_frame_sequence
         if raw is None:
-            time.sleep(0.01)
             continue
-        if frame_sequence == last_processed_sequence:
-            time.sleep(0.005)
+        with feed_condition:
+            # Only feeds that someone is watching are drawn and encoded.
+            pending = [
+                feed for feed, state in feed_state.items()
+                if state['viewers'] > 0 and state['source_sequence'] != frame_sequence
+            ]
+        if not pending:
             continue
-        last_processed_sequence = frame_sequence
 
-        # FIX #7: One copy per stream, only when we actually start drawing —
-        # removed 3x redundant frame.copy() calls from the old code.
-        _, w = raw.shape[:2]
+        width = raw.shape[1]
+        scale = min(1.0, STREAM_MAX_WIDTH / width)
+        encoded = {}
 
-        # --- SECURITY FEED: draw face boxes ---
-        sec_frame = raw.copy()
-        faces = shared_faces.copy()
-        athletes = shared_athletes.copy()
-        for face in faces:
-            (top, right, bottom, left) = face['box']
-            name, color = face.get('label', face['name']), face['color']
-            cv2.rectangle(sec_frame, (left, top), (right, bottom), color, 3)
-            cv2.rectangle(sec_frame, (left, max(0, top - 35)), (right, top), color, cv2.FILLED)
-            cv2.putText(sec_frame, name, (left + 6, max(20, top - 10)), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255, 255, 255), 1)
+        if 'sec' in pending:
+            # Attendance Monitor: face boxes and names.
+            sec_frame = _stream_frame(raw, scale)
+            for face in shared_faces.copy():
+                top, right, bottom, left = _scale_box(face['box'], scale)
+                name, color = face.get('label', face['name']), face['color']
+                cv2.rectangle(sec_frame, (left, top), (right, bottom), color, 3)
+                cv2.rectangle(sec_frame, (left, max(0, top - 35)), (right, top), color, cv2.FILLED)
+                cv2.putText(sec_frame, name, (left + 6, max(20, top - 10)), cv2.FONT_HERSHEY_DUPLEX, 0.6, (255, 255, 255), 1)
+            ok, buffer = cv2.imencode('.jpg', sec_frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+            if ok:
+                encoded['sec'] = buffer.tobytes()
 
-        # --- GESTURE FEED: draw a separate identity and pose overlay per person ---
-        gest_frame = raw.copy()
-        for athlete in athletes:
-            draw_athlete_overlay(gest_frame, athlete)
+        if 'gest' in pending:
+            # Gesture Monitor: identity and pose overlay per person.
+            gest_frame = _stream_frame(raw, scale)
+            for athlete in shared_athletes.copy():
+                draw_athlete_overlay(gest_frame, {
+                    **athlete,
+                    'box': _scale_box(athlete['box'], scale),
+                    'face_box': _scale_box(athlete.get('face_box'), scale),
+                })
+            ok, buffer = cv2.imencode('.jpg', gest_frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+            if ok:
+                encoded['gest'] = buffer.tobytes()
 
-        # FIX #6: Cap output at 1280x720 if source is larger, then encode at quality 75.
-        # Quality 75 vs 85 saves ~25% encode time with no perceptible difference in browser streaming.
-        if w > 1280:
-            sec_frame = cv2.resize(sec_frame, (1280, 720))
-            gest_frame = cv2.resize(gest_frame, (1280, 720))
-
-        _, sec_buffer = cv2.imencode('.jpg', sec_frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
-        _, gest_buffer = cv2.imencode('.jpg', gest_frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
-        latest_security_frame = sec_buffer.tobytes()
-        latest_gesture_frame = gest_buffer.tobytes()
-
-        # Smooth ~28-30 FPS output
-        time.sleep(0.033)
+        with feed_condition:
+            for feed, jpeg in encoded.items():
+                state = feed_state[feed]
+                state['source_sequence'] = frame_sequence
+                state['sequence'] += 1
+                state['jpeg'] = jpeg
+            feed_condition.notify_all()
 
 
 _workers_started = False
@@ -1377,11 +1484,20 @@ def start_background_workers():
     Called from main.py (or __main__) so that merely importing this module,
     e.g. from tests or scripts, does not open cameras or start threads.
     """
-    global _workers_started
+    global _workers_started, face_encoder_pool
     with _workers_lock:
         if _workers_started:
             return
         _workers_started = True
+
+    if FACE_ENCODER_PROCESSES > 0:
+        pool = FaceEncoderPool(FACE_ENCODER_PROCESSES)
+        if pool.start():
+            face_encoder_pool = pool
+            print(f"[FACE ENCODER] {pool.size} helper process(es) ready.")
+        else:
+            pool.close()
+            print("[FACE ENCODER] Encoding inside the engine instead (video may stutter).")
 
     load_registered_faces()
     threading.Thread(target=camera_reader_thread, daemon=True).start()
@@ -1398,18 +1514,38 @@ AI_ENGINE_HOST = os.getenv('AI_ENGINE_HOST', '127.0.0.1')
 AI_ENGINE_PORT = int(os.getenv('AI_ENGINE_PORT', '5000'))
 
 def stream_generator(feed_type):
-    # FIX #10: Use threading.Event instead of sleep-polling.
-    # Wakes up immediately when camera_reader_thread sets new_frame_event,
-    # saving idle CPU cycles and reducing stream latency.
-    last_sent = None
-    while True:
-        new_frame_event.wait(timeout=0.5)
-        new_frame_event.clear()
-        frame_data = latest_security_frame if feed_type == 'sec' else latest_gesture_frame
-        if frame_data is None or frame_data == last_sent:
-            continue
-        last_sent = frame_data
-        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_data + b'\r\n')
+    """MJPEG stream: sends each newly encoded frame the moment it is ready.
+
+    Each viewer waits on feed_condition for its own feed, so several open
+    tabs never steal each other's wake-ups. While a viewer is connected the
+    feed is counted as watched, which is what makes the worker encode it.
+    """
+    state = feed_state[feed_type]
+    with feed_condition:
+        state['viewers'] += 1
+    new_frame_event.set()  # encode the current frame for this viewer now
+    sent_sequence = None
+    try:
+        while True:
+            with feed_condition:
+                feed_condition.wait_for(
+                    lambda: state['jpeg'] is not None and state['sequence'] != sent_sequence,
+                    timeout=1.0,
+                )
+                sequence, frame_data = state['sequence'], state['jpeg']
+            if frame_data is None or sequence == sent_sequence:
+                continue
+            sent_sequence = sequence
+            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_data + b'\r\n')
+    finally:
+        with feed_condition:
+            state['viewers'] -= 1
+            if state['viewers'] <= 0:
+                # Nobody is watching: drop the old frame so the next viewer
+                # never sees a stale picture, and re-encode on reconnect.
+                state['viewers'] = 0
+                state['jpeg'] = None
+                state['source_sequence'] = -1
 
 @app.route('/security_feed')
 def security_feed():
