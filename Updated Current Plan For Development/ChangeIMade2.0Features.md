@@ -381,3 +381,60 @@ File: `Chapter4_Diagrams (2).md`.
 | 4 | 4.10 Physical ERD | `workout_logs` | **New columns:** `counted_reps` smallint nullable after `reps`; `verified_by` varchar(10) nullable and `verified_at` timestamp nullable after `gesture_class` | Same as logical |
 
 **Not drawn (no new process):** repetition counting happens inside the existing "Gesture-based program monitoring" process, and the camera's progress updates use the same "log workout" data flow. If the team wants them shown: Figure 4.3 and 4.6, Reports: four report types (Payment Transactions, Membership Status, Attendance, Program Monitoring) instead of three.
+
+---
+
+## Changes — November 17, 2026
+
+> No database changes in this part, so no migration. Restart nothing: the new "Renew" endpoint is picked up by Laravel on the next request.
+
+### 23. Packages Page: Renew, Clearer Wording and a Training Plan Shortcut (Phase 1)
+- **The Problems found in review:** staff could not tell where to assign a Coach's Training Plan (it is in a member's profile, three clicks away on a different page); there was no Renew button even though the page asks staff to remind members to renew; the page opened on the calendar instead of the subscriber list; the same ideas had five names (Packages, Subscriptions, Subscribers, Plans, Types); the plan screen did not warn that only With Coach members are tracked by the camera, lost edits silently when closed, and used tiny unlabeled "+" and "X" buttons.
+- **The Solution:**
+  1. **Renew button on every subscription** (primary on expired or ending-in-7-days rows). A short dialog shows the new dates and the amount before saving:
+     - *Still active:* the same package is **extended from its current end date**, so the member keeps every paid day (new transaction type "Subscription Renewal", shown as "… Package Payment + Renewed").
+     - *Already expired:* a **new subscription starts today** (normal "Subscription Payment"; the member becomes Active, with a fresh month before the inactivity rule applies).
+     - The same loyalty discount as "Subscribe a member" applies, only when the previous subscription has ended. A running subscription can only be renewed with the same package (use Edit to upgrade). If the old package was deleted, staff must choose a package.
+     - Renewal payments made while still active are **not counted as upgrade credit**, so an early renewal cannot make a later upgrade cheaper than it should be.
+  2. **Training plan shortcut.** With Coach rows on Packages, and coach members in Member Registration, get a "Training plan →" link that opens the member's profile directly on the plan. The tab is now named "Training plan". Profiles still open on Workout Logs when opened normally.
+  3. **Training plan screen:**
+     - a yellow note when the member is not on an active With Coach package (the camera does not track them, so each task needs the coach's Verify);
+     - the days show their real dates ("Mon Nov 17", "Today", and how many exercises each day has), and the list says which day exercises are being added to;
+     - "Add" and "Remove" buttons with words, larger text, "Reps per set", and "Camera checks this" / "Coach confirms it by hand" instead of "AI tracks" / "Manual verification";
+     - "Not saved yet" / "All changes saved", the Save button is off until something changes, and closing the profile with unsaved changes asks first.
+  4. **One vocabulary:** a *package* is what you sell, a *subscription* is a member's purchase. "Add subscriber" became "Subscribe a member", "Subscription type" became "Package", "Manage packages" became "Packages & prices", and the tabs are "Subscriptions" and "Calendar". The page now opens on **Subscriptions** (it used to open on Calendar).
+  5. **Subscribe a member:** shows a summary (package, valid dates, amount to receive), says the reference number is optional, and uses plain wording for the loyalty discount.
+  6. **Status and filter fixes:** a Cancelled subscription is no longer shown as "Expired"; the package filter lists the packages that exist.
+- **Known limit:** upgrading a subscription still restarts its period from today (existing rule), so upgrading right after an early renewal drops the extra renewed time. Rare; flagged for the owner.
+- **Not yet done (next parts of the plan):** Phase 2 (Subscriptions / Calendar / Price list tabs, plan screen redesign with a "camera-checked only" filter and copy-to-other-days, safer package delete) and Phase 3 (coach notes saved on the server; they are still stored in the browser only).
+- **Tests:** 9 new backend tests (`MembershipRenewalTest`: extend, restart, different package, deleted package, deleted member, upgrade credit, reports). Backend 89 pass; the 2 older `SecurityTest` tests still need PHP's GD extension. The new screens were render-checked with sample data, but not yet clicked through in a browser.
+- **Re-test:** SBT-004 (Packages) in `TestCase.md` uses the old button names ("Add subscriber", "Manage Packages") and has no Renew step; update it after the owner has tried the new screens.
+
+---
+
+### 24. Packages Page: Price List Tab, Safer Package Delete and Easier Training Plans (Phase 2)
+- **The Problems found in review:** package prices were managed in a popup that could open two more popups, with edit/view/delete hidden behind a "⋮" menu of three unlabeled icons and two different Save buttons; deleting a package that members were still on left their subscriptions without a package (and the page hid the error); the calendar did not say that clicking a day adds an event, and "coach events" (group classes) was easily confused with a member's coach training plan; the training plan screen had no way to find the exercises the camera can check, no overview, and each day had to be built by hand.
+- **The Solution:**
+  1. **Price list tab.** The page now has three tabs: **Subscriptions | Calendar | Price list**. The Price list shows every package with its length, price and **how many members are subscribed to it now**, with visible **Edit** and **Delete** buttons (no menus). "New package" and "Edit" use **one form** with one Save button. The old "Packages & prices" popup is gone, and so is the separate "Save updated prices" step.
+  2. **A package in use cannot be deleted.** Both the screen and the server refuse while members still have a running subscription to it, and say how many ("“Monthly” cannot be deleted: 2 members are still subscribed to it…"). Once those subscriptions have ended the package can be deleted, and the confirmation says how many earlier subscriptions used it (they keep their record). Delete errors are now shown instead of being swallowed.
+  3. **Calendar.** A "Show" switch (**Everything / Subscriptions / Classes & events**) above the calendar, and a hint: "Click an empty day to add a class or event. Click an event to see its details." The detailed category filters are still there. "Coach events" is now **"Classes & events"** everywhere it is shown (Packages, Dashboard, calendar popups, the event form), so it no longer sounds like the member's training plan.
+  4. **Training plan screen:**
+     - a checkbox **"Only exercises the camera can check"** in the exercise list;
+     - a summary line: "12 exercises planned, 5 checked by the camera";
+     - **"Copy to other days"**: copies the open day's exercises (with their sets and reps) to the days you pick, skipping ones already there.
+- **Tests:** 6 new backend tests (`PlanDeletionTest`: blocked while running, ends-today counts as running, allowed once ended, unused package, older records matched by name, other packages unaffected). Backend 95 pass; the 2 older `SecurityTest` tests still need PHP's GD extension. The new screens were render-checked with sample data, but not yet clicked through in a browser.
+- **Not yet done (Phase 3):** coach notes saved on the server (still stored in the browser only).
+
+---
+
+### Summary for November 17 (items 23 and 24)
+- **Database changes:** **None.** No new tables and no new columns. The only new stored value is the transaction type "Subscription Renewal", which uses the existing `transactions.type` column.
+- **New API route:** `POST /api/memberships/{id}/renew` (needs the admin login; body: `payment_method`, optional `plan_id`, `reference_number`, `amount`).
+- **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** **Not changed**, because there is no database change. If the team wants the new function drawn, add a "Renew Subscription" use case to Figure 4.6 (the process flow in Figure 4.3, Module 4, already has a renewal payment step).
+- **Files changed:**
+  - Backend: `backend/app/Http/Controllers/Member/MembershipController.php` (renew, and renewals excluded from upgrade credit), `backend/app/Http/Controllers/Member/TransactionController.php` and `backend/app/Http/Controllers/Admin/ReportController.php` ("+ Renewed" label), `backend/routes/api.php`.
+  - Frontend: `frontend/src/pages/Subscriptions.jsx`, `frontend/src/pages/Members.jsx`, `frontend/src/features/subscriptions/components/SubscriptionsTable.jsx`, `frontend/src/features/subscriptions/components/SubscriptionFormModal.jsx`, `frontend/src/features/subscriptions/hooks/useSubscriptions.js`, `frontend/src/features/members/components/MemberTable.jsx`, `frontend/src/features/members/components/MemberProfileModal.jsx`, `frontend/src/features/transactions/hooks/useTransactions.js`, `frontend/src/utils/packageDisplay.js`.
+- **New files:** `frontend/src/features/subscriptions/components/RenewSubscriptionModal.jsx`, `frontend/src/features/subscriptions/pricing.js` (the loyalty-discount rule and date helpers shared by the Subscribe and Renew screens), `backend/tests/Feature/MembershipRenewalTest.php`.
+- **Tests:** backend 89 pass (9 new). The 2 older `SecurityTest` tests still fail on this laptop because PHP's GD image extension is not installed; they fail the same way without these changes. The frontend builds, and the changed screens were render-checked with sample data but not yet clicked through in a browser.
+- **Phase 2 (item 24):** new files `frontend/src/features/subscriptions/components/PriceListView.jsx`, `frontend/src/features/subscriptions/components/PackageFormModal.jsx`, `backend/tests/Feature/PlanDeletionTest.php`; removed `frontend/src/features/subscriptions/components/PricingCatalogModal.jsx` (replaced by the Price list tab); changed `backend/app/Http/Controllers/Admin/PlanController.php` (delete guard), `frontend/src/pages/Subscriptions.jsx`, `frontend/src/features/subscriptions/hooks/useSubscriptions.js`, `frontend/src/features/subscriptions/pricing.js`, `frontend/src/features/subscriptions/components/SubscriptionsCalendarView.jsx`, `frontend/src/features/subscriptions/components/CoachEventModal.jsx`, `frontend/src/features/members/components/MemberProfileModal.jsx`, `frontend/src/pages/Dashboard.jsx`, `frontend/src/components/ui/CalendarHoverPopover.jsx`, `frontend/src/components/ui/MobileCalendarDaySheet.jsx`. Still no database changes. Backend now 95 pass.
+- **Open decisions for the owner:** (1) the loyalty discount is only given when the previous subscription has ended, so an early renewal costs full price; (2) renewing a lapsed member starts the new subscription today, not at the old end date.

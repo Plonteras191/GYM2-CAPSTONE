@@ -64,6 +64,8 @@ The cases cover all requested pages and their implemented controls, including su
 | Status | Failed |
 | Postconditions | Valid members retain complete linked profiles and biometric data. A deleted member must not leave orphaned subscription, payment, attendance, workout, or report records, and active-subscription warnings must be visible before redundant assignment. |
 
+> **Re-run needed (November 17, 2026):** the Packages screens changed after this case was last run. Buttons are now "Subscribe a member" and "Renew", "Manage packages" became the **Price list** tab, and there is a training-plan shortcut and a package delete guard. Update the steps below and run them again before recording a new result; the Actual Result and Status of SBT-004 refer to the old screens.
+
 ### SBT-004 — Packages
 
 | Field | Details |
