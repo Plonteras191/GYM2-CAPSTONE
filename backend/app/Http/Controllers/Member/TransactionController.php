@@ -53,7 +53,11 @@ class TransactionController extends Controller
             };
             $transaction->package_details = [
                 'title' => ($planName ?: 'Unknown') . ' Package Payment'
-                    . ($transaction->type === 'Subscription Upgrade' ? ' + Upgraded' : ''),
+                    . match ($transaction->type) {
+                        'Subscription Upgrade' => ' + Upgraded',
+                        'Subscription Renewal' => ' + Renewed',
+                        default => '',
+                    },
                 'category' => $category,
             ];
         });

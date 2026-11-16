@@ -132,7 +132,11 @@ class ReportController extends Controller
 
             return [
                 'title' => ($planName ?: 'Unknown') . ' Package Payment'
-                    . ($transaction->type === 'Subscription Upgrade' ? ' + Upgraded' : ''),
+                    . match ($transaction->type) {
+                        'Subscription Upgrade' => ' + Upgraded',
+                        'Subscription Renewal' => ' + Renewed',
+                        default => '',
+                    },
                 'category' => $category,
             ];
         };

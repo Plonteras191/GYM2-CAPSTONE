@@ -250,7 +250,7 @@ export function useTransactions() {
       : txn.member_name_snapshot || 'Walk-In Guest';
 
     const isUpgrade = txn.type === 'Subscription Upgrade';
-    const isSubPayment = ['Subscription Payment', 'Subscription', 'Subscription Upgrade'].includes(txn.type);
+    const isSubPayment = ['Subscription Payment', 'Subscription', 'Subscription Upgrade', 'Subscription Renewal'].includes(txn.type);
 
     // Phase 1: Try to extract the plan from the description first
     let matchedPlan = plansList.find(p => p.name === txn.package_name_snapshot)

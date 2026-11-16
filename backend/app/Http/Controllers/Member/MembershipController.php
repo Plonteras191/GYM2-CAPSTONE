@@ -17,8 +17,10 @@ class MembershipController extends Controller
     {
         $memberships = Membership::with(['member:id,first_name,last_name,email,profile_pic', 'plan'])
             ->withSum(['transactions as amount_paid' => function ($query) {
+                // Early renewals pay for a later period, so they are not
+                // upgrade credit for the current one.
                 $query->where('status', 'Complete')
-                    ->where('type', '!=', 'Refund')
+                    ->whereNotIn('type', ['Refund', 'Subscription Renewal'])
                     ->where('amount', '>', 0);
             }], 'amount')
             ->withExists(['transactions as has_upgraded' => function ($query) {
@@ -188,7 +190,7 @@ class MembershipController extends Controller
                 }
 
                 $paid = (float) Transaction::where('membership_id', $membership->id)
-                    ->where('type', '!=', 'Refund')
+                    ->whereNotIn('type', ['Refund', 'Subscription Renewal'])
                     ->where('status', 'Complete')
                     ->where('amount', '>', 0)
                     ->sum('amount');
@@ -248,6 +250,125 @@ class MembershipController extends Controller
                 ->update(['status' => 'Expired']);
         }
         return response()->json(['message' => 'Subscription updated successfully', 'membership' => $membership->load('plan')]);
+    }
+
+    /**
+     * Renew a subscription.
+     *
+     * - Still active: the same package is extended from its current end date,
+     *   so the member keeps every day already paid for. The payment is a
+     *   "Subscription Renewal" and does not count as upgrade credit.
+     * - Expired (or cancelled): a new subscription starts today, with a
+     *   normal "Subscription Payment" (it is the first payment of that period).
+     *
+     * The amount defaults to the package price; the Packages page sends the
+     * loyalty-discounted price, as it does for a new subscriber.
+     */
+    public function renew(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'plan_id' => 'nullable|exists:plans,id',
+            'payment_method' => 'required|string',
+            'reference_number' => 'nullable|string|max:100',
+            'amount' => 'nullable|numeric|min:0|max:9999999.99',
+        ]);
+
+        return DB::transaction(function () use ($id, $validated) {
+            $membership = Membership::whereKey($id)->lockForUpdate()->firstOrFail();
+            $member = $membership->member_id ? Member::find($membership->member_id) : null;
+            if (!$member) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'member_id' => ['This member no longer exists, so the subscription cannot be renewed.'],
+                ]);
+            }
+
+            $plan = !empty($validated['plan_id']) ? Plan::find($validated['plan_id']) : $membership->plan;
+            if (!$plan) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'plan_id' => ['The package of this subscription no longer exists. Choose a package to renew with.'],
+                ]);
+            }
+
+            $today = Carbon::today();
+            $isActive = $membership->status === 'Active'
+                && $membership->end_date
+                && Carbon::parse($membership->end_date)->gte($today);
+            if ($isActive && (int) $plan->id !== (int) $membership->plan_id) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'plan_id' => ['While a subscription is active it can only be renewed with the same package. Use Edit to upgrade it.'],
+                ]);
+            }
+
+            $days = $plan->duration_days ?: 30;
+            if ($isActive) {
+                $periodStart = Carbon::parse($membership->end_date);
+                $periodEnd = $periodStart->copy()->addDays($days);
+                $membership->update(['end_date' => $periodEnd->toDateString()]);
+                $target = $membership;
+                $type = 'Subscription Renewal';
+            } else {
+                $periodStart = $today->copy();
+                $periodEnd = $today->copy()->addDays($days);
+                $target = Membership::create([
+                    'member_id' => $member->id,
+                    'member_name_snapshot' => trim($member->first_name . ' ' . $member->last_name),
+                    'member_profile_pic_snapshot' => $member->profile_pic,
+                    'member_email_snapshot' => $member->email,
+                    'plan_id' => $plan->id,
+                    'plan_type' => $plan->name,
+                    'start_date' => $periodStart->toDateString(),
+                    'end_date' => $periodEnd->toDateString(),
+                    'status' => 'Active',
+                    'auto_renew' => false,
+                    'payment_method' => $validated['payment_method'],
+                    'color' => $plan->color ?: ($membership->color ?: '#10b981'),
+                ]);
+                Membership::where('member_id', $member->id)
+                    ->where('id', '!=', $target->id)
+                    ->where('status', 'Active')
+                    ->update(['status' => 'Expired']);
+                $type = 'Subscription Payment';
+            }
+
+            $wasInactive = $member->status !== 'Active';
+            $member->fill(['plan' => $plan->name, 'status' => 'Active']);
+            if ($wasInactive) {
+                // Gives the returning member a fresh month before the inactivity rule applies
+                // (status_updated_at is not mass-assignable, so it is set directly).
+                $member->status_updated_at = Carbon::now();
+            }
+            $member->save();
+
+            $amount = $validated['amount'] ?? $plan->price;
+            $latest = Transaction::latest('id')->first();
+            Transaction::create([
+                'transaction_id' => 'TXN-' . str_pad(($latest?->id ?? 0) + 1, 3, '0', STR_PAD_LEFT),
+                'transaction_date' => $today->toDateString(),
+                'member_id' => $member->id,
+                'member_name_snapshot' => trim($member->first_name . ' ' . $member->last_name),
+                'member_profile_pic_snapshot' => $member->profile_pic,
+                'member_email_snapshot' => $member->email,
+                'membership_id' => $target->id,
+                'type' => $type,
+                'description' => $plan->name . ' renewal (' . $periodStart->format('M j, Y') . ' to ' . $periodEnd->format('M j, Y') . ')',
+                'payment_method' => $validated['payment_method'],
+                'amount' => $amount,
+                'package_name_snapshot' => $plan->name,
+                'package_category_snapshot' => $plan->category,
+                'status' => 'Complete',
+                'reference_number' => $validated['reference_number'] ?? null,
+            ]);
+
+            return response()->json([
+                'message' => $isActive
+                    ? 'Subscription renewed. The new end date is ' . $periodEnd->format('M j, Y') . '.'
+                    : 'Subscription renewed. A new subscription starts today.',
+                'amount_charged' => (float) $amount,
+                'period_start' => $periodStart->toDateString(),
+                'period_end' => $periodEnd->toDateString(),
+                'membership' => $target->fresh()->load('plan'),
+            ]);
+        });
     }
 
     public function destroy($id)

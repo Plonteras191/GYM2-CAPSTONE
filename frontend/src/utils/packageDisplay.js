@@ -16,7 +16,7 @@ export const getPackageDetails = (transaction) => {
         : 'Normal Subscription';
 
   return {
-    title: `${name} Package Payment${transaction?.type === 'Subscription Upgrade' ? ' + Upgraded' : ''}`,
+    title: `${name} Package Payment${transaction?.type === 'Subscription Upgrade' ? ' + Upgraded' : transaction?.type === 'Subscription Renewal' ? ' + Renewed' : ''}`,
     category,
   };
 };

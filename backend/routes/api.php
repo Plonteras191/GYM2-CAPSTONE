@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/memberships', [MembershipController::class, 'index']);
     Route::post('/memberships', [MembershipController::class, 'store']);
     Route::put('/memberships/{id}', [MembershipController::class, 'update']);
+    Route::post('/memberships/{id}/renew', [MembershipController::class, 'renew']);
     Route::delete('/memberships/{id}', [MembershipController::class, 'destroy']);
 
     // --- 4. PLAN ROUTES ---
