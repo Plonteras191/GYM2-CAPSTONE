@@ -2,60 +2,61 @@
 
 This section presents the **Logical Entity-Relationship Diagram (ERD)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
 
+> **Updated November 17, 2026** to match the database and the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
+
 ---
 
 ## 1. Introduction (INTRODUCE)
 
-A **Logical Entity-Relationship Diagram (ERD)** provides a conceptual blueprint of the data required by an organization, independent of how the data is physically stored in a specific database management system. It defines the core business entities, their logical attributes, and the associations (cardinalities) that connect them.
+A **Logical ERD** is a blueprint of the data an organization needs, independent of how a database stores it. It names the business entities, their attributes and how they are connected.
 
-The purpose of this section is to demonstrate that the proposed information architecture directly satisfies the operational needs of Double Alpha Fitness Gym identified in Chapter 1. By modeling entities such as members, subscriptions, biometrics, financial transactions, and workout logs, the logical ERD ensures that every functional module is supported by a sound data structure.
+This section shows that the information architecture satisfies the needs of Double Alpha Fitness Gym identified in Chapter 1. By modeling members, subscriptions, payments, attendance and workout logs, it makes sure every module has the data it needs.
 
 ---
 
 ## 2. Presentation of the Diagram (PRESENT)
 
-Figure 4.4 illustrates the Logical Entity-Relationship Diagram for Double Alpha Fitness Gym, employing standard Chen-style diamond relationship notation integrated with attribute listings:
+Figure 4.9 illustrates the Logical Entity-Relationship Diagram for Double Alpha Fitness Gym.
 
-*(Refer to Figure 4.4 in [Logical Entity-Relationship Diagram.md](./Logical%20Entity-Relationship%20Diagram.md))*
+*(Refer to Figure 4.9 in [Logical Entity-Relationship Diagram.md](./Logical%20Entity-Relationship%20Diagram.md))*
 
-**Figure 4.4.** Logical Entity-Relationship Diagram for Double Alpha Fitness Gym.
+**Figure 4.9.** Logical Entity-Relationship Diagram for Double Alpha Fitness Gym.
 
 ---
 
 ## 3. Detailed Discussion of Entities and Relationships (EXPLAIN)
 
-The logical architecture consists of **nine primary entities** that govern gym management, biometric attendance, and program tracking:
+The logical model has **eleven entities** that support member management, attendance, subscriptions, payments and program monitoring.
 
-### A. Core Administrative and Membership Entities
-1. **ADMIN:** Represents the authenticated system operator (Gym Owner or Coach). It holds logical attributes such as `name`, `email`, and `password`. The Admin possesses a **1 : N** relationship with **MEMBER** (*"Manages"*), reflecting the administrator's authority to register, update, and monitor member accounts, as well as a **1 : N** relationship with **PLAN** (*"Configures"*).
-2. **MEMBER:** Represents the gym patron and serves as the central hub of the relational model. It stores demographic details (`first_name`, `last_name`, `phone`, `email`, `address`), intake metrics (`dob`), anthropometric measurements (`height`, `weight`), and system `status`. Each member can enroll in multiple gym activities over time.
-3. **PLAN:** Represents the catalog of available gym pricing tiers. It defines the plan's `name` (Daily, Monthly, Annual, With Coach), `price`, and `duration_days`. A single plan defines multiple individual member passes (**1 : N** with `MEMBERSHIP`).
-4. **MEMBERSHIP:** Represents the actual subscription purchased by a member. It records the `plan_type`, `start_date`, `end_date`, subscription `status` (Active or Expired), and `payment_method`. It maintains an **N : 1** relationship with both **MEMBER** and **PLAN**.
+### A. Accounts and Members
+1. **ADMIN:** the system operator, shared by the gym owner and the coach (`name`, `email`, `password`, `logo`). The admin can reset the password with a **PASSWORD_RESET_PIN** (**1 : N**), an emailed PIN with an expiry and a limited number of attempts.
+2. **MEMBER:** the gym patron and the center of the model: demographics (`first_name`, `last_name`, `phone`, `email`, `address`), body measurements (`date_of_birth`, `height`, `weight`, `body_type`), `status` (Active or Inactive), the face photo reference and the date of consent for face enrollment (`biometric_consent_at`).
 
----
+### B. Packages and Subscriptions
+3. **PLAN:** a package the gym sells (`name`, `price`, `duration_days`, `category`, `color`). A **With Coach** package makes a member eligible for the training plan and camera tracking. A plan has many memberships (**1 : N**). **PACKAGE_CATEGORY** is an optional, older grouping of plans.
+4. **MEMBERSHIP:** a member's subscription to a package for a period (`start_date`, `end_date`, `status`, `payment_method`). It is **N : 1** with **MEMBER** and with **PLAN**, and **1 : N** with **TRANSACTION**.
 
-### B. Biometric and IoT Vision Entities
-5. **FACE_ENCODING:** Represents the mathematical representation of a member's facial biometric features. It stores the 128-dimensional floating point embedding vector (`encoding_blob`) generated by the vision microservice and the `enrolled_at` timestamp. It maintains an exclusive **1 : 1** relationship with **MEMBER**, ensuring unique biometric identity mapping during entrance camera scans.
-6. **ATTENDANCE:** Captures touchless gym check-in events. It records the `date` and `time_in`. It maintains an **N : 1** relationship with **MEMBER**, allowing a member to accumulate daily attendance entries over their membership lifespan.
-7. **WORKOUT_LOG:** Records exercise sessions tracked by the gesture vision engine or verified by the coach. It tracks the `exercise_name` and execution `date`. It maintains an **N : 1** relationship with **MEMBER** and an **N : 1** relationship with **EXERCISE**.
-8. **EXERCISE:** Represents the pre-loaded workout reference library. It stores `exercise_id`, `name`, `category`, targeted `body_part`, and `gif_path` linking to demonstration animations. It holds a **1 : N** relationship with **WORKOUT_LOG** (*"Prescribes"*).
+### C. Attendance and Program Monitoring
+5. **ATTENDANCE:** a check-in, at most one per member per day. It records how it was made (face or manual), the camera, the match distance, and the plan and subscription status on that day. It is **N : 1** with **MEMBER**, and stays when the member is deleted.
+6. **WORKOUT_LOG:** a training-plan task and its result: the `exercise`, `date`, the target `sets` and `reps`, the repetitions the camera counted (`counted_reps`), the camera class, and who verified the task (`verified_by`) and when. It is **N : 1** with **MEMBER**.
 
----
+### D. Classes and Events
+7. **COACH_EVENT_CATEGORY** and 8. **COACH_EVENT:** classes and events on the calendar. A category classifies many events (**1 : N**).
 
-### C. Financial Audit Entity
-9. **TRANSACTION:** Represents the financial audit ledger for membership fee collections. It records a unique `transaction_id`, `transaction_date`, `amount`, `payment_method` (Cash, GCash, or Maya), reference details (`reference_number`), and payment `status`. It maintains an **N : 1** relationship with **MEMBER** (*"Remits"*) and an **N : 1** relationship with **MEMBERSHIP** (*"Generates"*), guaranteeing that each financial receipt is permanently bound to its exact subscription period.
+### E. Financial Audit Entity
+9. **TRANSACTION:** a payment, upgrade, renewal or refund (`transaction_id`, `transaction_date`, `type`, `amount`, `payment_method`, `reference_number`, `status`). It is **N : 1** with **MEMBER** (none for a walk-in guest) and with **MEMBERSHIP**, so each receipt stays tied to the exact subscription period.
 
 ---
 
 ## 4. Analytical Interpretation (INTERPRET)
 
-The Logical ERD demonstrates several critical design advantages that overcome the limitations of the gym's previous manual processes:
-* **Resolution of Subscription Ambiguity:** By separating **PLAN** (the price list) from **MEMBERSHIP** (the member's actual pass) and binding both to **TRANSACTION**, the data model eliminates the previous issue where older receipts displayed incorrect renewal dates.
-* **Biometric Decoupling:** Biometric vector data is normalized into **FACE_ENCODING** rather than being mixed into the member demographic profile, protecting data integrity and speeding up daily facial recognition lookups.
-* **Audit-Proof Financial Tracking:** Every cash, GCash, or Maya transaction is permanently tied to both the member and the specific subscription period, establishing an unalterable financial audit trail.
+* **Price list apart from the purchase:** separating **PLAN** (what is sold) from **MEMBERSHIP** (what a member bought) and tying both to **TRANSACTION** removes the old problem of receipts showing wrong renewal dates.
+* **History survives deletions:** attendance, subscriptions and payments keep the member's name, so reports stay complete after a member is deleted.
+* **Biometric privacy:** the face is kept as a private image file with a recorded consent date, not as a field in the member's public profile.
+* **Eligibility by package:** the With Coach category on **PLAN** decides who the Gesture Monitor tracks and counts, which links the sales data to program monitoring.
 
 ---
 
 ## 5. Connection to Objectives and Physical Database Design (CONNECT)
 
-This Logical ERD fulfills **Specific Objective (b)** by detailing the conceptual relationships that underpin system operations. Furthermore, it establishes the direct structural baseline for **Section 4.2-F (Physical Entity-Relationship / Database Diagram)**, where these logical entities and cardinalities are translated into concrete MySQL tables, primary keys, foreign keys, data types, and performance indexes.
+This Logical ERD fulfills **Specific Objective (b)** by showing the relationships behind the system. It is the baseline for **Section 4.2-F (Physical Entity-Relationship / Database Diagram)**, where these entities become MySQL tables with keys, types and indexes.

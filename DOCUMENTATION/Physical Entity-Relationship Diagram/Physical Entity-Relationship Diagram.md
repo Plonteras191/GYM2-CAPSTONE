@@ -2,11 +2,11 @@
 
 This section presents the **Physical Entity-Relationship Diagram (Database Diagram)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
 
+> **Updated November 17, 2026** to match the database and the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
+
 ---
 
 ## 1. Physical Entity-Relationship Diagram (PRESENT)
-
-The physical ERD represents the actual MySQL relational database structure implemented in the Laravel backend. It details table names, column specifications, physical data types, primary keys (PK), foreign keys (FK), unique constraints (UK), and relational cardinalities.
 
 ```mermaid
 erDiagram
@@ -16,17 +16,6 @@ erDiagram
         varchar email UK
         varchar password
         varchar logo_path "nullable"
-        timestamp created_at
-        timestamp updated_at
-    }
-    auth_verification_codes {
-        bigint id PK
-        bigint admin_id FK
-        varchar email
-        varchar purpose
-        varchar code_hash
-        timestamp expires_at
-        tinyint attempts
         timestamp created_at
         timestamp updated_at
     }
@@ -60,11 +49,14 @@ erDiagram
         varchar phone
         varchar plan
         varchar status
+        timestamp status_updated_at "nullable"
         longtext enrolled_face_id "nullable, face photo path"
+        timestamp biometric_consent_at "nullable"
         varchar profile_pic "nullable"
         date dob "nullable"
         decimal height "nullable"
         decimal weight "nullable"
+        varchar body_type "nullable, Ectomorph/Mesomorph/Endomorph"
         text address "nullable"
         timestamp created_at
         timestamp updated_at
@@ -93,7 +85,7 @@ erDiagram
         varchar member_name_snapshot "nullable"
         varchar member_email_snapshot "nullable"
         varchar member_profile_pic_snapshot "nullable"
-        bigint plan_id FK "nullable"
+        bigint plan_id "nullable, no FK"
         varchar plan_type
         date start_date
         date end_date
@@ -127,9 +119,18 @@ erDiagram
     }
     attendances {
         bigint id PK
-        bigint member_id FK
-        date date
+        bigint member_id FK "nullable, unique with date"
+        varchar member_name_snapshot "nullable"
+        date date "unique with member_id"
         time time_in
+        varchar source "face or manual"
+        varchar camera_source "nullable"
+        decimal match_distance "nullable"
+        varchar subscription_status "nullable"
+        varchar plan_snapshot "nullable"
+        boolean reactivated
+        bigint recorded_by_admin_id "nullable, no FK"
+        varchar reason "nullable"
         timestamp created_at
         timestamp updated_at
     }
@@ -140,7 +141,10 @@ erDiagram
         date date
         smallint sets "nullable"
         smallint reps "nullable"
+        smallint counted_reps "nullable, counted by the camera"
         varchar gesture_class "nullable"
+        varchar verified_by "nullable, ai or coach"
+        timestamp verified_at "nullable"
         timestamp created_at
         timestamp updated_at
     }
@@ -165,181 +169,238 @@ erDiagram
         timestamp updated_at
     }
 
-    admins ||--o{ auth_verification_codes : "admin_id"
     admins ||..o{ personal_access_tokens : "tokenable_id (no FK)"
     admins ||..o{ password_reset_pins : "email (no FK)"
     members |o--o{ memberships : "member_id"
-    plans |o--o{ memberships : "plan_id"
+    plans |o..o{ memberships : "plan_id (no FK)"
     package_categories |o..o{ plans : "category_detail = name (no FK)"
     members |o--o{ transactions : "member_id"
     memberships |o--o{ transactions : "membership_id"
-    members ||--o{ attendances : "member_id"
+    members |o--o{ attendances : "member_id"
     members ||--o{ workout_logs : "member_id"
     coach_event_categories ||--o{ coach_events : "category_id"
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
+**Figure 4.10.** Physical Entity-Relationship Diagram for Double Alpha Fitness Gym.
 
+Decimal sizes: `members.height` and `members.weight` are DECIMAL(5,2); `plans.price` is DECIMAL(9,2); `transactions.amount` is DECIMAL(10,2); `attendances.match_distance` is DECIMAL(5,4).
 
-**Figure 4.5.** Physical Entity-Relationship Diagram for Double Alpha Fitness Gym.
+Unique rules: `attendances` allows one row per (`member_id`, `date`), so a member has at most one check-in per day; `members.email`, `admins.email`, `transactions.transaction_id` and `personal_access_tokens.token` are unique.
+
+On delete: `workout_logs` are deleted with their member; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to empty (the name and package are kept on the row); a `coach_event_categories` row cannot be deleted while events use it.
+
+`memberships.plan_id` has **no** foreign key (checked on the live database). The application keeps that link, and refuses to delete a package while members are subscribed to it.
+
+Tables that exist in the database but are **not used** by the application and are not drawn: `face_encodings`, `payments`, `exercise_sessions`, `gesture_logs`, `exercises` (the exercise list is read from `frontend/public/dataset/data/exercises.json`), `auth_verification_codes` (the old login PIN, removed), `users`, and Laravel's own tables (`sessions`, `cache`, `jobs` and similar).
 
 ---
 
 ## 2. Comprehensive Data Dictionary (Database Schema)
 
-The following tables define the physical specifications for all 9 database tables implemented in MySQL:
+The following tables define the physical specifications of the **12 tables** the application uses, taken from the live MySQL database.
 
 ### Table 1: `admins`
-Stores administrative authentication credentials for the Gym Owner / Coach.
+The administrator account. The gym owner and the coach share this one login.
 
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Unique identifier for admin account |
-| `name` | `VARCHAR(255)` | None | No | Full name of the administrator |
-| `email` | `VARCHAR(255)` | Unique Key | No | Registered login email address |
-| `password` | `VARCHAR(255)` | Bcrypt Hash | No | Encrypted authentication password |
-| `created_at` | `TIMESTAMP` | None | Yes | Record creation timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Last profile update timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `name` | `VARCHAR(255)` | - | No | Administrator name |
+| `email` | `VARCHAR(255)` | Unique | No | Login email (also receives the password-reset PIN) |
+| `password` | `VARCHAR(255)` | - | No | Password, stored as a bcrypt hash |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+| `logo_path` | `VARCHAR(255)` | - | Yes | The system logo image shown in the app and on printouts |
 
----
+### Table 2: `password_reset_pins`
+One emailed 6-digit PIN per administrator email while a password is being reset (valid 10 minutes, 5 wrong tries).
 
-### Table 2: `members`
-Stores member demographic, contact, status, and anthropometric metrics.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Unique identifier for the member |
-| `first_name` | `VARCHAR(255)` | None | No | Member's given name |
-| `last_name` | `VARCHAR(255)` | None | No | Member's family name |
-| `email` | `VARCHAR(255)` | Unique Key | No | Contact email address |
-| `phone` | `VARCHAR(255)` | None | No | Mobile phone number |
-| `plan` | `VARCHAR(255)` | Default: 'None' | No | Summary plan label |
-| `status` | `VARCHAR(255)` | Default: 'Active', Indexed | No | Membership status (Active / Inactive) |
-| `enrolled_face_id` | `LONGTEXT` | None | Yes | WebRTC face capture image path or token |
-| `profile_pic` | `VARCHAR(255)` | None | Yes | Uploaded avatar image filename |
-| `dob` | `DATE` | None | Yes | Date of birth for age calculation |
-| `height` | `DECIMAL(5,2)` | None | Yes | Measured height in centimeters (e.g. 175.50) |
-| `weight` | `DECIMAL(5,2)` | None | Yes | Measured weight in kilograms (e.g. 68.20) |
-| `address` | `TEXT` | None | Yes | Residential address |
-| `created_at` | `TIMESTAMP` | Indexed | Yes | Registration timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Profile modification timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `email` | `VARCHAR(255)` | - | No | Administrator email the PIN was sent to (no foreign key) |
+| `pin_hash` | `VARCHAR(255)` | - | No | The PIN, stored hashed |
+| `attempts` | `TINYINT(3) UNSIGNED (default 0)` | - | No | Wrong guesses so far (the PIN is refused after 5) |
+| `expires_at` | `TIMESTAMP (default current_timestamp())` | - | No | PIN expiry (10 minutes after it was sent) |
+| `verified_at` | `TIMESTAMP` | - | Yes | When the correct PIN was entered; a new password can then be set |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
 
----
+### Table 3: `personal_access_tokens`
+Laravel Sanctum login tokens. A token is created at login and deleted at logout.
 
-### Table 3: `face_encodings`
-Stores 128-dimensional biometric facial embedding vectors for OpenCV/dlib matching.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Unique encoding record ID |
-| `member_id` | `BIGINT UNSIGNED` | Foreign Key $\rightarrow$ `members.id` (Cascade) | No | Linked member identity |
-| `encoding_blob` | `LONGTEXT` | None | No | 128-d floating point facial array |
-| `enrolled_at` | `TIMESTAMP` | Default: Current Timestamp | No | Biometric capture timestamp |
-| `created_at` | `TIMESTAMP` | None | Yes | Record creation timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Record modification timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `tokenable_type` | `VARCHAR(255)` | - | No | Model the token belongs to (the admin) |
+| `tokenable_id` | `BIGINT(20) UNSIGNED` | - | No | Id of the admin (no foreign key) |
+| `name` | `TEXT` | - | No | Token name (admin-token) |
+| `token` | `VARCHAR(64)` | Unique | No | Hashed token value |
+| `abilities` | `TEXT` | - | Yes | Token permissions |
+| `last_used_at` | `TIMESTAMP` | - | Yes | Last time the token was used |
+| `expires_at` | `TIMESTAMP` | - | Yes | Token expiry (SANCTUM_TOKEN_EXPIRATION minutes) |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
 
----
+### Table 4: `members`
+Every registered gym member: contact details, body measurements, status and the face photo reference.
 
-### Table 4: `plans`
-Defines available gym membership packages, rates, and validity durations.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Unique plan tier ID |
-| `name` | `VARCHAR(255)` | None | No | Plan name (Daily, Monthly, Annual, With Coach) |
-| `price` | `DECIMAL(8,2)` | None | No | Cost in Philippine Pesos (PHP) |
-| `duration_days` | `INT` | None | No | Validity duration (1, 30, 365 days) |
-| `created_at` | `TIMESTAMP` | None | Yes | Record creation timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Record modification timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `first_name` | `VARCHAR(255)` | - | No | Given name |
+| `last_name` | `VARCHAR(255)` | - | No | Family name |
+| `email` | `VARCHAR(255)` | Unique | No | Contact email |
+| `phone` | `VARCHAR(255)` | - | No | Mobile number |
+| `plan` | `VARCHAR(255) (default None)` | - | No | Name of the member's current package (a display copy) |
+| `status` | `VARCHAR(255) (default Active)` | - | No | Active or Inactive. Becomes Inactive after a month without a check-in; a check-in, a renewal or the admin sets it back to Active |
+| `status_updated_at` | `TIMESTAMP` | - | Yes | When the status was last set; gives the member a fresh month before the inactivity rule applies |
+| `enrolled_face_id` | `LONGTEXT` | - | Yes | Path of the face photo (the stacked face views) in private storage |
+| `biometric_consent_at` | `TIMESTAMP` | - | Yes | When the member agreed to face enrollment (RA 10173) |
+| `profile_pic` | `VARCHAR(255)` | - | Yes | Profile picture file |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+| `dob` | `DATE` | - | Yes | Date of birth |
+| `height` | `DECIMAL(5,2)` | - | Yes | Height in centimetres |
+| `weight` | `DECIMAL(5,2)` | - | Yes | Weight in kilograms |
+| `body_type` | `VARCHAR(20)` | - | Yes | Ectomorph, Mesomorph or Endomorph; helps the coach assign a program |
+| `address` | `TEXT` | - | Yes | Home address |
 
----
+### Table 5: `package_categories`
+Names and colours of custom package categories (older feature; the screen now offers three fixed categories).
 
-### Table 5: `memberships`
-Tracks member subscription validity periods and renewal statuses.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Unique subscription pass ID |
-| `member_id` | `BIGINT UNSIGNED` | Foreign Key $\rightarrow$ `members.id` (Cascade), Indexed | No | Subscriber ID |
-| `plan_id` | `BIGINT UNSIGNED` | No formal FK constraint (plain nullable column) | Yes | Subscribed pricing tier reference (soft link to `plans`) |
-| `plan_type` | `VARCHAR(255)` | None | No | Snapshot of plan name at purchase |
-| `start_date` | `DATE` | None | No | Subscription start date |
-| `end_date` | `DATE` | Indexed | No | Expiration date |
-| `status` | `VARCHAR(255)` | Default: 'Active', Indexed | No | Status (Active / Expired) |
-| `payment_method` | `VARCHAR(255)` | Default: 'Cash' | No | Payment method used (Cash, GCash, Maya) |
-| `color` | `VARCHAR(255)` | Default: '#f59e0b' | No | Calendar visual color badge |
-| `notes` | `TEXT` | None | Yes | Administrative or coaching notes |
-| `created_at` | `TIMESTAMP` | Indexed | Yes | Subscription purchase timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Status update timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `name` | `VARCHAR(100)` | Unique | No | Category name |
+| `color` | `VARCHAR(7)` | - | No | Category colour (hex) |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
 
----
+### Table 6: `plans`
+The packages the gym sells (Monthly, Annual, With Coach, Walk-In...), with their price and length.
 
-### Table 6: `transactions`
-Provides an audit-proof financial ledger for cash, GCash, and Maya transactions.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Internal transaction ID |
-| `transaction_id` | `VARCHAR(255)` | Unique Key | No | Formatted transaction code (e.g., TXN-001) |
-| `transaction_date` | `DATE` | Indexed | No | Date of financial settlement |
-| `member_id` | `BIGINT UNSIGNED` | Foreign Key $\rightarrow$ `members.id` (Set Null), Indexed | Yes | Member who paid (null for walk-in guests) |
-| `membership_id` | `BIGINT UNSIGNED` | Foreign Key $\rightarrow$ `memberships.id` (Set Null) | Yes | Specific subscription period linked to payment |
-| `type` | `VARCHAR(255)` | None | No | Transaction category (Subscription Payment, Fee) |
-| `description` | `VARCHAR(255)` | None | Yes | Transaction details and plan description |
-| `payment_method` | `VARCHAR(255)` | None | No | Payment channel (Cash, GCash, Maya) |
-| `amount` | `DECIMAL(10,2)` | None | No | Amount paid in PHP |
-| `status` | `VARCHAR(255)` | Default: 'Complete', Indexed | No | Settlement status (Complete / Pending / Refund) |
-| `reference_number` | `VARCHAR(255)` | None | Yes | E-wallet reference or handwritten receipt number |
-| `created_at` | `TIMESTAMP` | None | Yes | Entry timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Modification timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `name` | `VARCHAR(255)` | - | No | Package name |
+| `price` | `DECIMAL(9,2)` | - | No | Price in pesos |
+| `duration_days` | `INT(11)` | - | No | How many days the package lasts |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+| `category` | `VARCHAR(255) (default normal)` | - | No | normal, with_coach or walk_in (other = older custom category). With Coach packages unlock the training plan and camera tracking |
+| `category_detail` | `VARCHAR(255)` | - | Yes | Name of an older custom category |
+| `color` | `VARCHAR(7)` | - | Yes | Colour shown on the calendar (hex) |
 
----
+### Table 7: `memberships`
+A member's subscription to a package for a period. Keeps the member's name and the package name so history survives deletions.
 
-### Table 7: `attendances`
-Records automated check-in timestamps produced by the facial recognition camera.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Attendance entry ID |
-| `member_id` | `BIGINT UNSIGNED` | Foreign Key $\rightarrow$ `members.id` (Cascade), Indexed | No | Recognized member |
-| `date` | `DATE` | Indexed | No | Date of gym visit |
-| `time_in` | `TIME` | None | No | Exact arrival time timestamp |
-| `created_at` | `TIMESTAMP` | None | Yes | Log generation timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Log update timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `member_id` | `BIGINT(20) UNSIGNED` | Foreign key to `members` (set to empty on delete) | Yes | The member; empty after the member is deleted |
+| `member_name_snapshot` | `VARCHAR(255)` | - | Yes | Member name when the subscription was made |
+| `member_email_snapshot` | `VARCHAR(255)` | - | Yes | Member email when the subscription was made |
+| `member_profile_pic_snapshot` | `VARCHAR(255)` | - | Yes | Member picture when the subscription was made |
+| `plan_type` | `VARCHAR(255)` | - | No | Package name saved on the subscription (stays after the package is deleted) |
+| `start_date` | `DATE` | - | No | First day |
+| `end_date` | `DATE` | - | No | Last day. A renewal of a running subscription moves this date forward |
+| `status` | `VARCHAR(255) (default Active)` | - | No | Active, Expired or Cancelled (a running subscription past its end date is shown as Expired) |
+| `auto_renew` | `TINYINT(1) (default 0)` | - | No | Always 0: the gym does not bill automatically; renewals are made at the desk |
+| `payment_method` | `VARCHAR(255) (default Cash)` | - | No | Cash, Gcash or Maya |
+| `color` | `VARCHAR(255) (default #f59e0b)` | - | No | Colour shown on the calendar (hex) |
+| `notes` | `TEXT` | - | Yes | Free-text notes |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+| `plan_id` | `BIGINT(20) UNSIGNED` | - | Yes | The package. There is no foreign key: the application keeps the link, and refuses to delete a package members are subscribed to |
 
----
+### Table 8: `transactions`
+Every payment, upgrade, renewal and refund, with the details needed to print a receipt.
 
-### Table 8: `workout_logs`
-Records exercise sessions monitored via camera pose estimation or coach assignment.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Workout log ID |
-| `member_id` | `BIGINT UNSIGNED` | Foreign Key $\rightarrow$ `members.id` (Cascade) | No | Athlete executing exercise |
-| `exercise` | `VARCHAR(255)` | None | No | Exercise name or task status label |
-| `date` | `DATE` | None | No | Workout execution date |
-| `created_at` | `TIMESTAMP` | None | Yes | Record creation timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Record update timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `transaction_id` | `VARCHAR(255)` | Unique | No | Receipt number such as TXN-001 |
+| `transaction_date` | `DATE` | - | No | Date of the payment |
+| `member_id` | `BIGINT(20) UNSIGNED` | Foreign key to `members` (set to empty on delete) | Yes | The member; empty for a walk-in guest or a deleted member |
+| `member_name_snapshot` | `VARCHAR(255)` | - | Yes | Member name at the time |
+| `member_email_snapshot` | `VARCHAR(255)` | - | Yes | Member email at the time |
+| `member_profile_pic_snapshot` | `VARCHAR(255)` | - | Yes | Member picture at the time |
+| `membership_id` | `BIGINT(20) UNSIGNED` | Foreign key to `memberships` (set to empty on delete) | Yes | The subscription this payment is for |
+| `type` | `VARCHAR(255)` | - | No | Subscription Payment, Subscription Upgrade, Subscription Renewal, Subscription, Walk-In, Walk-in Guest, Packages or Refund |
+| `description` | `VARCHAR(255)` | - | Yes | Short description of what was paid |
+| `payment_method` | `VARCHAR(255)` | - | No | Cash, Gcash or Maya |
+| `amount` | `DECIMAL(10,2)` | - | No | Amount in pesos (negative for a refund) |
+| `status` | `VARCHAR(255) (default Complete)` | - | No | Complete or Refunded |
+| `reference_number` | `VARCHAR(255)` | - | Yes | GCash / Maya reference or receipt number |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+| `package_name_snapshot` | `VARCHAR(255)` | - | Yes | Package name at the time |
+| `package_category_snapshot` | `VARCHAR(255)` | - | Yes | Package category at the time |
 
----
+### Table 9: `attendances`
+One check-in per member per day, by face or by the admin, with what was true on that day.
 
-### Table 9: `exercises`
-Stores pre-loaded reference workouts mapped to frontend demonstration animations.
-
-| Column Name | Data Type | Constraints | Nullable | Description |
+| Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
-| `id` | `BIGINT UNSIGNED` | Primary Key, Auto Increment | No | Internal exercise ID |
-| `exercise_id` | `VARCHAR(255)` | Unique Key | No | 4-digit standardized code (e.g. 0001, 0002) |
-| `name` | `VARCHAR(255)` | None | No | Exercise title (e.g. 3/4 Sit-up) |
-| `category` | `VARCHAR(255)` | None | Yes | Muscle group category |
-| `body_part` | `VARCHAR(255)` | None | Yes | Targeted anatomical body part |
-| `equipment` | `VARCHAR(255)` | None | Yes | Required gym apparatus (barbell, body weight) |
-| `gif_path` | `VARCHAR(255)` | None | No | File path to frontend animated demonstration GIF |
-| `created_at` | `TIMESTAMP` | None | Yes | Import timestamp |
-| `updated_at` | `TIMESTAMP` | None | Yes | Update timestamp |
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `member_id` | `BIGINT(20) UNSIGNED` | Unique together with date; Foreign key to `members` (set to empty on delete) | Yes | The member; empty after the member is deleted (the name stays) |
+| `member_name_snapshot` | `VARCHAR(255)` | - | Yes | Member name at check-in |
+| `date` | `DATE` | Unique together with member_id | No | Day of the check-in |
+| `time_in` | `TIME` | - | No | Time of the check-in |
+| `source` | `VARCHAR(20) (default face)` | - | No | face (camera) or manual (admin) |
+| `camera_source` | `VARCHAR(30)` | - | Yes | Camera used: cctv, cctv_2, cctv_3, webcam or phone |
+| `match_distance` | `DECIMAL(5,4)` | - | Yes | How close the face match was (lower is closer) |
+| `subscription_status` | `VARCHAR(20)` | - | Yes | active, expired or none on that day |
+| `plan_snapshot` | `VARCHAR(255)` | - | Yes | Package name on that day |
+| `reactivated` | `TINYINT(1) (default 0)` | - | No | Whether this check-in set an Inactive member back to Active |
+| `recorded_by_admin_id` | `BIGINT(20) UNSIGNED` | - | Yes | Administrator who made a manual check-in (no foreign key) |
+| `reason` | `VARCHAR(255)` | - | Yes | Reason typed for a manual check-in |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
 
----
+### Table 10: `workout_logs`
+Training-plan tasks and camera detections. A task is pending while its exercise starts with "ASSIGNED: ".
 
-> [!NOTE]
-> The complete narrative explanation complying with the **INTRODUCE $\rightarrow$ PRESENT $\rightarrow$ EXPLAIN $\rightarrow$ INTERPRET $\rightarrow$ CONNECT** format is located in the companion documentation file:  
-> 📄 **[Physical Entity-Relationship Diagram docs.md](./Physical%20Entity-Relationship%20Diagram%20docs.md)**
+| Column | Data type | Key / constraint | Nullable | Meaning |
+|---|---|---|:---:|---|
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `member_id` | `BIGINT(20) UNSIGNED` | Foreign key to `members` (deleted with it on delete) | No | The member the task belongs to |
+| `exercise` | `VARCHAR(255)` | - | No | Exercise name; starts with "ASSIGNED: " until the task is verified |
+| `date` | `DATE` | - | No | The day the task is for (or was done) |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+| `sets` | `SMALLINT(5) UNSIGNED` | - | Yes | Target number of sets |
+| `reps` | `SMALLINT(5) UNSIGNED` | - | Yes | Target repetitions per set |
+| `counted_reps` | `SMALLINT(5) UNSIGNED` | - | Yes | Total repetitions counted by the camera (squat, push-up, curl, sit-up) |
+| `gesture_class` | `VARCHAR(255)` | - | Yes | The camera exercise class this task is checked as (empty = coach verifies) |
+| `verified_by` | `VARCHAR(10)` | - | Yes | ai (camera) or coach |
+| `verified_at` | `TIMESTAMP` | - | Yes | When the task was verified |
+
+### Table 11: `coach_event_categories`
+Categories (with a colour) for classes and events on the calendar.
+
+| Column | Data type | Key / constraint | Nullable | Meaning |
+|---|---|---|:---:|---|
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `name` | `VARCHAR(80)` | Unique | No | Category name |
+| `color` | `VARCHAR(7) (default #3b82f6)` | - | No | Category colour (hex) |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+
+### Table 12: `coach_events`
+Classes and events shown on the Packages calendar and the Overview.
+
+| Column | Data type | Key / constraint | Nullable | Meaning |
+|---|---|---|:---:|---|
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `category_id` | `BIGINT(20) UNSIGNED` | Foreign key to `coach_event_categories` (blocks the delete on delete) | No | The event category |
+| `title` | `VARCHAR(255)` | - | No | Event title |
+| `description` | `TEXT` | - | Yes | Details |
+| `start_date` | `DATE` | - | No | First day |
+| `end_date` | `DATE` | - | No | Last day |
+| `start_time` | `TIME` | - | No | Start time |
+| `end_time` | `TIME` | - | No | End time |
+| `location` | `VARCHAR(255)` | - | No | Where it takes place |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |

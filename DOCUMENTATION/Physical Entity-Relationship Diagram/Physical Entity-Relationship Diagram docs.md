@@ -2,66 +2,63 @@
 
 This section presents the **Physical Entity-Relationship Diagram (Database Diagram)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
 
+> **Updated November 17, 2026** to match the database and the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
+
 ---
 
 ## 1. Introduction (INTRODUCE)
 
-A **Physical Entity-Relationship Diagram (Physical ERD)** translates the conceptual data model into an implementation-level schema tailored to a specific database management system—in this project, **MySQL**. While the logical ERD defines what data the business requires, the physical ERD defines how that data is physically stored, indexed, and constrained.
+A **Physical Entity-Relationship Diagram (Physical ERD)** translates the logical data model into the schema of a specific database management system, here **MySQL**. The logical ERD says what data the business needs; the physical ERD says how it is stored, keyed and constrained.
 
-The primary purpose of the Physical ERD is to ensure **data integrity, eliminate undesirable data redundancy, and maintain strict referential consistency** among related records. By enforcing primary keys, foreign key constraints (such as cascade and null-on-delete rules), data types, and performance indexes, the database guarantees that records remain accurate and audit-ready across all administrative, biometric, and financial operations.
+Its purpose is **data integrity and referential consistency**: primary keys, foreign keys with set-to-empty or cascade rules, unique rules, data types and indexes keep the records accurate and auditable across the member, attendance, subscription, payment and workout functions.
 
 ---
 
 ## 2. Presentation of the Diagram (PRESENT)
 
-Figure 4.5 below illustrates the Physical Entity-Relationship Diagram of the IoT-Based Gym Management System for Double Alpha Fitness Gym. It presents the physical tables, column data types, key constraints, and relational cardinalities implemented through Laravel database migrations.
+Figure 4.10 illustrates the Physical Entity-Relationship Diagram of the system. It shows the 12 tables the application uses, their columns and types, their keys and their relationships, as created by the Laravel migrations.
 
-[Insert Figure 4.5 Here]
+[Insert Figure 4.10 Here]
 
-**Figure 4.5.** Physical Entity-Relationship Diagram for Double Alpha Fitness Gym.
+**Figure 4.10.** Physical Entity-Relationship Diagram for Double Alpha Fitness Gym.
 
 ---
 
 ## 3. Detailed Discussion of Tables, Fields, and Relationships (EXPLAIN)
 
-The physical database structure is organized into **nine interconnected relational tables**:
+The physical database is organized into **twelve tables**.
 
-### A. User Management and Membership Core
-1. **`admins`:** Stores system administrator credentials (`id`, `name`, `email`, `password`, `created_at`, `updated_at`). The `email` column enforces unique indexing, while the password stores 60-character bcrypt cryptographic hashes for secure session authentication.
-2. **`members`:** Serves as the central entity table. In addition to contact demographics (`first_name`, `last_name`, `phone`, `email`, `address`), it incorporates anthropometric columns (`height` and `weight` as `DECIMAL(5,2)` and `dob` as `DATE`) to support the coach's fitness program assignments. The `enrolled_face_id` column stores a reference link to the member's biometric photo.
-3. **`plans`:** Contains the gym's pricing packages (`id`, `name`, `price`, `duration_days`). It is populated with standard tiers (Daily, Monthly, Annual, With Coach), establishing clear duration standards for membership expirations.
-4. **`memberships`:** Manages subscription validity windows. It links a member to a plan via foreign keys (`member_id` referencing `members.id` with `ON DELETE CASCADE`, and `plan_id` referencing `plans.id` with `ON DELETE SET NULL`). It records `start_date`, `end_date`, `status` (Active or Expired), and `payment_method`.
+### A. Accounts and Members
+1. **`admins`:** the administrator account (`name`, `email`, `password`, `logo_path`). The email is unique and the password is stored as a bcrypt hash. The gym owner and the coach share this account.
+2. **`password_reset_pins`:** one emailed PIN per administrator email (`pin_hash`, `attempts`, `expires_at`, `verified_at`). A PIN lasts 10 minutes and allows 5 wrong tries. It is linked to `admins` by email, without a foreign key.
+3. **`personal_access_tokens`:** the Laravel Sanctum login tokens, created at login and deleted at logout.
+4. **`members`:** the central table: contact details (`first_name`, `last_name`, `email`, `phone`, `address`), body measurements (`dob`, `height`, `weight` as DECIMAL(5,2), and `body_type`), `status` (Active or Inactive) with `status_updated_at`, and the face reference `enrolled_face_id` (the path of a private image file) with `biometric_consent_at`, the date the member agreed to face enrollment.
+
+### B. Packages and Subscriptions
+5. **`plans`:** the packages the gym sells (`name`, `price` DECIMAL(9,2), `duration_days`, `category`, `color`). The `category` (normal, with_coach, walk_in) decides what a package unlocks: a With Coach package makes the member eligible for the training plan and camera tracking.
+6. **`package_categories`:** names and colours of older custom categories.
+7. **`memberships`:** a member's subscription (`start_date`, `end_date`, `status`, `payment_method`). `member_id` is a foreign key set to empty when the member is deleted. `plan_id` has no foreign key; the subscription also keeps the package name (`plan_type`) and the member's name, email and picture as they were, so history is still readable after a deletion. A renewal of a running subscription moves `end_date` forward.
+
+### C. Attendance and Program Monitoring
+8. **`attendances`:** one check-in per member per day (unique on `member_id` and `date`). It records how the check-in was made (`source`: face or manual), the camera, the face match distance, and what was true that day (`subscription_status`, `plan_snapshot`), plus whether it set an Inactive member back to Active. A manual check-in also keeps the administrator and the reason. The member is a foreign key set to empty on deletion, so attendance history survives.
+9. **`workout_logs`:** the training plan and its results. A task is created with the exercise name prefixed "ASSIGNED: ", with `sets` and `reps` targets and the camera class `gesture_class`. When it is verified, `counted_reps` holds the repetitions the camera counted, and `verified_by` (ai or coach) and `verified_at` say who verified it and when. The member is a foreign key, and the logs are deleted with the member.
+
+### D. Classes and Events
+10. **`coach_event_categories`** and 11. **`coach_events`:** classes and events (title, dates, times, location) grouped by a category with a colour. A category cannot be deleted while events use it.
+
+### E. Financial Audit Trail
+12. **`transactions`:** the payment ledger: a unique receipt code `transaction_id` (for example TXN-001), `transaction_date`, `type` (subscription payment, upgrade, renewal, walk-in, refund), `amount` DECIMAL(10,2) (negative for a refund), `payment_method` (Cash, GCash, Maya) and `reference_number`. It has two optional foreign keys, `member_id` (empty for a walk-in guest) and `membership_id`, plus snapshots of the member and package, so receipts and reports keep their original details.
 
 ---
 
-### B. Biometric and IoT Vision Tables
-5. **`face_encodings`:** Dedicated to biometric facial embeddings. It links to `members.id` with cascade deletion and stores the 128-dimensional floating point embedding vector in `encoding_blob` (`LONGTEXT`). This isolates heavy biometric lookups from standard demographic queries.
-6. **`attendances`:** Captures automated entrance check-in timestamps. Each row stores `member_id`, `date`, and `time_in`. A foreign key cascades deletions if a member profile is purged.
-7. **`workout_logs`:** Tracks exercise sessions executed by members. It links `member_id` to the assigned or recognized `exercise` name and execution `date`.
-8. **`exercises`:** A reference dictionary storing 1,300+ categorized exercises. Each record contains a standardized 4-digit `exercise_id` (e.g. "0001"), title `name`, target `body_part`, equipment requirements, and `gif_path` pointing directly to frontend video demonstration media.
+## 4. Analytical Interpretation and Indexing (INTERPRET)
 
----
-
-### C. Financial Tracking and Audit Trail
-9. **`transactions`:** Maintains the financial ledger for all gym payments. It stores a unique formatted code `transaction_id` (e.g., "TXN-001"), `transaction_date`, `amount`, `payment_method` (Cash, GCash, Maya), and `reference_number`. It maintains two foreign keys: `member_id` (nullable for walk-ins) and `membership_id` referencing `memberships.id`. Binding each transaction directly to a membership period ensures that renewed members' past receipts permanently reflect their original subscription dates.
-
----
-
-## 4. Analytical Interpretation and Performance Indexing (INTERPRET)
-
-Observation of the physical schema reveals how the database design resolves operational risks and supports high-concurrency gym environments:
-* **Enforced Referential Integrity:** Cascade constraints (`ON DELETE CASCADE`) on `attendances`, `face_encodings`, and `workout_logs` prevent orphaned biometric data if a member profile is deleted, while `ON DELETE SET NULL` on `transactions` preserves financial audit history even if a subscriber record is archived.
-* **B-Tree Performance Optimization:** As defined in migration `2026_09_11_000000_add_performance_indexes.php`, explicit B-Tree database indexes are placed on frequently filtered columns:
-  - `transactions`: `(transaction_date)`, `(member_id)`, `(status)`
-  - `memberships`: `(status)`, `(member_id)`, `(end_date)`, `(created_at)`
-  - `attendances`: `(date)`, `(member_id)`
-  - `members`: `(status)`, `(created_at)`
-  These indexes replace slow $O(n)$ full table scans with fast $O(\log n)$ binary tree lookups, ensuring sub-second response times during peak check-in hours and fast PDF report generation.
+* **Integrity that matches the business:** history is protected by set-to-empty rules plus snapshots: deleting a member keeps their attendance and payments (with the name), while their workout plan goes with them.
+* **The one missing foreign key:** `memberships.plan_id` has none. The application protects the link instead: a package is not deleted while members are subscribed to it, and an ended subscription keeps its package name.
+* **Indexes** on the columns the screens filter by: `members` (`status`, `created_at`); `memberships` (`status`, `member_id`, `end_date`, `created_at`); `transactions` (`transaction_date`, `member_id`, `membership_id`, `status`); `attendances` (`date`, `member_id`); `workout_logs` (`member_id`); `coach_events` (`category_id`). They keep lists and reports fast.
 
 ---
 
 ## 5. Connection to Development and Deployment Phases (CONNECT)
 
-This Physical Entity-Relationship Diagram directly fulfills **Specific Objective (b)** and concludes the system modeling activities of the System Design Phase. The tables, fields, and constraints documented in this section serve as the direct foundation for:
-* **Section 4.3 (System Development Phase):** Where Laravel Eloquent models, API controllers, and database migrations are compiled.
-* **Section 4.4 (System Testing Phase):** Where database integrity test cases verify that primary/foreign key constraints, duplicate prevention rules, and transaction rollbacks function properly under load.
+This diagram fulfills **Specific Objective (b)** and closes the system-modeling activities of the design phase. The tables, fields and constraints are the foundation for the Laravel models, controllers and migrations built in development, and for the database test cases (unique check-in per day, deletion rules, refund and renewal records) in testing.

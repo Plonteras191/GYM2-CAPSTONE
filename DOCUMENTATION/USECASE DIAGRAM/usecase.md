@@ -1,12 +1,14 @@
 # System Use Case Specification
-**Project Title:** Design and Development of an IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym  
-**Document Version:** 2.3 (Capstone Documentation Standard)
+**Project Title:** Design and Development of an IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym
+**Document Version:** 3.0 (updated November 17, 2026 to match the system as built)
+
+The diagrams in sections 3, 4 and 5 are the same as Figures 4.6, 4.8 and 4.7 in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
 ---
 
 ## 1. System Overview — Combined Use Case Diagram
 
-This diagram shows the complete system boundary with all three actors and their associated use cases.
+This diagram shows the system boundary with the three actors and their use cases.
 
 ```mermaid
 flowchart LR
@@ -15,17 +17,17 @@ flowchart LR
     Member["Gym Member"]
 
     subgraph Boundary ["Gym Management System"]
-        UC1(["Log In with Email,<br/>Password and PIN"])
+        UC1(["Log In with Email<br/>and Password"])
         UC2(["View Dashboard<br/>and Notifications"])
-        UC3(["Manage Members<br/>and Face Capture"])
-        UC4(["Manage Packages<br/>and Subscriptions"])
+        UC3(["Manage Members, Face Capture<br/>and Consent"])
+        UC4(["Manage Packages, Subscriptions,<br/>Renewals and Events"])
         UC5(["Record Payments,<br/>Receipts and Refunds"])
-        UC6(["Build Workout Plans and<br/>Verify Tasks Manually"])
+        UC6(["Build Training Plans and<br/>Verify Tasks Manually"])
         UC7(["View Attendance and<br/>Gesture Monitors"])
         UC8(["Generate Reports"])
         UC9(["Manage Admin Profile"])
         UC10(["Recognize Faces and<br/>Log Attendance"])
-        UC11(["Recognize Assigned<br/>Exercise and Verify Task"])
+        UC11(["Recognize and Count Assigned<br/>Exercise, Verify Task"])
         UC12(["Stream Live Video"])
     end
 
@@ -49,18 +51,15 @@ flowchart LR
     Member --> UC11
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
-
 ---
 
 ## 2. System Actors and Roles
 
 | Actor Name | Type | Description |
 |---|---|---|
-| **Gym Owner / Coach (Admin)** | **Primary System Actor** | The unified administrator and coach who directly uses the web system to manage members, plans, payments, workouts, cameras, and reports. |
-| **Security Camera / AI Vision Engine** | **IoT / Device Actor** | The camera hardware (RTSP CCTV or USB webcam) and Python microservice that autonomously detects faces, tracks pose landmarks, counts repetitions, and streams video data. |
-| **Gym Member** | **Participating Actor (Physical)** | Registered member who physically interacts with camera terminals for biometric attendance and gesture-guided workout sessions. They do not log into the web system. |
+| **Gym Owner / Coach (Admin)** | **Primary System Actor** | The owner and the coach share one administrator login. They use the web system to manage members, packages, payments, training plans, cameras and reports. |
+| **Camera / Gesture Engine** | **IoT / Device Actor** | The camera (RTSP CCTV, phone camera or USB webcam) and the Python engine that recognizes faces, tracks body pose, counts repetitions and streams video. |
+| **Gym Member** | **Participating Actor (Physical)** | A registered member who takes part in person: face capture, the entrance camera and exercises in front of the gesture camera. Members do not log in. |
 
 ---
 
@@ -75,7 +74,6 @@ flowchart LR
     subgraph Boundary ["Gym Management System"]
         Login(["Log In"])
         ValCred(["Validate Email and Password"])
-        VerPin(["Verify 6-Digit PIN"])
         Reset(["Reset Password by PIN"])
         Logout(["Log Out"])
 
@@ -83,31 +81,36 @@ flowchart LR
         Notif(["View Notifications"])
 
         AddMem(["Add Member"])
-        Face(["Capture Face<br/>(front, left, right)"])
+        Face(["Capture Face<br/>(front, chin down, left, right)"])
+        Consent(["Record Face Consent"])
         ViewMem(["View Member Profile,<br/>Attendance and Workouts"])
         UpdMem(["Update Member"])
+        SetStatus(["Set Member Status<br/>(Active / Inactive)"])
         DelMem(["Delete Member"])
 
         Pack(["Manage Packages and Prices"])
+        DelPack(["Delete Package<br/>(refused while members are subscribed)"])
         Cat(["Manage Package Categories"])
         NewSub(["Create Subscription"])
         UpSub(["Upgrade Subscription"])
+        RenewSub(["Renew Subscription"])
         AutoPay(["Create Payment Transaction"])
-        Events(["Manage Coach Events"])
+        Events(["Manage Classes and Events"])
 
         Pay(["Record Payment<br/>(Cash, GCash, Maya)"])
         Receipt(["Print Receipt"])
         Refund(["Refund Transaction"])
 
-        Plan(["Build 7-Day Workout Plan"])
+        Plan(["Build 7-Day Training Plan"])
         Manual(["Manually Verify Workout Task"])
 
         AttMon(["View Attendance Monitor"])
+        ManualIn(["Check In Member Manually"])
         GesMon(["View Gesture Monitor"])
         Switch(["Switch Camera Source"])
         Sync(["Re-sync Enrolled Faces"])
 
-        Report(["Generate Report"])
+        Report(["Generate Report<br/>(Payments, Memberships,<br/>Attendance, Program Monitoring)"])
         Export(["Export CSV or Print"])
 
         Profile(["Update Admin Profile"])
@@ -115,14 +118,19 @@ flowchart LR
         Logo(["Update System Logo"])
 
         Login -.->|"«include»"| ValCred
-        Login -.->|"«include»"| VerPin
         Login ~~~ Reset
         Reset -.->|"«extend»"| Login
         AddMem -.->|"«include»"| Face
+        Face -.->|"«include»"| Consent
+        UpdMem ~~~ SetStatus
+        SetStatus -.->|"«extend»"| UpdMem
+        DelPack -.->|"«extend»"| Pack
         NewSub -.->|"«include»"| AutoPay
         UpSub -.->|"«include»"| AutoPay
+        RenewSub -.->|"«include»"| AutoPay
         Pay ~~~ Receipt
         Receipt -.->|"«extend»"| Pay
+        ManualIn -.->|"«extend»"| AttMon
         Report ~~~ Export
         Export -.->|"«extend»"| Report
     end
@@ -139,12 +147,14 @@ flowchart LR
     Admin --> Cat
     Admin --> NewSub
     Admin --> UpSub
+    Admin --> RenewSub
     Admin --> Events
     Admin --> Pay
     Admin --> Refund
     Admin --> Plan
     Admin --> Manual
     Admin --> AttMon
+    Admin --> ManualIn
     Admin --> GesMon
     Admin --> Switch
     Admin --> Sync
@@ -154,35 +164,27 @@ flowchart LR
     Admin --> Logo
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
-
 ### 3.2 Use Case Relationships and Scope Boundaries
 
 #### A. Narrative Explanation of Relationships
-The use case diagram illustrates the administrative capabilities of the Gym Owner / Coach, distinguishing between primary functions directly initiated by the admin and specialized sub-functions governed by UML relationship stereotypes (`<<include>>` and `<<extend>>`), as well as clearly defined system exclusions:
 
-1. **Include Relationships (`<<include>>`) — Mandatory Sub-Processes:**
-   An `<<include>>` relationship represents an essential, mandatory behavior that is automatically and unconditionally executed as part of the base use case. In this module:
-   * **`UC-01: Login / Authentication` includes `Validate Credentials`:** Whenever the administrator attempts to log into the web system, the system must execute the validation routine against the database-stored bcrypt password hash. Login cannot proceed without successful credential verification.
-   * **`Forgot Password` includes `Reset Password`:** Initiating account recovery mandates resetting the security password once the temporary recovery token is verified.
-   * **`UC-01b: Logout` includes `Invalidate Session Token`:** Logging out always revokes the active Laravel Sanctum bearer token and purges the session from local storage, preventing unauthorized back-navigation.
-   * **`UC-10a: Generate & Filter System Reports` includes `UC-10b: Export CSV / Print PDF Report`:** Report compilation includes formatting the aggregated operational data into a downloadable CSV or printable PDF document.
-   * **`UC-03a: Add Member` includes `Biometric Enrollment`:** Creating a new member profile mandatorily incorporates capturing the member's facial reference photo and extracting 128-dimensional facial encodings to prepare them for automated attendance tracking.
-   * **`UC-05a: Record Payment Transaction` includes `Activate / Update Subscription`:** Confirming a payment transaction automatically updates the linked member's subscription status and extends their validity period in the centralized database.
-
-2. **Extend Relationships (`<<extend>>`) — Conditional / Optional Behaviors:**
-   An `<<extend>>` relationship represents an optional or conditional behavior that only executes at specific extension points under certain circumstances:
-   * **`Forgot Password` extends `UC-01: Login / Authentication`:** This workflow is optional and only triggered when the administrator fails to remember their password and explicitly clicks the "Recovery?" link on the login interface.
-   * **`UC-05b: Print Payment Receipt` extends `UC-05a: Record Payment Transaction`:** Printing a formal payment receipt is an optional extension executed only when the member requests a physical copy or when the admin chooses to print proof of payment.
-   * **`UC-07b: Manually Verify Workout Log` extends `UC-07a: Assign Exercise Task to Member`:** Manual log verification is an optional branch utilized only when camera visibility issues or AI classification discrepancies necessitate direct coach confirmation of completed exercises.
-
-3. **System Exclusions — Features Explicitly Out of Scope:**
-   To maintain alignment with the approved study boundaries documented in `manus.md` (Scope and Limitations), the following features are explicitly **excluded** from the administrator module:
-   * **Excluded: Full Payment Gateway Integration:** The system does not integrate automated payment gateways (e.g., direct Stripe or PayPal card processing APIs). It is strictly limited to manually recording payments received through Cash, GCash, or Maya.
-   * **Excluded: Native Mobile Application:** There is no standalone mobile application for iOS or Android; administrative access is provided exclusively via responsive web browsers.
-   * **Excluded: Automated Medical Diagnosis:** The system records anthropometric data (height, weight, body type) purely as reference metrics for coach-guided program assignment; automated nutritional or medical diagnoses are excluded.
-   * **Excluded: Multi-Factor Authentication (MFA):** Access security is restricted to single-factor email and bcrypt-hashed password authentication; SMS or hardware token MFA is excluded due to project constraints.
+1. **Include relationships (`<<include>>`), mandatory sub-processes:**
+   * **Log In includes Validate Email and Password:** the password is checked against the stored bcrypt hash. There is no verification code.
+   * **Add Member includes Capture Face**, which includes **Record Face Consent:** a face is never saved without the member's consent; the server refuses it and records the date and time of consent.
+   * **Create Subscription, Upgrade Subscription and Renew Subscription include Create Payment Transaction:** each of them saves its payment record automatically.
+2. **Extend relationships (`<<extend>>`), optional behaviors:**
+   * **Reset Password by PIN extends Log In:** only when the administrator chooses "Forgot password?". A 6-digit PIN is emailed to the administrator email, valid for 10 minutes with 5 attempts.
+   * **Set Member Status extends Update Member:** the admin may set a member Active or Inactive by hand.
+   * **Delete Package extends Manage Packages and Prices:** it is refused while members are subscribed to the package.
+   * **Print Receipt extends Record Payment:** only when a receipt is wanted.
+   * **Check In Member Manually extends View Attendance Monitor:** used when the camera cannot recognize a member.
+   * **Export CSV or Print extends Generate Report.**
+3. **System exclusions, features out of scope (per the approved scope):**
+   * **No payment gateway:** payments are only recorded (Cash, GCash, Maya); no card processing.
+   * **No native mobile application:** the system is a responsive web application.
+   * **No medical diagnosis:** height, weight and body type are reference data for the coach.
+   * **No multi-factor authentication:** login is email and password only.
+   * **No automatic billing:** renewals are made at the desk.
 
 ---
 
@@ -190,178 +192,171 @@ The use case diagram illustrates the administrative capabilities of the Gym Owne
 
 | Use Case ID | Use Case Name | Description |
 |:---:|---|---|
-| **UC-01** | User Authentication & Authorization | Verifies admin credentials and establishes a secure session token. |
-| **UC-02** | View Dashboard & Real-Time Statistics | Displays active members, daily attendance, expiring plans, pending tasks, and live activity. |
-| **UC-03** | Member Registration & Biometric Enrollment | Creates member profiles, records anthropometrics, and enrolls facial reference images. |
-| **UC-04** | Membership Plans & Subscription Tracking | Creates plans, assigns subscriptions, monitors status, and manages renewals. |
-| **UC-05** | Payment Transaction Recording | Records Cash, GCash, Maya payments and generates printable receipts. |
-| **UC-06** | Attendance Monitoring (Security Monitor) | Views the Security Monitor page where facial recognition results and attendance logs appear in real time. |
-| **UC-07** | Program Exercise Assignment & Verification | Assigns selected program exercises to members and manually verifies completed workout logs. |
-| **UC-09** | Camera Stream & Hardware Control | Views live feeds and switches between RTSP CCTV and USB webcam sources. |
-| **UC-10** | System Reports & Analytics Generation | Filters and exports attendance, program monitoring, membership, and payment reports. |
-| **UC-11** | Admin Profile & Security Settings | Updates profile details, password, and profile picture. |
+| **UC-01** | Authentication | Signs in with email and password and opens a session; recovers a forgotten password by emailed PIN. |
+| **UC-02** | View Dashboard & Notifications | Shows today's check-ins, expiring subscriptions, payments, income, classes and events, and alerts. |
+| **UC-03** | Member Registration & Face Enrollment | Creates members with body measurements and body type, and enrolls the face with recorded consent. |
+| **UC-04** | Packages, Subscriptions, Renewals & Events | Manages packages and prices, subscribes, upgrades and renews members, and keeps the classes and events calendar. |
+| **UC-05** | Payment Transaction Recording | Records Cash, GCash and Maya payments, refunds and printable receipts. |
+| **UC-06** | Attendance Monitoring | Views the live feed and today's check-ins, makes manual check-ins, and re-syncs faces. |
+| **UC-07** | Training Plan & Task Verification | Builds a 7-day plan per member and verifies tasks the camera cannot check. |
+| **UC-09** | Camera Stream & Hardware Control | Views live feeds and switches the camera source. |
+| **UC-10** | Reports | Filters and exports Payments, Memberships, Attendance and Program Monitoring reports. |
+| **UC-11** | Admin Profile & Security | Updates name, email, system logo and password. |
 
 ### 3.4 Admin Formal Use Case Specifications
 
 ---
 
-#### **UC-01: User Authentication & Authorization**
+#### **UC-01: Authentication**
 * **Primary Actor:** Gym Owner / Coach (Admin)
-* **Preconditions:** Admin account exists in the database with a bcrypt-hashed password.
+* **Preconditions:** An administrator account exists.
 * **Main Flow:**
-  1. Admin opens the system URL and is shown the Login screen.
-  2. Admin enters registered email and password.
-  3. System sends credentials to `POST /api/auth/login`.
-  4. System generates a Laravel Sanctum bearer token and stores it in `localStorage`.
-  5. System records login device info (device type, timestamp) for the Notification Bell security alert.
-  6. System redirects Admin to the Dashboard (`/overview`).
+  1. The admin opens the system and sees the Login screen.
+  2. The admin enters email and password (optionally ticks Remember me) and presses Login.
+  3. The system checks them (`POST /api/auth/login`) and creates a Sanctum token, kept in the browser (local storage if Remember me, otherwise session storage).
+  4. The system saves a note of the sign-in (device type and time) for the notification bell.
+  5. The admin is taken to the Overview.
 * **Alternative Flows:**
-  * *4a. Invalid Credentials:* System shows `"Invalid email or password"` error toast; email input is retained.
-  * *4b. Forgot Password:* Admin clicks "Recovery?", provides registered email, receives reset token, and sets a new password.
-  * *6a. Logout:* Admin clicks Logout; system calls `POST /api/auth/logout`, revokes the Sanctum token, and invalidates the session.
-* **Postconditions:** Admin has authenticated access to all system modules.
+  * *3a. Wrong email or password:* "Invalid email or password" is shown; nothing is created. Login is limited to 10 attempts per minute.
+  * *3b. Forgot password:* the admin enters the email and presses "Forgot password?". The system emails a 6-digit PIN (10 minutes, 5 attempts). The admin enters the PIN and a new password of at least 8 characters.
+  * *5a. Log out:* `POST /api/auth/logout` deletes the token.
+* **Postconditions:** The admin has access to all modules.
 
 ---
 
-#### **UC-02: View Dashboard & Real-Time Statistics**
+#### **UC-02: View Dashboard & Notifications**
 * **Primary Actor:** Gym Owner / Coach
-* **Preconditions:** Admin is logged in with a valid session token.
+* **Preconditions:** The admin is logged in.
 * **Main Flow:**
-  1. Admin logs in and is automatically redirected to the Dashboard.
-  2. System fetches live statistics via `GET /api/dashboard` (active members, today's attendance count, expiring subscriptions, pending AI tasks).
-  3. Dashboard renders KPI summary cards, live attendance preview, and notification bell alerts.
-  4. Notification bell auto-refreshes every 5 minutes: expiring memberships, upcoming events, login device activity, members without subscriptions, pending AI workout verifications.
-* **Alternative Flows:**
-  * *2a. API Timeout:* System displays cached last-known data and shows a subtle "Refreshing…" indicator.
-* **Postconditions:** Admin has a full operational overview of all current gym activity.
+  1. The Overview loads `GET /api/dashboard`: today's check-ins and a chart per hour, subscriptions ending this week, recent payments, new members, monthly income, and classes and events this week, with a calendar of subscriptions and events.
+  2. The notification bell (`GET /api/notifications` and local data) lists subscriptions ending within 7 days, upcoming classes and events, and the last sign-in (marked as a new device when the device type changed).
+  3. Opening the dashboard also runs the daily inactivity rule once per day.
+* **Alternative Flows:** *1a. Numbers cannot be loaded:* an error with a Retry button is shown, with the last data kept.
+* **Postconditions:** The admin sees the current state of the gym.
 
 ---
 
-#### **UC-03: Member Registration & Biometric Enrollment**
+#### **UC-03: Member Registration & Face Enrollment**
 * **Primary Actor:** Gym Owner / Coach
 * **Participating Actor:** Gym Member
-* **Preconditions:** Admin is logged in; camera or file upload is available.
+* **Preconditions:** The admin is logged in; a camera is available for the face capture.
 * **Main Flow:**
-  1. Admin navigates to **Member Directory** and clicks **"Add Member"**.
-  2. Admin enters personal details (Name, Contact, Gender, Emergency Contact).
-  3. Admin inputs anthropometric data (Height in cm, Weight in kg; BMI is auto-calculated) and selects Body Type (Ectomorph, Mesomorph, Endomorph).
-  4. Admin captures or uploads a front-facing facial reference photo of the member.
-  5. Admin submits the form.
-  6. Backend stores the record in MySQL and saves the face image in `/public/faces/`.
-  7. Python AI Engine re-syncs enrolled face list via `GET /api/ai/members-faces` and recomputes 128-d face encodings.
+  1. The admin presses "Register a member".
+  2. **Photos:** the admin adds an optional profile photo (cropped) and captures the face in four views (front, chin down, slight left, slight right), then ticks the member's consent.
+  3. **Personal details:** name, email, phone, address.
+  4. **Body measurements (optional):** date of birth, height, weight (the BMI is worked out) and body type (Ectomorph, Mesomorph or Endomorph).
+  5. The admin saves (`POST /api/members`). The server stores the record, saves the face as a private image file and records the date of consent.
+  6. The engine notices the new member within a minute (it compares its list with `GET /api/ai/members-faces` every minute) and starts recognizing them; "Force AI Memory Sync" does it at once.
 * **Alternative Flows:**
-  * *5a. Incomplete Required Fields:* System displays `"Please fill all required fields before proceeding"` and blocks submission.
-* **Postconditions:** Member profile is active; facial biometric is enrolled for automated attendance.
+  * *5a. Face captured but consent not ticked:* saving is blocked with "Consent Required".
+  * *5b. Duplicate email or missing required field:* the server refuses and says which field.
+  * *5c. No face found in any view by the engine:* the member is saved but is not recognized until the face is captured again.
+* **Postconditions:** The member exists (Active) and can be recognized by the camera.
 
 ---
 
-#### **UC-04: Membership Plans & Subscription Tracking**
+#### **UC-04: Packages, Subscriptions, Renewals & Events**
 * **Primary Actor:** Gym Owner / Coach
-* **Preconditions:** Admin is logged in.
-* **Main Flow:**
-  1. Admin navigates to **Subscriptions** page.
-  2. Admin views existing plans. Admin clicks **"Add Plan"** to define a new tier (Name, Duration in days, Price).
-  3. System stores the plan via `POST /api/plans`.
-  4. Admin selects a member and assigns a plan via **"Add Subscription"**.
-  5. System calculates expiry date from plan duration and saves via `POST /api/memberships`.
-  6. Admin can activate/deactivate plans via the plan toggle (`POST /api/plans/bulk-update`).
+* **Preconditions:** The admin is logged in.
+* **Main Flow (subscribe):**
+  1. On **Packages > Subscriptions** the admin presses "Subscribe a member" and chooses the member, the package, the payment method and (optionally) a reference number.
+  2. The system works out the end date and the amount (a loyalty discount of ₱20 per earlier subscription applies above ₱300, never below ₱300) and shows a summary.
+  3. `POST /api/memberships` saves the subscription, sets the member Active, and creates the payment transaction automatically.
+* **Main Flow (renew):** the admin presses **Renew** on a subscription. A dialog shows the new dates and the amount. `POST /api/memberships/{id}/renew` extends a running subscription from its current end date, or starts a new subscription today if it has ended, and records the payment.
+* **Main Flow (upgrade):** the admin edits a running subscription to a higher-priced package; only the remaining balance is charged and the period restarts.
+* **Main Flow (price list):** on **Price list** the admin creates, edits or deletes packages (name, category Normal / With Coach / Walk-In, days, price, colour). `DELETE /api/plans/{id}` is refused while members are subscribed to the package.
+* **Main Flow (calendar):** on **Calendar** the admin clicks an empty day to add a class or event, or edits or deletes one.
 * **Alternative Flows:**
-  * *2a. Incomplete Plan Form:* System alerts `"Please fill all required fields"` and blocks submission.
-  * *4a. Member Already Has Active Plan:* System warns admin before creating an overlapping subscription.
-* **Postconditions:** Plan is saved; member subscription is active with correct start and expiry dates.
+  * *1a. Member already has a running subscription:* a new one is refused ("Upgrade the existing subscription instead").
+  * *Renew a deleted package:* the admin must choose a package.
+  * *Renew a running subscription with another package:* refused; use Edit to upgrade.
+* **Postconditions:** The subscription and its payment are saved.
 
 ---
 
 #### **UC-05: Payment Transaction Recording**
-> **Implementation Note:** Receipt generation is an implementation-level output of payment confirmation. The paper's Payment Transaction Module covers "generating payment records and storing payment history" (manus.md), of which a printable receipt is the user-facing output artifact.
 * **Primary Actor:** Gym Owner / Coach
 * **Participating Actor:** Gym Member
-* **Preconditions:** Admin is logged in; member exists in the database.
+* **Preconditions:** The admin is logged in.
 * **Main Flow:**
-  1. Admin navigates to **Transactions** and clicks **"Add Transaction"**.
-  2. Admin selects the member and linked membership plan.
-  3. Admin selects payment method (Cash, GCash, Maya) and enters the amount and reference number.
-  4. Admin submits the form.
-  5. System saves the transaction via `POST /api/transactions`, activates the linked membership, and updates the subscription record.
-  6. Admin can print a formal PDF receipt per transaction.
-* **Alternative Flows:**
-  * *4a. Incomplete Fields:* System displays `"Please enter all required information before saving"` and prevents submission.
-  * *4b. Double-Click Guard:* `isSavingRef` lock prevents duplicate submissions on rapid repeated clicks.
-* **Postconditions:** Payment record is saved; member subscription is immediately activated.
+  1. On **Transactions** the admin presses "Record a payment".
+  2. The admin chooses the package, the member (or none for a walk-in guest), the amount, the payment method (Cash, GCash, Maya) and a reference number.
+  3. `POST /api/transactions` saves it with a receipt code such as TXN-001.
+  4. The admin may print the receipt, edit or delete the transaction, or refund it (`POST /api/transactions/{id}/refund`: a negative entry is added and the original is marked Refunded).
+* **Alternative Flows:** *3a. Missing required field:* the form refuses to save. Rapid double clicks do not save twice.
+* **Postconditions:** The payment is in the ledger and in the reports.
 
 ---
 
-#### **UC-07: Program Exercise Assignment & Verification**
+#### **UC-06: Attendance Monitoring**
 * **Primary Actor:** Gym Owner / Coach
-* **Preconditions:** Admin is logged in; Gesture Monitor page is open; member is registered.
+* **Secondary Actor:** Camera / Gesture Engine
+* **Preconditions:** The Python engine is running (port 5000).
 * **Main Flow:**
-  1. Admin navigates to **Gesture Monitor** and selects a registered member.
-  2. Admin chooses a selected exercise from the approved scope and clicks **"Assign Task"**.
-  3. System saves the task via `POST /api/members/{id}/assign-task` with status `"ASSIGNED: [EXERCISE]"` and today's date.
-  4. AI Engine detects completion and notifies `POST /api/ai/log-workout`.
-  5. System strips `"ASSIGNED:"` prefix to mark the task as verified.
-  6. If AI detection is ambiguous, admin manually verifies via `PUT /api/workouts/{id}/manual-verify`.
+  1. The admin opens **Attendance Monitor**. The live feed shows each recognized member's name and an "Unknown" tag for others; an expired subscription shows an orange box and "RENEW".
+  2. Today's check-ins (`GET /api/attendance/today`) are listed with badges (Active, Expired, No Sub, Returned, Manual).
+  3. For a member the camera cannot recognize, the admin presses the manual check-in button, chooses the member and types a reason (`POST /api/attendance/manual`). The same rules apply as for the camera.
+  4. "Force AI Memory Sync" reloads the enrolled faces; "Full Log" opens the Attendance report.
+* **Alternative Flows:** *3a. Outside gym hours:* refused. *3b. Already checked in today:* refused.
+* **Postconditions:** The check-in is saved with its method, camera and subscription status.
+
+---
+
+#### **UC-07: Training Plan & Task Verification**
+* **Primary Actor:** Gym Owner / Coach
+* **Preconditions:** The admin is logged in; the member exists.
+* **Main Flow:**
+  1. The admin opens the **Training plan** from Packages (With Coach rows), Member Registration or the member profile tab.
+  2. The admin adds exercises to each day (the list can show only exercises the camera can check) and sets sets and reps per set; a day can be copied to other days.
+  3. The admin presses "Save plan" (`POST /api/members/{id}/workout-plan`): tasks are saved for the next 7 days.
+  4. The camera verifies tasks for members with an active With Coach subscription (UC-08).
+  5. A task the camera cannot check is confirmed by the admin: profile > Workout Logs > open the day > **VERIFY** (`PUT /api/workouts/{id}/manual-verify`). The log records "by coach".
 * **Alternative Flows:**
-  * *3a. Same Task Already Assigned Today:* System silently skips the duplicate to prevent double logging.
-  * *4a. Exercise Not Detected:* Task stays in `"ASSIGNED:"` status and appears in the Notification Bell as a Pending AI Task.
-* **Postconditions:** Exercise is logged as completed in `workout_logs` with a verified timestamp.
+  * *1a. Member not on an active With Coach package:* a note says the camera will not track them; tasks need manual verification.
+  * *5a. Member has not checked in today:* VERIFY is locked.
+  * *Closing with unsaved changes:* the admin is asked first.
+* **Postconditions:** Tasks are scheduled or verified, with who verified them and when.
 
 ---
 
 #### **UC-09: Camera Stream & Hardware Control**
-> **Scope Note:** Camera input supports both USB webcam and RTSP-based network cameras. Both are categorized under the "camera or webcam" IoT input defined in the approved system scope.
 * **Primary Actor:** Gym Owner / Coach
-* **Secondary Actor:** Security Camera / AI Vision Engine
-* **Preconditions:** Python AI microservice is running on port 5000; camera hardware is connected.
+* **Secondary Actor:** Camera / Gesture Engine
+* **Preconditions:** The engine is running on port 5000.
 * **Main Flow:**
-  1. Admin opens **Security Monitor** or **Gesture Monitor** page.
-  2. Page connects to the MJPEG stream at `http://127.0.0.1:5000/video_feed`.
-  3. Live camera feed renders on the page.
-  4. Admin clicks **"Switch to Webcam"** or **"Switch to CCTV"**.
-  5. System sends `POST /switch_camera` with selected source to the AI Engine.
-  6. AI Engine stops the current thread and reinitializes with the new source.
-* **Alternative Flows:**
-  * *3a. RTSP Unavailable:* AI Engine shows a branded standby placeholder frame instead of crashing.
-  * *6a. Webcam Not Found:* Status badge shows `"Webcam device not detected"` and retains the prior source.
-* **Postconditions:** Active camera source is streaming live frames.
+  1. The admin opens **Attendance Monitor** or **Gesture Monitor**; the page shows the engine's live feed.
+  2. The admin chooses a source (CCTV 1, 2, 3, phone camera or webcam). The page sends `POST /switch_camera` (with the admin's login token).
+  3. The engine reconnects to the new source.
+* **Alternative Flows:** *2a. Source not configured or unreachable:* the engine reports a connection problem and a placeholder frame is shown; it does not silently switch to another camera.
+* **Postconditions:** The chosen camera is streaming.
 
 ---
 
-#### **UC-10: System Reports & Analytics Generation**
+#### **UC-10: Reports**
 * **Primary Actor:** Gym Owner / Coach
-* **Preconditions:** Historical records exist in the database.
+* **Preconditions:** Records exist.
 * **Main Flow:**
-  1. Admin navigates to **Reports** page.
-  2. Admin selects a Report Category: Attendance Logs, Program Monitoring, Membership Status, or Payment Transactions.
-  3. Admin sets filters (Start Date, End Date, Search Keywords).
-  4. System fetches filtered data via `GET /api/reports?start=&end=` and paginates to 7 rows per page.
-  5. Admin exports via **"Export CSV"** or **"Print PDF"** (formal letterhead with KPI summary, data table, and sign-off lines).
-* **Alternative Flows:**
-  * *4a. No Records Found:* Table body displays `"No matching records found in the database."` — no error is thrown.
-  * *5a. CSV Export Error:* Error is caught silently; `isExporting` state resets so the button recovers.
-* **Postconditions:** Report is generated and available for download or print.
+  1. The admin opens **Reports** and chooses **Payments**, **Memberships**, **Attendance** or **Program Monitoring**.
+  2. The admin sets the dates (or picks Today, Last 7 days, This month) and may search the table (`GET /api/reports?start=&end=`).
+  3. The admin presses **Export CSV** or **Print report**.
+  * *Program Monitoring* lists each task with its target, the repetitions counted, its status (Pending, Missed, Verified, Detected) and who verified it.
+* **Alternative Flows:** *2a. No records:* "No records in this period". *2b. Load failure:* an error with Retry.
+* **Postconditions:** The report is shown, exported or printed.
 
 ---
 
-#### **UC-11: Admin Profile & Security Settings**
+#### **UC-11: Admin Profile & Security**
 * **Primary Actor:** Gym Owner / Coach
-* **Preconditions:** Admin is logged in with a valid session token.
+* **Preconditions:** The admin is logged in.
 * **Main Flow:**
-  1. Admin navigates to **Admin Profile** page.
-  2. System loads current profile data via `GET /api/admin/me`.
-  3. Admin updates personal details (Name, Contact, Address) and saves via `PUT /api/admin/profile`.
-  4. Admin clicks **"Change Password"**, enters current and new passwords.
-  5. System validates match and strength, then updates the bcrypt-hashed password in the database.
-  6. Admin uploads a new profile avatar via the photo upload control.
-* **Alternative Flows:**
-  * *5a. Passwords Do Not Match:* System shows `"New passwords do not match"` and clears password fields.
-  * *5b. Wrong Current Password:* System shows `"Current password is incorrect"` and blocks the update.
-  * *3a. Empty Required Fields:* System shows `"Please fill in all required fields"` and blocks submission.
-* **Postconditions:** Admin profile and security credentials are updated.
+  1. The admin opens the account page (`GET /api/admin/me`).
+  2. The admin changes the name and email (`POST /api/admin/profile`), the system logo (`POST /api/admin/logo`, an image up to 5 MB) and the password (`POST /api/admin/password`).
+* **Alternative Flows:** *2a. Wrong current password or mismatching new passwords:* the change is refused with a message.
+* **Postconditions:** The account details are updated.
 
 ---
 
-## 4. Actor 2 — Security Camera / AI Vision Engine
+## 4. Actor 2 — Camera / Gesture Engine
 
 ### 4.1 Use Case Diagram
 
@@ -378,17 +373,23 @@ flowchart LR
         Detect(["Detect Faces"])
         Match(["Match Face with<br/>Enrolled Members"])
         Att(["Send Attendance<br/>to Laravel API"])
+        Retry(["Save and Retry Attendance<br/>when Laravel is Unreachable"])
 
         Pose(["Detect Body Pose"])
         Link(["Link Pose to<br/>Recognized Member"])
         Classify(["Classify Exercise"])
+        Count(["Count Repetitions<br/>(squat, push-up, curl, sit-up)"])
+        Progress(["Send Repetition Progress<br/>to Laravel API"])
         Verify(["Send Workout Verification<br/>to Laravel API"])
 
         Detect -.->|"«include»"| Match
         Att -.->|"«extend» face matched"| Match
+        Retry -.->|"«extend» sending failed"| Att
         Pose -.->|"«include»"| Link
         Link -.->|"«include»"| Classify
-        Verify -.->|"«extend» assigned exercise confirmed"| Classify
+        Count -.->|"«extend» counted exercise confirmed"| Classify
+        Progress -.->|"«extend» every few seconds"| Count
+        Verify -.->|"«extend» assigned exercise confirmed, or target reached"| Classify
     end
 
     Camera --> Stream
@@ -399,79 +400,71 @@ flowchart LR
     Camera --> Pose
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
-
 ### 4.2 Use Case Relationships and Scope Boundaries
 
 #### A. Narrative Explanation of Relationships
-The use case diagram for the Security Camera / AI Vision Engine depicts the automated computer vision pipeline operating in the background, governed by chained mandatory relationships and explicit scope limitations:
 
-1. **Include Relationships (`<<include>>`) — Automated Processing Pipeline:**
-   Every major vision pipeline consists of strict, mandatory sequential steps where each subsequent action is automatically included:
-   * **Facial Recognition Attendance Pipeline:** `UC-06a: Detect Facial Bounding Box` includes `UC-06b: Extract 128-d Face Embeddings`, which includes `UC-06c: Match Encoding Against Enrolled Database`, which in turn includes `UC-06d: Send Attendance Record to Laravel API`. None of these steps can be bypassed; facial detection without feature extraction or matching cannot log an attendance event.
-   * **Gesture Monitoring Pipeline:** `UC-08a: Detect 33-Point Skeletal Landmarks` includes `UC-08b: Calculate Joint Angles`, which includes `UC-08c: Classify Exercise Type`, which includes `UC-08d: Count Completed Repetitions`, and culminates in `UC-08e: Send Workout Record to Laravel API`. Landmark estimation directly drives angle evaluation, repetition counting, and workout logging.
-
-2. **Extend Relationships (`<<extend>>`):**
-   * There are no optional `<<extend>>` branches initiated autonomously by the AI Engine. The vision algorithms follow deterministic mathematical thresholds (e.g., Euclidean distance < 0.6 for face match; joint angle inflection triggers for repetition counting).
-
-3. **System Exclusions — Vision Features Explicitly Out of Scope:**
-   * **Excluded: Full Posture Correction and Biomechanical Form Evaluation:** As explicitly bounded in `manus.md` (Scope and Limitations), the computer vision engine is restricted to detecting movement patterns and counting completed repetitions for selected exercises in the approved scope. It does not provide professional posture correction, clinical safety evaluations, or injury risk assessments.
-   * **Excluded: Wearable or Equipment Sensor Tracking:** The system relies strictly on optical camera input; wearable sensors, smartwatches, and equipment-attached accelerometers are excluded.
-   * **Excluded: Continuous All-Day Video Recording / NVR Storage:** The AI microservice streams live frames for real-time monitoring and processing; continuous 24/7 video archiving is excluded.
+1. **Include relationships:** Detect Faces includes Match Face with Enrolled Members. Detect Body Pose includes Link Pose to Recognized Member, which includes Classify Exercise.
+2. **Extend relationships (optional behaviors):**
+   * Send Attendance extends Match: only when a face is matched (and confirmed by several agreeing checks).
+   * Save and Retry Attendance extends Send Attendance: only when Laravel is unreachable; the check-in is kept in a file and re-sent every 30 seconds with its real time.
+   * Count Repetitions extends Classify Exercise: only for squat, push-up, curl and sit-up once the assigned exercise is confirmed.
+   * Send Repetition Progress extends Count Repetitions: every few seconds while a member works.
+   * Send Workout Verification extends Classify Exercise: when the assigned exercise is confirmed (or, for counted exercises, when the target sets × reps is reached).
+3. **System exclusions:**
+   * **No posture or form correction:** the engine counts movements for selected exercises; it does not judge form or give safety advice.
+   * **No wearable or equipment sensors:** optical camera input only.
+   * **No continuous video recording:** frames are processed live and not archived.
 
 ---
 
-### 4.3 AI Vision Engine Use Case Summary
+### 4.3 Engine Use Case Summary
 
 | Use Case ID | Use Case Name | Description |
 |:---:|---|---|
-| **UC-06** | Facial Recognition Attendance Tracking | Captures frames, extracts embeddings, matches enrolled faces, and sends attendance logs to the backend. |
-| **UC-08** | Gesture-Based Movement & Repetition Monitoring | Detects pose landmarks, calculates joint angles, classifies exercises, counts reps, and logs workout results. |
-| **UC-09** | Camera Stream & Live Feed Provision | Provides the MJPEG stream to the web UI and switches camera sources on admin request. |
+| **UC-06** | Facial Recognition Attendance | Detects faces, matches them with enrolled members and sends the check-in to the backend. |
+| **UC-08** | Gesture Monitoring & Repetition Counting | Detects pose, classifies the exercise, counts repetitions for selected exercises, and sends progress and verification. |
+| **UC-09** | Camera Stream & Source Switching | Provides the live feeds and switches the camera source on request. |
 
-### 4.4 AI Vision Engine Formal Use Case Specifications
+### 4.4 Engine Formal Use Case Specifications
 
 ---
 
-#### **UC-06: Facial Recognition Attendance Tracking**
-* **Primary Actor:** Security Camera / AI Vision Engine
+#### **UC-06: Facial Recognition Attendance**
+* **Primary Actor:** Camera / Gesture Engine
 * **Participating Actor:** Gym Member
-* **Preconditions:** Camera stream is online; facial data is enrolled; AI microservice is running on port 5000.
+* **Preconditions:** A camera is connected; faces are enrolled; the engine is running.
 * **Main Flow:**
-  1. Gym Member approaches the entrance camera terminal.
-  2. AI Engine captures live frames from the RTSP/Webcam stream using OpenCV.
-  3. `face_recognition` library detects facial bounding boxes and extracts 128-dimensional embeddings.
-  4. Engine computes Euclidean distance against enrolled encodings: Distance ≤ 0.52 = Match Verified.
-  5. A confidence margin check of ≥ 0.035 gap between the top-2 candidates is required before confirming identity.
-  6. Matched `member_id` and timestamp are sent to `POST /api/ai/log-attendance`.
-  7. Backend logs the record in the `attendances` table; Security Monitor UI displays a recognition card.
+  1. The engine reads frames from the chosen camera (OpenCV).
+  2. It detects faces and, for faces at least 40 pixels wide, encodes each face in a helper process (so the video does not freeze).
+  3. It compares each encoding with the enrolled faces. A match needs a distance of at most 0.50 (0.45 for a small, far face) and a margin of at least 0.05 over the next closest member.
+  4. A name is shown, and attendance sent, only when 3 of the last 6 checks agree (5 for a far face).
+  5. The engine sends the member and the camera to `POST /api/ai/log-attendance` with its token.
+  6. The backend saves the check-in if it is within gym hours and the member has not checked in today; the monitor shows it.
 * **Alternative Flows:**
-  * *4a. Unknown Face / Distance > 0.50:* Face is tagged `"Unknown"` — no attendance log is created.
-  * *5a. Ambiguous Match (Gap < 0.035):* Engine skips logging and waits for the next frame cycle.
-  * *6a. Cooldown Active:* Duplicate attendance within 15 minutes is suppressed automatically.
-* **Postconditions:** Member's gym entry is logged with a precise date and time.
+  * *3a. No match or an ambiguous match:* the face is shown as "Unknown" (or "Move closer" if too small); nothing is saved.
+  * *6a. Laravel unreachable:* the check-in is saved to a file and re-sent every 30 seconds.
+  * *6b. Optional blink check* (`LIVENESS_REQUIRED=true`): the member is checked in only after blinking, which stops a printed photo.
+* **Postconditions:** The member's entry is recorded with the date and time.
 
 ---
 
-#### **UC-08: Gesture-Based Movement & Repetition Monitoring**
-* **Primary Actor:** Security Camera / AI Vision Engine
+#### **UC-08: Gesture Monitoring & Repetition Counting**
+* **Primary Actor:** Camera / Gesture Engine
 * **Participating Actor:** Gym Member
 * **Supporting Actor:** Gym Owner / Coach
-* **Preconditions:** Member is in camera view; MediaPipe Pose is initialized; workout model is loaded.
+* **Preconditions:** The member is recognized and has an active With Coach subscription and a plan for today; the pose model and classifier are loaded.
 * **Main Flow:**
-  1. Gym Member performs an exercise in front of the gesture camera station.
-  2. MediaPipe Pose detects 33 3D skeletal landmark coordinates (shoulders, elbows, wrists, hips, knees, ankles).
-  3. Engine extracts translation-invariant coordinates relative to the nose joint.
-  4. Feature vectors are fed to the Sklearn classifier (`workout_model.pkl`) for exercise classification.
-  5. State machine tracks joint angle inflection (DOWN → UP cycle) to increment the repetition counter.
-  6. On task completion, engine sends `POST /api/ai/log-workout` to the Laravel backend.
-  7. Backend matches the log to the pending assigned task and marks it as verified.
+  1. The member exercises in view of the camera; the engine detects body landmarks (MediaPipe pose) and links them to the recognized face.
+  2. The classifier (`workout_model.pkl`) predicts the exercise from the landmarks. The assigned exercise is confirmed when at least 5 of the last 7 predictions agree with at least 70% confidence.
+  3. For **squat, push-up, curl and sit-up** the engine measures the knee, elbow or hip angle and counts each full bend-and-straighten as one repetition. The overlay shows `SQUAT REPS: 7 / 30 (SET 1 OF 3)`.
+  4. Every few seconds the engine sends the count (`POST /api/ai/log-workout` with `completed=false`); the count is kept per member, so leaving the picture does not reset it.
+  5. When sets × reps is reached, the engine sends the final count and the backend marks the task verified by the camera. Other exercises are verified as soon as they are recognized.
 * **Alternative Flows:**
-  * *4a. Low Confidence Prediction:* `workout_buffer deque(maxlen=7)` smooths noisy predictions before confirming exercise type.
-  * *5a. Incomplete Rep (Angle Threshold Not Met):* Counter does not increment; member must complete the full motion arc.
-  * *6a. Workout Cooldown Active:* If the same exercise was logged within 2 minutes, duplicate is suppressed.
-* **Postconditions:** Exercise repetitions are stored in `workout_logs`; the assigned task is marked verified.
+  * *1a. Member not on a With Coach package:* only a grey tag "<name> - no coach plan" is shown.
+  * *2a. Body not fully visible, not moving, or low confidence:* the screen says so and no task is verified.
+  * *5a. Two tasks with the same camera class:* the engine does not guess; it shows "COACH VERIFY".
+* **Postconditions:** The repetitions and the verification (by camera, with the time) are stored in `workout_logs`.
 
 ---
 
@@ -485,20 +478,26 @@ flowchart LR
 
     subgraph Boundary ["Gym Management System"]
         Info(["Provide Personal Details<br/>to the Admin"])
-        FacePose(["Pose for Face Capture<br/>(front, left, right)"])
-        Pay(["Pay for a Package<br/>through the Admin"])
+        Consent(["Consent to Face Enrollment"])
+        FacePose(["Pose for Face Capture<br/>(front, chin down, left, right)"])
+        Pay(["Pay for or Renew a Package<br/>through the Admin"])
 
         Scan(["Face the Camera<br/>for Attendance"])
         Recog(["Be Recognized by Face"])
         Logged(["Attendance Logged"])
+        Reactivated(["Profile Set Back to Active"])
 
         Exercise(["Perform Assigned Exercise<br/>in Camera View"])
         ExRecog(["Exercise Recognized"])
+        Counted(["Repetitions Counted"])
         Verified(["Task Marked as Verified"])
 
+        FacePose -.->|"«include»"| Consent
         Scan -.->|"«include»"| Recog
         Logged -.->|"«extend» face matched"| Recog
+        Reactivated -.->|"«extend» member was Inactive"| Logged
         Exercise -.->|"«include»"| ExRecog
+        Counted -.->|"«extend» squat, push-up, curl or sit-up"| ExRecog
         Verified -.->|"«extend» assigned exercise confirmed"| ExRecog
     end
 
@@ -509,26 +508,13 @@ flowchart LR
     Member --> Exercise
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
-
 ### 5.2 Use Case Relationships and Scope Boundaries
 
 #### A. Narrative Explanation of Relationships
-The use case diagram for the Gym Member depicts physical, participant-level interactions with the system, highlighting automated inclusion pipelines and fundamental system exclusions:
 
-1. **Include Relationships (`<<include>>`) — Automated Participation Chains:**
-   Because gym members do not manually operate software buttons, their physical presence initiates automatic downstream operations modeled as include relationships:
-   * **Attendance Check-In:** `UC-06m: Face the Entrance Camera for Attendance Scan` includes `UC-06r: Be Identified by Facial Recognition Engine`, which automatically includes `UC-06l: Attendance Entry is Auto-Logged`. Stepping in front of the camera leads directly to automatic biometric identification and timestamp logging.
-   * **Workout Monitoring:** `UC-08m: Perform Assigned Exercise in Camera View` includes `UC-08p: Pose Landmarks Detected by AI Engine`, which automatically includes `UC-08r: Repetition Count Auto-Recorded`. Performing an exercise in camera view triggers automated skeletal tracking and repetition logging.
-
-2. **Extend Relationships (`<<extend>>`):**
-   * There are no `<<extend>>` relationships for the Gym Member. Their participation is direct and uniform across registration, attendance check-in, payment handover, and exercise performance.
-
-3. **System Exclusions — Features Explicitly Out of Scope for Members:**
-   * **Excluded: Direct Web Portal / Account Login:** Members do not have login accounts, passwords, or direct web interface access. All member interactions are conducted either touchlessly via camera sensors or through admin assistance.
-   * **Excluded: Self-Service Mobile Application:** Members do not download a mobile app to check in, track reps, or pay; the system is deployed purely as a web-based administrative console and IoT camera terminal.
-   * **Excluded: In-App Digital Payment Gateways:** Members cannot enter credit/debit card numbers directly into an online checkout; payments are presented directly to the gym owner or admin via Cash, GCash QR, or Maya reference confirmation.
+1. **Include relationships:** Pose for Face Capture includes Consent to Face Enrollment (a face is not saved without consent). Face the Camera includes Be Recognized by Face. Perform Assigned Exercise includes Exercise Recognized.
+2. **Extend relationships:** Attendance Logged extends Be Recognized (only when a face is matched); Profile Set Back to Active extends Attendance Logged (only when the member was Inactive); Repetitions Counted extends Exercise Recognized (only for squat, push-up, curl and sit-up); Task Marked as Verified extends Exercise Recognized (when the assigned exercise is confirmed).
+3. **System exclusions for members:** no web login, no mobile application and no online payment. Members are served by the camera and the admin.
 
 ---
 
@@ -536,78 +522,53 @@ The use case diagram for the Gym Member depicts physical, participant-level inte
 
 | Use Case ID | Use Case Name | Member Role |
 |:---:|---|---|
-| **UC-03** | Member Registration & Biometric Enrollment | Provides personal info, anthropometrics, and poses for facial photo capture during admin-assisted registration. |
-| **UC-05** | Payment Transaction Recording | Presents payment (Cash, GCash, Maya) to the admin for recording and confirmation. |
-| **UC-06** | Facial Recognition Attendance Tracking | Faces the entrance camera; the AI Engine identifies them and auto-logs their attendance. |
-| **UC-08** | Gesture-Based Movement & Repetition Monitoring | Performs assigned exercises in front of the gesture camera; reps are automatically tracked and recorded. |
+| **UC-03** | Member Registration & Face Enrollment | Gives personal details, agrees to face enrollment and poses for the face capture. |
+| **UC-05** | Payment (also renewal) | Pays Cash, GCash or Maya to the admin, who records it. |
+| **UC-06** | Facial Recognition Attendance | Faces the camera; attendance is logged. |
+| **UC-08** | Gesture-Monitored Exercise | Exercises in view of the camera; repetitions are counted for selected exercises. |
 
 ### 5.4 Gym Member Formal Use Case Specifications
 
-> **Note:** Gym Members do not have a web system login account. All member interactions are physical — occurring via camera terminals and admin-assisted processes. The system records their actions automatically.
+> Members have no login. Their interactions are in person, at the camera or with the admin.
 
 ---
 
-#### **UC-03 (Member Role): Participate in Registration & Facial Enrollment**
-* **Primary Actor:** Gym Member (Physical Participation)
-* **Supporting Actor:** Gym Owner / Coach
-* **Preconditions:** Member is physically present at the gym; Admin is conducting the registration session.
+#### **UC-03 (Member Role): Registration & Face Enrollment**
 * **Main Flow:**
-  1. Member provides personal information verbally or via a registration form (name, contact, gender, emergency contact).
-  2. Member stands on the weighing scale; admin records height and weight; system calculates BMI.
-  3. Admin selects the member's body type based on physical assessment (Ectomorph, Mesomorph, Endomorph).
-  4. Member faces the camera or provides a clear front-facing photo for facial biometric enrollment.
-  5. Admin submits the enrollment form; system saves the data and face image.
-* **Alternative Flows:**
-  * *4a. Blurry or Obstructed Photo:* Admin retakes the photo before submitting.
-* **Postconditions:** Member's profile and facial biometric are registered and ready for attendance tracking.
+  1. The member gives name, contact details and address, and (optionally) date of birth, height, weight and body type is assessed by the admin.
+  2. The member agrees to face enrollment; the admin ticks the consent box.
+  3. The member poses for four face views: front, chin down, slight left and slight right.
+  4. The admin saves the member.
+* **Alternative Flows:** *3a. A view is blurry or blocked:* the admin retakes it. *2a. The member does not consent:* no face is saved; attendance must then be recorded manually.
+* **Postconditions:** The member is registered, and recognized once the face is enrolled.
 
 ---
 
-#### **UC-05 (Member Role): Submit Payment for Membership**
-* **Primary Actor:** Gym Member (Physical Participation)
-* **Supporting Actor:** Gym Owner / Coach
-* **Preconditions:** Member has an existing profile in the system.
+#### **UC-05 (Member Role): Payment or Renewal**
 * **Main Flow:**
-  1. Member approaches the admin to renew or activate a membership plan.
-  2. Member presents payment — Cash (handed over), GCash (shows QR confirmation), or Maya (shows transaction reference).
-  3. Admin records the payment details in the Transactions page and confirms the transaction.
-  4. System activates the linked subscription and generates a PDF receipt.
-  5. Admin optionally prints or shares the receipt with the member.
-* **Alternative Flows:**
-  * *2a. Incorrect Amount:* Admin enters the actual amount received; transaction is flagged for manual review.
-* **Postconditions:** Membership payment is recorded; subscription is active; member is cleared to use gym services.
+  1. The member tells the admin which package to buy or renew.
+  2. The member pays in Cash, or shows the GCash or Maya reference.
+  3. The admin records the subscription or renewal and the payment; the receipt can be printed.
+* **Alternative Flows:** *2a. Subscription still running:* a renewal extends it from its end date.
+* **Postconditions:** The payment is recorded and the subscription is valid.
 
 ---
 
-#### **UC-06 (Member Role): Use Facial Recognition Attendance**
-* **Primary Actor:** Gym Member (Physical Participation)
-* **System Actor:** Security Camera / AI Vision Engine
-* **Preconditions:** Member's facial biometric is enrolled; camera is active at the entrance.
+#### **UC-06 (Member Role): Facial Recognition Attendance**
 * **Main Flow:**
-  1. Member walks into the gym entrance and faces the CCTV/Webcam terminal.
-  2. AI Vision Engine captures their face and extracts facial embeddings.
-  3. Engine compares embeddings against the enrolled database and confirms identity.
-  4. System automatically logs the member's attendance with the current date and time.
-  5. Security Monitor page updates in real time showing the member's name, photo, and entry timestamp.
-* **Alternative Flows:**
-  * *3a. Face Not Recognized:* System labels the face as "Unknown" and does not log attendance. Member may inform admin for manual check-in or re-enrollment.
-  * *3b. Member Recently Logged:* If already logged within the last 15 minutes, duplicate entry is suppressed.
-* **Postconditions:** Member's gym entry is officially recorded with a precise timestamp.
+  1. The member walks in and faces the camera.
+  2. The engine recognizes the face after several agreeing checks.
+  3. The attendance is saved with the date and time and appears on the Attendance Monitor.
+* **Alternative Flows:** *2a. Not recognized:* "Unknown" is shown; the admin can make a manual check-in. *3a. Subscription expired:* the member is still checked in, and "RENEW" is shown to the admin. *3b. Already checked in today:* nothing new is saved.
+* **Postconditions:** The entry is recorded; an Inactive member becomes Active.
 
 ---
 
-#### **UC-08 (Member Role): Perform Gesture-Monitored Exercise**
-* **Primary Actor:** Gym Member (Physical Participation)
-* **System Actor:** Security Camera / AI Vision Engine
-* **Supporting Actor:** Gym Owner / Coach
-* **Preconditions:** Admin has assigned an exercise task to the member; gesture camera is active.
+#### **UC-08 (Member Role): Gesture-Monitored Exercise**
+* **Preconditions:** The member has an active With Coach subscription and a plan for today.
 * **Main Flow:**
-  1. Admin informs the member of the assigned exercise for the session.
-  2. Member positions themselves in front of the gesture camera with full body visibility.
-  3. Member performs the assigned exercise (e.g., Squats, Bicep Curls, Push-ups) at a natural pace.
-  4. AI Engine tracks pose landmarks and counts each completed repetition automatically.
-  5. Upon completing the required reps, the system records the workout and notifies the admin.
-* **Alternative Flows:**
-  * *4a. Body Not Fully Visible:* AI cannot accurately detect landmarks; member repositions for better camera coverage.
-  * *4b. Wrong Exercise Detected:* If the AI misclassifies the movement, admin uses manual verification to approve the correct log.
-* **Postconditions:** Workout session is recorded with exercise type and repetition count in the system.
+  1. The admin tells the member the exercise to do.
+  2. The member stands where the whole body is visible and exercises at a natural pace.
+  3. For squat, push-up, curl or sit-up the repetitions are counted on the monitor; when the target sets × reps is reached the task is marked verified.
+* **Alternative Flows:** *2a. Body not fully visible or too dark:* the monitor says so; the member repositions. *3a. The camera cannot check the exercise:* the coach verifies it by hand.
+* **Postconditions:** The workout is recorded with the repetitions counted.

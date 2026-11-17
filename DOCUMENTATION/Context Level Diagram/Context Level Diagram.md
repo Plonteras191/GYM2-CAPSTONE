@@ -2,18 +2,15 @@
 
 This section presents the **Context Level Diagram** (Data Flow Diagram Level 0) for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
 
+> **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
+
 ---
 
 ## 1. Introduction (INTRODUCE)
 
-A **Context Level Diagram** is the highest-level map of a software system. It places the entire application into a single central circle or box (labeled **Process 0**) and shows all outside actors or devices that communicate with it.
+A **Context Level Diagram** is the highest-level map of a system. It shows the whole application as one process (**Process 0**) and every outside actor or device that exchanges data with it.
 
-The purpose of this diagram is to define the boundaries of the system:
-* **Who interacts with the system?** (The External Entities / Actors)
-* **What information goes into the system?** (Inputs / Incoming Data Flows)
-* **What information comes out of the system?** (Outputs / Outgoing Data Flows)
-
-To keep the diagram visually clear and easy to read during presentations, related data items are grouped into concise, logical flows. This avoids overlapping lines while ensuring that every function—from registration and facial recognition to workout tracking and payments—is fully represented.
+It answers three questions: **who interacts with the system** (external entities), **what goes in** (incoming flows) and **what comes out** (outgoing flows). Related data are grouped into a few flows, so the diagram stays readable while every function (registration, attendance, program monitoring, subscriptions, payments, reports) is represented.
 
 ---
 
@@ -27,93 +24,66 @@ flowchart LR
     Mail["Email Server"]
     System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
 
-    Admin -->|"F1: Email, password and login PIN"| System
-    Admin -->|"F2: Member details, face capture, packages, subscriptions, coach events, payments and refunds"| System
-    Admin -->|"F3: Workout plans and manual verification"| System
-    Admin -->|"F4: Report dates, camera selection and profile updates"| System
+    Admin -->|"F1: Email and password"| System
+    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System
+    Admin -->|"F3: Training plans and manual verification"| System
+    Admin -->|"F4: Report dates, camera selection, manual check-ins and profile updates"| System
 
     System -->|"F5: Login result, dashboard summary and notifications"| Admin
     System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
-    System -->|"F7: Live camera feeds, today's attendance and workout task status"| Admin
+    System -->|"F7: Live camera feeds, today's attendance, workout task status and counted repetitions"| Admin
     System -->|"F8: Reports (CSV or print)"| Admin
 
     Camera -->|"F9: Live video of faces and exercise movement"| System
     Member -->|"F10: Personal details, face photo and payment (through the admin)"| System
     System -->|"F11: Payment receipt (printed by the admin)"| Member
-    System -->|"F12: Login PIN and password-reset PIN"| Mail
+    System -->|"F12: Password-reset PIN"| Mail
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
-
-**Figure 4.2.** Simplified Context Level Diagram (DFD Level 0) for Double Alpha Fitness Gym.
+**Figure 4.4.** Context Level Diagram for Double Alpha Fitness Gym.
 
 ---
 
 ## 3. Plain-English Explanation of Data Flows (EXPLAIN)
 
-Below is an easy-to-understand breakdown of what each entity sends into the system and receives back:
+### A. The Gym Owner / Admin (primary user)
+The gym owner and the coach share one administrator login and use the web application on a computer.
 
-### A. The Gym Owner / Admin (Primary User)
-The Gym Owner or Coach operates the web application on a desktop, laptop, or tablet.
+**Sends in:**
+1. **F1: Email and password.** Signing in needs only these two. (If the password is forgotten, the admin asks for a PIN, which is emailed, and sets a new password.)
+2. **F2: Member details, packages, payments.** Contact details, address, date of birth, height, weight and **body type**; the member's **consent** and the four **face captures**; packages and prices; subscriptions, **renewals** and upgrades; **classes and events** for the calendar; payments (Cash, GCash, Maya) and refunds.
+3. **F3: Training plans and manual verification.** A 7-day plan per member (exercise, date, sets, reps), and confirmation by hand of tasks the camera cannot check.
+4. **F4: Report dates, camera selection, manual check-ins and profile updates.** The date range of a report, the camera to watch, a manual check-in (member and reason), and the admin's own name, email, logo and password.
 
-* **What the Owner / Admin sends IN:**
-  1. **Admin login credentials:** Username and secure password to sign into the system.
-  2. **Member profile, anthropometrics & facial photo command:** Inputs member contact information, measured height, weight, body type (Ectomorph, Mesomorph, Endomorph), and snaps their enrollment face photo.
-  3. **Membership plan, workout assignment & payment details:** Configures membership pricing, assigns exercises from the approved scope, and records fees paid (Cash, GCash, or Maya).
-  4. **Report generation requests & filter parameters:** Selects date ranges and categories to view or export business summaries.
+**Receives back:**
+5. **F5: Login result, dashboard summary and notifications.** Today's check-ins, subscriptions ending soon, payments, income, classes and events this week, and alerts.
+6. **F6: Member, subscription and transaction records and a printable receipt.**
+7. **F7: Live camera feeds, today's attendance, workout task status and counted repetitions.** An expired subscription is flagged "RENEW" on the feed.
+8. **F8: Reports** (Payments, Memberships, Attendance, Program Monitoring) as a table, a CSV file or a printout.
 
-* **What the Owner / Admin receives BACK:**
-  5. **Login status & dashboard summary statistics:** Confirms login access and displays today's live gym stats (active members, attendance count, revenue).
-  6. **Member records & biometric enrollment confirmation:** Displays saved member profiles and confirms face data is ready for recognition.
-  7. **Real-time attendance logs & recognition alerts:** Alerts the admin immediately when a member checks in—or triggers an **"Unrecognized Member"** alert if a face cannot be matched.
-  8. **Membership status, expiration alerts & payment records:** Shows active versus expired plans, highlights members expiring within 7 days, and lists recorded payments.
-  9. **Program monitoring results & repetition counts:** Displays the verified repetition count and completed sets for assigned exercises.
-  10. **Generated system reports:** Produces formatted PDF or CSV files for attendance, financial, and workout records.
+### B. The Camera (CCTV, phone camera or webcam)
+9. **F9: Live video of faces and exercise movement.** The same video is used to recognize faces for attendance and to track the body for exercises. The system treats the camera as the source of video only; it does not control it.
 
----
+### C. The Gym Member
+Members never log in. They take part in person:
+10. **F10: Personal details, face photo and payment (through the admin).**
+11. **F11: Payment receipt**, printed by the admin.
 
-### B. The Camera / Webcam (IoT Vision Hardware)
-Smart cameras continuously capture video feeds at the gym entrance and exercise station without requiring manual button pressing.
-
-* **What the Camera sends IN:**
-  11. **Live facial video stream:** Streams optical frames of members entering the gym door for biometric facial recognition.
-  12. **Live exercise movement video stream:** Streams optical frames of members performing exercises for skeletal joint detection and rep counting.
-
----
-
-### C. The Gym Member (Physical Participant)
-Members interact physically within the gym facility; they do not need to log into software or install an app.
-
-* **What the Member provides IN:**
-  13. **Registration info, measurements & facial photo posing:** Provides basic contact details, stands on the scale for height/weight measurements, and poses for the enrollment camera.
-  14. **Payment remittance:** Hands over cash or shows GCash/Maya reference codes to the coach.
-
-* **What the Member receives BACK:**
-  15. **Attendance check-in greeting & recognition status:** An on-screen visual confirmation showing their name and welcoming them as they enter (or alerting them if unrecognized).
-  16. **Real-time exercise repetition count & monitoring result:** A large, clear on-screen counter showing their completed repetitions (1, 2, 3...) while they perform the assigned exercise. The system records the monitoring result upon completion. The system does not provide posture correction or professional form assessment.
-  17. **Membership validity notice & official payment receipt:** Clear notification of plan expiration and a printed or digital receipt for membership dues.
+### D. The Email Server
+12. **F12: Password-reset PIN.** The only message the system sends by email.
 
 ---
 
 ## 4. Why This Diagram Matters for the Gym (INTERPRET)
 
-By consolidating the data flows into clear, uncluttered channels, Figure 4.2 proves how **Process 0 eliminates the gym's manual bottlenecks**:
-1. **Clear Visual Recognition:** Distinguishes enrolled members from unrecognized visitors instantly at the door without slowing down entry.
-2. **Hands-Free Repetition Tracking:** Computer vision frees the coach from having to stand beside members counting reps by hand.
-3. **No Software Burden on Members:** Members never have to remember passwords or navigate complicated mobile apps; their presence and movement drive the system.
-4. **Clean and Audit-Ready Ledgers:** Consolidates loose paper notes and mobile payment screenshots into an organized database.
+1. **Members carry no software burden:** their presence and movement drive attendance and workout checks.
+2. **Camera feeds are inputs only:** recognition and counting happen inside the system, and results go to the admin's screen.
+3. **One administrator, one login:** the diagram has a single operator, matching how the gym works.
+4. **Email is the smallest possible dependency:** it is used only to recover a password, so a down mail server cannot stop daily operations.
+5. **Records in one place:** loose paper notes and payment screenshots become one organized database.
 
 ---
 
 ## 5. Connection to Study Objectives (CONNECT)
 
-This Context Level Diagram directly supports the goals set in Chapter 1:
-* It satisfies **Specific Objective (b)** by creating clean, verified system design models.
-* It sets the foundation for **Section 4.2-C (Level 1 Data Flow Diagram)**, where Process 0 is expanded into its six core sub-processes:
-  1. *Process 1.0:* Member Registration & Biometric Enrollment
-  2. *Process 2.0:* Facial Recognition Attendance Monitoring
-  3. *Process 3.0:* Gesture-Based Program Monitoring
-  4. *Process 4.0:* Subscription Management
-  5. *Process 5.0:* Payment Transaction Recording
-  6. *Process 6.0:* System Reports & Analytics
+This diagram supports **Specific Objective (b)** by fixing the boundary of the system. It is the baseline for **Section 4.2-C (Level 1 Data Flow Diagram)**, where Process 0 is expanded into eight processes: Log In, View Dashboard, Manage Members, Attendance Monitoring, Program Monitoring, Packages and Subscriptions, Payment Transactions and Reports.

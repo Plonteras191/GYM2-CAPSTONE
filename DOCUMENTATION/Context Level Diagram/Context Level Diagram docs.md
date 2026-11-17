@@ -1,21 +1,21 @@
-4.2-B Context Level Diagram
+# 4.2-B Context Level Diagram
 
-A Context Level Diagram (CLD) is a high-level representation of the system that shows its interaction with external entities. It presents the system as a single process (Process 0) and illustrates the flow of information between the system and its users or connected devices. The diagram establishes the operational boundaries of the system by defining the exchange of incoming and outgoing data between external actors and the IoT-Based Gym Management System.
+A Context Level Diagram shows the system as a single process (Process 0) and the information exchanged with the people and devices outside it. It sets the boundary of the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
 
-Figure 4.2 below shows the Context Level Diagram of the IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym.
+> **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
-[Insert Figure 4.2 Here]
+Figure 4.4 shows the Context Level Diagram. It has four external entities: the Gym Owner / Administrator, the Gym Member, the Camera (CCTV, phone camera or webcam) and the Email Server.
 
-Figure 4.2. Context Level Diagram for IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym.
+[Insert Figure 4.4 Here]
 
-The diagram provides an overview of the interaction between the system and its three external entities: the Gym Owner / Administrator, the Gym Member, and the Camera / Webcam (IoT Device). 
+**Figure 4.4.** Context Level Diagram for the IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring.
 
-The process begins with the Gym Owner / Administrator, who serves as the primary system operator. The administrator inputs administrative credentials, member registration details—including personal information, contact details, and anthropometric data (height, weight, and body type)—facial enrollment capture commands, membership plan configurations, exercise task assignments, payment details (Cash, GCash, or Maya), and report filter parameters. In return, the system provides the administrator with authentication confirmation, real-time dashboard analytics, member profiles, facial attendance logs, unrecognized member alerts, membership expiration warnings, workout repetition results, payment transaction history, and exportable system reports (PDF and CSV).
+The **Gym Owner / Administrator** is the only operator; the owner and the coach share one login. The administrator sends an email and password, member details with body type, face capture and consent, packages, subscriptions and renewals, classes and events, payments and refunds, training plans, manual verifications, manual check-ins, report dates and camera choices. In return the system shows the dashboard, notifications, member and payment records, live camera feeds, today's attendance, the status and counted repetitions of workout tasks, and reports that can be exported as CSV or printed.
 
-The Gym Member participates as a physical actor without requiring direct software login credentials. During registration, the member provides personal, contact, and anthropometric details, and poses for facial data enrollment. During regular gym visits, the member faces the entrance camera for facial recognition check-in, performs assigned exercises in front of the gesture monitoring camera, and submits membership payments. In return, the system provides the member with immediate visual attendance confirmation, membership status and renewal notices, real-time exercise repetition feedback on screen, and an official payment receipt.
+The **Gym Member** takes part in person and has no login. During registration the member gives personal details, agrees to face enrollment and poses for the face capture; payments are made through the administrator, who prints the receipt.
 
-Meanwhile, the Camera / Webcam operates as an automated IoT vision device. It continuously captures optical feeds and transmits live video frames to the system, specifically delivering facial image frames for attendance identification at the entrance and body movement frames for skeletal pose tracking and repetition counting at the workout area.
+The **Camera** supplies live video of faces at the entrance and of body movement at the workout area. The same feed is used for face recognition and for pose tracking and repetition counting.
 
-All processed information—including member profiles, facial biometric encodings, attendance logs, subscription records, payment ledgers, and workout progress—is stored within a centralized MySQL database. This integrated data flow eliminates the gym's previous manual problems, replacing vulnerable paper logbooks, missed membership renewals, unrecorded exercise repetitions, and loose payment slips with a synchronized, real-time digital system.
+The **Email Server** receives one message type from the system: the password-reset PIN.
 
-This Context Level Diagram directly supports Specific Objective (b) of the study by establishing the baseline system architecture. It serves as the foundation for the Level 1 Data Flow Diagram (Section 4.2-C), where this overall process is decomposed into the system's six operational modules.
+All processed information (members, face photos and their consent dates, attendance, subscriptions, payments, classes and events, training plans and workout results) is stored in one MySQL database. This diagram is the baseline for the Level 1 Data Flow Diagram (Section 4.2-C), which breaks Process 0 into eight processes.

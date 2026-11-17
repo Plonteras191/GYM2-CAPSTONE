@@ -1,8 +1,10 @@
 # 4.2-A System Process Flow Diagram
 
-This section presents the updated System Process Flow Diagram for the Camera-Based Gym Management System for Double Alpha Fitness Gym. The diagram was developed from the requirements gathering and analysis phase, which incorporated findings from interviews with the gym owner, staff observations, and the evaluation of existing paper-based gym records. 
+This section presents the System Process Flow Diagram for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**. The diagram was developed from the requirements gathering phase (interview with the gym owner, observation of the gym and its paper records) and updated to match the system as built.
 
-It illustrates the end-to-end operational flow executed by the System Administrator (Gym Owner / Authorized Staff), spanning initial authentication, routine multi-module gym operations, automated decision branches, and secure session termination.
+It shows the flow the Administrator (Gym Owner / Coach) follows from login to logout, the six modules, and the decisions the system makes.
+
+> **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
 ---
 
@@ -14,32 +16,44 @@ flowchart TD
     Cred --> Valid{"Email and password<br/>correct?"}
     Valid -- No --> Err1["Show login error"]
     Err1 --> Cred
-    Valid -- Yes --> EnterPin["Enter the 6-digit PIN"]
-    EnterPin --> PinOk{"PIN correct?"}
-    PinOk -- No --> Err2["Show PIN error"]
-    Err2 --> EnterPin
-    PinOk -- Yes --> Dash["Dashboard"]
+    Cred -.->|"Forgot password?"| Rst1["Request a PIN<br/>by email"]
+    Rst1 --> Rst2["Enter the PIN and<br/>choose a new password"]
+    Rst2 --> Cred
+    Valid -- Yes --> Dash["Dashboard"]
     Dash --> Select["Select function"]
 
     Select --> A1["Module 1: Member Registration"]
-    A1 --> A2["Enter name, contact details,<br/>date of birth, height and weight"]
-    A2 --> A3["Capture face:<br/>front, left and right"]
+    A1 --> A2["Enter name, contact details, address,<br/>date of birth, height, weight<br/>and body type"]
+    A2 --> A2b["Add a profile photo<br/>(optional)"]
+    A2b --> A2c["Member agrees to face enrollment<br/>(consent date is recorded)"]
+    A2c --> A3["Capture face: front,<br/>chin down, left and right"]
     A3 --> A4["Save member record<br/>and face photo"]
 
     Select --> B1["Module 2: Attendance Monitoring"]
     B1 --> B2["Camera captures<br/>the member's face"]
     B2 --> B3{"Face<br/>recognized?"}
-    B3 -- No --> B4["Show 'Unknown'<br/>on the live feed"]
     B3 -- Yes --> B5{"Within 9:00 AM to 9:30 PM<br/>and not yet logged today?"}
+    B3 -- No --> B4["Show 'Unknown'<br/>on the live feed"]
+    B4 --> B4b["Admin checks the member in manually<br/>(member and reason)"]
+    B4b --> B5
     B5 -- No --> B6["No attendance saved"]
-    B5 -- Yes --> B7["Save member, date<br/>and time in"]
+    B5 -- Yes --> B7["Save member, date, time in, method,<br/>camera and subscription status<br/>(an expired subscription is flagged RENEW)"]
+    B7 --> B8{"Member profile<br/>Inactive?"}
+    B8 -- Yes --> B9["Set member<br/>back to Active"]
 
     Select --> C1["Module 3: Program Monitoring"]
-    C1 --> C2["Build the member's 7-day plan:<br/>exercise, date, sets and reps"]
-    C2 --> C3["Camera captures the member<br/>doing the exercise"]
+    C1 --> C2["Open the member's Training plan and build<br/>the 7-day plan: exercise, date, sets and reps"]
+    C2 --> C2b{"Member has an active<br/>With Coach subscription?"}
+    C2b -- Yes --> C3["Camera captures the member<br/>doing the exercise"]
+    C2b -- No --> C5["Coach verifies<br/>the task manually"]
     C3 --> C4{"Assigned exercise<br/>recognized?"}
-    C4 -- No --> C5["Coach verifies<br/>the task manually"]
-    C4 -- Yes --> C6["Task marked as verified"]
+    C4 -- No --> C5
+    C4 -- Yes --> C4b{"Counted exercise?<br/>(squat, push-up, curl, sit-up)"}
+    C4b -- No --> C6["Task marked as verified"]
+    C4b -- Yes --> C4c["Camera counts repetitions<br/>and saves the progress"]
+    C4c --> C4d{"Target sets x reps<br/>reached?"}
+    C4d -- No --> C4c
+    C4d -- Yes --> C6
     C5 --> C6
 
     Select --> D1["Module 4: Packages and Subscriptions"]
@@ -49,6 +63,18 @@ flowchart TD
     D3 -- No --> D5["Save new subscription"]
     D5 --> D6["Payment transaction<br/>created automatically"]
     D4 --> D6
+    D1 --> R1["Renew a subscription"]
+    R1 --> R2{"Subscription still<br/>running?"}
+    R2 -- Yes --> R3["Extend the same package from its<br/>end date (no paid days lost)"]
+    R2 -- No --> R4["Start a new<br/>subscription today"]
+    R3 --> R5["Renewal payment<br/>recorded"]
+    R4 --> R5
+    D1 --> P1["Price list: create, edit<br/>or delete a package"]
+    P1 --> P2{"Deleting a package members<br/>are still subscribed to?"}
+    P2 -- Yes --> P3["Delete refused"]
+    P2 -- No --> P4["Package saved or deleted"]
+    D1 --> V1["Calendar: add a<br/>class or event"]
+    V1 --> V2["Save class or event"]
 
     Select --> E1["Module 5: Payment Transactions"]
     E1 --> E2["Select package and member<br/>(none for a walk-in guest)"]
@@ -57,16 +83,20 @@ flowchart TD
     E4 --> E5["Print receipt<br/>or refund if needed"]
 
     Select --> F1["Module 6: Reports"]
-    F1 --> F2["Choose report type:<br/>Payment Transactions, or<br/>Membership and Attendance"]
+    F1 --> F2["Choose report type: Payments, Memberships,<br/>Attendance or Program Monitoring"]
     F2 --> F3["Set start and end date"]
     F3 --> F4["View report, then<br/>export CSV or print"]
 
     A4 --> Out{"Log out?"}
-    B4 --> Out
     B6 --> Out
-    B7 --> Out
+    B8 -- No --> Out
+    B9 --> Out
     C6 --> Out
     D6 --> Out
+    R5 --> Out
+    P3 --> Out
+    P4 --> Out
+    V2 --> Out
     E5 --> Out
     F4 --> Out
     Out -- No --> Dash
@@ -74,48 +104,41 @@ flowchart TD
     Logout --> End([End])
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
-
-**Figure 4.1.** Updated System Process Flow Diagram for the Camera-Based Gym Management System for Double Alpha Fitness Gym.
+**Figure 4.3.** System Process Flow Diagram for the Administrator.
 
 ---
 
 ## 2. Process Narrative (Chapter 4 Standard)
 
 ### A. Narrative Walkthrough (EXPLAIN)
-The process flow begins when the administrator opens the gym management system and inputs their administrative username and password. The system checks the credentials against registered administrative accounts. If the credentials do not match, the system displays an authentication error message and prompts the administrator to re-enter their credentials. Once successfully authenticated, the system redirects the administrator to the main Administrator Dashboard.
+The flow begins when the administrator opens the system and enters an **email and password**. If they are not correct, an error is shown and the administrator tries again. A forgotten password is recovered by asking for a **PIN sent by email** and choosing a new password. There is no verification code at login. After a correct login the administrator reaches the Dashboard.
 
-From the dashboard, the administrator can navigate to any of the system's six operational modules:
+From the dashboard the administrator can open six modules:
 
-1. **Member Registration Module:** The administrator inputs member profile details, contact information, and anthropometric data (height, weight, and body type classification: Ectomorph, Mesomorph, or Endomorph). The system then activates the camera to capture and enroll facial biometric data before storing the finalized member profile in the database.
-2. **Attendance Monitoring Module:** The camera stream continuously detects members entering the gym facility. The facial recognition engine compares captured features against the enrolled biometric database. If a match is verified, the system automatically records the attendance event with a verified timestamp. If the face is not recognized, the system triggers an unrecognized member notice, preventing unauthorized attendance logging.
-3. **Program Monitoring Module:** The administrator selects a registered member and assigns a specific workout task chosen strictly from the approved exercise scope. When the member performs the assigned workout, the camera and computer vision engine analyze body landmarks. If landmark visibility is obscured or the exercise cannot be detected, the system prompts the member to adjust their position within the camera frame. When recognized correctly, the system tracks movement form, increments repetition counts in real time, and logs the finalized workout session data.
-4. **Subscription Management Module:** The administrator checks the membership status of members. If the subscription is active, the valid status and remaining plan validity are presented. If the subscription is expired, the administrator initiates a renewal workflow and updates the active subscription validity.
-5. **Payment Transaction Module:** The administrator selects the member, links the specific membership plan, enters the transaction amount and reference details, and specifies the payment channel (Cash, GCash, or Maya). After saving the payment, the transaction is added to the historical ledger, and the system automatically activates or extends the member's subscription status.
-6. **Reports Module:** The administrator selects among attendance, membership, program monitoring, and payment transaction reports. The system aggregates the corresponding data based on date ranges or filters, and displays the structured summary for operational review or export.
+1. **Member Registration.** The administrator enters name, contact details, address, date of birth, height, weight and **body type** (Ectomorph, Mesomorph or Endomorph), optionally adds a profile photo, records that the member **agrees to face enrollment** (the date of consent is saved), and captures the face in four views (front, chin down, left and right). The member record and face photo are then saved.
+2. **Attendance Monitoring.** The camera captures the member's face and the system looks for a match. A recognized member is checked in only inside gym hours (9:00 AM to 9:30 PM) and once per day. The check-in saves the time, how it was made, the camera and the subscription status; an expired subscription is flagged **RENEW** on the live feed, and an Inactive member is set back to Active. A face that is not recognized shows "Unknown", and the administrator can **check the member in manually** by choosing the member and typing a reason.
+3. **Program Monitoring.** In the member's **Training plan** the administrator builds a 7-day plan (exercise, date, sets, reps). Only members with an **active With Coach subscription** are tracked by the camera; for others the coach verifies tasks by hand. When the camera recognizes the assigned exercise, a task is verified. For **squat, push-up, curl and sit-up** the camera first **counts repetitions** and saves the progress until the target sets × reps is reached.
+4. **Packages and Subscriptions.** The administrator subscribes a member to a package, or upgrades a running subscription to a higher-priced package and pays the balance. **Renew** extends a running subscription from its end date, or starts a new one today if it has ended. The **Price list** creates, edits and deletes packages; deleting a package that members are subscribed to is refused. The **Calendar** holds classes and events. Every subscription, renewal or upgrade creates its payment record automatically.
+5. **Payment Transactions.** The administrator records a payment (package, member or walk-in guest, amount, reference number, Cash, GCash or Maya), prints the receipt, or refunds it.
+6. **Reports.** The administrator chooses Payments, Memberships, Attendance or Program Monitoring, sets the dates, views the report, and exports a CSV file or prints it.
 
-Following the completion of any module activity, the administrator is presented with a session check. The administrator may either return to the main dashboard to execute additional tasks or log out to safely terminate the session.
+After any activity the administrator may return to the dashboard or log out.
 
 ### B. Meaning and Operational Impact (INTERPRET)
-The updated process flow demonstrates the transition of Double Alpha Fitness Gym from disjointed manual operations into a cohesive, automated system. Critical manual bottlenecks—such as manual sign-in sheets, visual inspection of workout repetitions, physical verification of renewal dates, and paper receipts—are replaced by automated validation rules. Every decision diamond (credential check, facial recognition match, pose detection verification, and membership validity check) ensures data integrity before records are updated.
+Manual sign-in sheets, watching members count repetitions, checking renewal dates by hand and paper receipts are replaced by automatic checks. Each decision in the flow (login check, face match, gym hours and one check-in per day, With Coach eligibility, target repetitions reached, package in use) protects the data before a record is saved.
 
 ### C. Alignment with Study Objectives (CONNECT)
-This flow aligns directly with the general and specific objectives stated in Chapter 1 of the study. Specifically, it operationalizes:
-- **Biometric Attendance Tracking:** Ensuring touchless, verified logging without buddy punching.
-- **Computer-Vision-Assisted Program Monitoring:** Providing structured exercise assignment and repetition counting.
-- **Automated Membership and Subscription Tracking:** Eliminating manual calculation of expiration dates.
-- **Accurate Multi-Channel Payment Recording:** Supporting modern digital payment recording (GCash/Maya) alongside cash while immediately linking revenue to active memberships.
+The flow supports the objectives in Chapter 1: touchless **biometric attendance**, **computer-vision-assisted program monitoring** with repetition counting for selected exercises, **automatic subscription and renewal tracking**, and **payment recording** in Cash, GCash and Maya linked to subscriptions.
 
 ---
 
-## 3. Summary of Applied Fixes (Audit Trail)
+## 3. Changes Made on November 17, 2026 (Audit Trail)
 
-| # | Fix Item | Module Affected | Previous Flaw | Applied Correction |
-|---|---|---|---|---|
-| **1** | Anthropometric Data Label | Module 1: Registration | Labeled ambiguously as `"bodydata"` | Changed to `"personal info, contact details, height, weight, body type"` |
-| **2** | Exercise Task Assignment | Module 3: Program Monitoring | Jumped straight to camera capture without member or exercise selection | Added `"Select Registered Member"` and `"Assign Exercise Task (from Approved Scope)"` before camera capture |
-| **3** | Exercise Recognition Decision | Module 3: Program Monitoring | Assumed 100% immediate detection without alternative feedback branch | Added decision diamond `"Exercise Detected?"` with `"No"` leading to `"Display 'Adjust Position in Camera View'"` |
-| **4** | Membership Plan Selection | Module 5: Payment Transaction | Jumped from member selection directly to payment entry without plan context | Added `"Select Linked Membership Plan"` before entering payment amounts |
-| **5** | Subscription Status Activation | Module 5: Payment Transaction | Ended at transaction history without updating member access status | Added `"Activate / Update Membership Subscription"` after transaction recording |
-| **6** | Academic Narrative Compliance | Post-Diagram Documentation | Missing structured narrative required by Capstone Guidelines | Integrated complete INTRODUCE → PRESENT → EXPLAIN → INTERPRET → CONNECT academic sections |
+| # | Part | Before | Now |
+|---|---|---|---|
+| 1 | Login | Email and password, then a 6-digit PIN | Email and password only; "Forgot password?" recovers by emailed PIN |
+| 2 | Module 1 | Body type and face capture | Adds address, profile photo, face consent (date recorded) |
+| 3 | Module 2 | Face match only | Adds manual check-in with a reason, the RENEW flag, and the check-in details saved |
+| 4 | Module 3 | Select a member, assign an exercise, camera | Training plan for 7 days; only With Coach members are tracked; repetition counting until the target is reached; coach verifies by hand otherwise |
+| 5 | Module 4 | Check status, renew | Subscribe, upgrade, **Renew**, Price list with delete guard, classes and events calendar |
+| 6 | Module 6 | Two report types | Four: Payments, Memberships, Attendance, Program Monitoring |
