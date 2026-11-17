@@ -1,311 +1,183 @@
 # User & Technical Documentation Manual
 
-**Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
+**Product Name:** IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
 **Client:** Double Alpha Fitness Gym (Natumolan, Tagoloan, Misamis Oriental)  
-**Document Version:** 1.0  
-**Date:** September 2026  
+**Document Version:** 2.0  
+**Date:** November 17, 2026  
+**Describes:** the system as built on this date. Earlier versions of this manual (September 2026) described features that were never built; they were removed.
 
 ---
 
 ## 1. Document Purpose & Audience
 
-This comprehensive manual combines **User Operational Guides** for daily gym staff/administrators and **Technical System Specifications** for system administrators, developers, and hardware maintenance technicians.
+This manual combines **user guides** for the gym owner and coaches with **technical notes** for whoever installs and maintains the system.
 
-### Target Audiences
-1. **Gym Owner & System Administrators**: Daily operational usage, member enrollment, payment processing, subscription management, and report generation.
-2. **Gym Coaches & Trainers**: Workout program assignment, live AI gesture verification monitoring, and manual task verification overrides.
-3. **Gym Members / Athletes**: Onboarding procedures, biometric face enrollment, and touchless attendance check-in.
-4. **Developers & System Technicians**: Local/server installation, environment configuration, database migrations, Python AI engine microservice execution, camera setup, and troubleshooting.
+1. **Gym Owner / Admin and Coach:** the owner and the coach use the same single administrator login. Daily use: registering members, subscriptions and renewals, payments, attendance, training plans, workout monitoring and reports.
+2. **Gym Members:** members do not log in. They give their details, agree to face enrollment, pose for face capture, and then simply walk past the camera.
+3. **Developers & technicians:** installation, configuration, cameras and troubleshooting.
 
 ---
 
-# PART A: USER OPERATIONAL MANUAL
+# PART A: USER GUIDE
 
-## 2. Gym Owner & System Administrator Guide
+## 2. Logging In
 
-### 2.1. System Authentication & Dashboard Access
-1. Open a web browser (Google Chrome, Microsoft Edge, or Mozilla Firefox) and navigate to the application URL (e.g., `http://localhost:5173` or gym domain).
-2. Enter administrative email and password credentials.
-3. Upon validation via **Laravel Sanctum**, the system redirects to the **Executive Dashboard**.
+1. Open the system in a browser (for example `http://localhost:5173`).
+2. Enter the administrator **email and password** and press **Login**. There is no verification code. Tick **Remember me** to stay signed in on that computer.
+3. **Forgot password?** Enter the administrator email. A 6-digit PIN is emailed to it (valid 10 minutes, 5 wrong tries allowed). Enter the PIN and choose a new password (at least 8 characters).
 
-```
-+-----------------------------------------------------------------------------------+
-|  🏋️‍♂️ DOUBLE ALPHA FITNESS GYM - EXECUTIVE DASHBOARD                                 |
-+-----------------------------------------------------------------------------------+
-|  [ Total Members: 154 ] [ Active: 120 ] [ Today's Attendance: 42 ] [ Revenue: ₱45K ] |
-+-----------------------------------------------------------------------------------+
-|  📊 Attendance Volume Chart (Recharts)     | 💳 Recent Transactions Ledger          |
-|  🟢 Today: Peak 5:00 PM (18 Check-ins)     | 🟢 John Doe - ₱1,500 (GCash)           |
-+-----------------------------------------------------------------------------------+
-```
+The left menu has: **Overview, Member Registration, Packages, Transactions, Reports, Attendance Monitor, Gesture Monitor**, and the account page (name, email, system logo, password). The bell shows alerts: subscriptions ending soon, classes and events coming up, and a note of the last sign-in.
 
----
+## 3. Overview (Dashboard)
 
-### 2.2. Member Directory & Biometric Registration
-1. Navigate to **Member Management** -> **Add New Member**.
-2. Complete the required personal information fields:
-   * **First & Last Name**, **Email Address**, **Contact Number**, **Residential Address**.
-3. Input physical & anthropometric body metrics:
-   * **Date of Birth**, **Height (cm)**, **Weight (kg)**, **Body Type** (Ectomorph, Mesomorph, Endomorph).
-4. **Profile Photo & Biometric Face Enrollment**:
-   * Upload a clear front-facing profile photo (`.jpg`/`.png`).
-   * Click **Enroll Facial Biometrics**. The system captures the face image and sends it to the Python AI engine to extract and store the **128-dimensional vector encoding** (`enrolled_face_id`).
-5. Click **Save Member**. The member status defaults to **Active**.
+Shows today's check-ins (with a chart per hour), subscriptions ending this week, recent payments, new members, monthly income, classes and events coming up this week, and a calendar of subscriptions and events.
 
----
+## 4. Member Registration
 
-### 2.3. Attendance Tracking & Live Feed Monitor
-1. Navigate to **Attendance Monitor**.
-2. The page features two primary components:
-   * **Live Stream Feed**: Low-latency video player (JSMpeg / Canvas) displaying entrance camera coverage with real-time face detection bounding boxes.
-   * **Today's Attendance Ticker**: Real-time table displaying check-in date, exact timestamp, member name, and verification method.
-3. **Automated Touchless Check-in Rules**:
-   * **Operating Hours Enforcement**: Attendance check-in is strictly active between **9:00 AM and 9:30 PM**. Check-ins attempted outside operating hours will be rejected by the backend guard.
-   * **Single Daily Check-in Rule**: A member can only log one official attendance check-in per calendar day. Subsequent detections on the same day will trigger a soft warning alert without duplicating logs.
+1. **Member Registration > Register a member.** The form has three steps:
+   * **Photos:** an optional profile photo (can be cropped) and the **face capture**: four views, front, chin down, slight left, slight right. Tick the **consent box**; a face is not saved without it, and the date of consent is recorded (Data Privacy Act of 2012).
+   * **Personal details:** first and last name, email, phone, address. When editing, **Member status** (Active or Inactive) can be set by hand.
+   * **Body measurements (optional):** date of birth, height, weight, and **body type** (Ectomorph, Mesomorph or Endomorph). The body mass index is worked out from height and weight.
+2. **Save.** A new member is Active.
+3. The list can be searched (name, email, phone) and filtered by Active or Inactive. Open a member (eye icon, or the name) to see the **profile**: contact and body details, **Coach Notes**, and three tabs: **Workout Logs**, **Attendance Calendar** and **Training plan** (see section 8).
 
----
+A member who is not recognized by the camera for one month is set to **Inactive** automatically. A check-in, a renewal, or the admin sets them back to **Active**.
 
-### 2.4. Subscription Lifecycle & Membership Management
-1. Navigate to **Subscription Management**.
-2. To create or renew a membership:
-   * Select the target member.
-   * Select a **Plan Tier** (e.g., Daily Pass, Monthly Basic, VIP Annual).
-   * Specify **Start Date** and **End Date** (automatically calculated based on plan duration).
-   * Choose **Payment Method** (Cash, GCash, Maya) and input payment reference codes.
-3. **Automated Status Badges**:
-   * 🟢 **Active**: Valid active membership (`end_date` > today + 7 days).
-   * 🟡 **Expiring Soon**: Membership expiring within 7 days.
-   * 🔴 **Expired**: Past renewal date (`end_date` < today).
-   * ⚪ **Inactive**: Member inactive for 30+ days (automatically flagged by the AI Inactivity Auditor).
+## 5. Attendance Monitor
 
----
+1. Open **Attendance Monitor**. The camera feed shows a green box and name for recognized members and a red "Unknown" box otherwise. Use the camera selector to switch between CCTV 1, 2, 3, the phone camera and the webcam.
+2. **A check-in is recorded automatically** when several face checks agree on the same member. Rules: only between **9:00 AM and 9:30 PM** (set in `GYM_OPEN_TIME` and `GYM_CLOSE_TIME`), and **once per member per day**. The list on the right shows today's check-ins, each with badges: *Active*, *Expired*, *No Sub*, *Returned* (was Inactive), *Manual*.
+3. A member whose subscription has **expired** gets an **orange box and "RENEW"** on the feed. They are still checked in.
+4. **Manual check-in:** if the camera cannot recognize a member (mask, lighting, camera off), press the person-plus button, choose the member and type a reason. The same rules apply, and the record shows "Manual" with the reason.
+5. **Force AI Memory Sync** reloads the enrolled faces at once. The engine also does this by itself every minute, so a newly registered member is recognized without pressing it.
+6. **Full Log** opens the Attendance tab of Reports.
 
-### 2.5. Payment Processing & Receipt Generation
-1. Navigate to **Financial Transactions**.
-2. Click **Record New Payment**.
-3. Fill in transaction details:
-   * **Member Name**, **Transaction Type** (Membership Fee, Renewal, Day Pass).
-   * **Amount (₱)**, **Payment Mode** (`Cash`, `GCash`, `Maya`).
-   * **E-Wallet Reference Code** (Required for GCash and Maya).
-4. Click **Submit & Generate Receipt**.
-5. Click **Print / Download Receipt** to output a formatted digital invoice containing gym header, transaction ID, date, member code, amount, and staff signature block.
+## 6. Packages
 
----
+The page has three tabs: **Subscriptions**, **Calendar** and **Price list**.
 
-### 2.6. Reports & Analytics Module
-1. Navigate to **Reports & Analytics**.
-2. Select desired report type:
-   * **Attendance History Report**: Filterable by date range, peak hours, and member attendance frequency.
-   * **Financial Revenue Report**: Income breakdown by payment method (Cash vs. Digital), plan tier revenue, and daily/monthly totals.
-   * **Membership Status Summary**: Total active vs. expired vs. inactive member distributions.
-   * **Workout Verification Logs**: Total AI-verified exercise repetitions completed.
-3. Click **Export Report** to download formatted **CSV** or **PDF** files for official gym auditing.
+* A **package** is what the gym sells (for example Monthly). A **subscription** is a member's purchase of a package.
+* **Subscriptions tab.** Search by name or member ID and filter by status and package. **Subscribe a member** chooses the member, the package, the payment method (Cash, GCash or Maya) and an optional reference number; the end date and the amount are worked out and shown in a summary. Returning members get a loyalty discount of ₱20 per earlier subscription on packages above ₱300, never below ₱300. Saving also records the payment in Transactions.
+  * **Renew** (on every row; highlighted once a subscription has ended or ends within 7 days): a dialog shows the new dates and the amount before saving. A subscription that is **still running** is extended from its current end date, so no paid days are lost. One that **has ended** starts again **today**. A running subscription can only be renewed with the same package.
+  * **Edit > choose a higher-priced package** upgrades a running subscription; only the remaining balance is charged.
+  * **Training plan ->** appears under With Coach subscriptions and opens the member's training plan.
+* **Calendar tab.** Subscriptions and **classes and events**. Use the **Show** switch (Everything, Subscriptions, Classes & events). **Click an empty day to add a class or event** (title, category, dates, times, location, colour). Click an event to see it.
+* **Price list tab.** Every package with its length, price and how many members are subscribed now. **New package** and **Edit** use the same form (name, category, length in days, price, colour). The categories are Normal, With Coach and Walk-In; **With Coach** unlocks the training plan and camera tracking. **Delete** is refused while members are still subscribed to the package; once those subscriptions have ended, it can be deleted and ended subscriptions keep their record.
 
----
+Status colours: **Active**, **Expired**, and **Cancelled**.
 
-## 3. Gym Coach & Trainer Operational Guide
+## 7. Transactions and Reports
 
-### 3.1. Assigning Workout Programs
-1. Open **Members**, select a member, and open **Coach's Training Plan** in the member profile.
-2. Use **All body parts** to filter the exercise library by the exercise's body part, or search by exercise name, target muscle, or equipment.
-3. Add exercises to a weekday, then set the target **sets** and **reps** for each exercise.
-4. Click **Save Weekly Plan**. The routine remains available in the browser and its next seven days of exercise assignments, dates, sets, reps, and supported Gesture Engine labels are synchronized to workout tracking.
-5. Open **Gesture Verification Monitor** to see scheduled tasks and recent detections. When the camera recognizes a supported movement for the face-matched member, Laravel matches it to that member's due task and changes the member-facing exercise log from pending to performed.
+* **Transactions > Record a payment:** package, member (leave empty for a walk-in guest), amount, payment method (Cash, GCash, Maya) and reference number. Payments for subscriptions and renewals are recorded automatically. A transaction can be edited, deleted, **refunded** (a negative refund entry is added) and its **receipt printed**; **Print All** prints the list.
+* **Reports** has four tabs. Choose dates (or Today, Last 7 days, This month), search the table, then **Export CSV** or **Print report**.
+  * **Payments:** total income, refunds, net revenue.
+  * **Memberships:** new signups, active, expired, check-ins.
+  * **Attendance:** total check-ins, unique members, average daily visits, busiest hour; each row shows the plan and subscription status on the day, whether the check-in was by face or manual, and the camera.
+  * **Program Monitoring:** assigned tasks, verified by camera, verified by coach, completion rate; each row shows the exercise, target sets and reps, **repetitions counted**, status (Pending, Missed, Verified or Detected) and who verified it.
 
-The body-part categories come from each exercise's `body_part` value in `frontend/public/dataset/data/exercises.json`. They categorize individual exercises; they are not separate workout-program types. Exercises without a matching Gesture Engine class remain scheduled for manual verification.
+## 8. Training Plans and the Gesture Monitor
+
+### 8.1 Building a training plan
+1. Open the plan from **Packages** (Training plan link on a With Coach row), from **Member Registration** (same link), or from the profile's **Training plan** tab.
+2. Search the exercise list (by name, muscle or equipment) or filter by body part. Tick **Only exercises the camera can check** to see just those. Press **Add** to put an exercise on the day shown at the top of the list ("Adding to Monday, Nov 17").
+3. For each exercise set the **Sets** and **Reps per set**. A day can be copied to other days with **Copy to other days**. The summary line shows how many exercises are planned and how many the camera will check.
+4. The seven day tabs show real dates; a saved plan covers **the next 7 days, starting today**. Press **Save plan** (the button is active only when something changed, and a note says "Not saved yet").
+5. If the member is **not on an active With Coach package**, a yellow note explains that the camera will not track them and the coach must confirm each task.
+
+Coach notes in the profile are saved in the browser on this computer only.
+
+### 8.2 What the camera does
+Only members with an **active With Coach subscription** are monitored. For them the Gesture Monitor draws the skeleton, name and the assigned exercise. Everyone else gets a small grey tag ("Identifying..." or "<name> - no coach plan").
+
+* The camera recognizes 12 exercises. When it confirms the assigned exercise (at least 5 of the last 7 checks and 70% confidence), a task is **verified**.
+* For **squat, push-up, curl and sit-up** the camera also **counts repetitions** from the bend of the knee, elbow or hip. The overlay shows `SQUAT REPS: 7 / 30 (SET 1 OF 3)`, the count is saved every few seconds, and the task is verified only when the target sets × reps is reached. A member who steps out of view keeps their count.
+* The camera counts movements; it does not judge form. The whole body (and the counted joint) must be visible, in good light.
+
+### 8.3 Verifying a task by hand
+If the camera cannot check a task (not a camera exercise, the member is not on a With Coach package, or the picture is poor): open the member's profile > **Workout Logs**, open the day, and press **VERIFY** on the task. This is available only for a member who has checked in today (the button shows a lock otherwise). The log then shows "by coach"; camera-verified tasks show "by camera" and the repetitions counted.
+
+## 9. Account
+**Account page:** change the administrator name and email, the **system logo** (shown in the app and on printouts), and the password.
 
 ---
 
-### 3.2. Live AI Gesture Verification & Rep Counting
-1. Navigate to **Gesture Verification Monitor**.
-2. Select the active camera stream pointing to the gym exercise floor.
-3. As the member exercises in front of the camera, MediaPipe supplies pose landmarks and the **Scikit-Learn classifier (`workout_model.pkl`)** emits a supported movement label. The engine sends the label with the face-matched member ID to Laravel.
-4. Laravel matches that movement label to the member's workout task scheduled for today. A match updates the assigned exercise log as performed and retains its sets/reps target; a detection without a matching task is logged as an unassigned exercise.
+# PART B: TECHNICAL NOTES
 
-The current Gesture Engine detects exercise labels but does not report completed repetition totals or verify that every assigned set/repetition target was completed. The sets/reps shown on a task are assigned targets, not AI-measured completion counts.
+## 10. Requirements
 
----
-
-### 3.3. Manual Verification Override
-If camera visibility is obscured or a member performs an unassisted variation:
-1. The Coach reviews the live or recorded exercise attempt.
-2. Click **Manual Verification Override** next to the target task.
-3. Enter Coach authentication PIN and confirm task completion.
-4. The system logs the exercise status as **`verified_manual`**.
-
----
-
-# PART B: TECHNICAL & DEVELOPER DOCUMENTATION
-
-## 4. System Requirements & Environment Prerequisites
-
-### 4.1. Hardware Requirements
-| Component | Minimum Specification | Recommended Specification |
+| Component | Minimum | Recommended |
 | :--- | :--- | :--- |
-| **Host CPU** | Intel Core i5 (8th Gen) / AMD Ryzen 5 | Intel Core i7 (11th Gen+) / AMD Ryzen 7 |
-| **RAM** | 8 GB DDR4 | 16 GB DDR4/DDR5 |
-| **Storage** | 256 GB SSD | 512 GB NVMe SSD |
-| **Cameras** | 1x USB Webcam (720p 30fps) | Hikvision RTSP IP Cameras (1080p 30fps) |
-| **Network** | Fast Ethernet (100 Mbps LAN) | Gigabit Ethernet (1 Gbps LAN) |
+| CPU | 6 cores (for example Ryzen 5) | 8+ cores |
+| RAM | 8 GB | 16 GB |
+| Cameras | one USB webcam | IP CCTV (Hikvision or Reolink); use a 1080p stream, not 4K |
+| Network | LAN | wired Ethernet / PoE for CCTV |
 
----
+| Software | Version |
+| :--- | :--- |
+| PHP / Composer | 8.2+ / 2.6+ |
+| Node.js | 20 LTS or newer |
+| MySQL | 8.0+ (the backend defaults to SQLite until `DB_*` is set) |
+| Python | 3.10 |
 
-### 4.2. Software Dependencies
-| Software / Runtime | Required Version | Purpose |
+The Python engine needs `opencv-python`, `mediapipe`, `face_recognition` (dlib), `scikit-learn`, `Flask` and `requests` (see `Gesture Engine/requirements.txt`). On Windows use a prebuilt dlib; building dlib from source needs Visual Studio build tools.
+
+## 11. Installation
+
+1. **Database:** create an empty MySQL database (any name) and set `DB_CONNECTION=mysql`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` in `backend/.env`.
+2. **Backend** (`backend` folder): `composer install`, copy `.env.example` to `.env`, `php artisan key:generate`, `php artisan migrate --seed`, `php artisan serve` (port 8000).
+   * Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` before seeding; otherwise a random password is generated and printed once.
+   * Set `AI_ENGINE_TOKEN` to a long random string (the engine reads it from `backend/.env` on the same computer).
+   * Set `MAIL_MAILER=smtp` and the SMTP settings so the password-reset PIN is emailed. For development only, `AUTH_VERIFICATION_MODE=display_pin` shows the reset PIN on screen.
+   * Optional: `GYM_OPEN_TIME` and `GYM_CLOSE_TIME` (default 09:00 to 21:30).
+   * After upgrading from an older version run `php artisan migrate` and, once, `php artisan faces:secure` (moves old face photos to private storage). `php artisan schedule:work` is optional (the Inactive rule also runs once a day when pages are opened).
+3. **Frontend** (`frontend` folder): `npm install`, then `npm run dev` (port 5173). Set `VITE_AI_URL` if the engine is not on the same computer.
+4. **Gesture Engine** (`Gesture Engine` folder): create a virtual environment, `pip install -r requirements.txt`, copy `.env.example` to `.env`, then `python main.py` (port 5000). Keep the camera URLs and passwords only in `.env`; never commit them.
+
+## 12. Gesture Engine settings (`Gesture Engine/.env`)
+
+| Setting | Meaning |
+| :--- | :--- |
+| `CAMERA_SOURCE` | Camera used at start: `cctv`, `cctv_2`, `cctv_3`, `webcam`, `phone` |
+| `CCTV_URL`, `CCTV_2_URL`, `CCTV_3_URL`, `PHONE_CAMERA_URL`, `WEBCAM_INDEX` | Camera addresses |
+| `FACE_MATCH_THRESHOLD`, `FACE_MATCH_MARGIN`, `FACE_VOTES_REQUIRED` | How strictly faces are matched |
+| `FACE_ENCODER_PROCESSES` | Helper processes for face recognition (default 2); stops the video freezing while a face is being recognized |
+| `POSE_MODEL` | `full` (accurate) or `lite` (lighter) |
+| `REP_EXERCISES` | Exercises whose repetitions are counted: `SQUAT`, `PUSH UP`, `CURL`, `SIT UP` |
+| `LIVENESS_REQUIRED` | `true` checks in a member only after a blink (stops a printed photo; off by default, test it first) |
+
+## 13. API Reference (summary)
+
+All admin routes need the login token (`Authorization: Bearer <token>`). Engine routes need the header `X-AI-Engine-Token`.
+
+| Area | Routes |
+| :--- | :--- |
+| Login | `POST /api/auth/login`; `POST /api/auth/logout`; `POST /api/auth/password-reset/request`, `/verify` and `/api/auth/password-reset` |
+| Account | `GET /api/admin/me`; `POST /api/admin/profile`, `/password`, `/logo` |
+| Members | `GET/POST /api/members`; `PUT/DELETE /api/members/{id}` |
+| Subscriptions | `GET/POST /api/memberships`; `PUT/DELETE /api/memberships/{id}`; `POST /api/memberships/{id}/renew` |
+| Packages | `GET/POST /api/plans`; `PUT/DELETE /api/plans/{id}`; package categories under `/api/package-categories` |
+| Classes and events | `/api/coach-events` and `/api/coach-event-categories` |
+| Payments | `GET/POST /api/transactions`; `PUT/DELETE /api/transactions/{id}`; `POST /api/transactions/{id}/refund` |
+| Attendance | `GET /api/attendance/today`; `POST /api/attendance/manual`; `GET /api/members/{id}/attendance` |
+| Training plans | `GET/POST /api/members/{id}/workout-plan`; `POST /api/members/{id}/assign-task`; `GET /api/members/{id}/workouts`; `PUT /api/workouts/{id}/manual-verify`; `GET /api/workouts/live` |
+| Reports, dashboard | `GET /api/reports?start=&end=`; `GET /api/dashboard`; `GET /api/notifications` |
+| Engine only | `GET /api/ai/members-faces`; `GET /api/ai/workout-plans`; `POST /api/ai/log-attendance`; `POST /api/ai/log-workout` (also carries `counted_reps` and `completed`) |
+
+## 14. Camera Setup
+
+* **RTSP:** set the camera address in `Gesture Engine/.env`, for example `CCTV_URL=rtsp://user:password@192.168.1.45:554/Streaming/Channels/101` (Hikvision) or `.../Preview_01_main` (Reolink). Use the 1080p stream; decoding 4K slows the engine on a laptop. See `DOCUMENTATION/SetUpCCTV.md`.
+* **Placement:** cameras about 1.8 to 2.2 m high, tilted down 15° to 30°, even light, faces 1 to 3.5 m from the lens. A face under 40 px wide is not recognized ("Move closer").
+
+## 15. Troubleshooting
+
+| Problem | Likely cause | What to do |
 | :--- | :--- | :--- |
-| **Operating System** | Windows 10/11 or Ubuntu 22.04 LTS | Operating environment |
-| **PHP** | v8.2.x or v8.3.x | Backend Laravel core runtime |
-| **Composer** | v2.6+ | PHP package manager |
-| **Node.js** | v18.x or v20.x LTS | Frontend JavaScript runtime |
-| **NPM** | v9.x or v10.x | React frontend package manager |
-| **Python** | v3.10.x or v3.11.x | AI Vision & Gesture Engine runtime |
-| **MySQL Server** | v8.0+ | Centralized database server |
-| **OpenCV** | `opencv-python` v4.8+ | Computer vision stream processing |
-| **MediaPipe** | `mediapipe` v0.10+ | Human pose estimation & landmark tracking |
+| Face shows "Unknown" | Poor light, mask, not enrolled, or an enrollment with no face found | Improve light; re-capture the face; press Force AI Memory Sync; use a manual check-in meanwhile |
+| Member recognized but nothing on the Gesture Monitor | Not on an active With Coach package, or no plan for today | Check the package; assign a plan |
+| Video lags or freezes | 4K stream, weak CPU, or `FACE_ENCODER_PROCESSES=0` | Use a 1080p stream; keep `FACE_ENCODER_PROCESSES=2` (or 1) |
+| Reports or pages show an error after an update | Migrations not run | `php artisan migrate` |
+| Check-in refused | Outside gym hours, or already checked in today | Check the clock and the day's list |
+| Password-reset email not received | SMTP not configured | Set `MAIL_*` in `backend/.env` and restart Laravel |
+| Attendance missing after the server was off | The engine saves check-ins in `Gesture Engine/data/attendance_queue.jsonl` and re-sends them every 30 seconds | Start Laravel again; they are sent with their real time |
 
----
-
-## 5. System Installation & Setup Guide
-
-### Step 1: Database Setup
-1. Launch MySQL Server (via XAMPP, WampServer, or native MySQL service).
-2. Create an empty database named `gym_management`:
-   ```sql
-   CREATE DATABASE gym_management CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-
----
-
-### Step 2: Backend Installation (Laravel API)
-1. Open terminal and navigate to the backend directory:
-   ```bash
-   cd c:\CLIENT\GYM\GYM2-CAPSTONE\backend
-   ```
-2. Install PHP dependencies:
-   ```bash
-   composer install
-   ```
-3. Environment Configuration:
-   * Copy `.env.example` to `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   * Update database credentials in `.env`:
-     ```ini
-     DB_CONNECTION=mysql
-     DB_HOST=127.0.0.1
-     DB_PORT=3306
-     DB_DATABASE=gym_management
-     DB_USERNAME=root
-     DB_PASSWORD=
-     ```
-4. Generate Application Key & Storage Link:
-   ```bash
-   php artisan key:generate
-   php artisan storage:link
-   ```
-5. Run Database Migrations & Seeders:
-   ```bash
-   php artisan migrate --seed
-   ```
-6. Start Backend API Server:
-   ```bash
-   php artisan serve --host=127.0.0.1 --port=8000
-   ```
-
----
-
-### Step 3: Frontend Installation (React SPA)
-1. Open a new terminal and navigate to the frontend directory:
-   ```bash
-   cd c:\CLIENT\GYM\GYM2-CAPSTONE\frontend
-   ```
-2. Install Node packages:
-   ```bash
-   npm install
-   ```
-3. Start Development Server:
-   ```bash
-   npm run dev
-   ```
-4. Access interface in browser at `http://localhost:5173`.
-
----
-
-### Step 4: AI Vision & Gesture Engine Setup (Python Microservice)
-1. Open a new terminal and navigate to the AI engine directory:
-   ```bash
-   cd "c:\CLIENT\GYM\GYM2-CAPSTONE\AI Vision & Gesture Engine"
-   ```
-2. Create and activate a Python virtual environment:
-   ```bash
-   python -m venv venv
-   # On Windows PowerShell:
-   .\venv\Scripts\Activate.ps1
-   ```
-3. Install required Python packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Launch AI Engine Server:
-   ```bash
-   python gesture_engine.py
-   ```
-   * The Python Flask server starts listening on `http://127.0.0.1:5000`.
-
----
-
-## 6. REST API Endpoint Reference Contracts
-
-| Method | Endpoint | Auth | Description | Request Payload Sample |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/login` | Public | Admin login | `{"email": "admin@gym.com", "password": "secret"}` |
-| `GET` | `/api/members` | Sanctum | List all members | Headers: `Authorization: Bearer <token>` |
-| `POST` | `/api/members` | Sanctum | Create member profile | Multipart form data (includes `profile_pic`) |
-| `POST` | `/api/attendance/checkin`| Internal/API | AI Touchless Check-in | `{"member_id": 5, "time": "2026-09-10 10:15:00"}` |
-| `GET` | `/api/memberships` | Sanctum | Get active subscriptions| None |
-| `POST` | `/api/transactions` | Sanctum | Record new payment | `{"member_id": 5, "amount": 1500, "payment_method": "GCash"}` |
-| `POST` | `/api/workouts/verify-task`| Internal/API| AI Rep Verification | `{"task_id": 12, "completed_reps": 10, "status": "verified_ai"}` |
-
----
-
-## 7. Camera & RTSP Hardware Configuration
-
-### 7.1. Hikvision IP CCTV RTSP Connection String
-To connect an IP CCTV camera to the Python AI engine, update the RTSP stream URL in configuration:
-```python
-RTSP_URL = "rtsp://admin:GymPassword123@192.168.1.100:554/Streaming/Channels/101"
-cap = cv2.VideoCapture(RTSP_URL)
-```
-
-### 7.2. Camera Installation Guidelines
-* **Camera Height**: Position entrance and floor cameras at **1.8m to 2.2m** above floor level.
-* **Camera Angle**: Maintain a downward tilt angle between **15° and 30°**.
-* **Lighting Requirements**: Ensure even ambient lighting (minimum **300 Lux**) without harsh backlighting directly behind faces.
-* **Distance to Subject**: Face detection optimal range is **1.0m to 3.5m** from camera lens.
-
----
-
-## 8. Troubleshooting & Maintenance Guide
-
-### 8.1. Common Operational Issues & Resolutions
-
-| Problem / Error | Probable Cause | Resolution |
-| :--- | :--- | :--- |
-| **"Face Not Recognized" Alert** | Poor lighting, obstruction, or missing enrollment vector. | Ensure member faces camera directly under good lighting; re-enroll face biometrics if needed. |
-| **"Check-in Rejected" Error** | Attempted check-in outside 9:00 AM–9:30 PM, or duplicate check-in. | Verify system clock time and confirm member hasn't already checked in today. |
-| **CORS Policy Error in Frontend** | Laravel API missing CORS header configuration. | Verify `config/cors.php` in Laravel backend permits `http://localhost:5173`. |
-| **RTSP Video Feed Disconnection** | IP CCTV network timeout or wrong IP address. | Ping camera IP address (`192.168.x.x`), check LAN cable, and verify RTSP credentials. |
-| **Database Connection Refused** | MySQL service stopped or incorrect `.env` port. | Start MySQL in XAMPP/Services and verify `DB_PORT=3306` in `.env`. |
-
----
-
-### 8.2. MySQL Database Backup & Maintenance Command
-To perform a full manual backup of the MySQL database:
-```bash
-mysqldump -u root -p gym_management > gym_management_backup_2026.sql
-```
-To restore database from backup:
-```bash
-mysql -u root -p gym_management < gym_management_backup_2026.sql
-```
+**Backup:** `mysqldump -u root -p <database> > backup.sql` (restore with `mysql -u root -p <database> < backup.sql`). Back up before every `php artisan migrate`.

@@ -2,8 +2,9 @@
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
 **Client:** Double Alpha Fitness Gym (Natumolan, Tagoloan, Misamis Oriental)  
-**Document Version:** 1.0  
-**Date:** September 2026  
+**Document Version:** 2.0  
+**Date:** November 17, 2026  
+**Describes:** the system as built on this date.  
 
 ---
 
@@ -60,8 +61,6 @@ flowchart LR
     INPUT --> PROCESS --> OUTPUT
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
 
 ---
 
@@ -77,35 +76,34 @@ flowchart LR
     Mail["Email Server"]
     System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
 
-    Admin -->|"F1: Email, password and login PIN"| System
-    Admin -->|"F2: Member details, face capture, packages, subscriptions, coach events, payments and refunds"| System
-    Admin -->|"F3: Workout plans and manual verification"| System
-    Admin -->|"F4: Report dates, camera selection and profile updates"| System
+    Admin -->|"F1: Email and password"| System
+    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System
+    Admin -->|"F3: Training plans and manual verification"| System
+    Admin -->|"F4: Report dates, camera selection, manual check-ins and profile updates"| System
 
     System -->|"F5: Login result, dashboard summary and notifications"| Admin
     System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
-    System -->|"F7: Live camera feeds, today's attendance and workout task status"| Admin
+    System -->|"F7: Live camera feeds, today's attendance, workout task status and counted repetitions"| Admin
     System -->|"F8: Reports (CSV or print)"| Admin
 
     Camera -->|"F9: Live video of faces and exercise movement"| System
     Member -->|"F10: Personal details, face photo and payment (through the admin)"| System
     System -->|"F11: Payment receipt (printed by the admin)"| Member
-    System -->|"F12: Login PIN and password-reset PIN"| Mail
+    System -->|"F12: Password-reset PIN"| Mail
 ```
-
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
 
 
 ---
 
 ## 4. Data Flow Diagram Level 1 (DFD Level 1)
 
-DFD Level 1 decomposes the main system into six primary sub-processes and maps how data moves between external entities, processes, and central MySQL data stores.
+DFD Level 1 decomposes the main system into eight processes and maps how data moves between external entities, processes, and the data stores (database tables and the private face-photo files).
 
 ```mermaid
 flowchart LR
     Admin["Gym Owner / Admin"]
     Camera["Camera"]
+    Mail["Email Server"]
     P1(["1.0<br/>Log In"])
     P2(["2.0<br/>View Dashboard"])
     P3(["3.0<br/>Manage Members"])
@@ -115,14 +113,15 @@ flowchart LR
     P7(["7.0<br/>Payment Transactions"])
     P8(["8.0<br/>Reports"])
 
-    Admin -->|"Email, password, PIN"| P1
+    Admin -->|"Email, password; forgot-password request, PIN and new password"| P1
     P1 -->|"Login result, session token"| Admin
     S10[("D1 admins")]
     P1 <-->|"Admin account"| S10
-    S11[("D9 auth_verification_codes")]
-    P1 <-->|"Login PIN"| S11
-    S12[("D10 personal_access_tokens")]
+    S12[("D9 personal_access_tokens")]
     P1 -->|"Session token"| S12
+    S13[("D11 password_reset_pins")]
+    P1 <-->|"Password-reset PIN"| S13
+    P1 -->|"Password-reset PIN"| Mail
 
     Admin -->|"Dashboard request"| P2
     P2 -->|"Totals, sales chart, notifications"| Admin
@@ -135,34 +134,44 @@ flowchart LR
     S22[("D8 transactions")]
     P2 ~~~ S22
     S22 -->|"Revenue"| P2
+    S23[("D4 attendances")]
+    P2 ~~~ S23
+    S23 -->|"Today's check-ins"| P2
+    S24[("D10 coach_events")]
+    P2 ~~~ S24
+    S24 -->|"Classes and events this week"| P2
 
-    Admin -->|"Member details, face capture"| P3
+    Admin -->|"Member details, body type, face capture, consent, member status"| P3
     P3 -->|"Member list and profiles"| Admin
     S30[("D2 members")]
     P3 <-->|"Member records"| S30
     S31[("D3 face photo files")]
     P3 -->|"Face photo"| S31
 
-    Admin -->|"Camera selection"| P4
+    Admin -->|"Camera selection, manual check-in"| P4
     P4 -->|"Live feed, today's check-ins"| Admin
     S40[("D2 members")]
     P4 ~~~ S40
     S40 -->|"Enrolled members"| P4
+    P4 -->|"Returning member set back to Active"| S40
     S41[("D3 face photo files")]
     P4 ~~~ S41
     S41 -->|"Face photos"| P4
     S42[("D4 attendances")]
-    P4 <-->|"Member, date, time in"| S42
+    P4 <-->|"Member, date, time in, method, camera, subscription status"| S42
+    S43[("D7 memberships")]
+    P4 ~~~ S43
+    S43 -->|"Subscription on the check-in date"| P4
 
-    Admin -->|"7-day workout plan, manual verification"| P5
-    P5 -->|"Task status, workout history"| Admin
+    Admin -->|"7-day training plan, manual verification"| P5
+    P5 -->|"Task status, counted repetitions, workout history"| Admin
     S50[("D5 workout_logs")]
-    P5 <-->|"Assigned and verified tasks"| S50
+    P5 <-->|"Assigned tasks, counted repetitions, verified tasks"| S50
     S51[("D7 memberships")]
     P5 ~~~ S51
     S51 -->|"Active With Coach subscription"| P5
 
-    Admin -->|"Packages, subscriptions, upgrades"| P6
+    Admin -->|"Packages, subscriptions, renewals, upgrades, classes and events"| P6
     P6 -->|"Package list, subscription status"| Admin
     S60[("D6 plans")]
     P6 <-->|"Packages"| S60
@@ -170,6 +179,8 @@ flowchart LR
     P6 <-->|"Subscriptions"| S61
     S62[("D8 transactions")]
     P6 -->|"Automatic payment record"| S62
+    S63[("D10 coach_events")]
+    P6 <-->|"Classes and events"| S63
 
     Admin -->|"Payment details, refund request"| P7
     P7 -->|"Transaction list, receipt"| Admin
@@ -190,12 +201,13 @@ flowchart LR
     S82[("D4 attendances")]
     P8 ~~~ S82
     S82 -->|"Check-ins"| P8
+    S83[("D5 workout_logs")]
+    P8 ~~~ S83
+    S83 -->|"Workout tasks and counted repetitions"| P8
 
     Camera -->|"Live video"| P4
     Camera -->|"Live video"| P5
 ```
-
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
 
 
 ---
@@ -211,17 +223,17 @@ flowchart LR
     Member["Gym Member"]
 
     subgraph Boundary ["Gym Management System"]
-        UC1(["Log In with Email,<br/>Password and PIN"])
+        UC1(["Log In with Email<br/>and Password"])
         UC2(["View Dashboard<br/>and Notifications"])
-        UC3(["Manage Members<br/>and Face Capture"])
-        UC4(["Manage Packages<br/>and Subscriptions"])
+        UC3(["Manage Members,<br/>Body Type and Face Capture"])
+        UC4(["Manage Packages, Subscriptions,<br/>Renewals and Upgrades"])
         UC5(["Record Payments,<br/>Receipts and Refunds"])
-        UC6(["Build Workout Plans and<br/>Verify Tasks Manually"])
-        UC7(["View Attendance and<br/>Gesture Monitors"])
+        UC6(["Build Training Plans and<br/>Verify Tasks Manually"])
+        UC7(["View Attendance and<br/>Gesture Monitors,<br/>Check In Manually"])
         UC8(["Generate Reports"])
         UC9(["Manage Admin Profile"])
         UC10(["Recognize Faces and<br/>Log Attendance"])
-        UC11(["Recognize Assigned<br/>Exercise and Verify Task"])
+        UC11(["Recognize Exercise, Count<br/>Repetitions and Verify Task"])
         UC12(["Stream Live Video"])
     end
 
@@ -245,17 +257,14 @@ flowchart LR
     Member --> UC11
 ```
 
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
-
 
 ### Actor Description Matrix
 
 | Actor | Type | Description & System Responsibilities |
 | :--- | :--- | :--- |
-| **Gym Owner / Admin** | Primary Human Actor | Full system access: manages member accounts, plan configurations, financial transactions, payment logging, system reporting, and live camera feed viewing. |
-| **Gym Coach / Trainer** | Human Actor | Manages athlete workout routines, monitors live AI rep counting, assigns custom workout tasks, and performs manual verification overrides. |
-| **Gym Member** | External Human Participant | Participates in registration, biometrics face enrollment, touchless attendance check-in, and assigned gesture workout sessions. |
-| **AI Vision Camera Engine** | Automated Hardware/Software Actor | Captures RTSP/USB video feeds, executes facial recognition matching, extracts MediaPipe 3D pose landmarks, and calculates repetitions. |
+| **Gym Owner / Admin** | Primary Human Actor | Full system access through one shared login: members, packages and subscriptions, payments, reports, training plans, manual verification and manual check-in, and the live camera feeds. The gym owner and the coach use this same account. |
+| **Gym Member** | External Human Participant | Never logs in. Gives personal details and consent, poses for face enrollment, faces the camera for attendance, and performs assigned exercises. |
+| **Gesture Engine (camera)** | Automated Hardware/Software Actor | Reads the video feed, matches faces, extracts MediaPipe pose landmarks, classifies the exercise, counts repetitions for squat, push-up, curl and sit-up, and reports to Laravel. |
 
 ---
 
@@ -267,32 +276,32 @@ flowchart TB
         UI_DASH["Admin & Coach Dashboard"]
         UI_MEMBERS["Member Directory & Registration"]
         UI_ATTENDANCE["Live Attendance Feed"]
-        UI_WORKOUTS["AI Workout & Rep Monitor"]
+        UI_WORKOUTS["Gesture Monitor & Training Plans"]
         UI_FINANCE["Payment & Invoicing Panel"]
     end
 
     subgraph Layer2 ["2️⃣ APPLICATION LAYER (Laravel REST API & Python AI Engine)"]
-        subgraph Laravel_API ["Laravel 11/12 REST Services"]
+        subgraph Laravel_API ["Laravel 12 REST Services"]
             AUTH["Sanctum Auth Guard"]
             API_MEMBERS["Member Management API"]
             API_ATTENDANCE["Attendance Controller"]
-            API_PAYMENTS["Payment & Billing API"]
+            API_PAYMENTS["Subscription, Renewal & Payment API"]
             API_REPORTS["Analytics Generator"]
             CARBON_GUARD["Operating Hours & Expiry Guard"]
         end
 
         subgraph Python_AI ["Python 3.10+ AI Microservice Engine"]
             FLASK_SERVER["Flask Streaming API Server"]
-            FACE_RECOGNITION["Face Recognition Engine (128-d Vector Match)"]
+            FACE_RECOGNITION["Face Recognition Engine (128-d Vector Match, helper processes)"]
             MEDIAPIPE_POSE["MediaPipe Pose Estimator (33 Landmarks)"]
-            ML_CLASSIFIER["Scikit-Learn Workout Classifier (workout_model.pkl)"]
-            REP_STATE["Exercise Classifier (Random Forest)"]
+            ML_CLASSIFIER["Exercise Classifier (Random Forest, workout_model.pkl)"]
+            REP_STATE["Repetition Counter (joint angles)"]
         end
     end
 
     subgraph Layer3 ["3️⃣ DATA LAYER (Centralized MySQL 8.0+)"]
         MYSQL_DB[("Centralized MySQL Database")]
-        FILE_STORAGE["Local Profile Photo & Receipt Storage"]
+        FILE_STORAGE["Private Face Photo & Profile Photo Storage"]
     end
 
     subgraph Layer4 ["4️⃣ HARDWARE & DEVICE LAYER"]
@@ -302,7 +311,7 @@ flowchart TB
 
     %% Connections
     Layer1 <-->|"HTTP / Axios REST API"| Laravel_API
-    Layer1 <-->|"MJPEG Stream / Canvas Render"| Python_AI
+    Layer1 <-->|"MJPEG video feed"| Python_AI
     
     Layer4 -->|"RTSP Video Feed (Port 554)"| Python_AI
     Layer4 -->|"USB Video Capture"| Python_AI
@@ -313,8 +322,6 @@ flowchart TB
     Laravel_API <-->|"Eloquent PDO Queries"| MYSQL_DB
     Laravel_API -->|"Save Files"| FILE_STORAGE
 ```
-
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
 
 
 ---
@@ -327,36 +334,35 @@ flowchart TB
 sequenceDiagram
     autonumber
     actor Member as Gym Member
-    participant Cam as CCTV Entrance Camera
+    participant Cam as Camera
     participant PyAI as Python AI Engine
     participant LV as Laravel REST API
     participant DB as MySQL Database
     actor Admin as Admin Dashboard UI
 
-    Member->>Cam: Steps in front of entrance camera
-    Cam->>PyAI: RTSP Live Video Stream (30 FPS)
-    PyAI->>PyAI: Detect Face Bounding Box & Extract 128-d Vector
-    PyAI->>PyAI: Calculate Euclidean Vector Distance against Enrolled Face Database
-    
-    alt Match Confidence < 0.6 (Successful Identification)
-        PyAI->>LV: POST /api/ai/log-attendance {member_id}
-        LV->>LV: Carbon Check: Is current time between 9:00 AM - 9:30 PM?
-        LV->>LV: DB Query: Has member already checked in today?
-        
-        alt All Checks Passed
-            LV->>DB: INSERT INTO attendances (member_id, date, time_in)
-            LV-->>PyAI: 200 OK (Attendance Recorded)
-            PyAI->>Admin: Push WebSocket / Live Ticker Update (Green Check-in Badge)
-        else Duplicate Entry / Outside Hours
-            LV-->>PyAI: 422 Unprocessable Entity (Reason logged)
-            PyAI->>Admin: Push Soft Warning Alert to Admin Dashboard
+    Member->>Cam: Steps in front of the camera
+    Cam->>PyAI: Live video
+    PyAI->>PyAI: Detect face and compare with the enrolled faces
+
+    alt Match confirmed (distance 0.50 or less, 3 of 6 checks agree)
+        PyAI->>LV: POST /api/ai/log-attendance {member_id, camera, distance}
+        LV->>LV: Is the time between 9:00 AM and 9:30 PM?
+        LV->>LV: Has the member already checked in today?
+
+        alt All checks passed
+            LV->>DB: INSERT INTO attendances (member, date, time_in, method, camera, subscription status)
+            LV->>DB: Set the member back to Active if Inactive
+            LV-->>PyAI: 200 OK (Attendance recorded)
+        else Duplicate entry or outside hours
+            LV-->>PyAI: 422 (reason)
         end
-    else No Match / Unregistered Face
-        PyAI->>PyAI: Ignore frame & await next camera buffer
+        PyAI->>Admin: Live feed shows the name (orange RENEW if the subscription expired)
+    else No match
+        PyAI->>Admin: Red box labelled Unknown
+        Admin->>LV: Manual check-in with a reason
+        LV->>DB: INSERT INTO attendances (method = manual)
     end
 ```
-
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
 
 
 ---
@@ -367,37 +373,41 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     actor Member as Gym Member
-    actor Coach as Gym Coach
+    actor Coach as Admin / Coach
     participant Cam as Workout Zone Camera
     participant Py as Python AI Engine
     participant LV as Laravel API
     participant DB as MySQL Database
     participant UI as React Member Profile
-    participant Catalog as Exercise JSON Catalog
 
-    Coach->>UI: Opens member's Coach's Training Plan
-    UI->>Catalog: Load exercises with body_part metadata
-    Coach->>UI: Filter exercises by body part and set weekday, sets, and reps
-    UI->>UI: Save weekly routine in browser storage
-    UI->>LV: POST next seven days of dated tasks, targets, and gesture classes
-    LV->>DB: Replace pending scheduled assignments in workout_logs
-    UI->>LV: Gesture Monitor polls pending assignments and recent logs
-    LV-->>UI: Return member workout queue
-    
-    Member->>Cam: Begins Workout Routine in Camera View
-    Cam->>Py: Streams Frame Sequence
-    Py->>Py: MediaPipe Extracts 33 Body Joint Coordinates
-    Py->>Py: Classifier emits a supported movement label
-    Py->>LV: POST /api/ai/log-workout (member_id, exercise label)
-    LV->>DB: Match label to that member's task scheduled for today
-    alt Matching assigned task exists
-        LV->>DB: Mark assigned exercise log performed, retain sets/reps targets
-    else No matching assigned task
-        LV->>DB: Save an unassigned exercise log (anti-spam guarded)
+    Coach->>UI: Opens the member's Training plan
+    Coach->>UI: Chooses exercises, dates, sets and reps
+    UI->>LV: POST the dated tasks for the next 7 days
+    LV->>DB: Replace the pending tasks in workout_logs
+
+    Member->>Cam: Starts the exercise in camera view
+    Cam->>Py: Streams frames
+    Py->>Py: Recognize the face, detect the pose, classify the exercise
+    Note over Py: Only members with an active With Coach subscription are tracked
+
+    alt Squat, push-up, curl or sit-up
+        loop Every few seconds
+            Py->>Py: Count repetitions from the joint angle
+            Py->>LV: POST /api/ai/log-workout (counted_reps, completed = false)
+            LV->>DB: Save the progress
+        end
+        Py->>LV: POST /api/ai/log-workout (completed = true) when the target is reached
+        LV->>DB: Mark the task verified (verified_by = ai)
+    else Other exercise
+        Py->>LV: POST /api/ai/log-workout (exercise recognized)
+        LV->>DB: Mark the matching task verified (verified_by = ai)
+    end
+
+    opt The camera cannot check the exercise
+        Coach->>UI: Verify the task manually
+        UI->>LV: Verify (verified_by = coach)
     end
 ```
-
-> **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
 
 
 ---
@@ -407,8 +417,8 @@ sequenceDiagram
 | Diagram Type | Primary Purpose | Key Components & Standards |
 | :--- | :--- | :--- |
 | **IPO Model** | Conceptual System Flow | Categorizes System Inputs, Core Processes, and Generated Outputs |
-| **Context Diagram (DFD L0)** | System Boundary & Entities | Defines high-level interaction between Admin, Member, Coach, Camera & System |
-| **DFD Level 1** | Process & Data Store Mapping | Decomposes system into 6 core processes interacting with 6 MySQL data tables |
-| **Use Case Diagram (UCD)** | Functional User Roles | Maps 11 use cases across 4 primary actors (Admin, Coach, Member, AI Camera) |
+| **Context Diagram (DFD L0)** | System Boundary & Entities | Defines high-level interaction between Admin, Member, Camera, Email Server & System |
+| **DFD Level 1** | Process & Data Store Mapping | Decomposes the system into 8 processes interacting with 11 data stores (10 tables and the private face photo files) |
+| **Use Case Diagram (UCD)** | Functional User Roles | Maps the use cases across 3 actors (Admin, Member, Camera / Gesture Engine); the detailed diagrams are in Section 4.2-D |
 | **System Architecture** | Technical Tier Composition | 4-Layer model (Presentation, Application REST/AI, Data Layer, Hardware Layer) |
-| **Sequence Diagrams** | Step-by-Step Runtime Logic | Detail execution sequences for touchless check-in and gesture rep counting |
+| **Sequence Diagrams** | Step-by-Step Runtime Logic | Detail execution sequences for touchless check-in (with manual check-in) and gesture repetition counting |
