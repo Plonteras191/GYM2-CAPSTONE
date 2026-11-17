@@ -28,8 +28,14 @@ AI Vision & Gesture Engine/
 │   ├── collect_data.py      # Real-time pose landmark recording script
 │   ├── test_cam.py          # Camera input & RTSP diagnostic tool
 │   └── train_model.py       # Scikit-Learn model training pipeline
+├── tests/                   # Automated tests (run: python -m unittest discover tests)
 ├── main.py                  # Standard application entry point wrapper
 ├── gesture_engine.py        # Core Flask streaming web service & vision inference engine
+├── face_encoder_pool.py     # Helper processes that encode faces without stalling the video
+├── face_matching.py         # Distance, margin and vote rules for naming a face
+├── face_enrollment.py       # Loads the enrolled face photos
+├── rep_counter.py           # Counts repetitions from joint angles
+├── attendance_queue.py      # Saves check-ins to a file and retries when Laravel is down
 ├── requirements.txt         # Python package dependencies
 └── README.md                # Component documentation & directory guide
 ```
@@ -139,6 +145,7 @@ gym CCTV, while the phone hotspot is suitable as a temporary demo network.
 * **`face_recognition` / `dlib`**: Biometric 128-d face vector extraction & matching.
 * **MediaPipe Pose**: 33 3D body landmark joint tracking.
 * **Scikit-Learn**: Random Forest exercise classifier (`workout_model.pkl`).
+* **Repetition counter**: joint-angle state machine for squat, push-up, curl and sit-up (`rep_counter.py`).
 * **Flask & Flask-CORS**: Lightweight streaming server & API bridge.
 
 ## Multi-Person Gesture Monitoring
@@ -177,3 +184,15 @@ temporarily turned away or occluded. Keep the exerciser's face and full body
 visible to the camera between repetitions; identity retention is brief and
 does not replace a clear face match. Gesture Monitor reports the camera's
 measured capture FPS rather than a simulated latency value.
+
+## Face recognition rules (current)
+
+A face is named only when all of these hold: its distance to an enrolled photo is at most `FACE_MATCH_THRESHOLD` (0.50; `FACE_FAR_THRESHOLD` 0.45 for a small, far face), the best member leads the second best by `FACE_MATCH_MARGIN` (0.05), and `FACE_VOTES_REQUIRED` (3) recent checks agree. Faces smaller than `FACE_MIN_SIZE` (40 px) are not recognized. Encoding runs in `FACE_ENCODER_PROCESSES` helper processes (default 2) so the live video keeps moving. If Laravel cannot be reached, a check-in is saved to a queue file and retried. An unrecognized face is shown as Unknown, and the admin can check the member in by hand from the Attendance Monitor. Settings are in `.env` (see `.env.example`).
+
+## Who is tracked and how repetitions are counted
+
+* **Eligibility.** The Gesture Monitor tracks only members with an active With Coach subscription. A recognized member without one gets a grey "name - no coach plan" tag. Laravel sends the eligible members with today's plans.
+* **Counted exercises.** For the exercises listed in `REP_EXERCISES` (default: SQUAT, PUSH UP, CURL, SIT UP) the engine counts repetitions from the joint angle (knee, elbow or hip) with smoothing and a down/up state change. The count is kept per member, so it continues if the pose track changes.
+* **Progress and completion.** While counting, the engine sends `completed = false` with `counted_reps` every few seconds; Laravel keeps the highest value. When the target (sets × reps from the training plan) is reached it sends the final verification (`verified_by = ai`). Exercises that are not counted are verified when recognized, as described above.
+* **Pose model.** `POSE_MODEL=full` (default in `.env.example`) is more accurate for distant people; `lite` is lighter on the CPU.
+* **Not a posture checker.** The system counts movement; it does not judge form or safety.

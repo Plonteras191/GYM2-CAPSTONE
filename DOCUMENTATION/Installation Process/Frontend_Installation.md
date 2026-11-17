@@ -31,7 +31,7 @@ cd c:\CLIENT\GYM\GYM2-CAPSTONE\frontend
 ---
 
 ### Step 2: Install Node Dependencies
-Execute `npm install` to download all production and development packages declared in `package.json` (React 19, React Router v7, Vite 8, Tailwind CSS v4, Recharts, FullCalendar, Axios, JSMpeg Player, etc.):
+Execute `npm install` to download all production and development packages declared in `package.json` (React 19, React Router v7, Vite 8, Tailwind CSS v4, Recharts, FullCalendar, Axios, etc.):
 ```bash
 npm install
 ```
@@ -98,7 +98,7 @@ npm run preview
 | `axios` | `^1.18.1` | HTTP requests to Laravel REST API |
 | `recharts` | `^3.9.1` | Analytics charts & financial graphs |
 | `@fullcalendar/react` | `^6.1.21` | Attendance & workout scheduling calendar |
-| `@cycjimmy/jsmpeg-player` | `^6.1.2` | Low-latency canvas video feed streaming |
+| `@cycjimmy/jsmpeg-player` | `^6.1.2` | Installed but not used by the pages (the video feeds are MJPEG images) |
 | `react-avatar-editor` | `^15.1.0` | Profile image cropping during enrollment |
 
 ---

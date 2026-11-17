@@ -440,7 +440,7 @@ File: `Chapter4_Diagrams (2).md`.
 - **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** **Updated**, see below.
 - **Tests:** 6 new backend tests (`AdminLoginTest`: signs in without a code and without sending email, the token opens the admin area, wrong password and unknown email are refused with no token, the old verify route is gone, the password-reset PIN still works). Backend 101 pass; the 2 older `SecurityTest` tests still need PHP's GD extension.
 - **Re-test:** SBT-001 and IT-001 in `TestCase.md` still describe the login PIN; update and re-run them.
-- **Older documents still describing the login PIN (not updated):** `DOCUMENTATION/Context Level Diagram`, `DOCUMENTATION/Data Flow Diagram`, `DOCUMENTATION/Product Requirements Documents/System diagrams`, `DOCUMENTATION/USECASE DIAGRAM/usecase.md`, and `ToDoList.md`. Update them if the team still uses them.
+- **Older documents still describing the login PIN:** updated later the same day, see item 26. Only `ToDoList.md` was left as it was.
 
 **Diagram changes for item 25** (`Chapter4_Diagrams (2).md`):
 
@@ -466,3 +466,38 @@ File: `Chapter4_Diagrams (2).md`.
 - **Tests:** backend 89 pass (9 new). The 2 older `SecurityTest` tests still fail on this laptop because PHP's GD image extension is not installed; they fail the same way without these changes. The frontend builds, and the changed screens were render-checked with sample data but not yet clicked through in a browser.
 - **Phase 2 (item 24):** new files `frontend/src/features/subscriptions/components/PriceListView.jsx`, `frontend/src/features/subscriptions/components/PackageFormModal.jsx`, `backend/tests/Feature/PlanDeletionTest.php`; removed `frontend/src/features/subscriptions/components/PricingCatalogModal.jsx` (replaced by the Price list tab); changed `backend/app/Http/Controllers/Admin/PlanController.php` (delete guard), `frontend/src/pages/Subscriptions.jsx`, `frontend/src/features/subscriptions/hooks/useSubscriptions.js`, `frontend/src/features/subscriptions/pricing.js`, `frontend/src/features/subscriptions/components/SubscriptionsCalendarView.jsx`, `frontend/src/features/subscriptions/components/CoachEventModal.jsx`, `frontend/src/features/members/components/MemberProfileModal.jsx`, `frontend/src/pages/Dashboard.jsx`, `frontend/src/components/ui/CalendarHoverPopover.jsx`, `frontend/src/components/ui/MobileCalendarDaySheet.jsx`. Still no database changes. Backend now 95 pass.
 - **Open decisions for the owner:** (1) the loyalty discount is only given when the previous subscription has ended, so an early renewal costs full price; (2) renewing a lapsed member starts the new subscription today, not at the old end date.
+
+---
+
+### 26. Documentation Aligned With the System as Built
+
+**What was done:** the system was checked against its code and database, and the documents were updated so they describe what the system really does on November 17, 2026. No program code and no database were changed in this item.
+
+**What the documents now say (the main differences from the older text):**
+- Login: email and password only; no verification code and no `auth_verification_codes` table (the password-reset PIN stays).
+- Registration: address, profile photo, **body type**, and the member's **consent** to face enrollment with its date; four face views (front, chin down, left, right).
+- Attendance: face rules (distance 0.50, 3 of 6 agreeing checks), **manual check-in** with a reason, RENEW flag, the saved check-in details, Inactive members set back to Active, and the retry queue when Laravel is down.
+- Program monitoring: 7-day **training plan**, only members with an **active With Coach subscription** are tracked, **repetition counting** for squat, push-up, curl and sit-up, progress saved until the target is reached, coach verification by hand.
+- Packages: **Renew**, upgrade balance, the **Price list** tab, and the delete guard; "Coach events" are now "Classes and events".
+- Reports: four types (Payments, Memberships, Attendance, Program Monitoring).
+- Database: 12 tables in use; `memberships.plan_id` has **no foreign key** (the application keeps the link); unused tables are listed as not drawn.
+
+**Documents updated (all in this repository):**
+- `Updated Current Plan For Development/Chapter4_Diagrams (2).md` (Figures 4.3 to 4.10).
+- `Correct_Diagrams/` files 1 to 6, including 3A and 3B (the detailed data flow diagrams, now with D1 to D13).
+- `DOCUMENTATION/Context Level Diagram`, `Data Flow Diagram`, `System Process Flow Diagram`, `USECASE DIAGRAM`, `Logical Entity-Relationship Diagram`, `Physical Entity-Relationship Diagram`.
+- `DOCUMENTATION/Product Requirements Documents/`: `Database Documentation` (v2.0), `User/technical documentation` (v2.0), `Architecture` (v2.0) and `System diagrams` (v2.0).
+- `README.md`, `Gesture Engine/README.md`, and `DOCUMENTATION/Installation Process/Frontend_Installation.md`.
+- All Mermaid diagrams in these files were checked and parse; the physical ERD was compared with the real database tables and columns.
+
+**Left as they were on purpose:**
+- `DOCUMENTATION/Product Requirements Documents/Testing documentation/Testing Documentation.md`: it contains results that were not measured on this system (for example the face accuracy, response time and frame-rate figures). They must be replaced with real results after the formal testing, not edited by hand.
+- `DOCUMENTATION/TestCase.md`: SBT-001, SBT-004 and IT-001 carry "re-run needed" notes. Update their steps and run them again after the owner has tried the new screens.
+- `DOCUMENTATION/Product Requirements Documents/Overview/Overview.md` (already correct), `DOCUMENTATION/SetUpCCTV.md`, the other Installation guides, and `ToDoList.md`.
+- Owner-requested extra features were not changed.
+
+**Things the team should know:**
+- `memberships.auto_renew` still exists in the database and the ERD, although the system has no automatic renewal; remove it later if the adviser asks.
+- The table `auth_verification_codes` still exists in the database but is unused.
+- 8 subscriptions in the current database point to packages that were deleted before the delete guard existed; they keep their package name.
+- Phase 3 (coach notes saved on the server) is not built yet; until then the training-plan routine is still kept in the browser, and the documents say so.
