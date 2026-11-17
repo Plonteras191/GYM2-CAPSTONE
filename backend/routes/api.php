@@ -22,7 +22,6 @@ use App\Http\Controllers\Tracking\WorkoutController;
 // --- 1. AUTHENTICATION ROUTES (rate limited per IP) ---
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
-    Route::post('/auth/login/verify', [AuthController::class, 'verifyLogin']);
     Route::post('/auth/password-reset/verify', [AuthController::class, 'verifyPasswordResetPin']);
     Route::post('/auth/password-reset', [AuthController::class, 'resetPassword']);
 });
