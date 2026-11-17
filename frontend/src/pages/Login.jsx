@@ -26,9 +26,6 @@ export default function Login() {
   const [recoveryConfirmation, setRecoveryConfirmation] = useState('');
   const [recoveryMessage, setRecoveryMessage] = useState('');
   const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const [loginChallengeId, setLoginChallengeId] = useState('');
-  const [loginPin, setLoginPin] = useState('');
-  const [loginMessage, setLoginMessage] = useState('');
 
   const requestRecovery = async () => {
     setRecoveryLoading(true);
@@ -91,21 +88,8 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
-    setLoginMessage('');
 
     try {
-      if (loginChallengeId) {
-        const verifyResponse = await fetch(`${API_BASE}/auth/login/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ challenge_id: loginChallengeId, pin: loginPin }),
-        });
-        const verifyData = await verifyResponse.json();
-        if (!verifyResponse.ok) throw new Error(verifyData.message || 'Login verification failed.');
-        await finishLogin(verifyData);
-        return;
-      }
-
       const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: {
@@ -117,12 +101,7 @@ export default function Login() {
 
       const data = await response.json();
 
-      if (response.status === 202) {
-        setLoginChallengeId(data.challenge_id);
-        setLoginMessage(data.verification_pin
-          ? `${data.message} Enter PIN: ${data.verification_pin}`
-          : `A verification PIN was sent to ${data.email}. Check the administrator Gmail before continuing.`);
-      } else if (response.ok) {
+      if (response.ok) {
         await finishLogin(data);
       } else {
         if (data.errors && data.errors.email) {
@@ -261,7 +240,7 @@ export default function Login() {
               <div className="rise" style={{ '--i': 3 }}>
                 <div className="mb-2 flex items-center justify-between">
                   <label htmlFor="login-password" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/60">Password</label>
-                  {!loginChallengeId && <button type="button" onClick={() => setRecoveryOpen(true)} className="link-draw text-xs font-semibold text-white/60 transition-colors hover:text-brand-gold">Forgot password?</button>}
+                  <button type="button" onClick={() => setRecoveryOpen(true)} className="link-draw text-xs font-semibold text-white/60 transition-colors hover:text-brand-gold">Forgot password?</button>
                 </div>
                 <div className="group relative">
                   <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-white/40 transition-colors group-focus-within:text-brand-gold" />
@@ -286,28 +265,7 @@ export default function Login() {
                 </div>
               </div>
 
-              {loginChallengeId && (
-                <div className="animate-in fade-in slide-in-from-top-2 space-y-2">
-                  <label htmlFor="login-pin" className={labelClass}>6-digit verification code</label>
-                  <input
-                    id="login-pin"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    required
-                    value={loginPin}
-                    onChange={event => setLoginPin(event.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                    autoComplete="one-time-code"
-                    placeholder="6-digit code"
-                    className={`${inputClass} min-h-12 pl-4 pr-4 text-center font-display text-2xl tracking-[0.45em]`}
-                  />
-                  <p className="text-xs font-medium text-white/60">Enter the code sent to your administrator email.</p>
-                  <p className="text-xs font-medium text-brand-gold">{loginMessage}</p>
-                </div>
-              )}
-
-              {!loginChallengeId && <div className="rise flex items-center gap-3 pt-1" style={{ '--i': 4 }}>
+              <div className="rise flex items-center gap-3 pt-1" style={{ '--i': 4 }}>
                 <input
                   type="checkbox"
                   id="remember"
@@ -318,12 +276,12 @@ export default function Login() {
                 <label htmlFor="remember" className="cursor-pointer select-none text-sm font-medium text-white/70 transition-colors hover:text-white">
                   Remember me
                 </label>
-              </div>}
+              </div>
 
               <div className="rise pt-2 sm:pt-4" style={{ '--i': 5 }}>
                 <button type="submit" disabled={isLoading} className={goldButton}>
                   {isLoading ? <FiLoader className="animate-spin" size={19} /> : <FiLogIn size={19} />}
-                  {isLoading ? (loginChallengeId ? 'Verifying…' : 'Authenticating…') : (loginChallengeId ? 'Verify and Login' : 'Login')}
+                  {isLoading ? 'Authenticating…' : 'Login'}
                 </button>
               </div>
 
@@ -331,7 +289,7 @@ export default function Login() {
 
             <div className="rise mt-8 border-t border-white/10 pt-8 text-center sm:mt-10 sm:pt-10" style={{ '--i': 6 }}>
               <p className="text-xs font-medium leading-relaxed text-white/40">
-                Double Alpha Fitness v1.0 <br /> Tagoloan Community College Capstone
+                Double Alpha Fitness v1.0
               </p>
             </div>
 
