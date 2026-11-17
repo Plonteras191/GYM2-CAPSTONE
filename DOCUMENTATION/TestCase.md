@@ -19,6 +19,8 @@ The cases cover all requested pages and their implemented controls, including su
 
 ## 3. Scenario-Based Test Cases
 
+> **Re-run needed (November 17, 2026):** the login no longer asks for an emailed verification code; it signs in with email and password only (the password-reset PIN is unchanged). SBT-001 and IT-001 below still describe the code step. Update their steps and expected results, then run them again before recording a new result.
+
 ### SBT-001 — Login
 
 | Field | Details |

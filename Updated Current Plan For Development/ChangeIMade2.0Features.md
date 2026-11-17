@@ -427,7 +427,35 @@ File: `Chapter4_Diagrams (2).md`.
 
 ---
 
-### Summary for November 17 (items 23 and 24)
+### 25. Login: the Email Verification Step Was Removed
+- **What changed:** logging in is now **email and password only**. After a correct password the admin goes straight to the dashboard; no 6-digit code is emailed or asked for. The login screen no longer shows the code box, its label, placeholder or hint, and the footer line "Tagoloan Community College Capstone" was removed (the footer now reads "Double Alpha Fitness v1.0").
+- **Kept:** the **password-reset PIN** ("Forgot password?") works exactly as before, including the 5-attempt limit and the local "show the PIN on screen" mode for development. Wrong-password protection also stays: the login is limited to 10 tries per minute per computer.
+- **Backend:** `POST /api/auth/login` now returns the session token directly. `POST /api/auth/login/verify` no longer exists. `AuthController` lost `verifyLogin`, `sendVerificationCode` and `maskEmail`.
+- **Why it matters for the paper:** Chapter 3 lists multi-factor authentication as not included, so this also brings the system back in line with the approved scope. The owner and adviser had asked for the PIN earlier, so confirm they agree it is removed.
+- **Side effects:**
+  - Sending the login PIN no longer depends on email, so logging in works even when SMTP or the internet is down. This removes the demo risk noted in the alignment review.
+  - The table `auth_verification_codes` is now unused. It was left in the database (no migration) and is not drawn in the ERD, like the other unused tables.
+  - Login security now rests on the password alone, so use a strong admin password.
+- **Database changes:** **None.**
+- **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** **Updated**, see below.
+- **Tests:** 6 new backend tests (`AdminLoginTest`: signs in without a code and without sending email, the token opens the admin area, wrong password and unknown email are refused with no token, the old verify route is gone, the password-reset PIN still works). Backend 101 pass; the 2 older `SecurityTest` tests still need PHP's GD extension.
+- **Re-test:** SBT-001 and IT-001 in `TestCase.md` still describe the login PIN; update and re-run them.
+- **Older documents still describing the login PIN (not updated):** `DOCUMENTATION/Context Level Diagram`, `DOCUMENTATION/Data Flow Diagram`, `DOCUMENTATION/Product Requirements Documents/System diagrams`, `DOCUMENTATION/USECASE DIAGRAM/usecase.md`, and `ToDoList.md`. Update them if the team still uses them.
+
+**Diagram changes for item 25** (`Chapter4_Diagrams (2).md`):
+
+| # | Figure | Part | Change | Why |
+|---|---|---|---|---|
+| 1 | 4.3 System Process Flow | Login | **Removed** "Enter the 6-digit PIN", "PIN correct?" and "Show PIN error"; "Email and password correct?" Yes now goes to "Dashboard" | No login PIN |
+| 2 | 4.4 Context Level Diagram | Flow F1 / F12 | **Text changed:** F1 "Email, password and login PIN" → "Email and password"; F12 "Login PIN and password-reset PIN" → "Password-reset PIN" | Only the reset PIN is emailed |
+| 3 | 4.5 Data Flow Diagram | 1.0 Login | **Label changed:** "Email, password, PIN" → "Email, password". **Removed** store D9 `auth_verification_codes` and its "Login PIN" flow; `personal_access_tokens` renumbered D10 → D9 | No login PIN |
+| 4 | 4.6 Use Case (Admin) | Log In | **Removed** the use case "Verify 6-Digit PIN" and its «include» arrow | No login PIN |
+| 5 | 4.9 Logical ERD | LOGIN_PIN | **Removed** the entity and its "ADMIN verifies with LOGIN_PIN" line | Table unused |
+| 6 | 4.10 Physical ERD | `auth_verification_codes` | **Removed** the table and its line to `admins`; the "on delete" note and the "not drawn" list were updated | Table unused |
+
+---
+
+### Summary for November 17 (items 23, 24 and 25)
 - **Database changes:** **None.** No new tables and no new columns. The only new stored value is the transaction type "Subscription Renewal", which uses the existing `transactions.type` column.
 - **New API route:** `POST /api/memberships/{id}/renew` (needs the admin login; body: `payment_method`, optional `plan_id`, `reference_number`, `amount`).
 - **Chapter 4 diagrams (`Chapter4_Diagrams (2).md`):** **Not changed**, because there is no database change. If the team wants the new function drawn, add a "Renew Subscription" use case to Figure 4.6 (the process flow in Figure 4.3, Module 4, already has a renewal payment step).

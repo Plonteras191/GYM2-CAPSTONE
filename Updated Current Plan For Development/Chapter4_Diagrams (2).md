@@ -70,11 +70,7 @@ flowchart TD
     Cred --> Valid{"Email and password<br/>correct?"}
     Valid -- No --> Err1["Show login error"]
     Err1 --> Cred
-    Valid -- Yes --> EnterPin["Enter the 6-digit PIN"]
-    EnterPin --> PinOk{"PIN correct?"}
-    PinOk -- No --> Err2["Show PIN error"]
-    Err2 --> EnterPin
-    PinOk -- Yes --> Dash["Dashboard"]
+    Valid -- Yes --> Dash["Dashboard"]
     Dash --> Select["Select function"]
 
     Select --> A1["Module 1: Member Registration"]
@@ -145,7 +141,7 @@ flowchart LR
     Mail["Email Server"]
     System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
 
-    Admin -->|"F1: Email, password and login PIN"| System
+    Admin -->|"F1: Email and password"| System
     Admin -->|"F2: Member details, face capture, packages, subscriptions, coach events, payments and refunds"| System
     Admin -->|"F3: Workout plans and manual verification"| System
     Admin -->|"F4: Report dates, camera selection and profile updates"| System
@@ -158,7 +154,7 @@ flowchart LR
     Camera -->|"F9: Live video of faces and exercise movement"| System
     Member -->|"F10: Personal details, face photo and payment (through the admin)"| System
     System -->|"F11: Payment receipt (printed by the admin)"| Member
-    System -->|"F12: Login PIN and password-reset PIN"| Mail
+    System -->|"F12: Password-reset PIN"| Mail
 ```
 
 ---
@@ -178,13 +174,11 @@ flowchart LR
     P7(["7.0<br/>Payment Transactions"])
     P8(["8.0<br/>Reports"])
 
-    Admin -->|"Email, password, PIN"| P1
+    Admin -->|"Email, password"| P1
     P1 -->|"Login result, session token"| Admin
     S10[("D1 admins")]
     P1 <-->|"Admin account"| S10
-    S11[("D9 auth_verification_codes")]
-    P1 <-->|"Login PIN"| S11
-    S12[("D10 personal_access_tokens")]
+    S12[("D9 personal_access_tokens")]
     P1 -->|"Session token"| S12
 
     Admin -->|"Dashboard request"| P2
@@ -273,7 +267,6 @@ flowchart LR
     subgraph Boundary ["Gym Management System"]
         Login(["Log In"])
         ValCred(["Validate Email and Password"])
-        VerPin(["Verify 6-Digit PIN"])
         Reset(["Reset Password by PIN"])
         Logout(["Log Out"])
 
@@ -314,7 +307,6 @@ flowchart LR
         Logo(["Update System Logo"])
 
         Login -.->|"«include»"| ValCred
-        Login -.->|"«include»"| VerPin
         Login ~~~ Reset
         Reset -.->|"«extend»"| Login
         AddMem -.->|"«include»"| Face
@@ -443,12 +435,6 @@ erDiagram
         text password
         text logo
     }
-    LOGIN_PIN {
-        text purpose
-        text pin
-        datetime expires_at
-        number attempts
-    }
     MEMBER {
         text first_name
         text last_name
@@ -532,7 +518,6 @@ erDiagram
         text location
     }
 
-    ADMIN ||--o{ LOGIN_PIN : "verifies with"
     MEMBER ||--o{ MEMBERSHIP : "subscribes to"
     PLAN ||--o{ MEMBERSHIP : "is sold as"
     PACKAGE_CATEGORY |o--o{ PLAN : "groups"
@@ -555,17 +540,6 @@ erDiagram
         varchar email UK
         varchar password
         varchar logo_path "nullable"
-        timestamp created_at
-        timestamp updated_at
-    }
-    auth_verification_codes {
-        bigint id PK
-        bigint admin_id FK
-        varchar email
-        varchar purpose
-        varchar code_hash
-        timestamp expires_at
-        tinyint attempts
         timestamp created_at
         timestamp updated_at
     }
@@ -719,7 +693,6 @@ erDiagram
         timestamp updated_at
     }
 
-    admins ||--o{ auth_verification_codes : "admin_id"
     admins ||..o{ personal_access_tokens : "tokenable_id (no FK)"
     admins ||..o{ password_reset_pins : "email (no FK)"
     members |o--o{ memberships : "member_id"
@@ -736,8 +709,8 @@ Decimal sizes: `members.height` and `members.weight` are DECIMAL(5,2), `plans.pr
 
 Unique rule: `attendances` allows one row per (`member_id`, `date`), so a member has at most one check-in per day.
 
-On delete: `workout_logs` and `auth_verification_codes` cascade; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to null; `coach_events.category_id` is restricted.
+On delete: `workout_logs` cascades; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to null; `coach_events.category_id` is restricted.
 
 Confirm on your database before finalizing: whether `memberships.plan_id` has a real foreign key (`SHOW CREATE TABLE memberships;`). It is drawn here as one.
 
-Not drawn because the application does not use them: `face_encodings`, `payments`, `exercise_sessions`, `gesture_logs`, `exercises`, `users`, and Laravel's own tables (`sessions`, `cache`, `jobs` and similar).
+Not drawn because the application does not use them: `face_encodings`, `payments`, `exercise_sessions`, `gesture_logs`, `exercises`, `auth_verification_codes` (the old login PIN, removed), `users`, and Laravel's own tables (`sessions`, `cache`, `jobs` and similar).
