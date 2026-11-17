@@ -2,7 +2,9 @@
 
 [Back to the list of diagrams](../Correct_Diagrams.md)
 
-The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D14) are the same in every figure.
+The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D13) are the same in every figure.
+
+> **Updated November 17, 2026** to match the system as built: renewals, the Price list, program monitoring in reports, and "Coach events" renamed "Classes and events".
 
 Processes 1.0 to 5.0 are in [the previous file](3A_Data_Flow_Diagram_Processes_1_to_5.md).
 
@@ -18,7 +20,7 @@ flowchart LR
     D8[("D8 transactions")]
     D9[("D9 package_categories")]
 
-    Admin -->|"Packages, categories, subscriptions, upgrades"| P6
+    Admin -->|"Packages, categories, subscriptions, renewals, upgrades"| P6
     P6 -->|"Package list, subscription calendar and status"| Admin
     P6 <-->|"Packages"| D6
     P6 <-->|"Package categories"| D9
@@ -52,6 +54,7 @@ flowchart LR
     P8(["8.0<br/>Generate Reports"])
     D2[("D2 members")]
     D4[("D4 attendances")]
+    D5[("D5 workout_logs")]
     D6[("D6 plans")]
     D7[("D7 memberships")]
     D8[("D8 transactions")]
@@ -62,20 +65,21 @@ flowchart LR
     D7 -->|"Subscriptions"| P8
     D2 -->|"New sign-ups"| P8
     D4 -->|"Check-ins"| P8
+    D5 -->|"Workout tasks and counted repetitions"| P8
     D6 -->|"Package categories"| P8
 ```
 
-## 3.9 Process 9.0 — Manage Coach Events
+## 3.9 Process 9.0 — Manage Classes and Events
 
 ```mermaid
 flowchart LR
     Admin["Gym Owner / Admin"]
-    P9(["9.0<br/>Manage Coach Events"])
+    P9(["9.0<br/>Manage Classes<br/>and Events"])
     D10[("D10 coach_events")]
     D11[("D11 coach_event_categories")]
 
-    Admin -->|"Event details"| P9
-    P9 -->|"Calendar events"| Admin
+    Admin -->|"Class or event details"| P9
+    P9 -->|"Calendar of classes and events"| Admin
     P9 <-->|"Events"| D10
     P9 <-->|"Event categories"| D11
 ```

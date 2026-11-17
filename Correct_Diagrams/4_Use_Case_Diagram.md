@@ -2,6 +2,8 @@
 
 [Back to the list of diagrams](../Correct_Diagrams.md)
 
+> **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
+
 ## 4.1 Gym Owner / Admin
 
 ```mermaid
@@ -11,7 +13,6 @@ flowchart LR
     subgraph Boundary ["Gym Management System"]
         Login(["Log In"])
         ValCred(["Validate Email and Password"])
-        VerPin(["Verify 6-Digit PIN"])
         Reset(["Reset Password by PIN"])
         Logout(["Log Out"])
 
@@ -19,31 +20,36 @@ flowchart LR
         Notif(["View Notifications"])
 
         AddMem(["Add Member"])
-        Face(["Capture Face<br/>(front, left, right)"])
+        Face(["Capture Face<br/>(front, chin down, left, right)"])
+        Consent(["Record Face Consent"])
         ViewMem(["View Member Profile,<br/>Attendance and Workouts"])
         UpdMem(["Update Member"])
+        SetStatus(["Set Member Status<br/>(Active / Inactive)"])
         DelMem(["Delete Member"])
 
         Pack(["Manage Packages and Prices"])
+        DelPack(["Delete Package<br/>(refused while members are subscribed)"])
         Cat(["Manage Package Categories"])
         NewSub(["Create Subscription"])
         UpSub(["Upgrade Subscription"])
+        RenewSub(["Renew Subscription"])
         AutoPay(["Create Payment Transaction"])
-        Events(["Manage Coach Events"])
+        Events(["Manage Classes and Events"])
 
         Pay(["Record Payment<br/>(Cash, GCash, Maya)"])
         Receipt(["Print Receipt"])
         Refund(["Refund Transaction"])
 
-        Plan(["Build 7-Day Workout Plan"])
+        Plan(["Build 7-Day Training Plan"])
         Manual(["Manually Verify Workout Task"])
 
         AttMon(["View Attendance Monitor"])
+        ManualIn(["Check In Member Manually"])
         GesMon(["View Gesture Monitor"])
         Switch(["Switch Camera Source"])
         Sync(["Re-sync Enrolled Faces"])
 
-        Report(["Generate Report"])
+        Report(["Generate Report<br/>(Payments, Memberships,<br/>Attendance, Program Monitoring)"])
         Export(["Export CSV or Print"])
 
         Profile(["Update Admin Profile"])
@@ -51,14 +57,19 @@ flowchart LR
         Logo(["Update System Logo"])
 
         Login -.->|"«include»"| ValCred
-        Login -.->|"«include»"| VerPin
         Login ~~~ Reset
         Reset -.->|"«extend»"| Login
         AddMem -.->|"«include»"| Face
+        Face -.->|"«include»"| Consent
+        UpdMem ~~~ SetStatus
+        SetStatus -.->|"«extend»"| UpdMem
+        DelPack -.->|"«extend»"| Pack
         NewSub -.->|"«include»"| AutoPay
         UpSub -.->|"«include»"| AutoPay
+        RenewSub -.->|"«include»"| AutoPay
         Pay ~~~ Receipt
         Receipt -.->|"«extend»"| Pay
+        ManualIn -.->|"«extend»"| AttMon
         Report ~~~ Export
         Export -.->|"«extend»"| Report
     end
@@ -75,12 +86,14 @@ flowchart LR
     Admin --> Cat
     Admin --> NewSub
     Admin --> UpSub
+    Admin --> RenewSub
     Admin --> Events
     Admin --> Pay
     Admin --> Refund
     Admin --> Plan
     Admin --> Manual
     Admin --> AttMon
+    Admin --> ManualIn
     Admin --> GesMon
     Admin --> Switch
     Admin --> Sync
@@ -105,17 +118,23 @@ flowchart LR
         Detect(["Detect Faces"])
         Match(["Match Face with<br/>Enrolled Members"])
         Att(["Send Attendance<br/>to Laravel API"])
+        Retry(["Save and Retry Attendance<br/>when Laravel is Unreachable"])
 
         Pose(["Detect Body Pose"])
         Link(["Link Pose to<br/>Recognized Member"])
         Classify(["Classify Exercise"])
+        Count(["Count Repetitions<br/>(squat, push-up, curl, sit-up)"])
+        Progress(["Send Repetition Progress<br/>to Laravel API"])
         Verify(["Send Workout Verification<br/>to Laravel API"])
 
         Detect -.->|"«include»"| Match
         Att -.->|"«extend» face matched"| Match
+        Retry -.->|"«extend» sending failed"| Att
         Pose -.->|"«include»"| Link
         Link -.->|"«include»"| Classify
-        Verify -.->|"«extend» assigned exercise confirmed"| Classify
+        Count -.->|"«extend» counted exercise confirmed"| Classify
+        Progress -.->|"«extend» every few seconds"| Count
+        Verify -.->|"«extend» assigned exercise confirmed, or target reached"| Classify
     end
 
     Camera --> Stream
@@ -134,20 +153,26 @@ flowchart LR
 
     subgraph Boundary ["Gym Management System"]
         Info(["Provide Personal Details<br/>to the Admin"])
-        FacePose(["Pose for Face Capture<br/>(front, left, right)"])
-        Pay(["Pay for a Package<br/>through the Admin"])
+        Consent(["Consent to Face Enrollment"])
+        FacePose(["Pose for Face Capture<br/>(front, chin down, left, right)"])
+        Pay(["Pay for or Renew a Package<br/>through the Admin"])
 
         Scan(["Face the Camera<br/>for Attendance"])
         Recog(["Be Recognized by Face"])
         Logged(["Attendance Logged"])
+        Reactivated(["Profile Set Back to Active"])
 
         Exercise(["Perform Assigned Exercise<br/>in Camera View"])
         ExRecog(["Exercise Recognized"])
+        Counted(["Repetitions Counted"])
         Verified(["Task Marked as Verified"])
 
+        FacePose -.->|"«include»"| Consent
         Scan -.->|"«include»"| Recog
         Logged -.->|"«extend» face matched"| Recog
+        Reactivated -.->|"«extend» member was Inactive"| Logged
         Exercise -.->|"«include»"| ExRecog
+        Counted -.->|"«extend» squat, push-up, curl or sit-up"| ExRecog
         Verified -.->|"«extend» assigned exercise confirmed"| ExRecog
     end
 

@@ -2,7 +2,9 @@
 
 [Back to the list of diagrams](../Correct_Diagrams.md)
 
-The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D14) are the same in every figure.
+The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D13) are the same in every figure.
+
+> **Updated November 17, 2026** to match the system as built: no login PIN (the store `auth_verification_codes` was removed, so the later stores moved up by one), and the new flows for body type, consent, manual check-in, renewals and counted repetitions.
 
 Processes 6.0 to 10.0 are in [the next file](3B_Data_Flow_Diagram_Processes_6_to_10.md).
 
@@ -14,17 +16,15 @@ flowchart LR
     Mail["Email Server"]
     P1(["1.0<br/>Log In"])
     D1[("D1 admins")]
-    D12[("D12 auth_verification_codes")]
-    D13[("D13 password_reset_pins")]
-    D14[("D14 personal_access_tokens")]
+    D12[("D12 password_reset_pins")]
+    D13[("D13 personal_access_tokens")]
 
-    Admin -->|"Email, password, PIN"| P1
+    Admin -->|"Email, password; forgot-password request, PIN and new password"| P1
     P1 -->|"Login result, session token"| Admin
     P1 <-->|"Admin account, new password"| D1
-    P1 <-->|"Login PIN"| D12
-    P1 <-->|"Reset PIN"| D13
-    P1 -->|"Session token"| D14
-    P1 -->|"Login PIN, reset PIN"| Mail
+    P1 <-->|"Reset PIN"| D12
+    P1 -->|"Session token"| D13
+    P1 -->|"Reset PIN"| Mail
 ```
 
 ## 3.2 Process 2.0 — View Dashboard and Notifications
@@ -34,6 +34,7 @@ flowchart LR
     Admin["Gym Owner / Admin"]
     P2(["2.0<br/>View Dashboard<br/>and Notifications"])
     D2[("D2 members")]
+    D4[("D4 attendances")]
     D5[("D5 workout_logs")]
     D7[("D7 memberships")]
     D8[("D8 transactions")]
@@ -45,7 +46,8 @@ flowchart LR
     D7 -->|"Active and expiring subscriptions"| P2
     D8 -->|"Revenue, recent transactions"| P2
     D5 -->|"Unverified tasks today"| P2
-    D10 -->|"Coach events"| P2
+    D4 -->|"Today's check-ins"| P2
+    D10 -->|"Classes and events"| P2
 ```
 
 ## 3.3 Process 3.0 — Manage Members
@@ -59,7 +61,7 @@ flowchart LR
     D4[("D4 attendances")]
     D5[("D5 workout_logs")]
 
-    Admin -->|"Member details, profile photo, face capture"| P3
+    Admin -->|"Member details, body type, profile photo, face capture, consent"| P3
     P3 -->|"Member list and profiles"| Admin
     P3 <-->|"Member records"| D2
     P3 -->|"Face photo"| D3
@@ -77,13 +79,16 @@ flowchart LR
     D2[("D2 members")]
     D3[("D3 face photo files")]
     D4[("D4 attendances")]
+    D7[("D7 memberships")]
 
-    Admin -->|"Camera selection, face re-sync"| P4
-    P4 -->|"Live feed with names, today's check-ins"| Admin
+    Admin -->|"Camera selection, face re-sync, manual check-in"| P4
+    P4 -->|"Live feed with names and RENEW flags, today's check-ins"| Admin
     Camera -->|"Live video"| P4
     D2 -->|"Enrolled members"| P4
+    P4 -->|"Returning member set back to Active"| D2
     D3 -->|"Face photos"| P4
-    P4 <-->|"Attendance: member, date, time in"| D4
+    D7 -->|"Subscription on the check-in date"| P4
+    P4 <-->|"Attendance: member, date, time in, method, camera, subscription status"| D4
 ```
 
 ## 3.5 Process 5.0 — Monitor Workout Program
@@ -98,11 +103,11 @@ flowchart LR
     D6[("D6 plans")]
     D7[("D7 memberships")]
 
-    Admin -->|"7-day workout plan, manual verification"| P5
-    P5 -->|"Live feed with exercise labels, task status, workout history"| Admin
+    Admin -->|"7-day training plan, manual verification"| P5
+    P5 -->|"Live feed with exercise labels and repetition counts, task status, workout history"| Admin
     Camera -->|"Live video"| P5
     P4 -->|"Recognized member"| P5
-    P5 <-->|"Assigned and verified tasks"| D5
+    P5 <-->|"Assigned tasks, counted repetitions, verified tasks"| D5
     D7 -->|"Active With Coach subscription"| P5
     D6 -->|"Package category"| P5
 ```

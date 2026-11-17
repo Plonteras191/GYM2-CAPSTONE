@@ -70,30 +70,44 @@ flowchart TD
     Cred --> Valid{"Email and password<br/>correct?"}
     Valid -- No --> Err1["Show login error"]
     Err1 --> Cred
+    Cred -.->|"Forgot password?"| Rst1["Request a PIN<br/>by email"]
+    Rst1 --> Rst2["Enter the PIN and<br/>choose a new password"]
+    Rst2 --> Cred
     Valid -- Yes --> Dash["Dashboard"]
     Dash --> Select["Select function"]
 
     Select --> A1["Module 1: Member Registration"]
-    A1 --> A2["Enter name, contact details,<br/>date of birth, height and weight"]
-    A2 --> A3["Capture face: front,<br/>chin down, left and right"]
+    A1 --> A2["Enter name, contact details, address,<br/>date of birth, height, weight<br/>and body type"]
+    A2 --> A2b["Add a profile photo<br/>(optional)"]
+    A2b --> A2c["Member agrees to face enrollment<br/>(consent date is recorded)"]
+    A2c --> A3["Capture face: front,<br/>chin down, left and right"]
     A3 --> A4["Save member record<br/>and face photo"]
 
     Select --> B1["Module 2: Attendance Monitoring"]
     B1 --> B2["Camera captures<br/>the member's face"]
     B2 --> B3{"Face<br/>recognized?"}
-    B3 -- No --> B4["Show 'Unknown'<br/>on the live feed"]
     B3 -- Yes --> B5{"Within 9:00 AM to 9:30 PM<br/>and not yet logged today?"}
+    B3 -- No --> B4["Show 'Unknown'<br/>on the live feed"]
+    B4 --> B4b["Admin checks the member in manually<br/>(member and reason)"]
+    B4b --> B5
     B5 -- No --> B6["No attendance saved"]
-    B5 -- Yes --> B7["Save member, date, time in,<br/>camera and subscription status"]
+    B5 -- Yes --> B7["Save member, date, time in, method,<br/>camera and subscription status<br/>(an expired subscription is flagged RENEW)"]
     B7 --> B8{"Member profile<br/>Inactive?"}
     B8 -- Yes --> B9["Set member<br/>back to Active"]
 
     Select --> C1["Module 3: Program Monitoring"]
-    C1 --> C2["Build the member's 7-day plan:<br/>exercise, date, sets and reps"]
-    C2 --> C3["Camera captures the member<br/>doing the exercise"]
+    C1 --> C2["Open the member's Training plan and build<br/>the 7-day plan: exercise, date, sets and reps"]
+    C2 --> C2b{"Member has an active<br/>With Coach subscription?"}
+    C2b -- Yes --> C3["Camera captures the member<br/>doing the exercise"]
+    C2b -- No --> C5["Coach verifies<br/>the task manually"]
     C3 --> C4{"Assigned exercise<br/>recognized?"}
-    C4 -- No --> C5["Coach verifies<br/>the task manually"]
-    C4 -- Yes --> C6["Task marked as verified"]
+    C4 -- No --> C5
+    C4 -- Yes --> C4b{"Counted exercise?<br/>(squat, push-up, curl, sit-up)"}
+    C4b -- No --> C6["Task marked as verified"]
+    C4b -- Yes --> C4c["Camera counts repetitions<br/>and saves the progress"]
+    C4c --> C4d{"Target sets x reps<br/>reached?"}
+    C4d -- No --> C4c
+    C4d -- Yes --> C6
     C5 --> C6
 
     Select --> D1["Module 4: Packages and Subscriptions"]
@@ -103,6 +117,18 @@ flowchart TD
     D3 -- No --> D5["Save new subscription"]
     D5 --> D6["Payment transaction<br/>created automatically"]
     D4 --> D6
+    D1 --> R1["Renew a subscription"]
+    R1 --> R2{"Subscription still<br/>running?"}
+    R2 -- Yes --> R3["Extend the same package from its<br/>end date (no paid days lost)"]
+    R2 -- No --> R4["Start a new<br/>subscription today"]
+    R3 --> R5["Renewal payment<br/>recorded"]
+    R4 --> R5
+    D1 --> P1["Price list: create, edit<br/>or delete a package"]
+    P1 --> P2{"Deleting a package members<br/>are still subscribed to?"}
+    P2 -- Yes --> P3["Delete refused"]
+    P2 -- No --> P4["Package saved or deleted"]
+    D1 --> V1["Calendar: add a<br/>class or event"]
+    V1 --> V2["Save class or event"]
 
     Select --> E1["Module 5: Payment Transactions"]
     E1 --> E2["Select package and member<br/>(none for a walk-in guest)"]
@@ -111,17 +137,20 @@ flowchart TD
     E4 --> E5["Print receipt<br/>or refund if needed"]
 
     Select --> F1["Module 6: Reports"]
-    F1 --> F2["Choose report type:<br/>Payment Transactions, or<br/>Membership and Attendance"]
+    F1 --> F2["Choose report type: Payments, Memberships,<br/>Attendance or Program Monitoring"]
     F2 --> F3["Set start and end date"]
     F3 --> F4["View report, then<br/>export CSV or print"]
 
     A4 --> Out{"Log out?"}
-    B4 --> Out
     B6 --> Out
     B8 -- No --> Out
     B9 --> Out
     C6 --> Out
     D6 --> Out
+    R5 --> Out
+    P3 --> Out
+    P4 --> Out
+    V2 --> Out
     E5 --> Out
     F4 --> Out
     Out -- No --> Dash
@@ -142,13 +171,13 @@ flowchart LR
     System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
 
     Admin -->|"F1: Email and password"| System
-    Admin -->|"F2: Member details, face capture, packages, subscriptions, coach events, payments and refunds"| System
-    Admin -->|"F3: Workout plans and manual verification"| System
-    Admin -->|"F4: Report dates, camera selection and profile updates"| System
+    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System
+    Admin -->|"F3: Training plans and manual verification"| System
+    Admin -->|"F4: Report dates, camera selection, manual check-ins and profile updates"| System
 
     System -->|"F5: Login result, dashboard summary and notifications"| Admin
     System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
-    System -->|"F7: Live camera feeds, today's attendance and workout task status"| Admin
+    System -->|"F7: Live camera feeds, today's attendance, workout task status and counted repetitions"| Admin
     System -->|"F8: Reports (CSV or print)"| Admin
 
     Camera -->|"F9: Live video of faces and exercise movement"| System
@@ -165,6 +194,7 @@ flowchart LR
 flowchart LR
     Admin["Gym Owner / Admin"]
     Camera["Camera"]
+    Mail["Email Server"]
     P1(["1.0<br/>Log In"])
     P2(["2.0<br/>View Dashboard"])
     P3(["3.0<br/>Manage Members"])
@@ -174,12 +204,15 @@ flowchart LR
     P7(["7.0<br/>Payment Transactions"])
     P8(["8.0<br/>Reports"])
 
-    Admin -->|"Email, password"| P1
+    Admin -->|"Email, password; forgot-password request, PIN and new password"| P1
     P1 -->|"Login result, session token"| Admin
     S10[("D1 admins")]
     P1 <-->|"Admin account"| S10
     S12[("D9 personal_access_tokens")]
     P1 -->|"Session token"| S12
+    S13[("D11 password_reset_pins")]
+    P1 <-->|"Password-reset PIN"| S13
+    P1 -->|"Password-reset PIN"| Mail
 
     Admin -->|"Dashboard request"| P2
     P2 -->|"Totals, sales chart, notifications"| Admin
@@ -192,15 +225,21 @@ flowchart LR
     S22[("D8 transactions")]
     P2 ~~~ S22
     S22 -->|"Revenue"| P2
+    S23[("D4 attendances")]
+    P2 ~~~ S23
+    S23 -->|"Today's check-ins"| P2
+    S24[("D10 coach_events")]
+    P2 ~~~ S24
+    S24 -->|"Classes and events this week"| P2
 
-    Admin -->|"Member details, face capture, member status"| P3
+    Admin -->|"Member details, body type, face capture, consent, member status"| P3
     P3 -->|"Member list and profiles"| Admin
     S30[("D2 members")]
     P3 <-->|"Member records"| S30
     S31[("D3 face photo files")]
     P3 -->|"Face photo"| S31
 
-    Admin -->|"Camera selection"| P4
+    Admin -->|"Camera selection, manual check-in"| P4
     P4 -->|"Live feed, today's check-ins"| Admin
     S40[("D2 members")]
     P4 ~~~ S40
@@ -215,15 +254,15 @@ flowchart LR
     P4 ~~~ S43
     S43 -->|"Subscription on the check-in date"| P4
 
-    Admin -->|"7-day workout plan, manual verification"| P5
-    P5 -->|"Task status, workout history"| Admin
+    Admin -->|"7-day training plan, manual verification"| P5
+    P5 -->|"Task status, counted repetitions, workout history"| Admin
     S50[("D5 workout_logs")]
-    P5 <-->|"Assigned and verified tasks"| S50
+    P5 <-->|"Assigned tasks, counted repetitions, verified tasks"| S50
     S51[("D7 memberships")]
     P5 ~~~ S51
     S51 -->|"Active With Coach subscription"| P5
 
-    Admin -->|"Packages, subscriptions, upgrades"| P6
+    Admin -->|"Packages, subscriptions, renewals, upgrades, classes and events"| P6
     P6 -->|"Package list, subscription status"| Admin
     S60[("D6 plans")]
     P6 <-->|"Packages"| S60
@@ -231,6 +270,8 @@ flowchart LR
     P6 <-->|"Subscriptions"| S61
     S62[("D8 transactions")]
     P6 -->|"Automatic payment record"| S62
+    S63[("D10 coach_events")]
+    P6 <-->|"Classes and events"| S63
 
     Admin -->|"Payment details, refund request"| P7
     P7 -->|"Transaction list, receipt"| Admin
@@ -251,6 +292,9 @@ flowchart LR
     S82[("D4 attendances")]
     P8 ~~~ S82
     S82 -->|"Check-ins"| P8
+    S83[("D5 workout_logs")]
+    P8 ~~~ S83
+    S83 -->|"Workout tasks and counted repetitions"| P8
 
     Camera -->|"Live video"| P4
     Camera -->|"Live video"| P5
@@ -275,31 +319,35 @@ flowchart LR
 
         AddMem(["Add Member"])
         Face(["Capture Face<br/>(front, chin down, left, right)"])
+        Consent(["Record Face Consent"])
         ViewMem(["View Member Profile,<br/>Attendance and Workouts"])
         UpdMem(["Update Member"])
         SetStatus(["Set Member Status<br/>(Active / Inactive)"])
         DelMem(["Delete Member"])
 
         Pack(["Manage Packages and Prices"])
+        DelPack(["Delete Package<br/>(refused while members are subscribed)"])
         Cat(["Manage Package Categories"])
         NewSub(["Create Subscription"])
         UpSub(["Upgrade Subscription"])
+        RenewSub(["Renew Subscription"])
         AutoPay(["Create Payment Transaction"])
-        Events(["Manage Coach Events"])
+        Events(["Manage Classes and Events"])
 
         Pay(["Record Payment<br/>(Cash, GCash, Maya)"])
         Receipt(["Print Receipt"])
         Refund(["Refund Transaction"])
 
-        Plan(["Build 7-Day Workout Plan"])
+        Plan(["Build 7-Day Training Plan"])
         Manual(["Manually Verify Workout Task"])
 
         AttMon(["View Attendance Monitor"])
+        ManualIn(["Check In Member Manually"])
         GesMon(["View Gesture Monitor"])
         Switch(["Switch Camera Source"])
         Sync(["Re-sync Enrolled Faces"])
 
-        Report(["Generate Report"])
+        Report(["Generate Report<br/>(Payments, Memberships,<br/>Attendance, Program Monitoring)"])
         Export(["Export CSV or Print"])
 
         Profile(["Update Admin Profile"])
@@ -310,12 +358,16 @@ flowchart LR
         Login ~~~ Reset
         Reset -.->|"«extend»"| Login
         AddMem -.->|"«include»"| Face
+        Face -.->|"«include»"| Consent
         UpdMem ~~~ SetStatus
         SetStatus -.->|"«extend»"| UpdMem
+        DelPack -.->|"«extend»"| Pack
         NewSub -.->|"«include»"| AutoPay
         UpSub -.->|"«include»"| AutoPay
+        RenewSub -.->|"«include»"| AutoPay
         Pay ~~~ Receipt
         Receipt -.->|"«extend»"| Pay
+        ManualIn -.->|"«extend»"| AttMon
         Report ~~~ Export
         Export -.->|"«extend»"| Report
     end
@@ -332,12 +384,14 @@ flowchart LR
     Admin --> Cat
     Admin --> NewSub
     Admin --> UpSub
+    Admin --> RenewSub
     Admin --> Events
     Admin --> Pay
     Admin --> Refund
     Admin --> Plan
     Admin --> Manual
     Admin --> AttMon
+    Admin --> ManualIn
     Admin --> GesMon
     Admin --> Switch
     Admin --> Sync
@@ -357,8 +411,9 @@ flowchart LR
 
     subgraph Boundary ["Gym Management System"]
         Info(["Provide Personal Details<br/>to the Admin"])
+        Consent(["Consent to Face Enrollment"])
         FacePose(["Pose for Face Capture<br/>(front, chin down, left, right)"])
-        Pay(["Pay for a Package<br/>through the Admin"])
+        Pay(["Pay for or Renew a Package<br/>through the Admin"])
 
         Scan(["Face the Camera<br/>for Attendance"])
         Recog(["Be Recognized by Face"])
@@ -367,12 +422,15 @@ flowchart LR
 
         Exercise(["Perform Assigned Exercise<br/>in Camera View"])
         ExRecog(["Exercise Recognized"])
+        Counted(["Repetitions Counted"])
         Verified(["Task Marked as Verified"])
 
+        FacePose -.->|"«include»"| Consent
         Scan -.->|"«include»"| Recog
         Logged -.->|"«extend» face matched"| Recog
         Reactivated -.->|"«extend» member was Inactive"| Logged
         Exercise -.->|"«include»"| ExRecog
+        Counted -.->|"«extend» squat, push-up, curl or sit-up"| ExRecog
         Verified -.->|"«extend» assigned exercise confirmed"| ExRecog
     end
 
@@ -405,6 +463,8 @@ flowchart LR
         Pose(["Detect Body Pose"])
         Link(["Link Pose to<br/>Recognized Member"])
         Classify(["Classify Exercise"])
+        Count(["Count Repetitions<br/>(squat, push-up, curl, sit-up)"])
+        Progress(["Send Repetition Progress<br/>to Laravel API"])
         Verify(["Send Workout Verification<br/>to Laravel API"])
 
         Detect -.->|"«include»"| Match
@@ -412,7 +472,9 @@ flowchart LR
         Retry -.->|"«extend» sending failed"| Att
         Pose -.->|"«include»"| Link
         Link -.->|"«include»"| Classify
-        Verify -.->|"«extend» assigned exercise confirmed"| Classify
+        Count -.->|"«extend» counted exercise confirmed"| Classify
+        Progress -.->|"«extend» every few seconds"| Count
+        Verify -.->|"«extend» assigned exercise confirmed, or target reached"| Classify
     end
 
     Camera --> Stream
@@ -434,6 +496,12 @@ erDiagram
         text email
         text password
         text logo
+    }
+    PASSWORD_RESET_PIN {
+        text pin
+        datetime expires_at
+        number attempts
+        datetime verified_at
     }
     MEMBER {
         text first_name
@@ -518,6 +586,7 @@ erDiagram
         text location
     }
 
+    ADMIN ||--o{ PASSWORD_RESET_PIN : "resets password with"
     MEMBER ||--o{ MEMBERSHIP : "subscribes to"
     PLAN ||--o{ MEMBERSHIP : "is sold as"
     PACKAGE_CATEGORY |o--o{ PLAN : "groups"
@@ -609,7 +678,7 @@ erDiagram
         varchar member_name_snapshot "nullable"
         varchar member_email_snapshot "nullable"
         varchar member_profile_pic_snapshot "nullable"
-        bigint plan_id FK "nullable"
+        bigint plan_id "nullable, no FK"
         varchar plan_type
         date start_date
         date end_date
@@ -696,7 +765,7 @@ erDiagram
     admins ||..o{ personal_access_tokens : "tokenable_id (no FK)"
     admins ||..o{ password_reset_pins : "email (no FK)"
     members |o--o{ memberships : "member_id"
-    plans |o--o{ memberships : "plan_id"
+    plans |o..o{ memberships : "plan_id (no FK)"
     package_categories |o..o{ plans : "category_detail = name (no FK)"
     members |o--o{ transactions : "member_id"
     memberships |o--o{ transactions : "membership_id"
@@ -711,6 +780,6 @@ Unique rule: `attendances` allows one row per (`member_id`, `date`), so a member
 
 On delete: `workout_logs` cascades; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to null; `coach_events.category_id` is restricted.
 
-Confirm on your database before finalizing: whether `memberships.plan_id` has a real foreign key (`SHOW CREATE TABLE memberships;`). It is drawn here as one.
+`memberships.plan_id` has **no** foreign key in the database (checked on November 17, 2026); only `memberships.member_id` has one. The link to `plans` is kept by the application, which is why a package is not deleted while members are subscribed to it, and why an ended subscription keeps the package name in `plan_type`.
 
 Not drawn because the application does not use them: `face_encodings`, `payments`, `exercise_sessions`, `gesture_logs`, `exercises`, `auth_verification_codes` (the old login PIN, removed), `users`, and Laravel's own tables (`sessions`, `cache`, `jobs` and similar).

@@ -2,6 +2,8 @@
 
 [Back to the list of diagrams](../Correct_Diagrams.md)
 
+> **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
+
 ```mermaid
 erDiagram
     ADMIN {
@@ -10,11 +12,11 @@ erDiagram
         text password
         text logo
     }
-    LOGIN_PIN {
-        text purpose
+    PASSWORD_RESET_PIN {
         text pin
         datetime expires_at
         number attempts
+        datetime verified_at
     }
     MEMBER {
         text first_name
@@ -25,10 +27,13 @@ erDiagram
         date date_of_birth
         number height
         number weight
+        text body_type
         text status
+        datetime status_updated_at
         text current_plan
         image profile_photo
         image face_photo
+        datetime biometric_consent_at
     }
     PACKAGE_CATEGORY {
         text name
@@ -62,13 +67,25 @@ erDiagram
     ATTENDANCE {
         date date
         time time_in
+        text member_name
+        text method
+        text camera
+        number match_distance
+        text subscription_status
+        text plan_name
+        boolean reactivated
+        text recorded_by
+        text reason
     }
     WORKOUT_LOG {
         text exercise
         date date
         number sets
         number reps
+        number counted_reps
         text gesture_class
+        text verified_by
+        datetime verified_at
     }
     COACH_EVENT_CATEGORY {
         text name
@@ -84,13 +101,13 @@ erDiagram
         text location
     }
 
-    ADMIN ||--o{ LOGIN_PIN : "verifies with"
+    ADMIN ||--o{ PASSWORD_RESET_PIN : "resets password with"
     MEMBER ||--o{ MEMBERSHIP : "subscribes to"
     PLAN ||--o{ MEMBERSHIP : "is sold as"
     PACKAGE_CATEGORY |o--o{ PLAN : "groups"
     MEMBERSHIP ||--o{ TRANSACTION : "is paid by"
     MEMBER |o--o{ TRANSACTION : "pays"
-    MEMBER ||--o{ ATTENDANCE : "checks in"
+    MEMBER |o--o{ ATTENDANCE : "checks in"
     MEMBER ||--o{ WORKOUT_LOG : "is assigned"
     COACH_EVENT_CATEGORY ||--o{ COACH_EVENT : "classifies"
 ```
