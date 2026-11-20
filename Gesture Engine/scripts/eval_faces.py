@@ -32,19 +32,19 @@ import env_loader  # noqa: E402  (loads "Gesture Engine/.env")
 os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
 
 import cv2  # noqa: E402
-import face_recognition  # noqa: E402
 import mediapipe as mp  # noqa: E402
 import numpy as np  # noqa: E402
 import requests  # noqa: E402
 
 from face_enrollment import EncodingCache, encode_at, resolve_face_path  # noqa: E402
-from face_matching import align_box, best_member_match, box_size  # noqa: E402
+from face_matching import align_box, best_member_match, box_size, face_distances  # noqa: E402
 
 LARAVEL_API = os.getenv("LARAVEL_API_URL", "http://127.0.0.1:8000/api")
 BACKEND_DIR = os.path.abspath(os.path.join(ENGINE_DIR, "..", "backend"))
 CACHE_PATH = os.path.join(ENGINE_DIR, "models", "face_cache.pkl")
-THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.50"))
-MARGIN = float(os.getenv("FACE_MATCH_MARGIN", "0.05"))
+# Same defaults as gesture_engine.py (SFace distances: 1 - cosine).
+THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.55"))
+MARGIN = float(os.getenv("FACE_MATCH_MARGIN", "0.08"))
 MIN_SIZE = int(os.getenv("FACE_MIN_SIZE", "70"))
 
 
@@ -92,15 +92,15 @@ def offline_report(enrolled):
     same, different, pairs = [], [], []
     for _, encodings, _ in enrolled.values():
         for a, b in itertools.combinations(encodings, 2):
-            same.append(float(np.linalg.norm(a - b)))
+            same.append(float(face_distances([a], b)[0]))
 
     members = [(mid, name, encs) for mid, (name, encs, _) in enrolled.items() if encs]
     for (_, name_a, encs_a), (_, name_b, encs_b) in itertools.combinations(members, 2):
-        closest = min(float(np.linalg.norm(a - b)) for a in encs_a for b in encs_b)
+        closest = min(float(face_distances(encs_a, b).min()) for b in encs_b)
         different.append(closest)
         pairs.append((closest, name_a, name_b))
 
-    print("\n== Distances (lower = more similar) ==")
+    print("\n== Distances: 1 - cosine (lower = more similar, ~1 = unrelated) ==")
     print(percentile_line("same person (front vs side views)", same))
     print(percentile_line("different people (closest views)", different))
 
@@ -112,10 +112,10 @@ def offline_report(enrolled):
 
     if different:
         impostor_p5 = float(np.percentile(different, 5))
-        suggestion = min(0.55, max(0.40, impostor_p5 - 0.05))
+        suggestion = min(0.60, max(0.45, impostor_p5 - 0.08))
         print(
             f"\nCurrent FACE_MATCH_THRESHOLD={THRESHOLD:.2f}. Suggested: {suggestion:.2f} "
-            f"(keeps ~0.05 below the closest 5% of different-member pairs)."
+            f"(keeps ~0.08 below the closest 5% of different-member pairs)."
         )
         print("Confirm with --live: a registered member's live best distance should sit clearly below it.")
     else:
@@ -171,7 +171,7 @@ def live_report(enrolled, seconds, detector):
                 encoding = encode_at(rgb, box)
                 if encoding is None:
                     continue
-                distances = face_recognition.face_distance(matrix, encoding)
+                distances = face_distances(matrix, encoding)
                 per_member = {}
                 for member_id, distance in zip(ids, distances):
                     per_member[member_id] = min(per_member.get(member_id, 9.0), float(distance))

@@ -1,15 +1,15 @@
 """Encode faces in helper processes so the live video never freezes.
 
-One dlib face encoding takes most of a second on a CPU-only dlib build, and
-dlib holds Python's global lock (GIL) for all of it. Done inside the engine
-process, that froze the camera reader, the pose worker and both video feeds
-every time a face was encoded. Each helper is a separate Python process that
-only encodes faces: the engine sends it a small face crop and carries on.
+Each helper is a separate Python process that only encodes faces (YuNet
+landmarks + SFace, about 30 ms each, see face_enrollment.py): the engine
+sends it a small face crop and carries on, so several faces are encoded at
+the same time and the face loop never waits on one. (The pool was first
+built for dlib, whose encodings took ~0.5 s and froze the whole engine.)
 
 Run as a script ("python face_encoder_pool.py --worker") this file is the
-helper. It reads pickled (region, location, jitters, upscale) requests from
-stdin and writes the pickled encoding (or None) to stdout. Only the engine
-talks to it, over private pipes.
+helper. It reads pickled (region, location, upscale) requests from stdin and
+writes the pickled encoding (or None) to stdout. Only the engine talks to
+it, over private pipes.
 """
 
 import os
@@ -17,6 +17,7 @@ import pickle
 import subprocess
 import sys
 import threading
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 WORKER_FLAG = '--worker'
@@ -40,13 +41,14 @@ class FaceEncoderPool:
         with self._lock:
             return self._in_flight < self.size
 
-    def submit(self, region, location, jitters=1, upscale=1.0):
+    def submit(self, region, location, upscale=1.0):
         """Encode a face_region() crop in a helper; returns a Future.
 
-        The future's result is the encoding or None; it raises if the helper
-        could not be started or died twice on this request.
+        The future's result is the encoding, or None when no face was found;
+        it raises if encoding failed in the helper, or if the helper could
+        not be started or died twice on this request.
         """
-        return self._submit(self._request, (region, tuple(location), jitters, upscale))
+        return self._submit(self._request, (region, tuple(location), upscale))
 
     def start(self, timeout=60):
         """Start every helper and wait until each answers; False on failure."""
@@ -93,12 +95,16 @@ class FaceEncoderPool:
             try:
                 pickle.dump(request, helper.stdin, protocol=pickle.HIGHEST_PROTOCOL)
                 helper.stdin.flush()
-                return pickle.load(helper.stdout)
+                reply = pickle.load(helper.stdout)
             except (OSError, EOFError, pickle.UnpicklingError):
                 # The helper died (or was never healthy): replace it once.
                 self._discard(helper)
                 if attempt == 2:
                     raise
+                continue
+            if isinstance(reply, BaseException):
+                raise reply  # encoding failed inside a healthy helper
+            return reply
 
     def _helper(self):
         helper = getattr(self._local, 'helper', None)
@@ -148,8 +154,13 @@ def _serve():
 
     if ENGINE_DIR not in sys.path:
         sys.path.insert(0, ENGINE_DIR)
+    import cv2
+    # One thread per helper: several helpers each using every core would
+    # fight each other (and the camera and pose threads) for the CPU.
+    cv2.setNumThreads(1)
     from face_enrollment import encode_region
 
+    last_error = None
     while True:
         try:
             request = pickle.load(requests)
@@ -159,8 +170,15 @@ def _serve():
         if request is not None:  # None is a "are you ready?" ping
             try:
                 result = encode_region(*request)
-            except Exception:
-                result = None
+            except Exception as error:
+                # Never pass a failure off as "no face found": enrollment
+                # would then treat the member's photo as unusable. Log it
+                # (once per distinct error) and send it back as an error.
+                message = f"{type(error).__name__}: {error}"
+                if message != last_error:
+                    traceback.print_exc()
+                    last_error = message
+                result = RuntimeError(f"Face helper failed: {message}")
         pickle.dump(result, replies, protocol=pickle.HIGHEST_PROTOCOL)
         replies.flush()
 

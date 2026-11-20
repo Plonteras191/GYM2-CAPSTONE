@@ -34,7 +34,7 @@ By integrating **Biometric Facial Recognition** and **Real-Time Computer Vision 
 - **OpenCV (`opencv-python`)**: Computer vision library for processing live video streams and image frames.
 - **MediaPipe**: Cross-platform ML framework for real-time human pose landmark tracking and body joint detection.
 - **Scikit-Learn**: Machine learning library powering the workout classification model (`workout_model.pkl`).
-- **`face_recognition`**: Deep-learning facial recognition library for biometric identity verification.
+- **OpenCV YuNet + SFace**: Deep-learning face landmark and face recognition models for biometric identity verification.
 - **Flask & Flask-CORS**: Lightweight Python web framework providing live camera feed endpoints and bridge APIs.
 - **NumPy & Requests**: High-performance numerical matrix computations and HTTP bridge communication to Laravel API.
 

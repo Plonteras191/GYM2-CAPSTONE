@@ -1,8 +1,20 @@
 import os
 import tempfile
 import unittest
+from types import SimpleNamespace
 
-from face_enrollment import faces_signature, resolve_face_path
+import cv2
+import numpy as np
+
+from face_enrollment import EncodingCache, faces_signature, resolve_face_path
+
+
+class FakeDetector:
+    """Stands in for MediaPipe: one face in the middle of every image."""
+
+    def process(self, _rgb):
+        box = SimpleNamespace(xmin=0.25, ymin=0.25, width=0.5, height=0.5)
+        return SimpleNamespace(detections=[SimpleNamespace(location_data=SimpleNamespace(relative_bounding_box=box))])
 
 
 class ResolveFacePathTests(unittest.TestCase):
@@ -67,6 +79,36 @@ class FacesSignatureTests(unittest.TestCase):
 
     def test_subscription_status_alone_does_not_force_a_face_reload(self):
         self.assertFalse(self.changed(subscription_status='expired'))
+
+
+class EncodingCacheTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.photo = os.path.join(self.dir.name, 'face.png')
+        cv2.imwrite(self.photo, np.full((100, 100, 3), 128, np.uint8))
+        self.cache_path = os.path.join(self.dir.name, 'cache.pkl')
+
+    def test_photo_with_no_usable_view_is_retried_next_time(self):
+        # Regression: a passing encoder failure was cached as "no face",
+        # and the member stayed unrecognizable until the photo changed.
+        cache = EncodingCache(self.cache_path)
+        encodings, _, _ = cache.get_or_encode(self.photo, FakeDetector(), encode=lambda view, box: None)
+        self.assertEqual(encodings, [])
+        cache.save()
+
+        cache = EncodingCache(self.cache_path)
+        encodings, _, from_cache = cache.get_or_encode(self.photo, FakeDetector(), encode=lambda view, box: np.ones(2))
+        self.assertFalse(from_cache)
+        self.assertEqual(len(encodings), 1)
+
+    def test_usable_photo_is_cached(self):
+        cache = EncodingCache(self.cache_path)
+        cache.get_or_encode(self.photo, FakeDetector(), encode=lambda view, box: np.ones(2))
+        cache.save()
+        _, _, from_cache = EncodingCache(self.cache_path).get_or_encode(
+            self.photo, FakeDetector(), encode=lambda view, box: None)
+        self.assertTrue(from_cache)
 
 
 if __name__ == '__main__':

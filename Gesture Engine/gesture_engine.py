@@ -16,7 +16,6 @@ import env_loader
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|flags;low_delay|max_delay;500000|reorder_queue_size;0"
 
 import cv2
-import face_recognition
 import mediapipe as mp
 import pickle
 from flask import Flask, Response, jsonify
@@ -30,6 +29,8 @@ from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.vision.core.vision_task_running_mode import VisionTaskRunningMode
 from mediapipe.framework.formats import landmark_pb2
 from camera_tracking import boxes_overlap, head_region, torso_histogram, update_pose_track_identity
+from camera_tracking import clear_identity as clear_pose_identity
+from camera_tracking import duplicate_identity_losers
 from monitoring import EXCLUDED, IDENTIFYING, monitoring_status
 from pose_features import (
     MotionTracker,
@@ -41,9 +42,30 @@ from pose_features import (
 )
 from workout_prediction import select_assigned_prediction
 from rep_counter import RepCounter, countable_exercises_from_env
-from face_matching import IdentityVote, align_box, best_member_match
+from face_matching import IdentityVote, align_box, best_member_match, face_distances, still_matches, views_agree
 from face_matching import box_size as face_box_size
-from face_enrollment import EncodingCache, encode_at, face_region, faces_signature, resolve_face_path
+from enrollment_quality import assess_view
+from gallery_health import (
+    LIKELY_CONFUSED_DISTANCE,
+    LOOK_ALIKE_DISTANCE,
+    build_gallery_health,
+    closest_member_distances,
+    report_lines,
+)
+from pose_features import hidden_body_parts
+from smoothing import LandmarkSmoother
+from small_face_sweep import find_faces as find_small_faces
+from small_face_sweep import make_detector as make_small_face_detector
+from small_face_sweep import sweep_due
+from face_enrollment import (
+    EncodingCache,
+    detect_face_box,
+    encode_at,
+    face_region,
+    faces_signature,
+    missing_face_models,
+    resolve_face_path,
+)
 from face_encoder_pool import FaceEncoderPool
 from liveness import BlinkDetector, FaceMeshEyes, liveness_required_from_env
 from attendance_queue import SENT, AttendanceSender
@@ -138,6 +160,8 @@ SUBSCRIPTION_REFRESH_SECONDS = 60
 # matches (new member, new face photo, coach membership change), the faces
 # are reloaded automatically; no need to press "Force AI Memory Sync".
 loaded_faces_signature = None
+# Enrollment problems found at the last face reload (gallery_health.py).
+gallery_health = {'ready': False}
 # Anti-spoofing: when on, attendance is logged only after the face blinks
 # (a printed photo never does). Off by default; see liveness.py.
 LIVENESS_REQUIRED = liveness_required_from_env()
@@ -146,17 +170,32 @@ RENEW_COLOR = (0, 140, 255)  # orange (BGR)
 FACE_CACHE_PATH = os.path.join(BASE_DIR, 'models', 'face_cache.pkl')
 
 # Recognition tuning. Override in "Gesture Engine/.env"; calibrate with
-# scripts/eval_faces.py. Lower threshold = stricter matching.
-FACE_MATCH_THRESHOLD = _env_number('FACE_MATCH_THRESHOLD', '0.50')
-FACE_MATCH_MARGIN = _env_number('FACE_MATCH_MARGIN', '0.05')
+# scripts/eval_faces.py. Lower threshold = stricter matching. Distances are
+# SFace's 1 - cosine (0 = identical, ~1 = unrelated), NOT the old dlib scale.
+# Set 2026-11-20 from the enrolled gallery (each view matched against the
+# member's other views): same person 0.21-0.56, different people >= 0.657.
+FACE_MATCH_THRESHOLD = _env_number('FACE_MATCH_THRESHOLD', '0.55')
+FACE_MATCH_MARGIN = _env_number('FACE_MATCH_MARGIN', '0.08')
 FACE_VOTES_REQUIRED = _env_number('FACE_VOTES_REQUIRED', '3', int)
+# Enrolled views of a member that must match before a sample counts for
+# them (members with 3+ usable views; see face_matching.views_agree).
+# 1 = old behaviour (one matching view is enough).
+FACE_MIN_AGREEING_VIEWS = _env_number('FACE_MIN_AGREEING_VIEWS', '2', int)
 # Size tiers: faces >= FACE_NEAR_SIZE use the rules above; faces between
 # FACE_MIN_SIZE and FACE_NEAR_SIZE ("far") are enlarged before encoding and
 # need a stricter distance and more agreeing samples; smaller faces are not
 # recognized (the tracked body keeps the name instead).
 FACE_MIN_SIZE = _env_number('FACE_MIN_SIZE', '40', int)
 FACE_NEAR_SIZE = _env_number('FACE_NEAR_SIZE', '70', int)
-FACE_FAR_THRESHOLD = _env_number('FACE_FAR_THRESHOLD', '0.45')
+FACE_FAR_THRESHOLD = _env_number('FACE_FAR_THRESHOLD', '0.50')
+# Looser limit for a face already confirmed as a member to KEEP that name
+# (hysteresis; see face_matching.still_matches). Getting a name still needs
+# FACE_MATCH_THRESHOLD and two agreeing views.
+FACE_KEEP_THRESHOLD = _env_number('FACE_KEEP_THRESHOLD', '0.62')
+# A face lost while confirmed (e.g. a full side view the detector cannot see)
+# and found again near the same spot within this many seconds starts with
+# that member's earlier votes, so one agreeing check names them again.
+REACQUIRE_SECONDS = _env_number('REACQUIRE_SECONDS', '6')
 FACE_FAR_VOTES = max(FACE_VOTES_REQUIRED, _env_number('FACE_FAR_VOTES', '5', int))
 FACE_FAR_WEIGHT = FACE_VOTES_REQUIRED / FACE_FAR_VOTES
 FACE_FAR_UPSCALE = 2.0
@@ -164,11 +203,22 @@ FACE_VOTE_WINDOW = max(FACE_FAR_VOTES * 2, FACE_VOTES_REQUIRED * 2, 4)
 # Frames wider than this are scaled down before detection; smaller frames
 # are processed at full resolution so distant people keep their pixels.
 DETECTION_MAX_WIDTH = 1280
-RECOGNITION_INTERVAL_UNCONFIRMED = 0.3
+# A face not named yet is sampled this often (an SFace sample costs ~30 ms,
+# so 3 agreeing samples name a member in about half a second).
+RECOGNITION_INTERVAL_UNCONFIRMED = 0.2
 RECOGNITION_INTERVAL_CONFIRMED = 2.0
-# dlib face encoding runs in this many helper processes (face_encoder_pool.py).
-# One encoding can take most of a second and would otherwise freeze the
-# camera and video feeds for that long. 0 = encode inside the engine.
+# A face with UNKNOWN_BACKOFF_AFTER unmatched checks in a row (~2 s) is
+# probably not a member; it is re-checked every RECOGNITION_INTERVAL_UNKNOWN
+# instead of every 0.2 s. Measured 2026-11-20: one unknown face at the desk
+# kept the face helpers at ~0.95 CPU cores.
+UNKNOWN_BACKOFF_AFTER = _env_number('UNKNOWN_BACKOFF_AFTER', '6', int)
+RECOGNITION_INTERVAL_UNKNOWN = _env_number('RECOGNITION_INTERVAL_UNKNOWN', '1.5')
+# The face and skeleton loops process at most this many frames per second,
+# whatever the camera sends (30 fps cameras doubled the CPU use for no gain).
+AI_MAX_FPS = _env_number('AI_MAX_FPS', '10')
+# Face encoding (YuNet landmarks + SFace, ~30 ms) runs in this many helper
+# processes (face_encoder_pool.py), so several faces are encoded at once and
+# the face loop never waits on one. 0 = encode inside the engine.
 FACE_ENCODER_PROCESSES = _env_number('FACE_ENCODER_PROCESSES', '2', int)
 face_encoder_pool = None  # started by start_background_workers()
 MOVE_CLOSER_LABEL = 'Move closer'
@@ -182,6 +232,18 @@ shared_athletes = []
 pose_tracks = []
 next_pose_track_id = 1
 workout_states = {}
+# Per tracked body, from the moment it appears (even while its face is still
+# being identified): landmark smoothing (One Euro filter), movement history,
+# and the last few seconds of smoothed landmarks. When the member is
+# recognised, that history is replayed into the exercise checks, so they do
+# not start from zero.
+actor_pose_state = {}
+PRE_ID_HISTORY_SECONDS = 3.0
+# Classifier predictions seeded from that history (the stability rule needs 5 of 7).
+SEED_PREDICTIONS = 7
+# Longest stretch of frames kept to count repetitions done before the
+# exercise was confirmed.
+REPLAY_MAX_SECONDS = 8.0
 workout_plans = {}
 ambiguous_workout_plans = {}
 # member id -> exercise class -> {'id', 'sets', 'reps', 'counted'}: the
@@ -272,6 +334,13 @@ head_face_detector = mp_face.FaceDetection(min_detection_confidence=0.4, model_s
 # Separate instance for enrollment: load_registered_faces() can run on a Flask
 # thread (/refresh_ai) while face_ai_worker uses face_detector.
 enroll_face_detector = mp_face.FaceDetection(min_detection_confidence=0.5, model_selection=1)
+# Same settings as enroll_face_detector, so a photo that passes the member
+# form's quality check is one enrollment can use. Own instance and lock:
+# Flask serves checks on several threads, and MediaPipe is not thread-safe.
+enrollment_check_detector = mp_face.FaceDetection(min_detection_confidence=0.5, model_selection=1)
+enrollment_check_lock = threading.Lock()
+# A 300x300 PNG view is ~150 KB; anything far bigger is not a face photo.
+ENROLLMENT_CHECK_MAX_BYTES = 5 * 1024 * 1024
 
 current_raw_frame = None
 current_frame_sequence = 0
@@ -313,10 +382,15 @@ def load_registered_faces():
     frames. Encodings are cached in models/face_cache.pkl, so only new or
     changed enrollments pay the slower high-jitter encoding.
     """
-    global face_db, member_subscriptions, loaded_faces_signature
+    global face_db, member_subscriptions, loaded_faces_signature, gallery_health
 
     print("\n" + "="*50)
     print("🚀 [CAPSTONE READY] HIGH-ACCURACY AI ENGINE...")
+    for path in missing_face_models():
+        print(f"[ERROR] Face model missing: {path}\n"
+              "        Nobody can be recognized until it is downloaded: python scripts/download_face_models.py")
+    print(f"[FACE] Face recognition: SFace (match threshold {FACE_MATCH_THRESHOLD}, margin {FACE_MATCH_MARGIN}, "
+          f"at least {FACE_MIN_AGREEING_VIEWS} agreeing views)")
     print("[SYNC] Fetching registered members from Laravel...")
     try:
         response = requests.get(f"{LARAVEL_API}/ai/members-faces", headers=LARAVEL_HEADERS, timeout=10)
@@ -331,11 +405,14 @@ def load_registered_faces():
         cache = EncodingCache(FACE_CACHE_PATH)
         encodings, ids, names, eligibility = [], [], [], []
         seen_paths = []
+        health_members = []  # one entry per member for the gallery health report
 
         for member in members:
             filepath = member_face_path(member)
             if filepath is None:
                 print(f"  [MISSING] Face image not found for {member['name']}")
+                health_members.append({'id': member['id'], 'name': member['name'],
+                                       'views_usable': 0, 'views_total': 0, 'status': 'missing'})
                 continue
             seen_paths.append(filepath)
             try:
@@ -344,6 +421,8 @@ def load_registered_faces():
                 )
             except Exception as img_err:
                 print(f"  [ERROR] Could not process image for {member['name']}: {img_err}")
+                health_members.append({'id': member['id'], 'name': member['name'],
+                                       'views_usable': 0, 'views_total': 0, 'status': 'error'})
                 continue
 
             workout_eligible = bool(member.get('workout_eligible', False))
@@ -359,7 +438,11 @@ def load_registered_faces():
                 status = "SUCCESS" if len(member_encodings) >= min(2, total_views) else "WEAK"
                 print(f"  [{status}] {member['name']}: {len(member_encodings)}/{total_views} views {source} ({eligibility_label})")
             else:
+                status = "FAILED"
                 print(f"  [FAILED] {member['name']}: no face found in any view. Re-capture this member's face.")
+            health_members.append({'id': member['id'], 'name': member['name'],
+                                   'views_usable': len(member_encodings), 'views_total': total_views,
+                                   'status': status.lower()})
 
         cache.prune(seen_paths)
         try:
@@ -369,6 +452,12 @@ def load_registered_faces():
 
         matrix = np.array(encodings) if encodings else np.empty((0, 128))
         face_db = (matrix, ids, names, eligibility)
+
+        # Members who cannot be recognized, duplicate records and look-alikes,
+        # in the log and on the Attendance Monitor (GET /gallery_health).
+        gallery_health = build_gallery_health(health_members, matrix, ids)
+        for line in report_lines(gallery_health):
+            print(line)
         member_subscriptions = {
             member['id']: member.get('subscription_status') for member in members
         }
@@ -567,11 +656,11 @@ def camera_reader_thread():
             cap = open_camera()
             fail_count = 0
 
-def encode_face(rgb_image, box, jitters=1, upscale=1.0):
+def encode_face(rgb_image, box, upscale=1.0):
     """encode_at() that waits on a helper process when the pool is running.
 
-    Used for enrollment photos, so encoding a new member (several seconds of
-    dlib work) does not freeze the live video either.
+    Used for enrollment photos, so every encoding runs the same way (and in
+    the same model instances) as live recognition.
     """
     pool = face_encoder_pool
     if pool is not None:
@@ -579,10 +668,10 @@ def encode_face(rgb_image, box, jitters=1, upscale=1.0):
         if region is None:
             return None
         try:
-            return pool.submit(region, location, jitters=jitters, upscale=upscale).result()
+            return pool.submit(region, location, upscale=upscale).result()
         except Exception as error:
             print(f"[FACE ENCODER] Helper failed ({error!r}); encoding in the engine instead.")
-    return encode_at(rgb_image, box, jitters=jitters, upscale=upscale)
+    return encode_at(rgb_image, box, upscale=upscale)
 
 
 def apply_face_sample(track, encoding, is_far, db):
@@ -595,17 +684,53 @@ def apply_face_sample(track, encoding, is_far, db):
     if len(known_ids) == 0:
         return
     vote = track['vote']
-    distances = face_recognition.face_distance(known_matrix, encoding)
+    distances = face_distances(known_matrix, encoding)
+    threshold = FACE_FAR_THRESHOLD if is_far else FACE_MATCH_THRESHOLD
     sample_id, sample_distance, _ = best_member_match(
         distances, known_ids,
-        FACE_FAR_THRESHOLD if is_far else FACE_MATCH_THRESHOLD,
+        threshold,
         FACE_MATCH_MARGIN,
     )
+    # A stranger can come close to one enrolled view (usually a turned side
+    # view); a real member matches several. Without this, one enrolled member
+    # was given to an unregistered person (2026-11-20).
+    if sample_id is not None and not views_agree(
+        distances, known_ids, sample_id, threshold, FACE_MIN_AGREEING_VIEWS,
+    ):
+        sample_id = None
+    # Hysteresis: keeping a name is easier than getting one. A face already
+    # confirmed as a member (or reappearing where that member's face was just
+    # lost) keeps them while they are still the closest member within the
+    # looser FACE_KEEP_THRESHOLD, so turning the head does not drop the name.
+    # Another member matching strictly still wins (see still_matches).
+    keep_member = vote.confirmed if vote.confirmed is not None else track.get('reacquire_member')
+    if sample_id is None and keep_member is not None and keep_member in known_ids and still_matches(
+        distances, known_ids, keep_member, FACE_KEEP_THRESHOLD, threshold,
+    ):
+        sample_id = keep_member
+        sample_distance = min(float(d) for m, d in zip(known_ids, distances) if m == keep_member)
+    # Unmatched samples in a row: after UNKNOWN_BACKOFF_AFTER, a face that
+    # was never identified is checked less often (CPU). Members who turned
+    # away are not slowed down.
+    if sample_id is not None:
+        track['unmatched_samples'] = 0
+    elif not track.get('ever_confirmed'):
+        track['unmatched_samples'] = track.get('unmatched_samples', 0) + 1
+    previously_confirmed = vote.confirmed
     newly_confirmed = vote.add(sample_id, weight=FACE_FAR_WEIGHT if is_far else 1.0)
+    if vote.confirmed is not None:
+        track['ever_confirmed'] = True
+    elif previously_confirmed is not None:
+        track['unmatched_samples'] = 0
     if vote.confirmed is not None and vote.confirmed not in known_ids:
         # Member was removed by a face reload while being tracked.
         vote.confirmed = None
         newly_confirmed = False
+
+    if vote.confirmed is not None and sample_id == vote.confirmed:
+        # How closely this face last matched its member (used when two faces
+        # claim the same member: the closer match keeps the name).
+        track['match_distance'] = sample_distance
 
     if vote.confirmed is not None:
         idx = known_ids.index(vote.confirmed)
@@ -626,6 +751,58 @@ def apply_face_sample(track, encoding, is_far, db):
         track['needs_renewal'] = False
         track['attendance_pending'] = False
         track['color'] = (0, 0, 255)
+
+
+# How far (in face widths) a new face may be from a confirmed face to take
+# over its name. A head turn moves the face box a little; the person standing
+# next to you is about 1.5 face widths away. With 2.0 for both, the
+# neighbour's face took over a member's name whenever the member's face was
+# missed for one frame, and both kept dropping to Unknown (2026-11-20).
+HANDOVER_MAX_WIDTHS = 0.75   # from a face missed in this frame (head turn)
+REACQUIRE_MAX_WIDTHS = 1.0   # from a face lost for longer (turned away, back)
+HANDOVER_MAX_SIZE_RATIO = 1.6
+
+
+def nearest_recently_lost(box, recently_lost):
+    """The confirmed face (just missed, or recently lost) this new face continues.
+
+    Each candidate may set 'max_widths'; the default is REACQUIRE_MAX_WIDTHS.
+    Faces of very different size are not the same face.
+    """
+    top, right, bottom, left = box
+    width = max(right - left, 1)
+    center = ((left + right) / 2, (top + bottom) / 2)
+    best, best_distance = None, None
+    for lost in recently_lost:
+        l_top, l_right, l_bottom, l_left = lost['box']
+        l_width = max(l_right - l_left, 1)
+        if max(width, l_width) / min(width, l_width) > HANDOVER_MAX_SIZE_RATIO:
+            continue
+        l_center = ((l_left + l_right) / 2, (l_top + l_bottom) / 2)
+        distance = ((center[0] - l_center[0]) ** 2 + (center[1] - l_center[1]) ** 2) ** 0.5
+        limit = lost.get('max_widths', REACQUIRE_MAX_WIDTHS) * max(width, l_width)
+        if distance <= limit and (best_distance is None or distance < best_distance):
+            best, best_distance = lost, distance
+    return best
+
+
+def unconfirmed_progress(track):
+    """Votes and running encodings of a face not named yet; None if it has none.
+
+    A face is often lost before it is named: the person turns away or walks
+    behind someone for a second. Without this, the face found again started
+    from zero votes, so in groups of 2-3 people some faces never collected
+    enough agreeing samples to be named (2026-11-20). The face found again
+    near the same spot continues from these instead; it still needs its own
+    agreeing sample before a name is shown (the carried votes are below
+    FACE_VOTES_REQUIRED, or the face would have been named already).
+    """
+    if track.get('member_id') is not None:
+        return None
+    history = list(track['vote'].history)
+    if not any(member_id is not None for member_id, _ in history):
+        return None
+    return {'history': history, 'jobs': list(track['encoding_jobs'])}
 
 
 def face_ai_worker():
@@ -649,7 +826,13 @@ def _face_ai_loop():
     last_processed_sequence = -1
     # Created here because Face Mesh must be used from this thread only.
     face_mesh_eyes = FaceMeshEyes() if LIVENESS_REQUIRED else None
-    
+    # YuNet for the small-face sweep; own instance, used by this thread only.
+    small_face_detector = make_small_face_detector()
+    last_small_face_sweep = 0.0
+    last_ai_frame = 0.0
+    # Confirmed faces lost in the last REACQUIRE_SECONDS (see nearest_recently_lost).
+    recently_lost_faces = []
+
     while True:
         # FIX #1: Read frame under lock to prevent partial reads
         with frame_lock:
@@ -661,6 +844,13 @@ def _face_ai_loop():
         if frame_sequence == last_processed_sequence:
             time.sleep(0.005)
             continue
+        # At most AI_MAX_FPS frames per second; after waiting, take the
+        # newest frame instead of an old one.
+        since_last = time.monotonic() - last_ai_frame
+        if since_last < 1.0 / AI_MAX_FPS:
+            time.sleep(1.0 / AI_MAX_FPS - since_last)
+            continue
+        last_ai_frame = time.monotonic()
         last_processed_sequence = frame_sequence
 
         frame = raw.copy()
@@ -731,6 +921,26 @@ def _face_ai_loop():
                 bbox.height * crop_h / h,
             )
 
+        # Small-face sweep (small_face_sweep.py): MediaPipe misses faces under
+        # ~70 px, so every SMALL_FACE_SWEEP_SECONDS YuNet looks for them, but
+        # only while a body is unidentified AND has no face found. A face that
+        # is already found (even if unknown, e.g. staff) needs no search.
+        unidentified_in_view = any(
+            athlete.get('status') == IDENTIFYING and athlete.get('face_box') is None
+            for athlete in shared_athletes
+        )
+        if small_face_detector is not None and sweep_due(now, last_small_face_sweep, unidentified_in_view):
+            last_small_face_sweep = now
+            try:
+                for rel_xmin, rel_ymin, rel_width, rel_height in find_small_faces(small_face_detector, scan_frame):
+                    center_x = (rel_xmin + rel_width / 2) * w
+                    center_y = (rel_ymin + rel_height / 2) * h
+                    if any(box[3] <= center_x <= box[1] and box[0] <= center_y <= box[2] for box in detected_boxes):
+                        continue  # already found by MediaPipe or the head-region search
+                    add_detection(rel_xmin, rel_ymin, rel_width, rel_height)
+            except cv2.error as error:
+                print(f"[FACE] Small-face search failed: {error}")
+
         # --- MULTI-PERSON TRACKING & ASSOCIATION ---
         updated_tracks = []
         unmatched_detections = list(detected_boxes)
@@ -767,7 +977,53 @@ def _face_ai_loop():
             elif (now - track['last_seen']) < 1.0:
                 # Keep active for 1 second if temporarily occluded
                 updated_tracks.append(track)
-                
+            elif track.get('member_id') is not None:
+                # Lost while confirmed (e.g. a full side view the detector
+                # cannot see): remember where, to re-identify quickly.
+                recently_lost_faces.append({
+                    'member_id': track['member_id'],
+                    'name': track['name'],
+                    'workout_eligible': track.get('workout_eligible', False),
+                    'box': track['box'],
+                    'lost_at': now,
+                })
+            else:
+                # Lost before being named: keep its votes so far (see
+                # unconfirmed_progress) for the face found again nearby.
+                progress = unconfirmed_progress(track)
+                if progress is not None:
+                    recently_lost_faces.append({
+                        'member_id': None, 'box': track['box'], 'lost_at': now, 'progress': progress,
+                    })
+        recently_lost_faces[:] = [
+            lost for lost in recently_lost_faces if now - lost['lost_at'] < REACQUIRE_SECONDS
+        ]
+
+        # Confirmed faces not seen in this frame. When a head turns, the face
+        # box jumps (new size and position), so the face looks like a new one
+        # while the old box lingers; a new face next to one of these takes over
+        # its member (and the old box is removed), instead of "John, Unknown".
+        handover_candidates = recently_lost_faces + [
+            {
+                'member_id': track['member_id'], 'name': track['name'],
+                'workout_eligible': track.get('workout_eligible', False),
+                'box': track['box'], 'track': track,
+                'max_widths': HANDOVER_MAX_WIDTHS,
+            }
+            for track in updated_tracks
+            if track['last_seen'] < now and track.get('member_id') is not None
+        ]
+        # Same for faces not named yet but with votes: the new face continues
+        # their votes instead of both showing "Unknown" and starting over.
+        for track in updated_tracks:
+            if track['last_seen'] < now:
+                progress = unconfirmed_progress(track)
+                if progress is not None:
+                    handover_candidates.append({
+                        'member_id': None, 'box': track['box'], 'track': track,
+                        'max_widths': HANDOVER_MAX_WIDTHS, 'progress': progress,
+                    })
+
         # 2. Any unmatched detection becomes a distinct new track
         for new_box in unmatched_detections:
             new_track = {
@@ -790,6 +1046,32 @@ def _face_ai_loop():
                 'attendance_pending': False,
                 'pending_distance': None,
             }
+            # Reappearing where a confirmed member's face was just lost: start
+            # with that member's earlier votes, so one agreeing check (strict,
+            # or the looser keep limit) names them again.
+            lost = nearest_recently_lost(new_box, handover_candidates)
+            if lost is not None:
+                handover_candidates.remove(lost)
+                if 'track' in lost:
+                    updated_tracks.remove(lost['track'])  # the same face, old box
+                else:
+                    recently_lost_faces.remove(lost)
+            if lost is not None and lost['member_id'] is None:
+                # Not named yet: continue its votes and running encodings.
+                new_track['vote'].history.extend(lost['progress']['history'])
+                new_track['encoding_jobs'].extend(lost['progress']['jobs'])
+            elif lost is not None:
+                new_track['reacquire_member'] = lost['member_id']
+                new_track['ever_confirmed'] = True
+                # Keep showing the name while the first check runs (same person,
+                # same spot); that check confirms it or turns it to Unknown.
+                # Attendance is only logged on a real confirmation.
+                new_track.update({
+                    'member_id': lost['member_id'], 'name': lost['name'],
+                    'workout_eligible': lost['workout_eligible'], 'color': (0, 255, 0),
+                })
+                for _ in range(max(0, FACE_VOTES_REQUIRED - 1)):
+                    new_track['vote'].history.append((lost['member_id'], 1.0))
             next_track_id += 1
             updated_tracks.append(new_track)
             
@@ -825,10 +1107,10 @@ def _face_ai_loop():
                 if encoding is not None:
                     apply_face_sample(track, encoding, job['is_far'], db)
 
-        # Request a new sample for each face that is due. The slow dlib
-        # encoding runs in a helper process, so this loop (and the camera and
-        # video feeds) keep running while it works. Longest-waiting faces go
-        # first so one face cannot keep the helpers to itself.
+        # Request a new sample for each face that is due. The encoding runs
+        # in a helper process, so this loop (and the camera and video feeds)
+        # keep running while it works. Longest-waiting faces go first so one
+        # face cannot keep the helpers to itself.
         pool = face_encoder_pool
         visible = [track for track in updated_tracks if track['last_seen'] == now]
         jobs_per_track = max(1, pool.size // max(1, len(visible))) if pool is not None else 1
@@ -836,10 +1118,14 @@ def _face_ai_loop():
             if len(known_ids) == 0:
                 break
             vote = track['vote']
-            interval = (
-                RECOGNITION_INTERVAL_CONFIRMED if vote.confirmed is not None
-                else RECOGNITION_INTERVAL_UNCONFIRMED
-            )
+            if vote.confirmed is not None:
+                interval = RECOGNITION_INTERVAL_CONFIRMED
+            elif track.get('unmatched_samples', 0) >= UNKNOWN_BACKOFF_AFTER:
+                # Probably not a member (staff, a visitor): checking them every
+                # 0.2 s forever kept the face helpers busy. Keep checking, slower.
+                interval = RECOGNITION_INTERVAL_UNKNOWN
+            else:
+                interval = RECOGNITION_INTERVAL_UNCONFIRMED
             if (now - track['last_recon']) < interval:
                 continue
 
@@ -871,11 +1157,11 @@ def _face_ai_loop():
                     region, location = face_region(rgb_frame, aligned)
                     if region is not None:
                         track['encoding_jobs'].append({
-                            'future': pool.submit(region, location, jitters=1, upscale=upscale),
+                            'future': pool.submit(region, location, upscale=upscale),
                             'is_far': is_far,
                         })
                     continue
-                encoding = encode_at(rgb_frame, aligned, jitters=1, upscale=upscale)
+                encoding = encode_at(rgb_frame, aligned, upscale=upscale)
             except Exception:
                 encoding = None
             if encoding is not None:
@@ -887,6 +1173,28 @@ def _face_ai_loop():
             if track.get('member_id') is not None:
                 track['needs_renewal'] = member_subscriptions.get(track['member_id']) == 'expired'
                 track['color'] = RENEW_COLOR if track['needs_renewal'] else (0, 255, 0)
+
+        # One member, one face: if two faces in view are both confirmed as the
+        # same member, the closer match keeps the name; the other goes back to
+        # Unknown and starts over. Done before check-ins are sent, so the
+        # wrong face cannot log attendance.
+        face_losers = duplicate_identity_losers([
+            (
+                track['id'],
+                track.get('member_id'),
+                (track['last_seen'] == now, -track.get('match_distance', float('inf'))),
+            )
+            for track in updated_tracks
+            if now - track['last_seen'] < 1.0
+        ])
+        for track in updated_tracks:
+            if track['id'] in face_losers:
+                track['vote'] = IdentityVote(window=FACE_VOTE_WINDOW, required=FACE_VOTES_REQUIRED)
+                track.update({
+                    'member_id': None, 'name': 'Unknown', 'workout_eligible': False,
+                    'needs_renewal': False, 'attendance_pending': False, 'color': (0, 0, 255),
+                })
+                track.pop('match_distance', None)
 
         # Send each confirmed member's check-in once. With the blink check
         # on, it waits until this face has blinked.
@@ -1160,14 +1468,41 @@ def associate_poses_with_people(pose_landmarks, faces, frame_width, frame_height
             'member_id': member_id,
             'workout_eligible': workout_eligible,
         })
+        # The member whose face is on this body right now (strongest evidence).
+        track['face_member_now'] = face.get('member_id') if face else None
 
-    pose_tracks = updated_tracks + available_tracks
+    # One member, one body: if a name is on several bodies (one kept it from
+    # memory while the member's face appears on another), keep it only on the
+    # body with the face seen right now, else the most recently confirmed.
+    # Bodies briefly out of view count too, so a stale name cannot come back.
+    all_tracks = updated_tracks + available_tracks
+    visible_ids = {track['id'] for track in updated_tracks}
+    losers = duplicate_identity_losers([
+        (
+            track['id'],
+            track.get('member_id'),
+            (
+                track['id'] in visible_ids and track.get('face_member_now') == track.get('member_id'),
+                track.get('identity_seen', float('-inf')),
+            ),
+        )
+        for track in all_tracks
+    ])
+    for track in all_tracks:
+        if track['id'] in losers:
+            clear_pose_identity(track)
+    for track, result in zip(updated_tracks, results):
+        if track['id'] in losers:
+            result.update({'name': 'Unknown', 'member_id': None, 'workout_eligible': False})
+
+    pose_tracks = all_tracks
     return results
 
 def gesture_ai_worker():
     global current_raw_frame, shared_athletes, shared_head_regions
     infer_counter = 0
     last_processed_sequence = -1
+    last_ai_frame = 0.0
 
     while True:
         with frame_lock:
@@ -1179,6 +1514,13 @@ def gesture_ai_worker():
         if frame_sequence == last_processed_sequence:
             time.sleep(0.005)
             continue
+        # At most AI_MAX_FPS skeleton detections per second (the heaviest
+        # model); after waiting, take the newest frame.
+        since_last = time.monotonic() - last_ai_frame
+        if since_last < 1.0 / AI_MAX_FPS:
+            time.sleep(1.0 / AI_MAX_FPS - since_last)
+            continue
+        last_ai_frame = time.monotonic()
         last_processed_sequence = frame_sequence
 
         frame = raw.copy()
@@ -1218,9 +1560,27 @@ def gesture_ai_worker():
             current_targets = {member_id: dict(targets) for member_id, targets in workout_targets.items()}
 
         athletes = []
+        frame_time = time.monotonic()
+        aspect = width / height
         for person in poses:
             member_id = person['member_id']
             workout_eligible = person.get('workout_eligible', False)
+
+            # Smoothed landmarks (One Euro filter) and movement history for
+            # every tracked body, kept while the face is still being
+            # identified, so exercise checks can start from it at once.
+            pose_state = actor_pose_state.setdefault(person['actor_id'], {
+                'smoother': LandmarkSmoother(),
+                'motion': MotionTracker(),
+                'history': collections.deque(),
+            })
+            pose_state['last_seen'] = frame_time
+            points = pose_state['smoother'](landmarks_array(person['landmarks']), frame_time)
+            pose_state['motion'].add(points, frame_time)
+            history = pose_state['history']
+            history.append((frame_time, points))
+            while history and frame_time - history[0][0] > PRE_ID_HISTORY_SECONDS:
+                history.popleft()
 
             # Only members with an active coach membership are monitored.
             status = monitoring_status(member_id, workout_eligible)
@@ -1235,12 +1595,17 @@ def gesture_ai_worker():
 
             expected = current_plans.get(str(member_id), set())
             ambiguous = current_ambiguities.get(str(member_id), set())
-            state = workout_states.setdefault(person['actor_id'], {
-                'buffer': collections.deque(maxlen=7),
-                'exercise': 'SCANNING',
-                'confidence': 0.0,
-                'motion': MotionTracker(),
-            })
+            if person['actor_id'] not in workout_states:
+                # Just identified: start from what the body did while the
+                # face was being recognised instead of from nothing.
+                workout_states[person['actor_id']] = {
+                    'buffer': collections.deque(maxlen=7),
+                    'exercise': 'SCANNING',
+                    'confidence': 0.0,
+                    'motion': pose_state['motion'],
+                    'seed': list(history)[:-1],
+                }
+            state = workout_states[person['actor_id']]
             state['last_seen'] = time.monotonic()
             target_signature = tuple(sorted(expected))
             if state.get('target_signature') != target_signature:
@@ -1253,48 +1618,65 @@ def gesture_ai_worker():
                 for key in ('counting_for', 'counter', 'counter_active', 'reps_done'):
                     state.pop(key, None)
 
-            points = landmarks_array(person['landmarks'])
-            state['motion'].add(points)
-
-            def gate(label):
+            def gate(label, hint=None):
                 # Not checkable right now: show why, and require fresh
                 # stable predictions once the person can be checked again.
                 state['buffer'].clear()
                 state['exercise'] = label
                 state['confidence'] = 0.0
+                state['hint'] = hint
+
+            def classify(sample_points):
+                # Rescale the body to the training data's size so near and
+                # far members look the same to the model, then add one
+                # prediction to the stability buffer.
+                pose_array = scaled_model_input(sample_points, TRAIN_TORSO)
+                if pose_array is None:
+                    return
+                probabilities = ml_model.predict_proba(pose_array)[0]
+                prediction, confidence = select_assigned_prediction(probabilities, ml_classes, expected)
+                state['buffer'].append((prediction, confidence))
+                state['exercise'] = collections.Counter(
+                    label for label, _ in state['buffer']
+                ).most_common(1)[0][0]
+                matching_confidences = [
+                    score for label, score in state['buffer'] if label == state['exercise']
+                ]
+                state['confidence'] = sum(matching_confidences) / len(matching_confidences)
+                state['hint'] = None
+
+            motion = state['motion'].motion()
+            checks_static = bool(expected & STATIC_EXERCISES)
+            moving_enough = checks_static or motion is None or motion >= MOTION_MIN
+
+            # First frame after identification: classify the recent history
+            # (every 3rd frame, like the live loop), so a member who was
+            # already exercising can be verified at once.
+            seed = state.pop('seed', None)
+            if seed and expected and ml_model is not None and moving_enough:
+                state['replay'] = seed
+                try:
+                    for _, seed_points in seed[::-3][:SEED_PREDICTIONS][::-1]:
+                        if any(joints_visible_for(exercise, seed_points) for exercise in expected):
+                            classify(seed_points)
+                except (ValueError, RuntimeError) as e:
+                    print(f"[ERROR] Could not classify pose history for {person['name']}: {e}")
 
             if not expected:
                 gate('NO PLAN TODAY')
             elif ml_model is not None and infer_counter % 3 == 0:
-                motion = state['motion'].motion()
-                checks_static = bool(expected & STATIC_EXERCISES)
                 if not any(joints_visible_for(exercise, points) for exercise in expected):
-                    gate('BODY NOT FULLY VISIBLE')
-                elif not checks_static and motion is not None and motion < MOTION_MIN:
-                    gate('NOT MOVING')
+                    hidden = hidden_body_parts(expected, points)
+                    gate('BODY NOT FULLY VISIBLE',
+                         f"{' AND '.join(hidden).upper()} NOT VISIBLE - STEP INTO VIEW" if hidden else None)
+                elif not moving_enough:
+                    gate('NOT MOVING', f"NOT MOVING - START YOUR {'/'.join(sorted(expected))}")
                 else:
-                    # Rescale the body to the training data's size so near
-                    # and far members look the same to the model.
-                    pose_array = scaled_model_input(points, TRAIN_TORSO)
-                    if pose_array is not None:
-                        try:
-                            probabilities = ml_model.predict_proba(pose_array)[0]
-                            prediction, confidence = select_assigned_prediction(
-                                probabilities,
-                                ml_classes,
-                                expected,
-                            )
-                            state['buffer'].append((prediction, confidence))
-                            state['exercise'] = collections.Counter(
-                                label for label, _ in state['buffer']
-                            ).most_common(1)[0][0]
-                            matching_confidences = [
-                                score for label, score in state['buffer'] if label == state['exercise']
-                            ]
-                            state['confidence'] = sum(matching_confidences) / len(matching_confidences)
-                        except (ValueError, RuntimeError) as e:
-                            print(f"[ERROR] Could not classify pose for {person['name']}: {e}")
-                            gate('SCANNING')
+                    try:
+                        classify(points)
+                    except (ValueError, RuntimeError) as e:
+                        print(f"[ERROR] Could not classify pose for {person['name']}: {e}")
+                        gate('SCANNING')
 
             exercise = state['exercise']
             confidence = state['confidence']
@@ -1314,6 +1696,9 @@ def gesture_ai_worker():
                 'expected': sorted(expected),
                 'target_match': target_match,
                 'requires_confirmation': requires_confirmation,
+                # For the on-screen reason/progress (draw_athlete_overlay).
+                'stable_predictions': stable_predictions,
+                'hint': state.get('hint'),
             })
 
             # Repetition counting (rep_counter.py) for the selected
@@ -1346,10 +1731,23 @@ def gesture_ai_worker():
                     state['reps_reported_at'] = 0.0
                     state['reps_done'] = state['counter'].count >= target_total
                     state['rep_target'] = (target_total, int(target['sets']), int(target['reps']))
-                if target_match:
+                if not state['counter_active']:
+                    # Until the exercise is confirmed, keep the recent frames
+                    # (including those from before identification), so the
+                    # repetitions already done are counted once it is.
+                    pending = state.setdefault('replay', [])
+                    pending.append((frame_time, points))
+                    while pending and frame_time - pending[0][0] > REPLAY_MAX_SECONDS:
+                        pending.pop(0)
+                if target_match and not state['counter_active']:
                     state['counter_active'] = True
-                if state['counter_active'] and not state['reps_done']:
-                    state['counter'].update(points, time.monotonic(), aspect=width / height)
+                    if not state['reps_done']:
+                        for replay_time, replay_points in state.pop('replay', []):
+                            state['counter'].update(replay_points, replay_time, aspect=aspect)
+                elif state['counter_active'] and not state['reps_done']:
+                    state['counter'].update(points, frame_time, aspect=aspect)
+                if state['counter_active']:
+                    state.pop('replay', None)
 
                 counted = state['counter'].count
                 member_rep_counts[rep_key] = counted
@@ -1415,6 +1813,12 @@ def gesture_ai_worker():
         ]
         for actor_id in stale_actors:
             workout_states.pop(actor_id, None)
+        # Pose tracks themselves expire after 2 s out of view.
+        for actor_id in [
+            actor_id for actor_id, pose_state in actor_pose_state.items()
+            if frame_time - pose_state.get('last_seen', 0.0) > 2.0
+        ]:
+            actor_pose_state.pop(actor_id, None)
 
         time.sleep(0.015)
 
@@ -1431,8 +1835,14 @@ def draw_status_tag(frame, athlete, label):
 
 def draw_athlete_overlay(frame, athlete):
     if athlete.get('status') == IDENTIFYING:
-        # Face not recognized yet.
-        draw_status_tag(frame, athlete, "Identifying...")
+        # Face not recognized yet: say what would help.
+        if athlete.get('face_box') is None:
+            label = "Identifying... face the camera"
+        elif athlete.get('name') == MOVE_CLOSER_LABEL:
+            label = "Move closer to be identified"
+        else:
+            label = "Identifying..."
+        draw_status_tag(frame, athlete, label)
         return
     if athlete.get('status') == EXCLUDED:
         # Recognized, but only with-coach members are monitored here.
@@ -1477,11 +1887,17 @@ def draw_athlete_overlay(frame, athlete):
         elif athlete['exercise'] == 'WAITING':
             exercise_label = "WAITING FOR: " + "/".join(athlete['expected'])
         elif athlete['exercise'] in ('NOT MOVING', 'BODY NOT FULLY VISIBLE'):
-            exercise_label = f"{athlete['exercise']} ({'/'.join(athlete['expected'])})"
+            # Say exactly why it is not counting (e.g. "LEGS AND FEET NOT
+            # VISIBLE - STEP INTO VIEW").
+            exercise_label = athlete.get('hint') or f"{athlete['exercise']} ({'/'.join(athlete['expected'])})"
         elif athlete['target_match']:
             exercise_label = f"MATCH: {athlete['exercise']} ({int(athlete['confidence'] * 100)}%)"
         else:
-            exercise_label = f"VERIFYING: {athlete['exercise']} ({int(athlete['confidence'] * 100)}%)"
+            # Progress towards verification: 5 agreeing checks are needed.
+            exercise_label = (
+                f"CHECKING {athlete['exercise']}: {min(5, athlete.get('stable_predictions', 0))}/5"
+                f" ({int(athlete['confidence'] * 100)}%)"
+            )
     else:
         exercise_label = athlete['exercise']
 
@@ -1611,6 +2027,26 @@ _workers_started = False
 _workers_lock = threading.Lock()
 
 
+def warm_up_face_model():
+    """Run one blank request through every encoder helper at startup.
+
+    Makes sure each helper process is up and has its face model loaded
+    before the first member walks in, instead of on their face. One request
+    per helper, sent together so each helper gets one.
+    """
+    started = time.perf_counter()
+    blank = np.full((64, 64, 3), 128, np.uint8)
+    pool = face_encoder_pool
+    try:
+        if pool is not None:
+            jobs = [pool.submit(blank, (16, 48, 48, 16)) for _ in range(pool.size)]
+            for job in jobs:
+                job.result()
+        print(f"[FACE] Face model loaded ({time.perf_counter() - started:.1f} s).")
+    except Exception as error:
+        print(f"[FACE] Could not pre-load the face model ({error}); it will load on the first face.")
+
+
 def start_background_workers():
     """Sync faces from Laravel and start the camera/AI threads (once).
 
@@ -1632,6 +2068,7 @@ def start_background_workers():
             pool.close()
             print("[FACE ENCODER] Encoding inside the engine instead (video may stutter).")
 
+    warm_up_face_model()
     load_registered_faces()
     threading.Thread(target=camera_reader_thread, daemon=True).start()
     threading.Thread(target=face_ai_worker, daemon=True).start()
@@ -1744,6 +2181,117 @@ def refresh_ai():
     # Asynchronously reload registered faces to avoid blocking the caller
     threading.Thread(target=load_registered_faces, daemon=True).start()
     return jsonify({"message": "Face synchronization started in background!"})
+
+def decode_data_url_image(value):
+    """BGR image from a data URL (or bare base64), or None if it is not one."""
+    import base64
+
+    image_data = str(value or '')
+    if ',' in image_data:
+        image_data = image_data.split(',', 1)[1]
+    if not image_data or len(image_data) > ENROLLMENT_CHECK_MAX_BYTES * 4 // 3:
+        return None
+    try:
+        raw = np.frombuffer(base64.b64decode(image_data, validate=True), dtype=np.uint8)
+        return cv2.imdecode(raw, cv2.IMREAD_COLOR)
+    except (ValueError, TypeError, cv2.error):
+        return None
+
+
+@app.route('/check_enrollment_duplicates', methods=['POST'])
+@require_admin
+def check_enrollment_duplicates():
+    """Compare a new member's face photos with every enrolled member.
+
+    Body: {"images": [data URL, ...], "exclude_member_id": id of the member
+    being edited (so they are not compared with their own old photos)}.
+    Returns {"checked_views", "matches": [{"member_id", "name", "distance",
+    "level"}]}, where level is 'likely_same' (distance below the match
+    threshold: the camera may mistake one for the other) or 'similar'.
+    """
+    from flask import request
+
+    body = request.get_json(silent=True) or {}
+    images = body.get('images') or []
+    if not isinstance(images, list) or not images or len(images) > 8:
+        return jsonify({"error": "Send the face photos as a list of data URLs."}), 400
+    exclude = body.get('exclude_member_id')
+    exclude = str(exclude) if exclude not in (None, '') else None
+
+    encodings = []
+    for value in images:
+        image = decode_data_url_image(value)
+        if image is None:
+            continue
+        rgb = np.ascontiguousarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        with enrollment_check_lock:
+            box = detect_face_box(rgb, enrollment_check_detector)
+        if box is None:
+            continue
+        encoding = encode_face(rgb, box)
+        if encoding is not None:
+            encodings.append(encoding)
+
+    matrix, known_ids, known_names, _ = face_db
+    names = dict(zip(known_ids, known_names))
+    closest = closest_member_distances(encodings, matrix, known_ids)
+    matches = sorted(
+        (
+            {
+                'member_id': member_id,
+                'name': names.get(member_id, ''),
+                'distance': round(distance, 3),
+                'level': 'likely_same' if distance < LIKELY_CONFUSED_DISTANCE else 'similar',
+            }
+            for member_id, distance in closest.items()
+            if distance < LOOK_ALIKE_DISTANCE and str(member_id) != exclude
+        ),
+        key=lambda match: match['distance'],
+    )
+    return jsonify({'checked_views': len(encodings), 'matches': matches})
+
+
+@app.route('/gallery_health', methods=['GET'])
+@require_admin
+def get_gallery_health():
+    """Enrollment problems found at the last face reload (gallery_health.py)."""
+    return jsonify(gallery_health)
+
+
+@app.route('/check_enrollment_view', methods=['POST'])
+@require_admin
+def check_enrollment_view():
+    """Quality check for one face photo taken in the member form.
+
+    Body: {"image": data URL, "view": "Front" | "Chin down" | "Left" | "Right",
+           "opposite_turn": head turn of the accepted other side photo or null}.
+    Returns enrollment_quality.assess_view's result.
+    """
+    from flask import request
+
+    body = request.get_json(silent=True) or {}
+    image = decode_data_url_image(body.get('image'))
+    if image is None:
+        return jsonify({"error": "Send one face photo as a data URL; it could not be read."}), 400
+
+    opposite_turn = body.get('opposite_turn')
+    try:
+        opposite_turn = None if opposite_turn is None else float(opposite_turn)
+    except (TypeError, ValueError):
+        opposite_turn = None
+
+    height, width = image.shape[:2]
+    with enrollment_check_lock:
+        results = enrollment_check_detector.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    faces = []
+    for detection in results.detections or []:
+        box = detection.location_data.relative_bounding_box
+        faces.append({
+            'box': (box.xmin, box.ymin, box.width, box.height),
+            'keypoints': [(k.x * width, k.y * height) for k in detection.location_data.relative_keypoints],
+            'score': float(detection.score[0]),
+        })
+    return jsonify(assess_view(body.get('view'), image, faces, opposite_turn))
 
 @app.route('/camera_status', methods=['GET'])
 def get_camera_status():

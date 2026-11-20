@@ -70,6 +70,33 @@ def _clear_identity(track):
     track['overlapped'] = False
 
 
+clear_identity = _clear_identity
+
+
+def duplicate_identity_losers(candidates):
+    """One member, one person: which tracks must drop a shared name.
+
+    candidates: (key, member_id, rank) for every track holding a member's
+    name, where a higher rank is stronger evidence (e.g. (face seen on it
+    right now, time the face last confirmed it)). For each member held by
+    more than one track, the highest-ranked keeps the name; the keys of the
+    others are returned, so they go back to "Identifying...".
+
+    Without this, a body kept a member's name from memory (up to
+    IDENTITY_MAX_UNCONFIRMED) while the member's face was seen on another
+    body, and the Gesture Monitor showed two people with the same name
+    (2026-11-20).
+    """
+    best = {}
+    for key, member_id, rank in candidates:
+        if member_id is None:
+            continue
+        if member_id not in best or rank > best[member_id][1]:
+            best[member_id] = (key, rank)
+    return {key for key, member_id, _ in candidates
+            if member_id is not None and best[member_id][0] != key}
+
+
 def update_pose_track_identity(track, face, now, appearance=None, overlapped=False):
     """Update a pose track's identity; returns (name, member_id, eligible).
 

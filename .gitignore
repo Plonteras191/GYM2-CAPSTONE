@@ -42,7 +42,9 @@ DOCUMENTATION/Updated Current Plan For Development/Reminder.md
 # Cached face encodings (biometric data)
 Gesture Engine/models/face_cache.pkl
 Gesture Engine/models/face_cache.pkl.tmp
-
+# Face models (YuNet, SFace): fetched by scripts/download_face_models.py
+Gesture Engine/models/*.onnx
+Gesture Engine/models/*.onnx.tmp
 # Local credentials notes (never commit)
 OpenSesami.md
 **/Reminder.md

@@ -22,10 +22,13 @@ AI Vision & Gesture Engine/
 │   └── custom_workout_dataset.csv  # Pose landmark dataset CSV file (33 3D joints)
 ├── models/
 │   ├── workout_model.pkl    # Trained Scikit-Learn workout classifier model binary
-│   └── pose_landmarker_lite.task # MediaPipe multi-person pose model (up to 8 poses)
+│   ├── pose_landmarker_lite.task # MediaPipe multi-person pose model (up to 8 poses)
+│   └── *.onnx               # YuNet + SFace face models (scripts/download_face_models.py; git-ignored)
 ├── scripts/
 │   ├── auto_scraper.py      # Video dataset scraper utility
 │   ├── collect_data.py      # Real-time pose landmark recording script
+│   ├── download_face_models.py # Downloads the YuNet and SFace face models (run once after install)
+│   ├── eval_faces.py        # Measures face distances to calibrate the match thresholds
 │   ├── test_cam.py          # Camera input & RTSP diagnostic tool
 │   └── train_model.py       # Scikit-Learn model training pipeline
 ├── tests/                   # Automated tests (run: python -m unittest discover tests)
@@ -33,7 +36,7 @@ AI Vision & Gesture Engine/
 ├── gesture_engine.py        # Core Flask streaming web service & vision inference engine
 ├── face_encoder_pool.py     # Helper processes that encode faces without stalling the video
 ├── face_matching.py         # Distance, margin and vote rules for naming a face
-├── face_enrollment.py       # Loads the enrolled face photos
+├── face_enrollment.py       # Loads the enrolled face photos and encodes faces (YuNet + SFace)
 ├── rep_counter.py           # Counts repetitions from joint angles
 ├── attendance_queue.py      # Saves check-ins to a file and retries when Laravel is down
 ├── requirements.txt         # Python package dependencies
@@ -142,7 +145,7 @@ gym CCTV, while the phone hotspot is suitable as a temporary demo network.
 ## 🛠️ Key Technologies
 * **Python 3.10+**: Core execution language.
 * **OpenCV (`opencv-python`)**: Video stream ingestion and frame drawing.
-* **`face_recognition` / `dlib`**: Biometric 128-d face vector extraction & matching.
+* **OpenCV YuNet + SFace**: face landmarks and 128-d face encodings for recognition (~30 ms per face on a laptop CPU). Download the models once with `python scripts/download_face_models.py`.
 * **MediaPipe Pose**: 33 3D body landmark joint tracking.
 * **Scikit-Learn**: Random Forest exercise classifier (`workout_model.pkl`).
 * **Repetition counter**: joint-angle state machine for squat, push-up, curl and sit-up (`rep_counter.py`).

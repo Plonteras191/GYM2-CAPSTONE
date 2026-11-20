@@ -157,6 +157,38 @@ class MotionTracker:
         return float(top.mean())
 
 
+# Plain names for the joint pairs, used to tell members what to bring into view.
+BODY_PART_NAMES = {
+    (L_SHOULDER, R_SHOULDER): 'shoulders',
+    (L_ELBOW, R_ELBOW): 'arms',
+    (L_WRIST, R_WRIST): 'hands',
+    (L_HIP, R_HIP): 'hips',
+    (L_KNEE, R_KNEE): 'legs',
+    (L_ANKLE, R_ANKLE): 'feet',
+}
+
+
+def hidden_body_parts(exercises, points):
+    """Body parts not visible for the exercise that is closest to checkable.
+
+    For each exercise, lists the joint pairs it needs where neither side is
+    visible; returns the shortest such list (the exercise the member is
+    closest to showing), as plain names like ['legs', 'feet']. An empty list
+    means at least one of the exercises can be checked.
+    """
+    best = None
+    for exercise in exercises:
+        pairs = REQUIRED_JOINTS.get(exercise, [])
+        hidden = [
+            BODY_PART_NAMES.get((left, right), 'body')
+            for left, right in pairs
+            if max(points[left, 3], points[right, 3]) < MIN_VISIBILITY
+        ]
+        if best is None or len(hidden) < len(best):
+            best = hidden
+    return list(dict.fromkeys(best or []))
+
+
 def static_exercises_from_env():
     raw = os.getenv('STATIC_EXERCISES', 'PLANK')
     return {item.strip().upper() for item in raw.split(',') if item.strip()}

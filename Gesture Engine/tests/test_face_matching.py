@@ -2,7 +2,15 @@ import unittest
 
 import numpy as np
 
-from face_matching import IdentityVote, align_box, best_member_match, box_size, normalize_lighting
+from face_matching import (
+    IdentityVote,
+    align_box,
+    best_member_match,
+    box_size,
+    face_distances,
+    normalize_lighting,
+    views_agree,
+)
 
 THRESHOLD = 0.50
 MARGIN = 0.05
@@ -105,6 +113,40 @@ class NormalizeLightingTests(unittest.TestCase):
         rng = np.random.default_rng(0)
         image = rng.integers(10, 60, size=(40, 40, 3), dtype=np.uint8)
         self.assertGreater(normalize_lighting(image).mean(), image.mean())
+
+
+class ViewsAgreeTests(unittest.TestCase):
+    # One enrolled member with 4 views (Front, Chin down, Left, Right).
+    IDS = [1, 1, 1, 1]
+
+    def test_stranger_close_to_one_side_view_only_is_rejected(self):
+        # Measured on 2026-11-20: unregistered person vs the only member.
+        distances = [0.61, 0.64, 0.419, 0.512]
+        self.assertEqual(best_member_match(distances, self.IDS, 0.5, 0.05)[0], 1)
+        self.assertFalse(views_agree(distances, self.IDS, 1, 0.5))
+
+    def test_member_matching_two_views_is_accepted(self):
+        self.assertTrue(views_agree([0.32, 0.58, 0.61, 0.41], self.IDS, 1, 0.5))
+
+    def test_members_with_few_views_keep_single_view_rule(self):
+        self.assertTrue(views_agree([0.40, 0.70], [1, 1], 1, 0.5))
+
+    def test_setting_one_view_disables_the_rule(self):
+        self.assertTrue(views_agree([0.61, 0.64, 0.419, 0.512], self.IDS, 1, 0.5, min_views=1))
+
+    def test_only_this_members_views_count(self):
+        distances = [0.30, 0.70, 0.70, 0.30]
+        self.assertFalse(views_agree(distances, [1, 1, 1, 2], 1, 0.5))
+
+
+class FaceDistancesTests(unittest.TestCase):
+    def test_one_minus_cosine_for_unit_encodings(self):
+        matrix = np.array([[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]], dtype=np.float32)
+        distances = face_distances(matrix, np.array([1.0, 0.0]))
+        np.testing.assert_allclose(distances, [0.0, 1.0, 2.0], atol=1e-6)
+
+    def test_empty_gallery_gives_no_distances(self):
+        self.assertEqual(len(face_distances(np.empty((0, 128)), np.ones(128))), 0)
 
 
 if __name__ == '__main__':
