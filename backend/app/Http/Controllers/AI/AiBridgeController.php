@@ -47,6 +47,9 @@ class AiBridgeController extends Controller
     /** Today's pending tasks for active members with a coach membership. */
     public function workoutPlans()
     {
+        // Weekly plans repeat: create today's tasks if the daily job has not run.
+        app(\App\Services\WorkoutPlanScheduler::class)->fillOncePerDay();
+
         return WorkoutLog::whereDate('date', Carbon::today())
             ->where('exercise', 'like', self::ASSIGNED_PREFIX . '%')
             ->whereHas('member', function ($query) {

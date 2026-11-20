@@ -17,7 +17,9 @@ return new class extends Migration
         Schema::create('memberships', function (Blueprint $table) {
             $table->id();
             $table->foreignId('member_id')->constrained('members')->onDelete('cascade'); 
-            $table->foreignId('plan_id')->nullable()->constrained('plans')->onDelete('set null');
+            // The link to plans is added by the next migration (create_plans_table):
+            // plans does not exist yet at this point on a fresh database.
+            $table->foreignId('plan_id')->nullable();
             $table->string('plan_type'); 
             $table->date('start_date');
             $table->date('end_date'); 

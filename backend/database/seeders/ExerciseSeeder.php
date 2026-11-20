@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Exercise;
+use App\Models\Gym\Exercise;
 use Illuminate\Support\Facades\File;
 
 class ExerciseSeeder extends Seeder

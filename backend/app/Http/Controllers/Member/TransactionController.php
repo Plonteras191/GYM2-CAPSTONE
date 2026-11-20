@@ -48,7 +48,6 @@ class TransactionController extends Controller
             $category = match ($transaction->package_category_snapshot ?: $plan?->category) {
                 'with_coach' => 'With Coach Subscription',
                 'walk_in' => 'Walk-In Package',
-                'other' => $plan?->category_detail ?: 'Other / Custom',
                 default => 'Normal Subscription',
             };
             $transaction->package_details = [
@@ -80,12 +79,10 @@ class TransactionController extends Controller
         $plan = Plan::findOrFail($validatedData['plan_id']);
         $normalizedPlanName = mb_strtolower($plan->name);
         $validatedData['type'] = $plan->category === 'walk_in'
+            || str_contains($normalizedPlanName, 'walk')
+            || str_contains($normalizedPlanName, 'daily')
             ? 'Walk-In'
-            : ($plan->category === 'other'
-                ? 'Packages'
-                : (str_contains($normalizedPlanName, 'walk') || str_contains($normalizedPlanName, 'daily')
-                    ? 'Walk-In'
-                    : 'Subscription'));
+            : 'Subscription';
         unset($validatedData['plan_id']);
         $validatedData['status'] = 'Complete';
         $memberId = $validatedData['member_id'] ?? null;
@@ -106,36 +103,7 @@ class TransactionController extends Controller
         return response()->json(['message' => 'Transaction saved', 'transaction' => $transaction], 201);
     }
 
-    public function update(Request $request, $id)
-    {
-        $transaction = Transaction::findOrFail($id);
-        $validatedData = $request->validate([
-            'transaction_date' => 'required|date',
-            'member_id' => 'nullable|exists:members,id',
-            'membership_id' => 'nullable|exists:memberships,id',
-            'type' => 'required|string',
-            'description' => 'nullable|string',
-            'payment_method' => 'required|string',
-            'amount' => 'required|numeric|min:0|max:9999999.99',
-            'status' => 'required|string',
-            'reference_number' => 'nullable|string'
-        ]);
 
-        if (array_key_exists('member_id', $validatedData) && $validatedData['member_id']) {
-            $member = \App\Models\Member\Member::findOrFail($validatedData['member_id']);
-            $validatedData['member_name_snapshot'] = trim($member->first_name . ' ' . $member->last_name);
-            $validatedData['member_profile_pic_snapshot'] = $member->profile_pic;
-            $validatedData['member_email_snapshot'] = $member->email;
-        }
-        $transaction->update($validatedData);
-        return response()->json(['message' => 'Transaction updated', 'transaction' => $transaction]);
-    }
-
-    public function destroy($id)
-    {
-        Transaction::findOrFail($id)->delete();
-        return response()->json(['message' => 'Transaction deleted']);
-    }
 
     public function refund($id)
     {

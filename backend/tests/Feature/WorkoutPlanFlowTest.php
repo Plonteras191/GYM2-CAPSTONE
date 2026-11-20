@@ -80,6 +80,18 @@ class WorkoutPlanFlowTest extends TestCase
             $table->timestamp('verified_at')->nullable();
             $table->timestamps();
         });
+
+        Schema::create('workout_plan_items', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('member_id');
+            $table->unsignedTinyInteger('weekday');
+            $table->string('exercise');
+            $table->unsignedSmallInteger('sets');
+            $table->unsignedSmallInteger('reps');
+            $table->string('gesture_class')->nullable();
+            $table->unsignedSmallInteger('position')->default(0);
+            $table->timestamps();
+        });
     }
 
     private function createCoachMembership(Member $member, array $attributes = []): void
@@ -479,15 +491,14 @@ class WorkoutPlanFlowTest extends TestCase
             'category' => 'with_coach',
         ])->assertOk()->assertJsonPath('plan.category', 'with_coach');
 
+        // The retired "Other / Custom" category is refused.
         $this->postJson('/api/plans', [
             'name' => 'Student Promo',
             'price' => 400,
             'duration_days' => 30,
             'category' => 'other',
             'category_detail' => 'Student Subscription',
-        ])->assertOk()
-            ->assertJsonPath('plan.category', 'other')
-            ->assertJsonPath('plan.category_detail', 'Student Subscription');
+        ])->assertUnprocessable()->assertJsonValidationErrors('category');
 
         $this->postJson('/api/plans', [
             'name' => 'Unclassified Plan',
@@ -548,5 +559,80 @@ class WorkoutPlanFlowTest extends TestCase
                 'profile_pic' => null,
                 'enrolled_face_id' => '/faces/test-member.png',
             ]);
+    }
+
+    public function test_a_saved_weekly_plan_repeats_the_following_week(): void
+    {
+        Carbon::setTestNow('2026-11-16 09:00:00'); // a Monday
+        $member = Member::create([
+            'first_name' => 'Weekly', 'last_name' => 'Plan',
+            'email' => 'weekly-plan@example.test', 'phone' => '0000000010',
+        ]);
+        $this->createCoachMembership($member);
+
+        $this->postJson("/api/members/{$member->id}/workout-plan", ['tasks' => [
+            ['exercise' => 'Push Up', 'sets' => 3, 'reps' => 12, 'date' => '2026-11-16', 'gesture_class' => 'PUSH UP'], // Monday
+            ['exercise' => 'Plank', 'sets' => 2, 'reps' => 1, 'date' => '2026-11-19'],                                  // Thursday
+        ]])->assertOk();
+
+        $this->assertDatabaseCount('workout_plan_items', 2);
+
+        // One week later the coach has not saved again, yet the plan is scheduled.
+        Carbon::setTestNow('2026-11-23 08:00:00'); // next Monday
+        $this->getJson("/api/members/{$member->id}/workout-plan")
+            ->assertOk()
+            ->assertJsonFragment(['exercise' => 'ASSIGNED: PUSH UP', 'date' => '2026-11-23', 'sets' => 3, 'reps' => 12])
+            ->assertJsonFragment(['exercise' => 'ASSIGNED: PLANK', 'date' => '2026-11-26']);
+
+        // Loading again does not create duplicates.
+        $this->getJson("/api/members/{$member->id}/workout-plan")->assertOk();
+        $this->assertSame(1, \App\Models\Tracking\WorkoutLog::where('member_id', $member->id)
+            ->where('date', '2026-11-23')->where('exercise', 'ASSIGNED: PUSH UP')->count());
+
+        // Saving an empty plan stops it from repeating.
+        $this->postJson("/api/members/{$member->id}/workout-plan", ['tasks' => []])->assertOk();
+        $this->assertDatabaseCount('workout_plan_items', 0);
+    }
+
+    public function test_the_daily_job_schedules_plans_without_anyone_opening_them(): void
+    {
+        Carbon::setTestNow('2026-11-16 09:00:00');
+        $member = Member::create([
+            'first_name' => 'Daily', 'last_name' => 'Job',
+            'email' => 'daily-job@example.test', 'phone' => '0000000011',
+        ]);
+        $this->postJson("/api/members/{$member->id}/workout-plan", ['tasks' => [
+            ['exercise' => 'Squat', 'sets' => 3, 'reps' => 10, 'date' => '2026-11-18', 'gesture_class' => 'SQUAT'], // Wednesday
+        ]])->assertOk();
+
+        Carbon::setTestNow('2026-11-24 00:05:00');
+        $this->artisan('workouts:schedule-week')->assertSuccessful();
+
+        $this->assertDatabaseHas('workout_logs', [
+            'member_id' => $member->id, 'exercise' => 'ASSIGNED: SQUAT', 'date' => '2026-11-25',
+        ]);
+    }
+
+    public function test_manual_verification_keeps_the_planned_date(): void
+    {
+        Carbon::setTestNow('2026-11-20 10:00:00');
+        $member = Member::create([
+            'first_name' => 'Keep', 'last_name' => 'Date',
+            'email' => 'keep-date@example.test', 'phone' => '0000000012',
+        ]);
+        $past = \App\Models\Tracking\WorkoutLog::create([
+            'member_id' => $member->id, 'exercise' => 'ASSIGNED: PLANK', 'date' => '2026-11-18', 'sets' => 2, 'reps' => 1,
+        ]);
+        $future = \App\Models\Tracking\WorkoutLog::create([
+            'member_id' => $member->id, 'exercise' => 'ASSIGNED: LUNGE', 'date' => '2026-11-22', 'sets' => 3, 'reps' => 10,
+        ]);
+
+        $this->putJson("/api/workouts/{$past->id}/manual-verify")->assertOk();
+        $this->putJson("/api/workouts/{$future->id}/manual-verify")->assertOk();
+
+        // Verified late: stays on the day it was planned for.
+        $this->assertSame('2026-11-18', substr((string) $past->fresh()->date, 0, 10));
+        // Done ahead of schedule: recorded on the day it was done.
+        $this->assertSame('2026-11-20', substr((string) $future->fresh()->date, 0, 10));
     }
 }

@@ -173,18 +173,26 @@ class CoachEventManagementTest extends TestCase
             'name' => 'Student Monthly',
             'price' => 850,
             'duration_days' => 30,
-            'category' => 'other',
-            'category_detail' => 'Student Promo',
+            'category' => 'with_coach',
         ])->assertOk()
             ->assertJsonPath('plan.name', 'Student Monthly')
-            ->assertJsonPath('plan.category_detail', 'Student Promo');
+            ->assertJsonPath('plan.category', 'with_coach');
 
         $this->assertDatabaseHas('plans', [
             'id' => $planId,
             'name' => 'Student Monthly',
             'price' => '850.00',
+            'category' => 'with_coach',
+            'category_detail' => null,
+        ]);
+
+        // The retired "Other / Custom" category is refused.
+        $this->putJson("/api/plans/{$planId}", [
+            'name' => 'Student Monthly',
+            'price' => 850,
+            'duration_days' => 30,
             'category' => 'other',
             'category_detail' => 'Student Promo',
-        ]);
+        ])->assertUnprocessable()->assertJsonValidationErrors('category');
     }
 }

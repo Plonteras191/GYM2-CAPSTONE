@@ -126,7 +126,6 @@ class ReportController extends Controller
             $category = match ($transaction->package_category_snapshot ?: $package?->category) {
                 'with_coach' => 'With Coach Subscription',
                 'walk_in' => 'Walk-In Package',
-                'other' => $package?->category_detail ?: 'Other / Custom',
                 default => 'Normal Subscription',
             };
 
@@ -158,7 +157,6 @@ class ReportController extends Controller
                 'category' => match ($m->plan?->category) {
                     'with_coach' => 'With Coach Subscription',
                     'walk_in' => 'Walk-In Package',
-                    'other' => $m->plan?->category_detail ?: 'Other / Custom',
                     default => 'Normal Subscription',
                 } . ($m->has_upgraded ? ' + Upgraded' : ''),
             ],

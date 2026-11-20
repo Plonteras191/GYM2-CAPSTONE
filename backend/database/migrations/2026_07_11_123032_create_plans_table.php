@@ -26,6 +26,15 @@ return new class extends Migration
             ['name' => 'Annual', 'price' => 6000, 'duration_days' => 365],
             ['name' => 'With Coach', 'price' => 2500, 'duration_days' => 30],
         ]);
+
+        // memberships (created by the previous migration) links each
+        // membership to its plan. The link can only be added now that plans
+        // exists; adding it earlier made "migrate:fresh" fail.
+        if (Schema::hasColumn('memberships', 'plan_id')) {
+            Schema::table('memberships', function (Blueprint $table) {
+                $table->foreign('plan_id')->references('id')->on('plans')->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -33,6 +42,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (Schema::hasColumn('memberships', 'plan_id')) {
+            Schema::table('memberships', function (Blueprint $table) {
+                $table->dropForeign(['plan_id']);
+            });
+        }
         Schema::dropIfExists('plans');
     }
 };

@@ -63,6 +63,11 @@ class AttendanceSafeguardsTest extends TestCase
             'phone' => '09170000000',
             'plan' => 'Monthly',
             'status' => 'Active',
+            'address' => '1 Test Street',
+            'dob' => '1995-01-01',
+            'height' => 165,
+            'weight' => 60,
+            'body_type' => 'Mesomorph',
         ];
     }
 

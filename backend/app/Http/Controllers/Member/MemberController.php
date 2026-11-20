@@ -58,11 +58,12 @@ class MemberController extends Controller
             'status' => ['required', Rule::in(MemberStatusService::STATUSES)],
             'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
             'enrolled_face_id' => ['nullable', 'string', 'regex:' . MemberMediaStorage::FACE_DATA_URI_REGEX],
-            'dob' => 'nullable|date',
-            'height' => 'nullable|numeric',
-            'weight' => 'nullable|numeric',
-            'body_type' => ['nullable', Rule::in(Member::BODY_TYPES)],
-            'address' => 'nullable|string'
+            // Registering a member needs the full record: personal, anthropometric and body type.
+            'dob' => 'required|date|before_or_equal:today',
+            'height' => 'required|numeric|min:1',
+            'weight' => 'required|numeric|min:1',
+            'body_type' => ['required', Rule::in(Member::BODY_TYPES)],
+            'address' => 'required|string|max:255'
         ]);
 
         // Face photos are biometric data: they are only stored with the
@@ -106,11 +107,12 @@ class MemberController extends Controller
             'status' => ['sometimes', 'required', Rule::in(MemberStatusService::STATUSES)],
             'profile_pic' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
             'enrolled_face_id' => ['nullable', 'string', 'regex:' . MemberMediaStorage::FACE_DATA_URI_REGEX],
-            'dob' => 'nullable|date',
-            'height' => 'nullable|numeric',
-            'weight' => 'nullable|numeric',
-            'body_type' => ['nullable', Rule::in(Member::BODY_TYPES)],
-            'address' => 'nullable|string'
+            // Same rules as registration: a field that is sent cannot be blank.
+            'dob' => 'sometimes|required|date|before_or_equal:today',
+            'height' => 'sometimes|required|numeric|min:1',
+            'weight' => 'sometimes|required|numeric|min:1',
+            'body_type' => ['sometimes', 'required', Rule::in(Member::BODY_TYPES)],
+            'address' => 'sometimes|required|string|max:255'
         ]);
 
         // Only server-generated paths are ever saved for photos.
@@ -155,6 +157,27 @@ class MemberController extends Controller
         return response()->json(['message' => 'Member updated successfully', 'member' => $member]);
     }
 
+    /** The coach's private notes about a member (shown in the member profile). */
+    public function showNotes($id)
+    {
+        $member = Member::findOrFail($id, ['id', 'coach_notes']);
+
+        return response()->json(['coach_notes' => $member->coach_notes ?? '']);
+    }
+
+    public function updateNotes(Request $request, $id)
+    {
+        $member = Member::findOrFail($id);
+        $validated = $request->validate([
+            'coach_notes' => 'present|nullable|string|max:5000',
+        ]);
+
+        $member->coach_notes = trim((string) ($validated['coach_notes'] ?? '')) ?: null;
+        $member->save();
+
+        return response()->json(['coach_notes' => $member->coach_notes ?? '']);
+    }
+
     public function destroy($id)
     {
         try {
@@ -195,6 +218,7 @@ class MemberController extends Controller
 
                 foreach ([
                     'workout_logs',
+                    'workout_plan_items',
                     'gesture_logs',
                     'exercise_sessions',
                     'face_encodings',

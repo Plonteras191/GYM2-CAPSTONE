@@ -90,12 +90,33 @@ class TransactionRefundTest extends TestCase
         $this->assertDatabaseCount('transactions', 2);
     }
 
+    public function test_money_records_cannot_be_edited_or_deleted(): void
+    {
+        $transaction = Transaction::create([
+            'transaction_id' => 'TXN-001',
+            'transaction_date' => '2026-10-21',
+            'type' => 'Subscription Payment',
+            'description' => 'Monthly Plan Payment',
+            'payment_method' => 'Cash',
+            'amount' => 1250,
+            'status' => 'Complete',
+        ]);
+
+        $this->putJson("/api/transactions/{$transaction->id}", [
+            'transaction_date' => '2026-10-21', 'type' => 'Subscription Payment',
+            'payment_method' => 'Cash', 'amount' => 1, 'status' => 'Complete',
+        ])->assertNotFound();  // there is no edit route
+        $this->deleteJson("/api/transactions/{$transaction->id}")->assertNotFound();  // and no delete route
+
+        $this->assertDatabaseHas('transactions', ['id' => $transaction->id, 'amount' => 1250, 'status' => 'Complete']);
+    }
+
     public function test_package_category_determines_transaction_type_and_status(): void
     {
         $plans = [
             ['name' => 'Day Pass', 'category' => 'walk_in', 'expected_type' => 'Walk-In'],
             ['name' => 'Monthly', 'category' => 'normal', 'expected_type' => 'Subscription'],
-            ['name' => 'Student Offer', 'category' => 'other', 'expected_type' => 'Packages'],
+            ['name' => 'Daily Pass', 'category' => 'normal', 'expected_type' => 'Walk-In'],
         ];
 
         foreach ($plans as $index => $plan) {

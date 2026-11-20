@@ -24,8 +24,13 @@ class DashboardController extends Controller
         $netRevenue = $totalIncome - abs($totalRefunds);
 
         $totalMembers = Member::count();
+        // "Running right now": saved as Active, already started and not yet past its
+        // end date. Same rule the Packages page uses, so both show the same number.
+        $today = Carbon::today()->toDateString();
         $activeSubs = Membership::where('status', 'Active')
             ->whereNotNull('member_id')
+            ->where(fn ($query) => $query->whereNull('start_date')->orWhere('start_date', '<=', $today))
+            ->where(fn ($query) => $query->whereNull('end_date')->orWhere('end_date', '>=', $today))
             ->count();
 
         // 2. Recent Activity (Middle Grid)
@@ -37,10 +42,11 @@ class DashboardController extends Controller
         ])->orderBy('created_at', 'desc')->take(5)->get();
 
         // 3. Expiring Soon Alerts
+        // Compared as dates, so a membership ending today is included.
         $expiringSoon = Membership::with('member:id,first_name,last_name')
             ->where('status', 'Active')
             ->whereNotNull('member_id')
-            ->whereBetween('end_date', [Carbon::now(), Carbon::now()->addDays(7)])
+            ->whereBetween('end_date', [$today, Carbon::today()->addDays(7)->toDateString()])
             ->orderBy('end_date', 'asc')
             ->get();
 

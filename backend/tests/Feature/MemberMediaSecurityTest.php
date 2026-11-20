@@ -34,6 +34,11 @@ class MemberMediaSecurityTest extends TestCase
             $table->timestamp('biometric_consent_at')->nullable();
             $table->string('profile_pic')->nullable();
             $table->longText('enrolled_face_id')->nullable();
+            $table->string('address')->nullable();
+            $table->date('dob')->nullable();
+            $table->decimal('height', 5, 2)->nullable();
+            $table->decimal('weight', 5, 2)->nullable();
+            $table->string('body_type')->nullable();
             $table->timestamps();
         });
         foreach (['transactions', 'memberships'] as $tableName) {
@@ -81,6 +86,11 @@ class MemberMediaSecurityTest extends TestCase
             'phone' => '09170000000',
             'plan' => 'Monthly',
             'status' => 'Active',
+            'address' => '1 Test Street',
+            'dob' => '1995-01-01',
+            'height' => 165,
+            'weight' => 60,
+            'body_type' => 'Mesomorph',
             'biometric_consent' => true,
         ], $overrides);
     }

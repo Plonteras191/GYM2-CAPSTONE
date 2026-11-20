@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Inspiring;
 use App\Services\MemberStatusService;
+use App\Services\WorkoutPlanScheduler;
 use App\Support\MemberMediaStorage;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -19,6 +20,16 @@ Artisan::command('members:demote-inactive', function (MemberStatusService $membe
 })->purpose('Set members with no attendance for a month to Inactive');
 
 Schedule::command('members:demote-inactive')->dailyAt('00:10');
+
+// Weekly training plans repeat: each day, schedule the coming 7 days from each
+// member's saved plan. Loading a plan (dashboard or Gesture Engine) also does
+// this as a fallback when the scheduler is not running.
+Artisan::command('workouts:schedule-week', function (WorkoutPlanScheduler $scheduler) {
+    $count = $scheduler->fillUpcomingWeek();
+    $this->info("{$count} workout task(s) scheduled.");
+})->purpose('Schedule the next 7 days of each member weekly training plan');
+
+Schedule::command('workouts:schedule-week')->dailyAt('00:05');
 
 // Face photos are biometric data. This moves photos saved by older versions
 // out of public/faces (reachable by URL) into storage/app/private/faces.

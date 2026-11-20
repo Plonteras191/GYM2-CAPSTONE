@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Tracking;
 use App\Http\Controllers\Controller;
 use App\Models\Member\Member;
 use App\Models\Tracking\WorkoutLog;
+use App\Models\Tracking\WorkoutPlanItem;
+use App\Services\WorkoutPlanScheduler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,9 +67,12 @@ class WorkoutController extends Controller
     }
 
     /** The member's 7-day plan: pending tasks plus completed sets/reps tasks. */
-    public function showPlan($id)
+    public function showPlan($id, WorkoutPlanScheduler $scheduler)
     {
         abort_unless(Member::whereKey($id)->exists(), 404);
+
+        // The plan repeats weekly: make sure the coming 7 days are scheduled.
+        $scheduler->fillUpcomingWeek((int) $id);
 
         $today = Carbon::today()->toDateString();
         $lastDate = Carbon::today()->addDays(6)->toDateString();
@@ -85,7 +90,12 @@ class WorkoutController extends Controller
             ->get();
     }
 
-    /** Replace all pending tasks in the next 7 days with the submitted plan. */
+    /**
+     * Save the member's weekly plan. The submitted tasks (one per exercise and
+     * date in the next 7 days) become the weekly template, so the same plan is
+     * scheduled again every week; the pending tasks in the next 7 days are
+     * replaced with the submitted ones.
+     */
     public function syncPlan(Request $request, $id)
     {
         abort_unless(Member::whereKey($id)->exists(), 404);
@@ -108,6 +118,20 @@ class WorkoutController extends Controller
                 ->whereBetween('date', [$startDate, $endDate])
                 ->where('exercise', 'like', self::ASSIGNED_PREFIX . '%')
                 ->delete();
+
+            // The weekly template: which exercises repeat on which weekday.
+            WorkoutPlanItem::where('member_id', $id)->delete();
+            foreach (array_values($validated['tasks']) as $position => $task) {
+                WorkoutPlanItem::create([
+                    'member_id' => $id,
+                    'weekday' => Carbon::parse($task['date'])->dayOfWeekIso,
+                    'exercise' => strtoupper($task['exercise']),
+                    'sets' => $task['sets'],
+                    'reps' => $task['reps'],
+                    'gesture_class' => $task['gesture_class'] ?? null,
+                    'position' => $position,
+                ]);
+            }
 
             foreach ($validated['tasks'] as $task) {
                 WorkoutLog::create([
@@ -141,9 +165,12 @@ class WorkoutController extends Controller
         // Strip the "ASSIGNED: " tag to officially mark it as complete
         $cleanExerciseName = str_replace(self::ASSIGNED_PREFIX, '', $log->exercise);
 
+        // The task keeps the day it was planned for. Only a task done ahead of
+        // schedule (planned for a later day) is moved to today, the day it was done.
+        $plannedDate = Carbon::parse($log->date)->startOfDay();
         $log->update([
             'exercise' => $cleanExerciseName,
-            'date' => Carbon::today(),
+            'date' => $plannedDate->isFuture() ? Carbon::today() : $plannedDate,
             'verified_by' => WorkoutLog::VERIFIED_BY_COACH,
             'verified_at' => Carbon::now(),
             'created_at' => Carbon::now() // Log the exact time the coach verified it

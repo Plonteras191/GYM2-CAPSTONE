@@ -6,7 +6,6 @@ use App\Http\Controllers\Auth\AdminProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CoachEventController;
 use App\Http\Controllers\Admin\PlanController;
-use App\Http\Controllers\Admin\PackageCategoryController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Member\MemberController;
 use App\Http\Controllers\Member\MembershipController;
@@ -47,6 +46,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/members', [MemberController::class, 'store']);
     Route::put('/members/{id}', [MemberController::class, 'update']);
     Route::delete('/members/{id}', [MemberController::class, 'destroy']);
+    Route::get('/members/{id}/notes', [MemberController::class, 'showNotes']);
+    Route::put('/members/{id}/notes', [MemberController::class, 'updateNotes']);
 
     // --- 3. SUBSCRIPTION / MEMBERSHIP ROUTES ---
     Route::get('/memberships', [MembershipController::class, 'index']);
@@ -61,10 +62,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/plans/{id}', [PlanController::class, 'update']);
     Route::delete('/plans/{id}', [PlanController::class, 'destroy']);
     Route::post('/plans/bulk-update', [PlanController::class, 'bulkUpdate']);
-    Route::get('/package-categories', [PackageCategoryController::class, 'index']);
-    Route::post('/package-categories', [PackageCategoryController::class, 'store']);
-    Route::put('/package-categories/{id}', [PackageCategoryController::class, 'update']);
-    Route::delete('/package-categories/{id}', [PackageCategoryController::class, 'destroy']);
 
     // --- 4A. COACH CALENDAR EVENT ROUTES ---
     Route::get('/coach-events', [CoachEventController::class, 'index']);
@@ -78,8 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- 5. TRANSACTION ROUTES ---
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::post('/transactions', [TransactionController::class, 'store']);
-    Route::put('/transactions/{id}', [TransactionController::class, 'update']);
-    Route::delete('/transactions/{id}', [TransactionController::class, 'destroy']);
+    // Money records are never edited or deleted; a mistake is corrected with a refund.
     Route::post('/transactions/{id}/refund', [TransactionController::class, 'refund']);
 
     // --- 6. REPORTS ---
