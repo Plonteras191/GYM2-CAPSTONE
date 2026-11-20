@@ -10,7 +10,7 @@ export default function TableShell({ title, icon: Icon, count, action, index, cl
   return (
     <section
       aria-labelledby={headingId}
-      className={`rise flex min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-panel ${className}`}
+      className={`rise flex min-w-0 flex-col overflow-hidden rounded-2xl border border-edge bg-panel ${className}`}
       style={index != null ? { '--i': index } : undefined}
     >
       <header className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-line bg-field px-4 py-3 sm:px-5">
@@ -34,7 +34,7 @@ export default function TableShell({ title, icon: Icon, count, action, index, cl
 export function Toolbar({ index, className = '', children }) {
   return (
     <div
-      className={`rise relative z-20 flex flex-col gap-3 rounded-2xl border border-line bg-panel p-3 sm:p-4 ${className}`}
+      className={`rise relative z-20 flex flex-col gap-3 rounded-2xl border border-edge bg-panel p-3 sm:p-4 ${className}`}
       style={index != null ? { '--i': index } : undefined}
     >
       {children}
@@ -106,7 +106,7 @@ export function CardListEmpty({ children }) {
 /** One card in the mobile list. */
 export function MobileCard({ index = 0, className = '', children }) {
   return (
-    <article className={`rise rounded-xl border border-line bg-panel p-4 ${className}`} style={{ '--i': Math.min(index, 8) * 0.6 }}>
+    <article className={`rise rounded-xl border border-edge bg-panel p-4 ${className}`} style={{ '--i': Math.min(index, 8) * 0.6 }}>
       {children}
     </article>
   );

@@ -42,7 +42,7 @@ export default function MobileCalendarToolbar({
                   key={view.id}
                   onClick={() => onViewChange(view.id)}
                   aria-pressed={active}
-                  className={`press flex min-h-8 items-center justify-center rounded-lg text-sm font-medium ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08),0_0_0_1px_var(--ui-line)]' : 'text-muted hover:text-ink'}`}
+                  className={`press flex min-h-8 items-center justify-center rounded-lg text-sm font-semibold ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08),0_0_0_1px_var(--ui-line)]' : 'text-muted hover:text-ink'}`}
                 >
                   {view.label}
                 </button>
@@ -55,7 +55,7 @@ export default function MobileCalendarToolbar({
             <button
               onClick={onToday}
               disabled={isOnToday}
-              className={`press h-10 rounded-xl px-3.5 text-sm font-medium disabled:cursor-default ${isOnToday ? 'border border-line bg-panel text-muted opacity-60' : 'bg-brand-gold text-brand-dark hover:bg-brand-gold-500'}`}
+              className={`press h-10 rounded-xl px-3.5 text-sm font-semibold disabled:cursor-default ${isOnToday ? 'border border-line bg-panel text-muted opacity-60' : 'bg-brand-gold text-brand-dark hover:bg-brand-gold-500'}`}
             >
               Today
             </button>
@@ -65,7 +65,7 @@ export default function MobileCalendarToolbar({
               onClick={onAction}
               aria-label={actionLabel}
               title={actionLabel}
-              className={`press flex h-10 shrink-0 items-center justify-center rounded-xl bg-brand-dark text-brand-white hover:bg-brand-slate dark:bg-brand-gold dark:text-brand-dark dark:hover:bg-brand-gold-500 ${actionIcon ? 'w-10' : 'px-3.5 text-sm font-medium'}`}
+              className={`press flex h-10 shrink-0 items-center justify-center rounded-xl bg-brand-dark text-brand-white hover:bg-brand-slate dark:bg-brand-gold dark:text-brand-dark dark:hover:bg-brand-gold-500 ${actionIcon ? 'w-10' : 'px-3.5 text-sm font-semibold'}`}
             >
               {actionIcon || actionLabel}
             </button>

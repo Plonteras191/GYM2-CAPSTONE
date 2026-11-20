@@ -61,7 +61,7 @@ export default function CoachEventModal({
 
   const inputClass = fieldClass;
   const labelClass = "mb-1.5 flex items-center gap-1.5 text-[13px] font-medium text-ink-2";
-  const primaryButtonClass = "press btn-step inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 text-sm font-medium text-brand-dark shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)] hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-55";
+  const primaryButtonClass = "press btn-step inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 text-sm font-semibold text-brand-dark shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)] hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-55";
   const existingCategory = eventCategories.find(category =>
     category.name.toLowerCase() === (eventForm.category || '').trim().toLowerCase()
   );
@@ -359,7 +359,7 @@ export default function CoachEventModal({
             <button 
               type="button" 
               onClick={requestClose}
-              className="press btn-step inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel px-5 text-sm font-medium text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink disabled:opacity-50"
+              className="press btn-step inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel px-5 text-sm font-semibold text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink disabled:opacity-50"
             >
               Cancel
             </button>

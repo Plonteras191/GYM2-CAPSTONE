@@ -207,7 +207,7 @@ export default function SubscriptionsCalendarView({
       <div
         onMouseMove={handleCalendarMouseMove}
         onMouseLeave={handleCalendarMouseLeave}
-        className={`cal-theme mobile-calendar-grid relative flex h-auto min-w-0 flex-col sm:min-h-[clamp(28rem,75svh,46rem)] xl:col-start-1 xl:row-start-1 ${calendarOnly ? '' : 'rise rounded-2xl border border-line bg-panel p-3 sm:p-5'}`}
+        className={`cal-theme mobile-calendar-grid relative flex h-auto min-w-0 flex-col sm:min-h-[clamp(28rem,75svh,46rem)] xl:col-start-1 xl:row-start-1 ${calendarOnly ? '' : 'rise rounded-2xl border border-edge bg-panel p-3 sm:p-5'}`}
         style={calendarOnly ? undefined : { '--i': 2 }}
       >
         {!calendarOnly && (
@@ -321,7 +321,6 @@ export default function SubscriptionsCalendarView({
                   <p className="text-[15px] font-medium text-ink">No upcoming classes or events</p>
                   <p className="mt-1 text-[13px] text-muted">Classes and events you add show up here and on the calendar.</p>
                 </div>
-                {!readOnly && <Button size="sm" variant="outline" icon={<FiPlus size={14} />} onClick={onOpenEventModal}>Add event</Button>}
               </div>
             ) : (
               <ul aria-label="Upcoming classes and events" className="-my-1 space-y-2">

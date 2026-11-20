@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMembers } from '../features/members/hooks/useMembers';
 import MemberTable from '../features/members/components/MemberTable';
 import MemberFormModal from '../features/members/components/MemberFormModal';
@@ -9,6 +9,7 @@ import AlertDialog from '../components/ui/AlertDialog';
 
 export default function Members() {
   const location = useLocation();
+  const navigate = useNavigate();
   const openedMemberIdRef = React.useRef(null);
   // Which tab the profile opens on: the member list's "Training plan" link and the
   // Packages page open it directly on the plan.
@@ -64,6 +65,14 @@ export default function Members() {
   React.useEffect(() => {
     if (location.state?.searchTerm) setSearchTerm(location.state.searchTerm);
   }, [location.key, location.state, setSearchTerm]);
+
+  // "Register a member" on the Overview opens the form straight away. The request
+  // is cleared afterwards so Back or a refresh does not open it again.
+  React.useEffect(() => {
+    if (!location.state?.openRegister) return;
+    handleAddMember();
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, handleAddMember, navigate]);
 
   return (
     <>

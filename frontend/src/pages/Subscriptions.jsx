@@ -1,7 +1,11 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FiTag, FiList, FiCalendar, FiFilter } from 'react-icons/fi';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { FiTag, FiList, FiCalendar, FiFilter, FiUser } from 'react-icons/fi';
 import { useSubscriptions } from '../features/subscriptions/hooks/useSubscriptions';
+import { useTransactions } from '../features/transactions/hooks/useTransactions';
+import TransactionFormModal from '../features/transactions/components/TransactionFormModal';
+import WalkInsView from '../features/subscriptions/components/WalkInsView';
+import NewSaleChooser from '../features/subscriptions/components/NewSaleChooser';
 import SubscriptionsTable from '../features/subscriptions/components/SubscriptionsTable';
 import SubscriptionsCalendarView from '../features/subscriptions/components/SubscriptionsCalendarView';
 import { getActivePackageCategoryOptions, getCoachEventCategoryOptions } from '../features/subscriptions/packageCategories';
@@ -19,6 +23,7 @@ import { getLocalDateString } from '../utils/dateFormat';
 
 const VIEWS = [
   { id: 'list', label: 'Subscriptions', icon: FiList },
+  { id: 'walkins', label: 'Walk-ins', icon: FiUser },
   { id: 'calendar', label: 'Calendar', icon: FiCalendar },
   { id: 'prices', label: 'Price list', icon: FiTag },
 ];
@@ -83,6 +88,40 @@ export default function Subscriptions() {
   } = useSubscriptions();
   const todayStr = getLocalDateString();
 
+  // Walk-ins and one-time purchases are sold from this page too.
+  const sales = useTransactions();
+  const [isChooserOpen, setIsChooserOpen] = React.useState(false);
+  // Only walk-in packages are sold from the walk-in form.
+  const isOneTimePackage = (plan) => plan.category === 'walk_in'
+    || /walk|daily/i.test(plan.name || '');
+  const walkInPlans = sales.plansList.filter(isOneTimePackage);
+  const handleChooseSale = (kind) => {
+    setIsChooserOpen(false);
+    if (kind === 'walk-in') sales.handleOpenAddModal();
+    else handleOpenAddModal();
+  };
+
+  // Shortcuts from the Overview: "Record a payment" opens New Sale, and a row in
+  // "Ending this week" opens the Renew dialog for that membership. The request is
+  // cleared afterwards so Back or a refresh does not open it again.
+  const location = useLocation();
+  React.useEffect(() => {
+    const { openNewSale, renewMembershipId } = location.state || {};
+    if (openNewSale) {
+      setIsChooserOpen(true);
+    } else if (renewMembershipId) {
+      if (isLoading) return;
+      const target = subscriptions.find(sub => String(sub.id) === String(renewMembershipId));
+      if (target) {
+        setActiveView('list');
+        handleOpenRenew(target);
+      }
+    } else {
+      return;
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, isLoading, subscriptions, navigate, handleOpenRenew, setActiveView]);
+
   /* ── Display-only summary ── */
   const daysUntil = (value) => {
     const [y, m, d] = String(value || '').slice(0, 10).split('-').map(Number);
@@ -90,7 +129,9 @@ export default function Subscriptions() {
     const now = new Date();
     return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
   };
-  const activeCount = subscriptions.filter(sub => sub.status === 'Active').length;
+  // Running right now: Active and already started (same rule as the Overview card).
+  const activeCount = subscriptions.filter(sub => sub.status === 'Active'
+    && (!sub.start_date || String(sub.start_date).slice(0, 10) <= todayStr)).length;
   const expiredCount = subscriptions.filter(sub => sub.status === 'Expired').length;
   const endingSoonCount = subscriptions.filter(sub => {
     const days = sub.status === 'Active' ? daysUntil(sub.end_date) : null;
@@ -103,7 +144,7 @@ export default function Subscriptions() {
 
       {/* Top Header Actions */}
       <div className="rise flex w-full flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ '--i': 0 }}>
-        <div role="tablist" aria-label="Packages page view" className="inline-flex w-full rounded-xl border border-line bg-field p-1 sm:w-auto">
+        <div role="tablist" aria-label="Packages page view" className="hidden-scrollbar inline-flex w-full overflow-x-auto rounded-xl border border-line-strong bg-field p-1 sm:w-auto">
           {VIEWS.map(({ id, label, icon: Icon }) => {
             const active = activeView === id;
             return (
@@ -112,16 +153,16 @@ export default function Subscriptions() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setActiveView(id)}
-                className={`press flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08)]' : 'text-muted hover:text-ink'}`}
+                className={`press flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-semibold sm:gap-2 sm:px-4 sm:text-sm ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08)]' : 'text-muted hover:text-ink'}`}
               >
-                <Icon size={15} className={active ? 'text-accent' : ''} /> {label}
+                <Icon size={15} aria-hidden="true" className={`hidden shrink-0 min-[400px]:block ${active ? 'text-accent' : ''}`} /> {label}
               </button>
             );
           })}
         </div>
       </div>
 
-      {activeView !== 'prices' && (
+      {(activeView === 'list' || activeView === 'calendar') && (
       <StatStrip index={1}>
         <StatCell label="Active subscriptions" hint="Running right now" tone="orange" isLoading={isLoading} value={activeCount} />
         <StatCell label="Ending in 7 days" hint="Members to remind about renewal" tone="red" isLoading={isLoading} value={endingSoonCount} />
@@ -166,11 +207,20 @@ export default function Subscriptions() {
           filterPlan={filterPlan}
           setFilterPlan={setFilterPlan}
           deletingId={deletingId}
-          onAddSubscription={() => handleOpenAddModal()}
+          onAddSubscription={() => setIsChooserOpen(true)}
           onEditSubscription={handleOpenEditModal}
           onDeleteSubscription={handleDelete}
           onRenewSubscription={handleOpenRenew}
           onOpenTrainingPlan={(member) => navigate('/members', { state: { memberId: member.id, tab: 'plan' } })}
+        />
+      )}
+
+      {/* Walk-ins View */}
+      {activeView === 'walkins' && (
+        <WalkInsView
+          transactions={sales.transactions}
+          isLoading={sales.isLoading}
+          onAdd={sales.handleOpenAddModal}
         />
       )}
 
@@ -204,6 +254,7 @@ export default function Subscriptions() {
         <PriceListView
           plans={plans}
           subscriptions={subscriptions}
+          transactions={sales.transactions}
           isLoading={isLoading}
           deletingPlanId={deletingPlanId}
           onAdd={handleOpenNewPlan}
@@ -225,6 +276,26 @@ export default function Subscriptions() {
         onUpdateCategory={handleUpdateCoachEventCategory}
         onDeleteCategory={handleDeleteCoachEventCategory}
         onSave={handleSaveCoachEvent}
+      />
+
+      {/* New sale: pick subscription or walk-in */}
+      <NewSaleChooser isOpen={isChooserOpen} onClose={() => setIsChooserOpen(false)} onChoose={handleChooseSale} />
+
+      {/* Walk-in / one-time sale */}
+      <TransactionFormModal
+        isOpen={sales.isModalOpen}
+        isSaving={sales.isSaving}
+        formData={sales.formData}
+        setFormData={sales.setFormData}
+        membersList={sales.membersList}
+        plansList={walkInPlans}
+        onClose={() => sales.setIsModalOpen(false)}
+        onSave={sales.handleSaveTransaction}
+        onPlanSelection={sales.handlePlanSelection}
+        onAmountChange={sales.handleAmountChange}
+        title="Record a walk-in"
+        intro="Choose the walk-in package and the price fills in for you. A name is optional."
+        submitLabel="Record walk-in"
       />
 
       {/* Subscription Add / Edit Modal */}
@@ -296,6 +367,13 @@ export default function Subscriptions() {
         message={alertDialog.message}
         type={alertDialog.type}
         onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+      />
+      <AlertDialog
+        isOpen={sales.alertDialog.isOpen}
+        title={sales.alertDialog.title}
+        message={sales.alertDialog.message}
+        type={sales.alertDialog.type}
+        onClose={() => sales.setAlertDialog(prev => ({ ...prev, isOpen: false }))}
       />
 
     </div>

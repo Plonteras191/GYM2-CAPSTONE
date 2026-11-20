@@ -7,6 +7,7 @@ import { useId } from 'react';
 export default function Panel({
   title,
   icon: Icon,
+  iconClassName = 'text-muted',
   action,
   meta,
   index,
@@ -21,13 +22,13 @@ export default function Panel({
     <section
       id={id}
       aria-labelledby={title ? headingId : undefined}
-      className={`rise flex min-w-0 flex-col rounded-2xl border border-line bg-panel ${className}`}
+      className={`rise flex min-w-0 flex-col rounded-2xl border border-edge bg-panel ${className}`}
       style={index != null ? { '--i': index } : undefined}
     >
       {title && (
         <header className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-line px-4 py-3 sm:px-5">
           <h3 id={headingId} className="flex min-w-0 items-center gap-2.5 text-base font-medium leading-tight text-ink">
-            {Icon && <Icon size={17} aria-hidden="true" className="shrink-0 text-muted" />}
+            {Icon && <Icon size={17} aria-hidden="true" className={`shrink-0 ${iconClassName}`} />}
             <span className="min-w-0">{title}</span>
             {meta}
           </h3>
@@ -44,7 +45,7 @@ export function PanelLink({ as: Tag, icon: Icon, children, className = '', ...pr
   return (
     <Tag
       {...props}
-      className={`group press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-ink-2 hover:bg-hover hover:text-ink ${className}`}
+      className={`group press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold capitalize text-ink-2 hover:bg-hover hover:text-ink ${className}`}
     >
       <span>{children}</span>
       {Icon && <Icon size={14} aria-hidden="true" className="nudge" />}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCamera, FiCheckCircle, FiVideoOff, FiRefreshCw } from 'react-icons/fi';
+import { FiCamera, FiCheckCircle, FiVideoOff, FiRefreshCw, FiLoader, FiAlertCircle } from 'react-icons/fi';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 
@@ -14,7 +14,14 @@ export default function CameraCapture({
   onCapture,
   onStop,
   onRetake,
+  // Quality check of the photo being taken (see faceQuality.js).
+  checkStatus = 'idle',
+  checkMessages = [],
+  // Existing members whose face looks like these photos (see findLookAlikes).
+  lookAlikes = { status: 'idle', matches: [], confirmed: false },
+  onConfirmDifferentPerson = () => {},
 }) {
+  const isChecking = checkStatus === 'checking';
   const nextView = captureViews[capturedViews.length];
   const isComplete = capturedViews.length === captureViews.length;
   const hasExistingEnrollment = faceImage === 'existing_data' && capturedViews.length === 0;
@@ -39,7 +46,7 @@ export default function CameraCapture({
             ? 'border-brand-gold shadow-[0_0_0_6px_rgb(242_183_5/0.18)]'
             : hasExistingEnrollment || isComplete
               ? 'border-positive/50 bg-positive-soft'
-              : 'border-dashed border-line-strong bg-field text-muted'
+              : 'border-dashed border-line-strong bg-field text-black dark:text-gray-300'
         }`}>
           <canvas ref={canvasRef} width="300" height="300" className="hidden" />
 
@@ -67,6 +74,65 @@ export default function CameraCapture({
               : stepText}
         </p>
 
+        {checkMessages.length > 0 && (
+          <div
+            role={checkStatus === 'failed' ? 'alert' : 'status'}
+            className={`flex w-full max-w-xs items-start gap-2 rounded-lg border px-3 py-2 text-left text-[13px] leading-snug ${
+              checkStatus === 'failed'
+                ? 'border-negative/40 bg-negative-soft text-negative'
+                : checkStatus === 'offline'
+                  ? 'border-warn/40 bg-warn-soft text-warn'
+                  : 'border-line bg-field text-ink-2'
+            }`}
+          >
+            {isChecking
+              ? <FiLoader size={15} className="mt-0.5 shrink-0 animate-spin" />
+              : <FiAlertCircle size={15} className="mt-0.5 shrink-0" />}
+            <div>
+              {checkStatus === 'failed' && <p className="font-medium">Photo not accepted. Try again:</p>}
+              <ul className={checkStatus === 'failed' ? 'mt-0.5 list-disc pl-4' : ''}>
+                {checkMessages.map(message => <li key={message}>{message}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {isComplete && lookAlikes.status === 'checking' && (
+          <p role="status" className="flex items-center gap-2 text-[13px] text-ink-2">
+            <FiLoader size={14} className="animate-spin" /> Comparing with existing members…
+          </p>
+        )}
+        {isComplete && lookAlikes.status === 'offline' && (
+          <p role="status" className="max-w-xs text-[13px] text-warn">
+            AI engine offline: could not check for duplicate members.
+          </p>
+        )}
+        {isComplete && lookAlikes.matches.length > 0 && (
+          <div role="alert" className="w-full max-w-xs rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-left text-[13px] leading-snug text-warn">
+            <p className="flex items-start gap-2 font-medium">
+              <FiAlertCircle size={15} className="mt-0.5 shrink-0" />
+              This face looks like {lookAlikes.matches.length === 1 ? 'an existing member' : 'existing members'}:
+            </p>
+            <ul className="mt-1 list-disc pl-6">
+              {lookAlikes.matches.map(match => (
+                <li key={match.member_id}>
+                  {match.name} (#{match.member_id}){match.level === 'likely_same' ? ' — may be the same person' : ' — similar'}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1">If it is the same person, cancel and edit that member instead.</p>
+            <label className="mt-2 flex cursor-pointer items-start gap-2 text-ink">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={lookAlikes.confirmed}
+                onChange={event => onConfirmDifferentPerson(event.target.checked)}
+              />
+              <span>This is a different person</span>
+            </label>
+          </div>
+        )}
+
         {!hasExistingEnrollment && (
           <ol className="flex items-start justify-center gap-2" aria-label="Face photos">
             {captureViews.map((view, index) => {
@@ -93,10 +159,13 @@ export default function CameraCapture({
             <Button
               size="md"
               variant={isCameraActive ? 'primary' : 'outline'}
-              icon={isCameraActive ? <FiCheckCircle size={16} /> : <FiCamera size={16} />}
+              icon={isChecking ? <FiLoader size={16} className="animate-spin" /> : isCameraActive ? <FiCheckCircle size={16} /> : <FiCamera size={16} />}
               onClick={isCameraActive ? onCapture : onStart}
+              disabled={isChecking}
             >
-              {isCameraActive ? `Take ${nextView?.label.toLowerCase()} photo` : `Open camera for ${nextView?.label.toLowerCase()} photo`}
+              {isChecking
+                ? 'Checking photo…'
+                : isCameraActive ? `Take ${nextView?.label.toLowerCase()} photo` : `Open camera for ${nextView?.label.toLowerCase()} photo`}
             </Button>
           )}
 

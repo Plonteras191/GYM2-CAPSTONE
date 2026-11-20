@@ -4,6 +4,7 @@ import AvatarEditor from 'react-avatar-editor';
 import CameraCapture from './CameraCapture';
 import api from '../../../api';
 import { aiEngineFetch } from '../../../utils/aiEngine';
+import { checkFacePhoto, findLookAlikes } from '../faceQuality';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 import { formatNumber } from '../../../utils/numberFormat';
 import Button from '../../../components/ui/Button';
@@ -18,6 +19,12 @@ const FACE_CAPTURE_VIEWS = [
   { label: 'Left', instruction: 'Turn your head slightly to your left (about 30°), both eyes visible.' },
   { label: 'Right', instruction: 'Turn your head slightly to your right (about 30°), both eyes visible.' },
 ];
+// Webcams take about a second to adjust to the light after opening; photos
+// taken sooner come out dark (the cause of the old unusable enrollments).
+const CAMERA_SETTLE_MS = 1200;
+// The two side photos must be turned in opposite directions.
+const OPPOSITE_VIEW = { Left: 'Right', Right: 'Left' };
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const getBmiInfo = (height, weight) => {
   if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-hover text-ink-2 border-line-strong' };
@@ -67,6 +74,14 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   const [profilePic, setProfilePic] = useState(null);
   const [faceImage, setFaceImage] = useState(null);
   const [capturedFaceViews, setCapturedFaceViews] = useState([]);
+  // Head turn of each accepted photo (from the quality check), same order.
+  const [capturedFaceTurns, setCapturedFaceTurns] = useState([]);
+  // Quality check of the photo being taken: { status: 'idle' | 'checking' |
+  // 'failed' | 'offline', messages: [] }.
+  const [faceCheck, setFaceCheck] = useState({ status: 'idle', messages: [] });
+  // Existing members whose face looks like the new photos: { status: 'idle' |
+  // 'checking' | 'done' | 'offline', matches: [], confirmed: bool }.
+  const [lookAlikes, setLookAlikes] = useState({ status: 'idle', matches: [], confirmed: false });
   const [biometricConsent, setBiometricConsent] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +92,9 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   const editorRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const cameraStartedAtRef = useRef(0);
+  // Full name the admin was already warned about (pressing Save again saves).
+  const sameNameWarnedRef = useRef('');
   const initialSnapshotRef = useRef('');
 
   // Sync initialData when modal opens
@@ -106,6 +124,9 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       const initialFaceImage = isEditing && (initialData?.enrolledFaceId || initialData?.enrolled_face_id) ? 'existing_data' : null;
       setFaceImage(initialFaceImage);
       setCapturedFaceViews([]);
+      setCapturedFaceTurns([]);
+      setFaceCheck({ status: 'idle', messages: [] });
+      setLookAlikes({ status: 'idle', matches: [], confirmed: false });
       setBiometricConsent(false);
       initialSnapshotRef.current = JSON.stringify({ form: initial, faceImage: initialFaceImage, capturedFaceViews: [] });
       setIsCameraActive(false);
@@ -124,33 +145,79 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
     if (faceImage === 'existing_data') {
       setFaceImage(null);
       setCapturedFaceViews([]);
+      setCapturedFaceTurns([]);
     }
+    setFaceCheck({ status: 'idle', messages: [] });
     setIsCameraActive(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
       if (videoRef.current) videoRef.current.srcObject = stream;
+      cameraStartedAtRef.current = Date.now();
     } catch {
       onShowAlert('Camera Error', 'Could not access camera. Please ensure permissions are granted.', 'error');
       setIsCameraActive(false);
     }
   };
 
-  const captureFace = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      const size = Math.min(video.videoWidth, video.videoHeight);
-      const xOff = (video.videoWidth - size) / 2;
-      const yOff = (video.videoHeight - size) / 2;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(video, xOff, yOff, size, size, 0, 0, canvas.width, canvas.height);
-      if (capturedFaceViews.length + 1 === FACE_CAPTURE_VIEWS.length) {
-        setFaceImage(null);
-      }
-      setCapturedFaceViews(views => [...views, canvas.toDataURL('image/png')]);
-      stopCamera();
+  // Take the next face photo and keep it only if it passes the quality check
+  // (one face, big enough, bright, sharp, right head angle). A failed photo
+  // is discarded and the camera stays open with the reason shown.
+  const captureFace = async () => {
+    if (!videoRef.current || !canvasRef.current || faceCheck.status === 'checking') return;
+    const view = FACE_CAPTURE_VIEWS[capturedFaceViews.length];
+    if (!view) return;
+
+    const settle = CAMERA_SETTLE_MS - (Date.now() - cameraStartedAtRef.current);
+    if (settle > 0) {
+      setFaceCheck({ status: 'checking', messages: ['Camera adjusting to the light…'] });
+      await wait(settle);
     }
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth) {
+      setFaceCheck({ status: 'idle', messages: [] });
+      return;
+    }
+    const ctx = canvas.getContext('2d');
+    const size = Math.min(video.videoWidth, video.videoHeight);
+    const xOff = (video.videoWidth - size) / 2;
+    const yOff = (video.videoHeight - size) / 2;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, xOff, yOff, size, size, 0, 0, canvas.width, canvas.height);
+    const photo = canvas.toDataURL('image/png');
+
+    setFaceCheck({ status: 'checking', messages: ['Checking the photo…'] });
+    const oppositeIndex = FACE_CAPTURE_VIEWS.findIndex(v => v.label === OPPOSITE_VIEW[view.label]);
+    const oppositeTurn = oppositeIndex >= 0 ? capturedFaceTurns[oppositeIndex] ?? null : null;
+    const result = await checkFacePhoto(photo, view.label, oppositeTurn);
+
+    if (!result.ok) {
+      setFaceCheck({ status: 'failed', messages: result.messages });
+      return; // camera stays open for another try
+    }
+    if (capturedFaceViews.length + 1 === FACE_CAPTURE_VIEWS.length) {
+      setFaceImage(null);
+      // All photos taken: compare them with every enrolled member, so a
+      // duplicate record or a look-alike is caught before saving.
+      const allPhotos = [...capturedFaceViews, photo];
+      setLookAlikes({ status: 'checking', matches: [], confirmed: false });
+      findLookAlikes(allPhotos, isEditing ? formData.id : null).then(result => {
+        setLookAlikes({ status: result.offline ? 'offline' : 'done', matches: result.matches, confirmed: false });
+      });
+    }
+    setCapturedFaceViews(views => [...views, photo]);
+    setCapturedFaceTurns(turns => [...turns, result.turn]);
+    setFaceCheck(result.offline
+      ? { status: 'offline', messages: ['AI engine offline: only brightness and sharpness were checked.'] }
+      : { status: 'idle', messages: [] });
+    stopCamera();
+  };
+
+  const retakeFacePhotos = () => {
+    setCapturedFaceViews([]);
+    setCapturedFaceTurns([]);
+    setLookAlikes({ status: 'idle', matches: [], confirmed: false });
+    startCamera();
   };
 
   const combineFaceViews = async () => {
@@ -209,6 +276,44 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       return;
     }
 
+    // Same full name as an existing member: usually the same person entered
+    // twice (a face check alone misses this when the old photo is poor).
+    if (!isEditing) {
+      const fullName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim().toLowerCase().replace(/\s+/g, ' ');
+      if (fullName && sameNameWarnedRef.current !== fullName) {
+        try {
+          const { data } = await api.get('/members');
+          const sameName = (Array.isArray(data) ? data : data?.data || []).filter(member =>
+            `${member.first_name || ''} ${member.last_name || ''}`.trim().toLowerCase().replace(/\s+/g, ' ') === fullName);
+          if (sameName.length > 0) {
+            sameNameWarnedRef.current = fullName;
+            onShowAlert(
+              'Possible Duplicate Member',
+              `A member named ${formData.firstName} ${formData.lastName} already exists (${sameName.map(m => `#${m.id}`).join(', ')}). If it is the same person, cancel and edit that member instead. If it is a different person, press Save again.`,
+              'error',
+            );
+            return;
+          }
+        } catch {
+          // Could not load members: do not block saving.
+        }
+      }
+    }
+
+    if (hasNewEnrollment && lookAlikes.status === 'checking') {
+      onShowAlert('Please Wait', 'Still comparing the face with existing members. Try again in a few seconds.', 'error');
+      return;
+    }
+    if (hasNewEnrollment && lookAlikes.matches.length > 0 && !lookAlikes.confirmed) {
+      const names = lookAlikes.matches.map(match => `${match.name} (#${match.member_id})`).join(', ');
+      onShowAlert(
+        'Possible Duplicate Member',
+        `This face looks like ${names}. If it is the same person, cancel and edit that member instead. If not, tick "This is a different person" under the face photos, then save.`,
+        'error',
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
       const fd = new FormData();
@@ -219,9 +324,10 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       fd.append('address', formData.address || '');
       fd.append('plan', formData.plan || 'Walk-in');
       fd.append('status', formData.status === 'Inactive' ? 'Inactive' : 'Active');
-      if (formData.dob) fd.append('dob', formData.dob);
-      if (formData.height) fd.append('height', formData.height);
-      if (formData.weight) fd.append('weight', formData.weight);
+      fd.append('dob', formData.dob || '');
+      fd.append('height', formData.height || '');
+      fd.append('weight', formData.weight || '');
+      fd.append('body_type', formData.bodyType || '');
       if (profilePic && editorRef.current) {
         const blob = await getCroppedBlob();
         if (blob) fd.append('profile_pic', blob, 'profile.jpg');
@@ -324,14 +430,11 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h3 id="member-form-title" className="flex items-center gap-2.5 text-xl font-medium tracking-[-0.01em] text-ink">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-warn-soft text-warn">
+              <span className="flex h-9 w-9 items-center justify-center text-black dark:text-gray-300">
                 {isEditing ? <FiEdit2 size={17} /> : <FiUserPlus size={18} />}
               </span>
               {isEditing ? 'Edit member' : 'Register a member'}
             </h3>
-            <p className="mt-1.5 text-[13px] text-muted">
-              Fields marked <span className="text-negative">*</span> are required. Face photos are needed for camera check-in.
-            </p>
           </div>
           <button
             type="button"
@@ -372,7 +475,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                       {formData.profilePicUrl ? (
                         <img src={formData.profilePicUrl} alt="Current profile" className="h-full w-full object-cover" />
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center text-muted transition-colors group-hover:text-warn">
+                        <span className="flex h-full w-full items-center justify-center text-black dark:text-gray-300">
                           <FiUpload size={26} />
                         </span>
                       )}
@@ -396,7 +499,11 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                 onStart={startCamera}
                 onCapture={captureFace}
                 onStop={stopCamera}
-                onRetake={() => { setCapturedFaceViews([]); startCamera(); }}
+                onRetake={retakeFacePhotos}
+                checkStatus={faceCheck.status}
+                checkMessages={faceCheck.messages}
+                lookAlikes={lookAlikes}
+                onConfirmDifferentPerson={confirmed => setLookAlikes(current => ({ ...current, confirmed }))}
               />
               {faceImage !== 'existing_data' && (
                 <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-left transition-colors md:col-span-2 ${biometricConsent ? 'border-positive/40 bg-positive-soft' : 'border-line bg-panel hover:bg-field'}`}>
@@ -446,12 +553,13 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                   {invalidFields.email && <FieldError>Enter a valid email address.</FieldError>}
                 </label>
                 <label className="block lg:col-span-2">
-                  <span className={labelClass}>Address</span>
-                  <input type="text" value={formData.address} onChange={handleAddressChange} className={inputClass} placeholder="123 Gym Street, Tagoloan" />
+                  <span className={labelClass}>Address<Required /></span>
+                  <input name="address" type="text" required value={formData.address} onChange={e => { handleAddressChange(e); trackFieldValidity('address', e.currentTarget); }} aria-invalid={Boolean(invalidFields.address)} className={getInputClass('address')} placeholder="123 Gym Street, Tagoloan" />
+                  {invalidFields.address && <FieldError>Enter the member's address.</FieldError>}
                 </label>
                 <label className="block">
                   <span className="mb-1.5 flex items-baseline justify-between gap-2">
-                    <span className="text-[13px] font-medium text-ink-2">Phone number<Required /></span>
+                    <span className="text-[13px] font-medium capitalize text-ink-2">Phone number<Required /></span>
                     <span className={`text-xs tabular-nums ${phoneLength === 11 ? 'text-positive' : 'text-muted'}`}>{phoneLength} of 11 digits</span>
                   </span>
                   <input name="phone" type="tel" inputMode="numeric" pattern="[0-9]{11}" minLength={11} maxLength={11} required value={formData.phone || ''} onChange={e => { handlePhoneChange(e); trackFieldValidity('phone', e.currentTarget); }} aria-invalid={Boolean(invalidFields.phone)} className={`${getInputClass('phone')} tabular-nums`} placeholder="09123456789" />
@@ -477,32 +585,44 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
               </div>
             </FormSection>
 
-            <FormSection step={3} title="Body measurements" hint="Optional. Height and weight work out the body mass index (BMI); the body type helps the coach assign a program.">
+            <FormSection step={3} title="Body measurements" hint="Height and weight work out the body mass index (BMI); the body type helps the coach assign a program.">
               <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <label className="block"><span className={labelClass}>Date of birth</span><input type="date" value={formData.dob || ''} onChange={e => setFormData({...formData, dob: e.target.value})} className={inputClass} /></label>
                 <label className="block">
-                  <span className={labelClass}>Height (cm)</span>
-                  <input type="number" min="1" value={formData.height || ''} onChange={e => setFormData({...formData, height: e.target.value})} className={`${inputClass} tabular-nums`} placeholder="170" />
+                  <span className={labelClass}>Date of birth<Required /></span>
+                  <input name="dob" type="date" required max={new Date().toISOString().slice(0, 10)} value={formData.dob || ''} onChange={e => { setFormData({...formData, dob: e.target.value}); trackFieldValidity('dob', e.currentTarget); }} aria-invalid={Boolean(invalidFields.dob)} className={getInputClass('dob')} />
+                  {invalidFields.dob && <FieldError>Enter a valid date of birth.</FieldError>}
+                </label>
+                <label className="block">
+                  <span className={labelClass}>Height (cm)<Required /></span>
+                  <input name="height" type="number" min="1" required value={formData.height || ''} onChange={e => { setFormData({...formData, height: e.target.value}); trackFieldValidity('height', e.currentTarget); }} aria-invalid={Boolean(invalidFields.height)} className={`${getInputClass('height')} tabular-nums`} placeholder="170" />
+                  {invalidFields.height && <FieldError>Enter the height in cm.</FieldError>}
                   {Number(formData.height) > 0 && (
                     <span className="mt-1.5 block text-xs text-muted">
                       About {Math.floor(Math.round(Number(formData.height) / 2.54) / 12)} ft {Math.round(Number(formData.height) / 2.54) % 12} in
                     </span>
                   )}
                 </label>
-                <label className="block"><span className={labelClass}>Weight (kg)</span><input type="number" value={formData.weight || ''} onChange={e => setFormData({...formData, weight: e.target.value})} className={`${inputClass} tabular-nums`} placeholder="65" /></label>
                 <label className="block">
-                  <span className={labelClass}>Body type</span>
+                  <span className={labelClass}>Weight (kg)<Required /></span>
+                  <input name="weight" type="number" min="1" step="any" required value={formData.weight || ''} onChange={e => { setFormData({...formData, weight: e.target.value}); trackFieldValidity('weight', e.currentTarget); }} aria-invalid={Boolean(invalidFields.weight)} className={`${getInputClass('weight')} tabular-nums`} placeholder="65" />
+                  {invalidFields.weight && <FieldError>Enter the weight in kg.</FieldError>}
+                </label>
+                <label className="block">
+                  <span className={labelClass}>Body type<Required /></span>
                   <select
                     name="bodyType"
+                    required
                     value={formData.bodyType || ''}
-                    onChange={e => setFormData({ ...formData, bodyType: e.target.value })}
-                    className={inputClass}
+                    onChange={e => { setFormData({ ...formData, bodyType: e.target.value }); trackFieldValidity('bodyType', e.currentTarget); }}
+                    aria-invalid={Boolean(invalidFields.bodyType)}
+                    className={getInputClass('bodyType')}
                   >
-                    <option value="">Not set</option>
+                    <option value="" disabled>Choose a body type</option>
                     <option value="Ectomorph">Ectomorph (lean, slim build)</option>
                     <option value="Mesomorph">Mesomorph (muscular, medium build)</option>
                     <option value="Endomorph">Endomorph (wider, heavier build)</option>
                   </select>
+                  {invalidFields.bodyType && <FieldError>Choose a body type.</FieldError>}
                 </label>
 
                 <div className="block min-w-0">

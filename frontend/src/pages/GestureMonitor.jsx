@@ -206,7 +206,7 @@ export default function GestureMonitor() {
         </div>
 
         <div className="flex min-h-[380px] w-full flex-shrink-0 flex-col lg:h-full lg:w-1/4">
-          <section className="rise flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-panel" style={{ '--i': 1 }}>
+          <section className="rise flex h-full flex-col overflow-hidden rounded-2xl border border-edge bg-panel" style={{ '--i': 1 }}>
             <header className="flex flex-shrink-0 items-center justify-between border-b border-line bg-field px-4 py-3">
               <h3 className="flex min-w-0 items-center gap-2.5 text-[15px] font-semibold leading-tight text-ink">
                 <FiActivity className="shrink-0 text-muted" size={16} />

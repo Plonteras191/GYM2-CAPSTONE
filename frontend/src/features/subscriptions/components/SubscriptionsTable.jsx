@@ -93,7 +93,7 @@ function NoResults({ isFiltered, searchTerm, onClear, onAdd }) {
       </div>
       {isFiltered
         ? <Button size="sm" variant="outline" icon={<FiX size={14} />} onClick={onClear}>Clear search and filters</Button>
-        : <Button size="sm" icon={<FiPlus size={14} />} onClick={onAdd}>Subscribe a member</Button>}
+        : <Button size="sm" icon={<FiPlus size={14} />} onClick={onAdd}>New sale</Button>}
     </div>
   );
 }
@@ -193,7 +193,7 @@ export default function SubscriptionsTable({
       <Avatar size={size} src={(sub.member?.profile_pic || sub.member_profile_pic_snapshot) ? getMediaUrl(sub.member?.profile_pic || sub.member_profile_pic_snapshot) : null} name={memberNameOf(sub)} />
       <div className="min-w-0">
         <span className={`block truncate text-[15px] font-medium text-ink${sub.member ? ' link-draw' : ''}`}>{memberNameOf(sub)}</span>
-        {sub.member?.email && <span className="mt-0.5 block truncate text-[13px] text-muted">{sub.member.email}</span>}
+        {sub.member?.email && <span className="mt-0.5 block truncate text-[13px] normal-case text-muted">{sub.member.email}</span>}
       </div>
     </button>
   );
@@ -241,7 +241,7 @@ export default function SubscriptionsTable({
           </StyledSelect>
         </div>
         <Button onClick={onAddSubscription} icon={<FiPlus size={18} strokeWidth={2.5} />} className="w-full shrink-0 whitespace-nowrap lg:w-auto">
-          Subscribe a member
+          New sale
         </Button>
       </Toolbar>
 
@@ -253,7 +253,7 @@ export default function SubscriptionsTable({
         action={isFiltered && !isLoading && (
           <div className="flex items-center gap-3 text-[13px]">
             <span className="text-muted">Showing {filteredSubs.length.toLocaleString()} of {subscriptions.length.toLocaleString()}</span>
-            <button type="button" onClick={clearFilters} className="press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-medium text-ink-2 hover:bg-hover hover:text-ink">
+            <button type="button" onClick={clearFilters} className="press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold text-ink-2 hover:bg-hover hover:text-ink">
               <FiX size={14} aria-hidden="true" /> Clear filters
             </button>
           </div>
@@ -262,8 +262,8 @@ export default function SubscriptionsTable({
         <div className="hidden overflow-hidden xl:block">
           <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
-              <col className="w-[22%]" />
-              <col className="w-[7%]" />
+              <col className="w-[8%]" />
+              <col className="w-[21%]" />
               <col className="w-[19%]" />
               <col className="w-[19%]" />
               <col className="w-[9%]" />
@@ -271,8 +271,8 @@ export default function SubscriptionsTable({
             </colgroup>
             <thead>
               <tr className="border-b border-line">
-                <th className={thClass}>Member</th>
                 <th className={`${thClass} whitespace-nowrap`}>Member ID</th>
+                <th className={thClass}>Member</th>
                 <th className={thClass}>Package</th>
                 <th className={thClass}>Duration</th>
                 <th className={thClass}>Status</th>
@@ -287,8 +287,8 @@ export default function SubscriptionsTable({
               ) : (
                 currentSubs.map((sub, i) => (
                   <tr key={sub.id} className="rise transition-colors duration-150 hover:bg-hover" style={{ '--i': Math.min(i, 8) * 0.5 + 3 }}>
-                    <td className={`${tdClass} overflow-hidden`}>{memberCell(sub)}</td>
                     <td className={`${tdClass} font-mono text-[13px] text-muted`}>{sub.member?.id ?? sub.member_id ?? '-'}</td>
+                    <td className={`${tdClass} overflow-hidden`}>{memberCell(sub)}</td>
                     <td className={`${tdClass} overflow-hidden`}>{packageCell(sub)}</td>
                     <td className={`${tdClass} overflow-hidden`}><Duration sub={sub} /></td>
                     <td className={`${tdClass} whitespace-nowrap`}>{getStatusBadge(sub.status)}</td>

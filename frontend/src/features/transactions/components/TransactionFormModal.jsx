@@ -24,7 +24,10 @@ export default function TransactionFormModal({
   plansList,
   onClose,
   onSave,
-  onPlanSelection
+  onPlanSelection,
+  title = 'Record a payment',
+  intro = 'Choose the package and the price fills in for you. You can still change the amount.',
+  submitLabel = 'Record payment'
 }) {
   const initialSnapshotRef = React.useRef('');
   React.useEffect(() => {
@@ -38,7 +41,7 @@ export default function TransactionFormModal({
   if (!isOpen) return null;
 
   const inputClass = fieldClass;
-  const memberRequired = formData.type !== 'Walk-In' && formData.type !== 'Packages';
+  const memberRequired = formData.type !== 'Walk-In';
   const amountValue = Number(formData.amount);
 
   return (
@@ -50,9 +53,9 @@ export default function TransactionFormModal({
           <div className="min-w-0">
             <h3 id="txn-form-title" className="flex items-center gap-2.5 text-xl font-medium tracking-[-0.01em] text-ink">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-warn-soft text-warn"><FiCreditCard size={17} /></span>
-              Record a payment
+              {title}
             </h3>
-            <p className="mt-1.5 text-[13px] text-muted">Choose the package and the price fills in for you. You can still change the amount.</p>
+            <p className="mt-1.5 text-[13px] text-muted">{intro}</p>
           </div>
           <button
             type="button"
@@ -121,7 +124,7 @@ export default function TransactionFormModal({
                     return (
                       <label
                         key={method.value}
-                        className={`press relative flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border text-sm font-medium has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${checked ? 'border-brand-gold bg-warn-soft text-ink' : 'border-line-strong bg-field text-ink-2 hover:bg-hover hover:text-ink'}`}
+                        className={`press relative flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border text-sm font-semibold has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${checked ? 'border-brand-gold bg-warn-soft text-ink' : 'border-line-strong bg-field text-ink-2 hover:bg-hover hover:text-ink'}`}
                       >
                         <input
                           type="radio"
@@ -174,7 +177,7 @@ export default function TransactionFormModal({
               icon={isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
               className="w-full sm:w-auto"
             >
-              {isSaving ? 'Saving…' : 'Record payment'}
+              {isSaving ? 'Saving…' : submitLabel}
             </Button>
           </div>
         </form>

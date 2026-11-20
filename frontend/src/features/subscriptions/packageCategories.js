@@ -1,14 +1,6 @@
-export const getPackageCategoryValue = (plan) => {
-  if (plan?.category === 'other' && plan.category_detail?.trim()) {
-    return `other:${plan.category_detail.trim()}`;
-  }
-  return plan?.category || 'normal';
-};
-
 export const getPackageCategoryLabel = (plan) => {
   if (plan?.category === 'with_coach') return 'With Coach Subscription';
   if (plan?.category === 'walk_in') return 'Walk-In';
-  if (plan?.category === 'other') return plan.category_detail?.trim() || 'Other / Custom';
   return 'Normal Subscription';
 };
 
@@ -16,7 +8,6 @@ export const getPackageColor = (plan) => {
   if (plan?.color) return plan.color;
   if (plan?.category === 'with_coach') return '#8b5cf6';
   if (plan?.category === 'walk_in') return '#f59e0b';
-  if (plan?.category === 'other') return '#3b82f6';
   return '#10b981';
 };
 
@@ -70,7 +61,6 @@ export const getSubscriptionFilterGroup = (subscription, plans) => {
   const category = plan?.category;
 
   if (category === 'with_coach' || planName.toLowerCase().includes('with coach')) return 'With Coach';
-  if (category === 'other') return 'Other';
 
   const duration = Number(plan?.duration_days);
   const normalizedName = planName.toLowerCase();

@@ -8,6 +8,50 @@ import { getPackageDetails } from '../../../utils/packageDisplay';
 import { isValidPackagePrice, sanitizePackagePrice } from '../../../utils/priceInput';
 import { formatNumber } from '../../../utils/numberFormat';
 import { normalizeTransactions } from '../transactionData';
+import { getLocalDateString } from '../../../utils/dateFormat';
+
+/** Date choices for the Transactions list. Dates are local (YYYY-MM-DD). */
+export const DATE_PRESETS = [
+  { value: 'all', label: 'All time' },
+  { value: 'today', label: 'Today' },
+  { value: 'last7', label: 'Last 7 days' },
+  { value: 'thisMonth', label: 'This month' },
+  { value: 'lastMonth', label: 'Last month' },
+  { value: 'custom', label: 'Custom range' },
+];
+
+const formatDay = (key) => {
+  const [y, m, d] = String(key || '').split('-').map(Number);
+  return y && m && d ? new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+};
+
+/** { start, end, label } for a preset; start/end are '' when open-ended. */
+export function getDateRange(preset, customStart = '', customEnd = '', now = new Date()) {
+  const day = (offset = 0) => getLocalDateString(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset));
+  const today = day();
+  switch (preset) {
+    case 'today': return { start: today, end: today, label: `Today, ${formatDay(today)}` };
+    case 'last7': return { start: day(-6), end: today, label: `${formatDay(day(-6))} – ${formatDay(today)}` };
+    case 'thisMonth': {
+      const start = getLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+      return { start, end: today, label: `${formatDay(start)} – ${formatDay(today)}` };
+    }
+    case 'lastMonth': {
+      const start = getLocalDateString(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      const end = getLocalDateString(new Date(now.getFullYear(), now.getMonth(), 0));
+      return { start, end, label: `${formatDay(start)} – ${formatDay(end)}` };
+    }
+    case 'custom': {
+      const [start, end] = customStart && customEnd && customStart > customEnd ? [customEnd, customStart] : [customStart, customEnd];
+      const label = start && end ? `${formatDay(start)} – ${formatDay(end)}`
+        : start ? `From ${formatDay(start)}`
+          : end ? `Up to ${formatDay(end)}`
+            : 'All dates';
+      return { start, end, label };
+    }
+    default: return { start: '', end: '', label: 'All dates' };
+  }
+}
 
 export function useTransactions() {
   const { getCache, setCache, invalidateCache } = useDataCache();
@@ -20,6 +64,10 @@ export function useTransactions() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [datePreset, setDatePreset] = useState('all');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const dateRange = getDateRange(datePreset, customStart, customEnd);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const defaultForm = {
@@ -92,13 +140,10 @@ export function useTransactions() {
     }
     const normalizedPlanName = selectedPlan.name.toLowerCase();
     const type = selectedPlan.category === 'walk_in'
+      || normalizedPlanName.includes('walk')
+      || normalizedPlanName.includes('daily')
       ? 'Walk-In'
-      : selectedPlan.category === 'other'
-        ? 'Packages'
-        : normalizedPlanName.includes('walk')
-          || normalizedPlanName.includes('daily')
-          ? 'Walk-In'
-          : 'Subscription';
+      : 'Subscription';
     setFormData(prev => ({
       ...prev,
       package_id: selectedPlan.id,
@@ -154,7 +199,7 @@ export function useTransactions() {
       setAlertDialog({ isOpen: true, title: 'Select a Package', message: 'Choose a package before recording the transaction.', type: 'error' });
       return;
     }
-    if (!formData.member_id && !['Walk-In', 'Packages'].includes(formData.type)) {
+    if (!formData.member_id && formData.type !== 'Walk-In') {
       setAlertDialog({ isOpen: true, title: 'Select a Member', message: 'Choose a member for this transaction.', type: 'error' });
       return;
     }
@@ -193,14 +238,15 @@ export function useTransactions() {
       : txn.member_name_snapshot || 'Walk-in Guest';
     const matchesSearch = memberName.toLowerCase().includes(searchTerm.toLowerCase()) || (txn.transaction_id || '').toLowerCase().includes(searchTerm.toLowerCase());
     const type = (txn.type || '').trim().toLowerCase();
-    const matchesWalkIn = ['walk-in', 'walk in', 'walk-in guest', 'walk in guest', 'fee', 'fee (walk-in)', 'fee(walk-in)', 'other'].includes(type);
+    const matchesWalkIn = ['walk-in', 'walk in', 'walk-in guest', 'walk in guest', 'fee', 'fee (walk-in)', 'fee(walk-in)'].includes(type);
     const matchesType = filterType === 'All'
       || (filterType === 'Walk-In' ? matchesWalkIn
-        : filterType === 'Subscription' ? ['subscription', 'subscription payment', 'subscription upgrade'].includes(type)
-          : filterType === 'Packages' ? type === 'packages'
-            : filterType === 'Refund' ? type === 'refund'
-              : txn.type === filterType);
-    return matchesSearch && matchesType;
+        : filterType === 'Subscription' ? ['subscription', 'subscription payment', 'subscription upgrade', 'subscription renewal'].includes(type)
+          : filterType === 'Refund' ? type === 'refund'
+            : txn.type === filterType);
+    const day = String(txn.transaction_date || '').slice(0, 10);
+    const matchesDate = (!dateRange.start || day >= dateRange.start) && (!dateRange.end || day <= dateRange.end);
+    return matchesSearch && matchesType && matchesDate;
   });
 
   const handleExportCSV = async () => {
@@ -292,7 +338,6 @@ export function useTransactions() {
     const isWalkIn = txn.type === 'Walk-In'
       || txn.type === 'Walk-in Guest'
       || (!isSubPayment && (txn.type === 'Fee' || !txn.member || memberPlan.toLowerCase().includes('walk') || txnDesc.toLowerCase().includes('walk')));
-    const isPackageSale = txn.type === 'Packages';
 
     let membershipPlan = 'Walk-In';
     if (!isWalkIn) {
@@ -309,9 +354,7 @@ export function useTransactions() {
     let discountAmount = 0;
     let itemName = isWalkIn
       ? 'Walk-In Access'
-      : isPackageSale
-        ? `${matchedPlan?.name || txnDesc || 'Package'} Purchase`
-        : isUpgrade ? `${matchedPlan?.name || 'Subscription'} Upgrade Balance` : 'Subscription Bill';
+      : isUpgrade ? `${matchedPlan?.name || 'Subscription'} Upgrade Balance` : 'Subscription Bill';
 
     if (isSubPayment && matchedPlan && !isUpgrade) {
         if (Number(matchedPlan.price) > Number(txn.amount)) {
@@ -450,6 +493,10 @@ export function useTransactions() {
     isLoading,
     searchTerm, setSearchTerm,
     filterType, setFilterType,
+    datePreset, setDatePreset,
+    customStart, setCustomStart,
+    customEnd, setCustomEnd,
+    dateRange,
     isModalOpen, setIsModalOpen,
     formData, setFormData,
     isSaving,

@@ -64,6 +64,7 @@
   --color-field: var(--ui-field);
   --color-hover: var(--ui-hover);
   --color-line: var(--ui-line);
+  --color-edge: var(--ui-edge);
   --color-line-strong: var(--ui-line-strong);
   --color-ink: var(--ui-ink);
   --color-ink-2: var(--ui-ink-2);
@@ -89,7 +90,8 @@
   --ui-panel: #FFFFFF;
   --ui-field: #F7F7F8;
   --ui-hover: #F0F0F2;
-  --ui-line: #DCDDE1;
+  --ui-line: #D1D5DB;                  /* gray-300: dividers and inner lines */
+  --ui-edge: #9CA3AF;                  /* gray-400: outer border of cards and panels */
   --ui-line-strong: #8D929D;           /* form-control borders, 3:1 */
   --ui-ink: var(--color-brand-dark);   /* 19:1 */
   --ui-ink-2: var(--color-brand-slate);/* 9.7:1 */
@@ -113,6 +115,7 @@
   --ui-field: var(--color-night-field);
   --ui-hover: var(--color-night-hover);
   --ui-line: var(--color-night-line);
+  --ui-edge: var(--color-night-line);
   --ui-line-strong: var(--color-night-line-strong);
   --ui-ink: #E6E7EA;
   --ui-ink-2: #B8BDC9;
@@ -245,6 +248,22 @@ select:not(.camera-source-select) option {
   .tabular-nums,
   .font-display {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Button labels read in Title Case ("Select A Member"). Only the first letter of
+     each word changes, so "CSV" and "GCash" stay as written. Add the `normal-case`
+     utility to a button that must keep its text as typed. */
+  button,
+  .btn-step {
+    text-transform: capitalize;
+  }
+
+  /* Titles read in Title Case too ("Member Management", "Member Since"): headings,
+     table column headers and term labels. Descriptions and messages stay as
+     sentences. Add `normal-case` to an element that must keep its text as typed. */
+  h1, h2, h3, h4, h5, h6,
+  th, legend, dt {
+    text-transform: capitalize;
   }
 
   /* One visible focus ring everywhere; components that draw their own ring
@@ -833,3 +852,4 @@ main > div {
 .dark .cal-theme .fc .fc-daygrid-event {
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07) !important;
 }
+

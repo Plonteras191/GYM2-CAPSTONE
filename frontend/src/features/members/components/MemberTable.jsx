@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiUserPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiUsers, FiSearch, FiX, FiChevronRight, FiArrowRight } from 'react-icons/fi';
+import { FiUserPlus, FiEdit2, FiTrash2, FiEye, FiLoader, FiUsers, FiSearch, FiX, FiArrowRight } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import SearchInput from '../../../components/ui/SearchInput';
 import SegmentedFilter from '../../../components/ui/SegmentedFilter';
@@ -162,13 +162,13 @@ export default function MemberTable({
         action={isFiltered && !isLoading && (
           <div className="flex items-center gap-3 text-[13px]">
             <span className="text-muted">Showing {members.length.toLocaleString()} of {allMembers.length.toLocaleString()}</span>
-            <button type="button" onClick={clearFilters} className="press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-medium text-ink-2 hover:bg-hover hover:text-ink">
+            <button type="button" onClick={clearFilters} className="press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold text-ink-2 hover:bg-hover hover:text-ink">
               <FiX size={14} aria-hidden="true" /> Clear filters
             </button>
           </div>
         )}
       >
-        {/* Desktop: a table where the whole row opens the member's profile */}
+        {/* Desktop: a table; the profile opens from the View action, not from the name */}
         <div className="hidden overflow-hidden xl:block">
           <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
@@ -190,21 +190,16 @@ export default function MemberTable({
                 currentMembers.map((member, i) => (
                   <tr
                     key={member.id}
-                    onClick={() => onViewProfile(member)}
-                    className="rise group cursor-pointer transition-colors duration-150 hover:bg-hover"
+                    className="rise group transition-colors duration-150 hover:bg-hover"
                     style={{ '--i': Math.min(i, 8) * 0.5 + 1 }}
                   >
                     <td className={`${tdClass} overflow-hidden`}>
                       <div className="flex items-center gap-3">
                         <Avatar src={member.profilePicUrl} name={fullName(member)} />
                         <div className="min-w-0">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); onViewProfile(member); }}
-                            className="link-draw block max-w-full truncate text-left text-[15px] font-medium text-ink"
-                          >
+                          <span className="block max-w-full truncate text-left text-[15px] font-medium text-ink">
                             {fullName(member)}
-                          </button>
+                          </span>
                           <div className="mt-0.5 truncate text-[13px] text-muted">{member.email}</div>
                         </div>
                       </div>
@@ -223,7 +218,7 @@ export default function MemberTable({
           </table>
         </div>
 
-        {/* Tablet and phone: cards; tapping the top of a card opens the profile */}
+        {/* Tablet and phone: cards; the profile opens from the View action */}
         <div className="space-y-3 p-3 xl:hidden">
           {isLoading ? (
             <CardListLoading />
@@ -231,11 +226,7 @@ export default function MemberTable({
             <NoResults isFiltered={isFiltered} searchTerm={searchTerm} onClear={clearFilters} onAddMember={onAddMember} />
           ) : currentMembers.map((member, i) => (
             <MobileCard key={member.id} index={i} className="p-0">
-              <button
-                type="button"
-                onClick={() => onViewProfile(member)}
-                className="group press flex w-full items-start gap-3 rounded-t-xl p-4 text-left hover:bg-hover"
-              >
+              <div className="flex w-full items-start gap-3 rounded-t-xl p-4 text-left">
                 <Avatar size="lg" src={member.profilePicUrl} name={fullName(member)} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium text-ink">{fullName(member)}</span>
@@ -247,8 +238,7 @@ export default function MemberTable({
                     <span className="min-w-0"><span className="block text-muted">Package</span><span className="block truncate"><PackageName member={member} /></span></span>
                   </span>
                 </span>
-                <FiChevronRight size={18} aria-hidden="true" className="nudge mt-3 shrink-0 text-muted" />
-              </button>
+              </div>
               <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
                 {hasCoachPackage(member) && onOpenTrainingPlan
                   ? (

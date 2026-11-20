@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  FiX, FiMapPin, FiPhone, FiCalendar, FiActivity, FiChevronLeft, FiChevronRight,
+  FiX, FiMapPin, FiPhone, FiCalendar, FiChevronLeft, FiChevronRight,
   FiChevronDown, FiChevronUp, FiLock, FiPlus, FiTrash2, FiInfo, FiCamera, FiCheck, FiCopy
 } from 'react-icons/fi';
 import FullCalendar from '@fullcalendar/react';
@@ -13,6 +13,7 @@ import CalendarHoverPopover from '../../../components/ui/CalendarHoverPopover';
 import Pagination from '../../../components/ui/Pagination';
 import StyledSelect from '../../../components/ui/StyledSelect';
 import ManualCheckInModal from '../../../components/ui/ManualCheckInModal';
+import ExerciseThumb from './ExerciseThumb';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
 import { formatNumber } from '../../../utils/numberFormat';
 
@@ -55,10 +56,6 @@ const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sat
 const defaultRoutine = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [], Sunday: [] };
 const createEmptyRoutine = () => Object.fromEntries(daysOfWeek.map(day => [day, []]));
 const formatExerciseName = (name) => name.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
-const getExerciseMediaUrl = (exercise, field = 'gif_url') => {
-  const mediaPath = exercise?.[field] || exercise?.image;
-  return mediaPath ? `/dataset/${mediaPath.replace(/^\//, '')}` : null;
-};
 const getGestureClass = (exercise) => {
   const name = exercise.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const movementPatterns = [
@@ -102,6 +99,11 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
   const [isManualCheckInOpen, setIsManualCheckInOpen] = useState(false);
   const [workouts, setWorkouts] = useState([]);
   const [coachNotes, setCoachNotes] = useState('');
+  // idle | loading | saving | saved | error — shown under the Coach Notes box.
+  const [notesStatus, setNotesStatus] = useState('idle');
+  const notesTimerRef = React.useRef(null);
+  const notesLoadedRef = React.useRef(false);
+  const pendingNotesRef = React.useRef(null); // { memberId, value } waiting to be sent
   const [workoutPage, setWorkoutPage] = useState(1);
   const [expandedDate, setExpandedDate] = useState(null);
   const [weeklyRoutine, setWeeklyRoutine] = useState(defaultRoutine);
@@ -131,9 +133,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     setActiveTab(initialTab || 'workouts');
     setWorkoutPage(1);
     setExpandedDate(null);
-    setCoachNotes(localStorage.getItem(`notes_${member.id}`) || '');
-    const saved = localStorage.getItem(`routine_${member.id}`);
-    setWeeklyRoutine(saved ? JSON.parse(saved) : defaultRoutine);
+    setCoachNotes('');
+    setNotesStatus('loading');
+    notesLoadedRef.current = false;
+    setWeeklyRoutine(defaultRoutine);
     setPlanLogs(null);
     setActiveDay('Monday');
     setIsProfileDataLoading(true);
@@ -155,6 +158,30 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
         if (isCurrent) setProfileDataError('Member activity could not be loaded. Check your connection and retry.');
       } finally {
         if (isCurrent) setIsProfileDataLoading(false);
+      }
+    })();
+
+    // Coach Notes live in the database. Notes typed before this change were kept
+    // only in this browser; they are moved to the server once, then removed here.
+    (async () => {
+      const legacyKey = `notes_${member.id}`;
+      try {
+        const res = await api.get(`/members/${member.id}/notes`);
+        if (!isCurrent) return;
+        let notes = res.data?.coach_notes || '';
+        const legacy = localStorage.getItem(legacyKey);
+        if (!notes && legacy && legacy.trim()) {
+          const saved = await api.put(`/members/${member.id}/notes`, { coach_notes: legacy });
+          notes = saved.data?.coach_notes || legacy;
+        }
+        if (legacy !== null) localStorage.removeItem(legacyKey);
+        if (!isCurrent) return;
+        setCoachNotes(notes);
+        setNotesStatus('idle');
+        notesLoadedRef.current = true;
+      } catch (err) {
+        console.error('Failed to load coach notes', err);
+        if (isCurrent) setNotesStatus('error');
       }
     })();
 
@@ -197,12 +224,49 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     } catch { console.error('Verification failed'); }
   };
 
+  // Notes save on their own a moment after the coach stops typing.
+  const saveCoachNotes = React.useCallback(async (memberId, value) => {
+    pendingNotesRef.current = null;
+    setNotesStatus('saving');
+    try {
+      await api.put(`/members/${memberId}/notes`, { coach_notes: value });
+      setNotesStatus('saved');
+    } catch (err) {
+      console.error('Failed to save coach notes', err);
+      setNotesStatus('error');
+    }
+  }, []);
+  const handleCoachNotesChange = (value) => {
+    setCoachNotes(value);
+    if (!notesLoadedRef.current) return;
+    setNotesStatus('saving');
+    window.clearTimeout(notesTimerRef.current);
+    const memberId = member.id;
+    pendingNotesRef.current = { memberId, value };
+    notesTimerRef.current = window.setTimeout(() => saveCoachNotes(memberId, value), 700);
+  };
+  const flushCoachNotes = () => {
+    if (!notesTimerRef.current || !notesLoadedRef.current) return;
+    window.clearTimeout(notesTimerRef.current);
+    notesTimerRef.current = null;
+    saveCoachNotes(member.id, coachNotes);
+  };
+  // Closing the profile (or switching member) while a save is waiting sends it right away.
+  React.useEffect(() => () => {
+    window.clearTimeout(notesTimerRef.current);
+    const pending = pendingNotesRef.current;
+    pendingNotesRef.current = null;
+    if (pending) {
+      api.put(`/members/${pending.memberId}/notes`, { coach_notes: pending.value })
+        .catch(err => console.error('Failed to save coach notes', err));
+    }
+  }, [isOpen, member?.id]);
+
   const handleAssignWeeklyPlan = async () => {
     if (isSavingPlan) return;
 
     setIsSavingPlan(true);
     try {
-      localStorage.setItem(`routine_${member.id}`, JSON.stringify(weeklyRoutine));
       const today = new Date();
       const todayIndex = (today.getDay() + 6) % 7;
       const tasks = daysOfWeek.flatMap((day, index) => {
@@ -220,7 +284,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
 
       await api.post(`/members/${member.id}/workout-plan`, { tasks });
       savedRoutineRef.current = JSON.stringify(weeklyRoutine);
-      onShowAlert('Plan saved', `${tasks.length} exercise${tasks.length === 1 ? ' is' : 's are'} now scheduled for the next 7 days. The camera checks the exercises marked “Camera checks”; for the others, confirm them yourself with Verify.`, 'success');
+      onShowAlert('Plan saved', `${tasks.length} exercise${tasks.length === 1 ? ' is' : 's are'} scheduled, and the plan repeats every week until you change it. The camera checks the exercises marked “Camera checks”; for the others, confirm them yourself with Verify.`, 'success');
 
       try {
         const res = await api.get(`/members/${member.id}/workouts`);
@@ -466,11 +530,20 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
               <div className="w-full bg-panel rounded-xl border border-line p-4 shadow-sm mb-2">
                 <h4 className="text-xs font-medium text-muted mb-3 border-b border-line pb-2">Coach Notes</h4>
                 <textarea
-                  className="w-full bg-field border border-line rounded-lg p-3 text-sm focus:outline-none focus:border-focus focus:ring-2 focus:ring-focus/25 text-ink transition-colors min-h-[90px]"
-                  placeholder="Add notes about this member…"
+                  className="w-full bg-field border border-line rounded-lg p-3 text-sm focus:outline-none focus:border-focus focus:ring-2 focus:ring-focus/25 text-ink transition-colors min-h-[90px] disabled:opacity-60"
+                  placeholder={notesStatus === 'loading' ? 'Loading notes…' : 'Add notes about this member…'}
                   value={coachNotes}
-                  onChange={(e) => { setCoachNotes(e.target.value); localStorage.setItem(`notes_${member.id}`, e.target.value); }}
+                  maxLength={5000}
+                  disabled={notesStatus === 'loading'}
+                  onChange={(e) => handleCoachNotesChange(e.target.value)}
+                  onBlur={flushCoachNotes}
                 />
+                <p aria-live="polite" className={`mt-1.5 min-h-4 text-xs ${notesStatus === 'error' ? 'text-negative' : 'text-muted'}`}>
+                  {notesStatus === 'saving' ? 'Saving…'
+                    : notesStatus === 'saved' ? 'Saved'
+                      : notesStatus === 'error' ? 'Notes could not be saved or loaded. Check the connection and try again.'
+                        : 'Saved automatically for all staff.'}
+                </p>
               </div>
             </div>
           </div>
@@ -480,7 +553,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
             {/* Tabs */}
             <div className="flex items-center gap-6 px-8 pt-6 border-b border-line flex-shrink-0 overflow-x-auto">
               {[['workouts', 'Workout Logs'], ['attendance', 'Attendance Calendar'], ['plan', 'Training plan']].map(([key, label]) => (
-                <button key={key} onClick={() => setActiveTab(key)} className={`press relative whitespace-nowrap pb-4 text-[15px] font-medium transition-colors ${activeTab === key ? 'text-ink' : 'text-muted hover:text-ink'}`}>
+                <button key={key} onClick={() => setActiveTab(key)} className={`press relative whitespace-nowrap pb-4 text-[15px] font-semibold transition-colors ${activeTab === key ? 'text-ink' : 'text-muted hover:text-ink'}`}>
                   {label}
                   {activeTab === key && <div className="animate-in fade-in absolute bottom-0 left-0 h-1 w-full rounded-t-full bg-brand-gold" />}
                 </button>
@@ -535,8 +608,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .fc { --fc-border-color: #e2e8f0; --fc-page-bg-color: transparent; color: #4b5563; }
                       .dark .fc { --fc-border-color: #4b5563; --fc-today-bg-color: rgba(245, 158, 11, 0.1); color: #d1d5db; }
                       
-                      .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 800 !important; text-transform: uppercase; color: #000; }
-                      .dark .fc-toolbar-title { color: #d1d5db !important; }
+                      .fc-toolbar-title { font-size: 1.3rem !important; font-weight: 500 !important; letter-spacing: -0.02em; text-transform: none; color: var(--ui-ink) !important; }
+                      .dark .fc-toolbar-title { color: var(--ui-ink) !important; }
                       
                       /* TODAY BUTTON MATCHING EXACTLY TO "ADD MEMBER" BUTTON */
                       .fc .fc-button.fc-button-primary.fc-today-button,
@@ -818,15 +891,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                                               : 'bg-negative-soft border-negative/40 text-negative dark:bg-negative-soft dark:border-negative/40 dark:text-negative';
                                         return (
                                           <div key={log.id} className={`flex items-center gap-3 w-full sm:w-[calc(50%-0.5rem)] xl:w-[calc(33.333%-0.55rem)] min-w-0 rounded-xl border p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${badgeClass}`}>
-                                            <div className="relative w-12 h-12 rounded-lg bg-field overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                              <FiActivity className="text-muted dark:text-muted" size={19} />
-                                              {getExerciseMediaUrl(exercise) && <img src={getExerciseMediaUrl(exercise)} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
-                                                if (exercise?.image && event.currentTarget.dataset.fallback !== 'true') {
-                                                  event.currentTarget.dataset.fallback = 'true';
-                                                  event.currentTarget.src = getExerciseMediaUrl(exercise, 'image');
-                                                } else event.currentTarget.style.display = 'none';
-                                              }} />}
-                                            </div>
+                                            <ExerciseThumb exercise={exercise} cameraChecks={Boolean(exercise && getGestureClass(exercise))} alt="" className="h-12 w-12" iconSize={19} />
                                             <div className="min-w-0 flex-1">
                                               <p className="font-medium text-xs truncate">{formatExerciseName(exName)}</p>
                                               <p className="text-[10px] opacity-70 mt-0.5">{timeFormatted}</p>
@@ -954,15 +1019,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         ) : currentExercises.map(ex => {
                           return (
                             <div key={ex.id} className="flex items-center bg-panel p-2 rounded-lg border border-line shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md group">
-                              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-field flex items-center justify-center">
-                                <FiActivity className="text-muted dark:text-muted" size={19} />
-                                {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
-                                  if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
-                                    event.currentTarget.dataset.fallback = 'true';
-                                    event.currentTarget.src = getExerciseMediaUrl(ex, 'image');
-                                  } else event.currentTarget.style.display = 'none';
-                                }} />}
-                              </div>
+                              <ExerciseThumb exercise={ex} cameraChecks={Boolean(getGestureClass(ex))} className="h-16 w-16" />
                               <div className="flex-1 min-w-0 px-3">
                                 <span className="font-medium text-sm text-ink truncate block">{formatExerciseName(ex.name)}</span>
                                 <span className="text-xs text-muted capitalize truncate block mt-0.5">{ex.target || ex.body_part} · {ex.equipment}</span>
@@ -1057,15 +1114,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             <div key={i} className="flex flex-col bg-panel p-3 rounded-xl border border-line shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md animate-in fade-in zoom-in-95 duration-200">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-field flex items-center justify-center">
-                                    <FiActivity className="text-muted dark:text-muted" size={16} />
-                                    {getExerciseMediaUrl(ex) && <img src={getExerciseMediaUrl(ex)} alt={ex.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" onError={event => {
-                                      if (ex.image && event.currentTarget.dataset.fallback !== 'true') {
-                                        event.currentTarget.dataset.fallback = 'true';
-                                        event.currentTarget.src = getExerciseMediaUrl(ex, 'image');
-                                      } else event.currentTarget.style.display = 'none';
-                                    }} />}
-                                  </div>
+                                  <ExerciseThumb exercise={ex} cameraChecks={Boolean(getGestureClass(ex))} className="h-12 w-12" iconSize={18} />
                                   <div className="min-w-0">
                                     <span className="font-medium text-sm text-ink truncate block">{formatExerciseName(ex.name)}</span>
                                     <span className={`mt-0.5 flex items-center gap-1 text-xs font-medium ${getGestureClass(ex) ? 'text-positive' : 'text-warn'}`}>
@@ -1081,7 +1130,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                               </div>
 
                               {/* --- REPS & SETS INPUTS --- */}
-                              <div className="flex flex-wrap items-center gap-4 mt-3 pl-[3.25rem]">
+                              <div className="flex flex-wrap items-center gap-4 mt-3 pl-[3.75rem]">
                                 <label className="flex items-center gap-2 text-sm font-medium text-ink-2">
                                   Sets
                                   <input

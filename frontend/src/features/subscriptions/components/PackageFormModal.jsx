@@ -96,10 +96,10 @@ export default function PackageFormModal({
                 <span className={labelClass}>Category</span>
                 <StyledSelect
                   required
-                  value={plan.category === 'other' ? '' : plan.category || ''}
-                  onChange={event => setPlan({ ...plan, category: event.target.value, category_detail: '' })}
+                  value={plan.category || ''}
+                  onChange={event => setPlan({ ...plan, category: event.target.value })}
                   aria-label="Package category"
-                  className={`${fieldClass} ${plan.category && plan.category !== 'other' ? '' : '!text-muted'}`}
+                  className={`${fieldClass} ${plan.category ? '' : '!text-muted'}`}
                 >
                   <option value="" disabled>Choose a category</option>
                   <option value="normal">Normal Subscription</option>
@@ -107,9 +107,6 @@ export default function PackageFormModal({
                   <option value="walk_in">Walk-In</option>
                 </StyledSelect>
                 {CATEGORY_HELP[plan.category] && <span className="mt-1.5 block text-xs text-muted">{CATEGORY_HELP[plan.category]}</span>}
-                {plan.category === 'other' && (
-                  <span className="mt-1.5 block text-xs text-muted">This older category is kept unless you choose a new one.</span>
-                )}
               </label>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -145,7 +142,7 @@ export default function PackageFormModal({
 
               <div className="rounded-xl border border-line bg-field p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-[13px] font-medium text-ink-2">Colour shown on the calendar</span>
+                  <span className="text-[13px] font-medium capitalize text-ink-2">Colour shown on the calendar</span>
                   <span className="font-mono text-xs text-muted">{color}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -183,14 +180,14 @@ export default function PackageFormModal({
                 type="button"
                 onClick={requestClose}
                 disabled={isSaving}
-                className="press btn-step inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel px-5 text-sm font-medium text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink disabled:opacity-50"
+                className="press btn-step inline-flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel px-5 text-sm font-semibold text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="press btn-step inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 text-sm font-medium text-brand-dark shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)] hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-55"
+                className="press btn-step inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 text-sm font-semibold text-brand-dark shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)] hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-55"
               >
                 {isSaving ? <FiLoader className="animate-spin" size={18} /> : <FiSave size={18} />}
                 {isSaving ? 'Saving…' : isEditing ? 'Save changes' : 'Create package'}

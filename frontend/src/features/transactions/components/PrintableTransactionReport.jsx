@@ -6,7 +6,8 @@ import { formatNumber } from '../../../utils/numberFormat';
 export default function PrintableTransactionReport({
   filteredTxns,
   filterType,
-  searchTerm
+  searchTerm,
+  dateLabel = 'All dates'
 }) {
   const totalIncome = filteredTxns
     .filter(transaction => Number(transaction.amount) > 0 && transaction.status === 'Complete')
@@ -36,7 +37,7 @@ export default function PrintableTransactionReport({
           <div>
             <h1 className="text-xl font-black uppercase tracking-wide">Double Alpha Fitness Gym</h1>
             <p className="mt-1 text-xs font-medium text-gray-600">
-              Transaction report · {filterType === 'All' ? 'All transaction types' : filterType}
+              Transaction report · {dateLabel} · {filterType === 'All' ? 'All transaction types' : filterType}
               {searchTerm ? ` · Search: ${searchTerm}` : ''}
             </p>
           </div>

@@ -14,7 +14,8 @@ export function mapDashboardResponse(data) {
     checkInsByHour: data.checkInsByHour || [],
     recentMembers: data.recentMembers.map(m => ({
       id: m.id,
-      name: `${m.first_name} ${m.last_name}`
+      name: `${m.first_name} ${m.last_name}`,
+      joinedAt: m.created_at || null
     })),
     recentTxns: data.recentTxns.map(t => ({
       id: t.id,
@@ -26,8 +27,14 @@ export function mapDashboardResponse(data) {
       memberName: t.member ? `${t.member.first_name} ${t.member.last_name}` : 'Walk-in Guest'
     })),
     expiringSoon: data.expiringSoon.map(sub => {
-      const daysLeft = Math.ceil((new Date(sub.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+      // Whole calendar days in local time, so a membership ending today reads 0.
+      const [y, m, d] = String(sub.end_date || '').slice(0, 10).split('-').map(Number);
+      const now = new Date();
+      const daysLeft = y && m && d
+        ? Math.round((Date.UTC(y, m - 1, d) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000)
+        : null;
       return {
+        membershipId: sub.id,
         name: sub.member ? `${sub.member.first_name} ${sub.member.last_name}` : 'Unknown Member',
         days: daysLeft
       };

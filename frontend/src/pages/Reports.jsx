@@ -396,7 +396,7 @@ export default function Reports() {
                       role="tab"
                       aria-selected={active}
                       onClick={() => setReportType(value)}
-                      className={`press flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-2 text-[13px] font-medium sm:px-4 sm:text-sm lg:flex-none ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08),0_0_0_1px_var(--ui-line)]' : 'text-muted hover:text-ink'}`}
+                      className={`press flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-2 text-[13px] font-semibold sm:px-4 sm:text-sm lg:flex-none ${active ? 'bg-panel text-ink shadow-[0_1px_2px_rgb(13_13_13/0.08),0_0_0_1px_var(--ui-line)]' : 'text-muted hover:text-ink'}`}
                     >
                       <Icon size={15} aria-hidden="true" className={`hidden shrink-0 sm:block ${active ? 'text-accent' : ''}`} />
                       <span className="truncate">{label}</span>
@@ -434,7 +434,7 @@ export default function Reports() {
                       type="button"
                       aria-pressed={active}
                       onClick={() => { setStartDate(preset.start); setEndDate(preset.end); }}
-                      className={`press min-h-11 rounded-xl border px-3.5 text-sm font-medium ${active ? 'border-brand-gold bg-warn-soft text-ink' : 'border-line bg-panel text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink'}`}
+                      className={`press min-h-11 rounded-xl border px-3.5 text-sm font-semibold ${active ? 'border-brand-gold bg-warn-soft text-ink' : 'border-line bg-panel text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink'}`}
                     >
                       {preset.label}
                     </button>

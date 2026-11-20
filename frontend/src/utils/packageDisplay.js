@@ -11,9 +11,7 @@ export const getPackageDetails = (transaction) => {
     ? 'With Coach Subscription'
     : categoryValue === 'walk_in'
       ? 'Walk-In Package'
-      : categoryValue === 'other'
-        ? plan?.category_detail || 'Other / Custom'
-        : 'Normal Subscription';
+      : 'Normal Subscription';
 
   return {
     title: `${name} Package Payment${transaction?.type === 'Subscription Upgrade' ? ' + Upgraded' : transaction?.type === 'Subscription Renewal' ? ' + Renewed' : ''}`,

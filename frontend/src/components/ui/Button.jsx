@@ -14,7 +14,7 @@ export default function Button({
   ...props
 }) {
   // press + btn-step: steps up 1px on hover, sinks 1px and scales .985 on press.
-  const baseClasses = "press btn-step group inline-flex items-center justify-center rounded-xl font-medium disabled:cursor-not-allowed disabled:opacity-55";
+  const baseClasses = "press btn-step group inline-flex items-center justify-center rounded-xl disabled:cursor-not-allowed disabled:opacity-55";
 
   const sizeClasses = {
     sm: "min-h-9 px-3 py-1.5 text-[13px] gap-1.5",
@@ -38,7 +38,7 @@ export default function Button({
       type={type}
       disabled={disabled || isLoading}
       onClick={onClick}
-      className={`${baseClasses} ${sizeClasses[size] || sizeClasses.md} ${variantClasses[variant] || variantClasses.primary} ${className}`}
+      className={`${baseClasses} font-semibold ${sizeClasses[size] || sizeClasses.md} ${variantClasses[variant] || variantClasses.primary} ${className}`}
       {...props}
     >
       {isLoading ? (

@@ -14,7 +14,7 @@ import { useSystemLogo } from '../hooks/useSystemLogo';
 const getPageTitle = (path) => {
     switch (path.toLowerCase()) {
       case '/overview': return 'Overview';
-      case '/members': return 'Member Registration';
+      case '/members': return 'Member Management';
       case '/subscriptions': return 'Packages';
       case '/transactions': return 'Transactions';
       case '/reports': return 'System Reports';
@@ -200,6 +200,27 @@ export default function Layout() {
     };
   }, [showNotifications]);
 
+  // The panel closes when the admin presses anywhere outside it (or Escape), and
+  // when they move to another page, so it never lingers over other content.
+  useEffect(() => {
+    if (!showNotifications) return undefined;
+    const closeOnOutsidePress = (event) => {
+      if (event.target.closest?.('#notification-panel') || notificationButtonRef.current?.contains(event.target)) return;
+      setShowNotifications(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setShowNotifications(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePress);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showNotifications]);
+
+  useEffect(() => { setShowNotifications(false); }, [location.pathname]);
+
   const toggleNotifications = () => {
     if (!showNotifications) updateNotificationPanelPosition();
     setShowNotifications(!showNotifications);
@@ -257,7 +278,7 @@ export default function Layout() {
       title: 'Main',
       items: [
         { name: 'Overview', path: '/overview', icon: <FiHome /> },
-        { name: 'Member Registration', path: '/members', icon: <FiUsers /> },
+        { name: 'Member Management', path: '/members', icon: <FiUsers /> },
         { name: 'Packages', path: '/subscriptions', icon: <FiCheckSquare /> },
         { name: 'Transactions', path: '/transactions', icon: <FiCreditCard /> },
         { name: 'Reports', path: '/reports', icon: <FiFileText /> },
@@ -305,7 +326,7 @@ export default function Layout() {
     };
   };
 
-  const iconButton = 'press relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-panel text-ink-2 hover:bg-hover hover:text-ink sm:h-11 sm:w-11';
+  const iconButton = 'press relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line-strong bg-panel text-ink-2 hover:bg-hover hover:text-ink sm:h-11 sm:w-11';
 
   return (
     <div className="flex h-dvh overflow-hidden bg-canvas font-sans">
@@ -383,7 +404,7 @@ export default function Layout() {
         </nav>
 
         <div className="flex-shrink-0 border-t border-line p-3">
-          <button onClick={handleLogout} className="group press flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium text-ink-2 hover:bg-accent-soft hover:text-accent">
+          <button onClick={handleLogout} className="group press flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-semibold text-ink-2 hover:bg-accent-soft hover:text-accent">
             <FiLogOut className="text-lg text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent" /> Sign Out
           </button>
         </div>

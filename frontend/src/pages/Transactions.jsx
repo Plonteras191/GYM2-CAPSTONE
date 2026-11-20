@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { useTransactions } from '../features/transactions/hooks/useTransactions';
 import TransactionStats from '../features/transactions/components/TransactionStats';
 import TransactionTable from '../features/transactions/components/TransactionTable';
-import TransactionFormModal from '../features/transactions/components/TransactionFormModal';
 import PrintableTransactionReport from '../features/transactions/components/PrintableTransactionReport';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import AlertDialog from '../components/ui/AlertDialog';
@@ -12,14 +11,13 @@ export default function Transactions() {
   const location = useLocation();
   const {
     transactions,
-    membersList,
-    plansList,
     isLoading,
     searchTerm, setSearchTerm,
     filterType, setFilterType,
-    isModalOpen, setIsModalOpen,
-    formData, setFormData,
-    isSaving,
+    datePreset, setDatePreset,
+    customStart, setCustomStart,
+    customEnd, setCustomEnd,
+    dateRange,
     isExporting,
     refundingId,
     confirmDialog, setConfirmDialog,
@@ -28,11 +26,7 @@ export default function Transactions() {
     totalIncome,
     totalRefunds,
     netRevenue,
-    handlePlanSelection,
-    handleAmountChange,
-    handleOpenAddModal,
     handleRefundTransaction,
-    handleSaveTransaction,
     handleExportCSV,
     handlePrintReceipt
   } = useTransactions();
@@ -50,6 +44,7 @@ export default function Transactions() {
           filteredTxns={filteredTxns}
           filterType={filterType}
           searchTerm={searchTerm}
+          dateLabel={dateRange.label}
         />
 
         {/* Regular UI (Hidden during window.print()) */}
@@ -68,25 +63,18 @@ export default function Transactions() {
             setSearchTerm={setSearchTerm}
             filterType={filterType}
             setFilterType={setFilterType}
+            datePreset={datePreset}
+            setDatePreset={setDatePreset}
+            customStart={customStart}
+            setCustomStart={setCustomStart}
+            customEnd={customEnd}
+            setCustomEnd={setCustomEnd}
+            dateRange={dateRange}
             isExporting={isExporting}
             refundingId={refundingId}
-            onAddTransaction={handleOpenAddModal}
             onRefundTransaction={handleRefundTransaction}
             onExportCSV={handleExportCSV}
             onPrintReceipt={handlePrintReceipt}
-          />
-
-          <TransactionFormModal
-            isOpen={isModalOpen}
-            isSaving={isSaving}
-            formData={formData}
-            setFormData={setFormData}
-            membersList={membersList}
-            plansList={plansList}
-            onClose={() => setIsModalOpen(false)}
-            onSave={handleSaveTransaction}
-            onPlanSelection={handlePlanSelection}
-            onAmountChange={handleAmountChange}
           />
 
           <ConfirmDialog

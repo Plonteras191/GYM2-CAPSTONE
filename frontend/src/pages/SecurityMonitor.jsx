@@ -9,6 +9,7 @@ import { formatNumber } from '../utils/numberFormat';
 import ManualCheckInModal from '../components/ui/ManualCheckInModal';
 import AlertDialog from '../components/ui/AlertDialog';
 import Badge from '../components/ui/Badge';
+import GalleryHealthBanner from '../components/ui/GalleryHealthBanner';
 
 function AttendanceAvatar({ member }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -199,6 +200,7 @@ export default function SecurityMonitor() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 max-w-7xl mx-auto min-h-full h-auto lg:h-full flex flex-col">
+      <GalleryHealthBanner />
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0">
         
         <div ref={containerRef} className="w-full lg:w-3/4 bg-black rounded-2xl overflow-hidden relative border border-line shadow-xl flex flex-col group aspect-video lg:aspect-auto lg:h-full flex-shrink-0">
@@ -299,7 +301,7 @@ export default function SecurityMonitor() {
         </div>
 
         <div className="flex min-h-[380px] w-full flex-shrink-0 flex-col lg:h-full lg:w-1/4">
-          <section className="rise flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-panel" style={{ '--i': 1 }}>
+          <section className="rise flex h-full flex-col overflow-hidden rounded-2xl border border-edge bg-panel" style={{ '--i': 1 }}>
 
             <header className="flex flex-shrink-0 items-center justify-between border-b border-line bg-field px-4 py-3">
               <h3 className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">

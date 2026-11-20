@@ -65,6 +65,19 @@ const endsLabel = (days) => {
   return `Ends in ${days} days`;
 };
 
+/** "today", "yesterday", "3 days ago", or a date for anything older than a week. */
+const formatJoined = (value, now) => {
+  const joined = new Date(String(value).includes('T') ? value : String(value).replace(' ', 'T'));
+  if (Number.isNaN(joined.getTime())) return '';
+  const days = Math.round(
+    (Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(joined.getFullYear(), joined.getMonth(), joined.getDate())) / 86400000
+  );
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days} days ago`;
+  return joined.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(joined.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }) });
+};
+
 const relativeTime = (from, now) => {
   const minutes = Math.floor((now - from) / 60000);
   if (minutes < 1) return 'just now';
@@ -108,7 +121,7 @@ function ChartTooltip({ active, payload, label, format = (v) => v, unit }) {
 function EmptyState({ icon: Icon, title, children, action }) {
   return (
     <div className="flex h-full min-h-40 flex-col items-center justify-center gap-3 py-6 text-center">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-muted">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-black dark:text-gray-300">
         <Icon size={19} aria-hidden="true" />
       </span>
       <div>
@@ -152,12 +165,13 @@ function RowLink({ to, state, index = 0, label, className = '', children }) {
 }
 
 /** Shortcut on the dark welcome band that opens another page. */
-function BandLink({ to, icon: Icon, hint, children }) {
+function BandLink({ to, state, icon: Icon, hint, children }) {
   return (
     <Link
       to={to}
+      state={state}
       title={hint}
-      className="group press btn-step inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl border border-white/20 bg-white/[0.06] px-5 text-[15px] font-medium text-white hover:border-white/40 hover:bg-white/[0.12]"
+      className="group press btn-step inline-flex min-h-12 items-center justify-center gap-2.5 rounded-xl border border-white/20 bg-white/[0.06] px-5 text-[15px] font-semibold text-white hover:border-white/40 hover:bg-white/[0.12]"
     >
       <Icon size={18} aria-hidden="true" className="text-brand-gold" />
       {children}
@@ -324,7 +338,7 @@ export default function Dashboard() {
           </div>
 
           <div className="max-w-2xl">
-            <p className="rise text-[clamp(1.75rem,3.4vw,2.6rem)] font-medium leading-[1.08] tracking-[-0.03em]" style={{ '--i': 1 }}>
+            <p className="rise text-[clamp(1.75rem,3.4vw,2.6rem)] font-medium capitalize leading-[1.08] tracking-[-0.03em]" style={{ '--i': 1 }}>
               {greetingFor(now)}.
             </p>
             <p className="rise mt-3 max-w-xl text-[15px] leading-relaxed text-white/70 sm:text-base" style={{ '--i': 2 }}>
@@ -339,12 +353,13 @@ export default function Dashboard() {
 
           <div className="rise grid grid-cols-1 gap-2.5 min-[520px]:grid-cols-2 xl:flex xl:flex-wrap" style={{ '--i': 3 }}>
             <Button size="lg" icon={<FiUserCheck size={18} />} onClick={() => setIsCheckInOpen(true)} title="Use when the camera does not recognise a member">
-              Check in a member
+              Check In Member
             </Button>
-            <BandLink to="/members" icon={FiUserPlus} hint="Opens Member Registration">Register a member</BandLink>
-            <BandLink to="/transactions" icon={FiCreditCard} hint="Opens Transactions">Record a payment</BandLink>
-            <Button size="lg" variant="onDark" icon={<FiCalendar size={18} className="text-brand-gold" />} onClick={() => handleOpenNewCoachEvent()}>
-              Add a class or event
+            <BandLink to="/members" state={{ openRegister: true }} icon={FiUserPlus} hint="Opens the registration form">Register Member</BandLink>
+            <BandLink to="/subscriptions" state={{ openNewSale: true }} icon={FiCreditCard} hint="Opens New Sale in Packages">Record Payment</BandLink>
+            {/* normal-case keeps the small word "or" lowercase, as written. */}
+            <Button size="lg" variant="onDark" className="normal-case" icon={<FiCalendar size={18} className="text-brand-gold" />} onClick={() => handleOpenNewCoachEvent()}>
+              Add Class or Event
             </Button>
           </div>
         </div>
@@ -355,7 +370,7 @@ export default function Dashboard() {
         <StatCell label="Net revenue" hint="All time, after refunds" tone="gold" to="/transactions" isLoading={isLoading} value={stats.revenue} format={peso} />
         <StatCell label="Members" hint="Registered in total" tone="red" to="/members" isLoading={isLoading} value={stats.members} format={(v) => formatNumber(v)} />
         <StatCell label="Active subscriptions" hint="Running right now" tone="orange" to="/subscriptions" isLoading={isLoading} value={stats.activeSubs} format={(v) => formatNumber(v)} />
-        <StatCell label="Transactions" hint="Recorded all time" tone="slate" to="/reports" isLoading={isLoading} value={stats.reports} format={(v) => formatNumber(v)} />
+        <StatCell label="Transactions" hint="Recorded all time" tone="slate" to="/transactions" isLoading={isLoading} value={stats.reports} format={(v) => formatNumber(v)} />
       </StatStrip>
 
       {/* ── Today: attendance and who needs a renewal ── */}
@@ -364,12 +379,7 @@ export default function Dashboard() {
           index={2}
           className="xl:col-span-2"
           title="Today's check-ins"
-          icon={FiActivity}
-          action={
-            <PanelLink as={Link} to="/reports" state={{ defaultTab: 'Attendance' }} icon={FiArrowRight}>
-              Attendance report
-            </PanelLink>
-          }
+          icon={FiActivity} iconClassName="text-black dark:text-gray-300"
         >
           <div className="grid gap-5 md:grid-cols-[minmax(10rem,12rem)_minmax(0,1fr)]">
             <div className="flex items-end justify-between gap-4 md:flex-col md:items-start md:justify-between md:border-r md:border-line md:pr-5">
@@ -401,7 +411,6 @@ export default function Dashboard() {
                 <EmptyState
                   icon={FiClock}
                   title="No check-ins yet today"
-                  action={<Button size="sm" variant="outline" icon={<FiUserCheck size={14} />} onClick={() => setIsCheckInOpen(true)}>Check in a member</Button>}
                 >
                   Members appear here as the camera recognises them.
                 </EmptyState>
@@ -427,7 +436,7 @@ export default function Dashboard() {
         <Panel
           index={3}
           title="Ending this week"
-          icon={FiClock}
+          icon={FiClock} iconClassName="text-black dark:text-gray-300"
           meta={!isLoading && expiringSoon.length > 0 && (
             <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[13px] font-medium text-warn">{expiringSoon.length}</span>
           )}
@@ -446,14 +455,17 @@ export default function Dashboard() {
                 const urgent = item.days <= 2;
                 return (
                   <RowLink
-                    key={i}
+                    key={item.membershipId || i}
                     index={i * 0.6 + 3}
-                    to="/members"
-                    state={{ searchTerm: item.name }}
-                    label={`${item.name}, ${endsLabel(item.days).toLowerCase()}. Open in Members`}
+                    to="/subscriptions"
+                    state={{ renewMembershipId: item.membershipId }}
+                    label={`${item.name}, ${endsLabel(item.days).toLowerCase()}. Renew`}
                   >
                     <Avatar name={item.name} size="sm" />
-                    <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-ink">{item.name}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-medium text-ink">{item.name}</span>
+                      <span className="mt-0.5 block text-[13px] font-medium text-ink-2">Renew</span>
+                    </span>
                     <Badge variant={urgent ? 'danger' : 'warning'}>{endsLabel(item.days)}</Badge>
                   </RowLink>
                 );
@@ -469,7 +481,7 @@ export default function Dashboard() {
           index={4}
           className="xl:col-span-2"
           title="Recent payments"
-          icon={FiCreditCard}
+          icon={FiCreditCard} iconClassName="text-black dark:text-gray-300"
           action={<PanelLink as={Link} to="/transactions" icon={FiArrowRight}>All transactions</PanelLink>}
         >
           {isLoading ? (
@@ -510,7 +522,7 @@ export default function Dashboard() {
         <Panel
           index={5}
           title="New members"
-          icon={FiUserPlus}
+          icon={FiUserPlus} iconClassName="text-black dark:text-gray-300"
           action={<PanelLink as={Link} to="/members" icon={FiArrowRight}>All members</PanelLink>}
         >
           {isLoading ? (
@@ -531,7 +543,10 @@ export default function Dashboard() {
                     className="min-h-12 py-2"
                   >
                     <Avatar name={name} size="sm" />
-                    <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-ink">{name}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-medium text-ink">{name}</span>
+                      {member.joinedAt && <span className="mt-0.5 block text-[13px] text-muted">Joined {formatJoined(member.joinedAt, now)}</span>}
+                    </span>
                   </RowLink>
                 );
               })}
@@ -546,7 +561,7 @@ export default function Dashboard() {
           index={6}
           className="xl:col-span-2"
           title="Monthly income"
-          icon={FiTrendingUp}
+          icon={FiTrendingUp} iconClassName="text-black dark:text-gray-300"
           meta={<span className="text-[13px] font-normal text-muted">Last 6 months</span>}
           action={<PanelLink as={Link} to="/reports" icon={FiArrowRight}>Reports</PanelLink>}
           bodyClassName="flex flex-col gap-4"
@@ -610,14 +625,12 @@ export default function Dashboard() {
         <Panel
           index={7}
           title="Coming up this week"
-          icon={FiCalendar}
-          action={<PanelLink as="a" href="#overview-calendar" icon={FiArrowRight}>Calendar</PanelLink>}
+          icon={FiCalendar} iconClassName="text-black dark:text-gray-300"
         >
           {eventsThisWeek.length === 0 ? (
             <EmptyState
               icon={FiCalendar}
               title="No classes or events this week"
-              action={<Button size="sm" variant="outline" icon={<FiCalendar size={14} />} onClick={() => handleOpenNewCoachEvent()}>Add a class or event</Button>}
             >
               Classes and sessions you add show up here.
             </EmptyState>
@@ -653,7 +666,7 @@ export default function Dashboard() {
         </Panel>
       </div>
 
-      <Panel index={8} id="overview-calendar" title="Subscriptions & events calendar" icon={FiCalendar} className="relative w-full scroll-mt-4">
+      <Panel index={8} id="overview-calendar" title="Subscriptions & events calendar" icon={FiCalendar} iconClassName="text-black dark:text-gray-300" className="relative w-full scroll-mt-4">
         <Suspense fallback={<CalendarLoading />}>
         <SubscriptionsCalendarView
           subscriptions={subscriptions}

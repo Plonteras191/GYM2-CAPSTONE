@@ -183,7 +183,6 @@ export function useSubscriptions() {
     price: '',
     duration_days: 30,
     category: '',
-    category_detail: '',
     color: '#10b981',
   });
 
@@ -585,7 +584,7 @@ export function useSubscriptions() {
     });
   };
 
-  const emptyPlan = () => ({ name: '', price: '', duration_days: 30, category: '', category_detail: '', color: '#10b981' });
+  const emptyPlan = () => ({ name: '', price: '', duration_days: 30, category: '', color: '#10b981' });
 
   const handleOpenNewPlan = () => {
     setNewPlan(emptyPlan());
@@ -595,7 +594,6 @@ export function useSubscriptions() {
     ...plan,
     price: String(plan.price ?? ''),
     duration_days: String(plan.duration_days ?? ''),
-    category_detail: plan.category_detail || '',
     color: plan.color || getPackageColor(plan),
   });
 

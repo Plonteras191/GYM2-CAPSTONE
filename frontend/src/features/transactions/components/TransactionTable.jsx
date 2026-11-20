@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiDownload, FiRotateCcw, FiList, FiPrinter, FiUser, FiLoader, FiCreditCard, FiSearch, FiX } from 'react-icons/fi';
+import { FiDownload, FiRotateCcw, FiList, FiPrinter, FiUser, FiLoader, FiCreditCard, FiSearch, FiX } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import { getMediaUrl } from '../../../utils/mediaUrl';
 import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
@@ -13,7 +13,9 @@ import Badge from '../../../components/ui/Badge';
 import Avatar from '../../../components/ui/Avatar';
 import IconButton from '../../../components/ui/IconButton';
 import TableShell, { Toolbar, TableLoading, CardListLoading, MobileCard } from '../../../components/ui/TableShell';
-import { thClass, tdClass } from '../../../components/ui/field';
+import { thClass, tdClass, fieldClass, labelClass } from '../../../components/ui/field';
+import StyledSelect from '../../../components/ui/StyledSelect';
+import { DATE_PRESETS } from '../hooks/useTransactions';
 
 const statusVariant = (status) => {
   switch (status) {
@@ -56,7 +58,7 @@ const TYPE_OPTIONS = [
   { value: 'Refund', label: 'Refunds' },
 ];
 
-function NoResults({ isFiltered, searchTerm, onClear, onAdd }) {
+function NoResults({ isFiltered, searchTerm, onClear }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-hover text-muted">
@@ -67,12 +69,10 @@ function NoResults({ isFiltered, searchTerm, onClear, onAdd }) {
           {isFiltered ? (searchTerm.trim() ? `No transactions match “${searchTerm.trim()}”` : 'No transactions of this type') : 'No transactions yet'}
         </p>
         <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">
-          {isFiltered ? 'Search by transaction ID or member name, or clear the filters.' : 'Payments you record will be listed here.'}
+          {isFiltered ? 'Search by transaction ID or member name, or clear the filters.' : 'Payments recorded from the Packages page will be listed here.'}
         </p>
       </div>
-      {isFiltered
-        ? <Button size="sm" variant="outline" icon={<FiX size={14} />} onClick={onClear}>Clear search and filters</Button>
-        : <Button size="sm" icon={<FiPlus size={14} />} onClick={onAdd}>Record a payment</Button>}
+      {isFiltered && <Button size="sm" variant="outline" icon={<FiX size={14} />} onClick={onClear}>Clear search and filters</Button>}
     </div>
   );
 }
@@ -89,7 +89,7 @@ function MemberDetails({ member, snapshot, profilePicSnapshot, emailSnapshot }) 
         <span className={`block truncate font-medium ${memberName ? `text-ink${linked ? ' link-draw' : ''}` : 'italic text-warn'}`}>
           {memberName || 'Walk-in Guest'}
         </span>
-        {(member?.email || emailSnapshot) && <span className="mt-0.5 block truncate text-[13px] text-muted">{member?.email || emailSnapshot}</span>}
+        {(member?.email || emailSnapshot) && <span className="mt-0.5 block truncate text-[13px] normal-case text-muted">{member?.email || emailSnapshot}</span>}
       </div>
     </>
   );
@@ -106,9 +106,15 @@ export default function TransactionTable({
   setSearchTerm,
   filterType,
   setFilterType,
+  datePreset = 'all',
+  setDatePreset = () => {},
+  customStart = '',
+  setCustomStart = () => {},
+  customEnd = '',
+  setCustomEnd = () => {},
+  dateRange = { label: 'All dates' },
   isExporting,
   refundingId,
-  onAddTransaction,
   onRefundTransaction,
   onExportCSV,
   onPrintReceipt
@@ -119,7 +125,7 @@ export default function TransactionTable({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterType]);
+  }, [searchTerm, filterType, datePreset, customStart, customEnd]);
 
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -129,8 +135,14 @@ export default function TransactionTable({
     setCurrentPage(page => Math.max(1, Math.min(page, totalPages || 1)));
   }, [totalPages]);
 
-  const isFiltered = searchTerm.trim() !== '' || filterType !== 'All';
-  const clearFilters = () => { setSearchTerm(''); setFilterType('All'); };
+  const isFiltered = searchTerm.trim() !== '' || filterType !== 'All' || datePreset !== 'all';
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterType('All');
+    setDatePreset('all');
+    setCustomStart('');
+    setCustomEnd('');
+  };
 
   const rowActions = (txn, withLabels = false) => (
     <div className="inline-flex items-center gap-1.5">
@@ -151,7 +163,8 @@ export default function TransactionTable({
 
   return (
     <div className="space-y-5 lg:space-y-6">
-      <Toolbar index={1} className="lg:flex-row lg:items-center">
+      <Toolbar index={1}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center lg:flex-1">
           <SearchInput
             value={searchTerm}
@@ -169,15 +182,35 @@ export default function TransactionTable({
           />
         </div>
 
-        <div className="grid w-full grid-cols-3 gap-2 lg:w-auto lg:flex">
-          <Button onClick={onAddTransaction} icon={<FiPlus size={18} strokeWidth={2.5} />} className="min-w-0 whitespace-nowrap px-3">
-            <span className="md:hidden">Record</span>
-            <span className="hidden md:inline">Record Transaction</span>
-          </Button>
+        <div className="grid w-full grid-cols-2 gap-2 lg:w-auto lg:flex">
           <Button variant="outline" onClick={onExportCSV} disabled={isExporting} isLoading={isExporting} icon={<FiDownload size={17} />} className="min-w-0 whitespace-nowrap px-3" title="Download filtered transactions as a spreadsheet">
             {isExporting ? 'Exporting…' : 'Export CSV'}
           </Button>
           <Button variant="outline" onClick={() => window.print()} icon={<FiPrinter size={17} />} className="min-w-0 whitespace-nowrap px-3">Print All</Button>
+        </div>
+        </div>
+
+        {/* Date: narrows the list, the CSV export and the printout. */}
+        <div className="flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <label className="block min-w-0 sm:w-48">
+            <span className={labelClass}>Date</span>
+            <StyledSelect value={datePreset} onChange={(e) => setDatePreset(e.target.value)} aria-label="Filter transactions by date" className={fieldClass}>
+              {DATE_PRESETS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </StyledSelect>
+          </label>
+          {datePreset === 'custom' && (
+            <div className="grid grid-cols-2 gap-3 sm:w-[22rem]">
+              <label className="block min-w-0">
+                <span className={labelClass}>From</span>
+                <input type="date" value={customStart} max={customEnd || undefined} onChange={(e) => setCustomStart(e.target.value)} className={fieldClass} />
+              </label>
+              <label className="block min-w-0">
+                <span className={labelClass}>To</span>
+                <input type="date" value={customEnd} min={customStart || undefined} onChange={(e) => setCustomEnd(e.target.value)} className={fieldClass} />
+              </label>
+            </div>
+          )}
+          <p className="flex min-h-11 items-center text-[13px] text-muted sm:ml-auto" aria-live="polite">{dateRange.label}</p>
         </div>
       </Toolbar>
 
@@ -189,7 +222,7 @@ export default function TransactionTable({
         action={isFiltered && !isLoading && (
           <div className="flex items-center gap-3 text-[13px]">
             <span className="text-muted">Showing {transactions.length.toLocaleString()} of {totalCount.toLocaleString()}</span>
-            <button type="button" onClick={clearFilters} className="press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-medium text-ink-2 hover:bg-hover hover:text-ink">
+            <button type="button" onClick={clearFilters} className="press inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold text-ink-2 hover:bg-hover hover:text-ink">
               <FiX size={14} aria-hidden="true" /> Clear filters
             </button>
           </div>
@@ -221,7 +254,7 @@ export default function TransactionTable({
               {isLoading ? (
                 <TableLoading colSpan={7} />
               ) : currentTxns.length === 0 ? (
-                <tr><td colSpan={7}><NoResults isFiltered={isFiltered} searchTerm={searchTerm} onClear={clearFilters} onAdd={onAddTransaction} /></td></tr>
+                <tr><td colSpan={7}><NoResults isFiltered={isFiltered} searchTerm={searchTerm} onClear={clearFilters} /></td></tr>
               ) : (
                 currentTxns.map((txn, i) => (
                   <tr key={txn.id} className="rise transition-colors hover:bg-hover" style={{ '--i': Math.min(i, 8) * 0.5 + 2 }}>
@@ -262,7 +295,7 @@ export default function TransactionTable({
           {isLoading ? (
             <CardListLoading />
           ) : currentTxns.length === 0 ? (
-            <NoResults isFiltered={isFiltered} searchTerm={searchTerm} onClear={clearFilters} onAdd={onAddTransaction} />
+            <NoResults isFiltered={isFiltered} searchTerm={searchTerm} onClear={clearFilters} />
           ) : currentTxns.map((txn, i) => {
             const memberName = txn.member_name_snapshot || (txn.member ? `${txn.member.first_name} ${txn.member.last_name}` : '');
             const profilePic = txn.member?.profile_pic || txn.member_profile_pic_snapshot;
