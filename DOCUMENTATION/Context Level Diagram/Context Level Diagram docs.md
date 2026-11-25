@@ -10,7 +10,7 @@ Figure 4.4 shows the Context Level Diagram. It has four external entities: the G
 
 **Figure 4.4.** Context Level Diagram for the IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring.
 
-The **Gym Owner / Administrator** is the only operator; the owner and the coach share one login. The administrator sends an email and password, member details with body type, face capture and consent, packages, subscriptions and renewals, classes and events, payments and refunds, training plans, manual verifications, manual check-ins, report dates and camera choices. In return the system shows the dashboard, notifications, member and payment records, live camera feeds, today's attendance, the status and counted repetitions of workout tasks, and reports that can be exported as CSV or printed.
+The **Gym Owner / Administrator** is the only operator; the owner and the coach share one login. The administrator sends an email and password, member details with body type, face capture and consent, packages, subscriptions and renewals, pausing and resuming subscriptions, classes and events, payments, training plans, manual verifications, manual check-ins, report dates and camera choices. In return the system shows the dashboard, notifications, member and payment records, live camera feeds, today's attendance, every subscriber's attendance summary, the status and counted repetitions of workout tasks, and reports that can be exported as CSV or printed.
 
 The **Gym Member** takes part in person and has no login. During registration the member gives personal details, agrees to face enrollment and poses for the face capture; payments are made through the administrator, who prints the receipt.
 

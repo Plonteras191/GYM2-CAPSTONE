@@ -4,6 +4,8 @@
 
 > **Updated November 17, 2026** to match the system as built: no login PIN, body type and face consent at registration, manual check-in, repetition counting, renewals, the Price list, and four report types.
 
+> **Updated November 25, 2026:** refunds were replaced by pausing and resuming a subscription (new table `membership_pauses`), and the Attendance page was added.
+
 ## 1.1 Login and navigation
 
 ```mermaid
@@ -26,6 +28,7 @@ flowchart TD
     Select --> M5["Attendance Monitor"]
     Select --> M6["Gesture Monitor"]
     Select --> M7["Admin Profile"]
+    Select --> M8["Attendance<br/>(every subscriber)"]
 
     M1 --> Out{"Log out?"}
     M2 --> Out
@@ -34,6 +37,7 @@ flowchart TD
     M5 --> Out
     M6 --> Out
     M7 --> Out
+    M8 --> Out
     Out -- No --> Dash
     Out -- Yes --> Logout["Log out (session token deleted)"]
     Logout --> End([End])
@@ -88,6 +92,25 @@ flowchart TD
     L --> Z
 ```
 
+## 1.3a Attendance page
+
+```mermaid
+flowchart TD
+    A([Start]) --> B["Open Attendance"]
+    B --> C["System lists each member's latest subscription<br/>(walk-in and daily passes are left out)"]
+    C --> D["Show subscription status, this week (Mon to Sun),<br/>last visit, visits this month and, for With Coach<br/>members, this week's coach tasks"]
+    D --> E{"Filter, search<br/>or sort?"}
+    E -- Yes --> F["Filter: Active, Not seen 7+ days, Paused or Expired;<br/>search by name or ID; sort by absence, recent visit,<br/>visits or name"]
+    F --> D
+    E -- No --> G{"Open a<br/>member?"}
+    G -- No --> Z([End])
+    G -- Yes --> H["Show the member's attendance calendar,<br/>check-in history and coach plan"]
+    H --> I{"Manual<br/>check-in?"}
+    I -- Yes --> J["Check the member in<br/>(same rules as the Attendance Monitor)"]
+    J --> Z
+    I -- No --> Z
+```
+
 ## 1.4 Program monitoring
 
 ```mermaid
@@ -136,8 +159,8 @@ flowchart TD
     D5 --> Z
 
     C -- "Subscribe a member" --> E["Select member, package,<br/>start date and payment method"]
-    E --> F{"Member already has an<br/>active subscription?"}
-    F -- Yes --> G["Show error:<br/>upgrade the existing subscription instead"]
+    E --> F{"Member already has an active<br/>or paused subscription?"}
+    F -- Yes --> G["Show error: upgrade or resume<br/>the existing subscription instead"]
     G --> Z
     F -- No --> H["Save subscription<br/>(end date = start date + package duration)"]
     H --> I["Create the payment transaction automatically"]
@@ -159,6 +182,15 @@ flowchart TD
     N --> O["Create an upgrade transaction for the balance<br/>(new price minus amount already paid)"]
     O --> Z
 
+    C -- "Pause" --> S1{"Subscription is<br/>running today?"}
+    S1 -- No --> S2["Show error: only a running<br/>subscription can be paused"]
+    S2 --> Z
+    S1 -- Yes --> S3["Status set to Paused;<br/>the days left are kept<br/>(the gym gives no refunds)"]
+    S3 --> Z
+    C -- "Resume" --> S4["Status set back to Active"]
+    S4 --> S5["End date moves later by the days paused;<br/>the member is set back to Active"]
+    S5 --> Z
+
     C -- "Classes and events" --> Q["Add, edit or delete a calendar event"]
     Q --> Z
 ```
@@ -177,14 +209,6 @@ flowchart TD
     G -- Yes --> H["Print receipt"]
     H --> Z([End])
     G -- No --> Z
-
-    C -- "Refund" --> I["Select a transaction"]
-    I --> J{"Completed, positive amount<br/>and not already a refund?"}
-    J -- No --> K["Show error"]
-    K --> Z
-    J -- Yes --> L["Create a negative refund transaction"]
-    L --> M["Mark the original transaction as Refunded"]
-    M --> Z
 
     C -- "Export" --> N["Download CSV or print<br/>the transaction list"]
     N --> Z

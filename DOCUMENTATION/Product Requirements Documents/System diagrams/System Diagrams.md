@@ -77,13 +77,13 @@ flowchart LR
     System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
 
     Admin -->|"F1: Email and password"| System
-    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System
+    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions, renewals, pausing and resuming subscriptions, classes and events, payments"| System
     Admin -->|"F3: Training plans and manual verification"| System
     Admin -->|"F4: Report dates, camera selection, manual check-ins and profile updates"| System
 
     System -->|"F5: Login result, dashboard summary and notifications"| Admin
     System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
-    System -->|"F7: Live camera feeds, today's attendance, workout task status and counted repetitions"| Admin
+    System -->|"F7: Live camera feeds, today's attendance, every subscriber's attendance summary, workout task status and counted repetitions"| Admin
     System -->|"F8: Reports (CSV or print)"| Admin
 
     Camera -->|"F9: Live video of faces and exercise movement"| System
@@ -148,8 +148,8 @@ flowchart LR
     S31[("D3 face photo files")]
     P3 -->|"Face photo"| S31
 
-    Admin -->|"Camera selection, manual check-in"| P4
-    P4 -->|"Live feed, today's check-ins"| Admin
+    Admin -->|"Camera selection, manual check-in, attendance page filters"| P4
+    P4 -->|"Live feed, today's check-ins, every subscriber's attendance"| Admin
     S40[("D2 members")]
     P4 ~~~ S40
     S40 -->|"Enrolled members"| P4
@@ -161,7 +161,10 @@ flowchart LR
     P4 <-->|"Member, date, time in, method, camera, subscription status"| S42
     S43[("D7 memberships")]
     P4 ~~~ S43
-    S43 -->|"Subscription on the check-in date"| P4
+    S43 -->|"Subscription on the check-in date, latest subscription per member"| P4
+    S44[("D5 workout_logs")]
+    P4 ~~~ S44
+    S44 -->|"This week's coach tasks"| P4
 
     Admin -->|"7-day training plan, manual verification"| P5
     P5 -->|"Task status, counted repetitions, workout history"| Admin
@@ -171,7 +174,7 @@ flowchart LR
     P5 ~~~ S51
     S51 -->|"Active With Coach subscription"| P5
 
-    Admin -->|"Packages, subscriptions, renewals, upgrades, classes and events"| P6
+    Admin -->|"Packages, subscriptions, renewals, upgrades, pause and resume, classes and events"| P6
     P6 -->|"Package list, subscription status"| Admin
     S60[("D6 plans")]
     P6 <-->|"Packages"| S60
@@ -181,8 +184,10 @@ flowchart LR
     P6 -->|"Automatic payment record"| S62
     S63[("D10 coach_events")]
     P6 <-->|"Classes and events"| S63
+    S64[("D12 membership_pauses")]
+    P6 <-->|"Pause history"| S64
 
-    Admin -->|"Payment details, refund request"| P7
+    Admin -->|"Payment details"| P7
     P7 -->|"Transaction list, receipt"| Admin
     S70[("D8 transactions")]
     P7 <-->|"Transactions"| S70
@@ -227,7 +232,7 @@ flowchart LR
         UC2(["View Dashboard<br/>and Notifications"])
         UC3(["Manage Members,<br/>Body Type and Face Capture"])
         UC4(["Manage Packages, Subscriptions,<br/>Renewals and Upgrades"])
-        UC5(["Record Payments,<br/>Receipts and Refunds"])
+        UC5(["Record Payments<br/>and Receipts"])
         UC6(["Build Training Plans and<br/>Verify Tasks Manually"])
         UC7(["View Attendance and<br/>Gesture Monitors,<br/>Check In Manually"])
         UC8(["Generate Reports"])

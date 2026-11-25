@@ -4,6 +4,8 @@
 
 > **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
+> **Updated November 25, 2026:** refunds were replaced by pausing and resuming a subscription (new table `membership_pauses`), and the Attendance page was added.
+
 ```mermaid
 erDiagram
     admins {
@@ -85,11 +87,23 @@ erDiagram
         varchar plan_type
         date start_date
         date end_date
-        varchar status
+        varchar status "Active, Paused, Expired or Cancelled"
+        date paused_at "nullable, day the current pause started"
         boolean auto_renew
         varchar payment_method
         varchar color
         text notes "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    membership_pauses {
+        bigint id PK
+        bigint membership_id FK
+        date paused_on
+        date resumed_on "nullable"
+        int days "nullable, added to end_date on resume"
+        bigint paused_by_admin_id "nullable, no FK"
+        bigint resumed_by_admin_id "nullable, no FK"
         timestamp created_at
         timestamp updated_at
     }
@@ -172,6 +186,7 @@ erDiagram
     package_categories |o..o{ plans : "category_detail = name (no FK)"
     members |o--o{ transactions : "member_id"
     memberships |o--o{ transactions : "membership_id"
+    memberships ||--o{ membership_pauses : "membership_id"
     members |o--o{ attendances : "member_id"
     members ||--o{ workout_logs : "member_id"
     coach_event_categories ||--o{ coach_events : "category_id"
@@ -179,7 +194,9 @@ erDiagram
 
 Decimal sizes: `members.height` and `members.weight` are DECIMAL(5,2), `plans.price` is DECIMAL(9,2), `transactions.amount` is DECIMAL(10,2).
 
-On delete: `workout_logs` are deleted with the member; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to null; `coach_events.category_id` is restricted (a category with events cannot be deleted).
+On delete: `workout_logs` are deleted with the member and `membership_pauses` with their subscription; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to null; `coach_events.category_id` is restricted (a category with events cannot be deleted).
+
+Refunds are not offered: a subscription is paused instead (`memberships.status` = Paused, `memberships.paused_at`), and each pause is kept in `membership_pauses`; on resume the paused days are added to `end_date`.
 
 `memberships.plan_id` has no foreign key in the database (checked with `SHOW CREATE TABLE memberships;`). The application refuses to delete a package while a running subscription uses it, and an ended subscription keeps its package name in `plan_type`.
 

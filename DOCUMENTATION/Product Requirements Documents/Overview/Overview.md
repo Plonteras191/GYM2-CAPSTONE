@@ -18,8 +18,9 @@ Registered Gym Members — participate through registration, facial data enrollm
 Core Features
 Member Registration — captures personal, membership, anthropometric, and facial enrollment data.
 Facial Recognition Attendance — identifies members via enrolled facial data and logs attendance with date/time.
+Attendance Page — shows every subscriber's last visit, visits this week and month, and coach-plan progress, and opens a member's attendance calendar without the profile.
 Gesture-Based Program Monitoring — detects body landmarks to recognize selected exercise movements and count repetitions (scope-limited; not a full posture-correction tool).
-Membership Management — tracks subscription status, renewals, and expirations.
+Membership Management — tracks subscription status, renewals, expirations, and pauses (a subscription is paused and resumed instead of refunded).
 Payment Transaction Recording — logs cash, GCash, and Maya payments and maintains payment history.
 Reports Module — generates attendance, program monitoring, membership, and payment reports.
 Key Constraints / Out of Scope
@@ -28,6 +29,7 @@ Gesture monitoring is limited to exercises within the approved study scope and d
 No medical diagnosis or automated fitness recommendations.
 No multi-factor authentication or penetration testing (excluded due to time/resource limits).
 No full payment gateway integration.
+No refunds: a subscription is paused instead, and the paused days are added to its end date.
 Success Criteria
 Accurate facial recognition attendance under normal gym lighting conditions.
 Correct membership expiration/renewal tracking.

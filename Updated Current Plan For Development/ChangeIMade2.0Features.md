@@ -544,4 +544,38 @@ File: `Chapter4_Diagrams (2).md`.
   4. Walk-in and daily passes are not listed; each member shows their latest subscription.
 - **Backend:** new endpoint `GET /api/attendance/subscribers` (`Tracking/AttendanceTrackerController`), admin-only. Counts come from grouped database queries; training tasks use the same rules as the reports (a task is pending until verified, and missed once its day has passed). The side panel reuses the existing `/members/{id}/attendance` and `/members/{id}/workouts`.
 - **Tests:** new `AttendanceTrackerTest` (5 tests: week/month/today counts and last visit, absent and never-visited members, walk-ins left out and latest subscription shown, paused days kept, With Coach task counts), plus the access check. Backend: 120 pass; the 2 older `SecurityTest` tests still need PHP's GD extension. The page was checked in the browser in light and dark mode and at phone width.
-- **Documents to update later:** the use case diagram and the system process flow (the new Attendance page), and `TestCase.md` (a test case for it).
+- **Documents to update later:** the use case diagram and the system process flow (the new Attendance page), and `TestCase.md` (a test case for it). *Done in item 29.*
+
+---
+
+### 29. Documentation Aligned With Items 27 and 28 (November 25)
+**What was done:** the documents now describe the system as it is after pause/resume replaced refunds (item 27), the Attendance page was added (item 28), and the Annual package was removed. No program code was changed in this item.
+
+**What the documents now say:**
+- **Refunds:**
+  - No refund anywhere: the Refund use case, the refund branch of the payment flow, the "refund request" data flow, the refund endpoint and the Refund / Refunded values in the `transactions` data dictionary were removed.
+  - The documents state that payments are never edited, deleted or refunded. The older text that said a transaction could be edited or deleted was also wrong and was corrected.
+- **Pause and resume:**
+  - New Pause / Resume use cases and process-flow branches.
+  - The member can ask the admin to pause or resume.
+  - `memberships.status` includes Paused, with the new `paused_at` column.
+  - New table **`membership_pauses`**: Table 13 in the data dictionaries, an entity in both ERDs, **D12** in the Chapter 4 / DOCUMENTATION DFD and **D14** in the detailed `Correct_Diagrams` DFD.
+- **Attendance page:**
+  - New use cases ("View Every Subscriber's Attendance", extended by "View a Member's Attendance Calendar, Check-ins and Coach Plan").
+  - A new process-flow branch and a new section 1.3a.
+  - New flows from D5 `workout_logs` and D7 `memberships` into process 4.0, and the context-level F7 output.
+  - A user-guide section, and the API endpoint `GET /api/attendance/subscribers`.
+- **Annual:** removed from the package examples and from SBT-004 (now Monthly → With Coach).
+
+**Documents updated:**
+- `Updated Current Plan For Development/Chapter4_Diagrams (2).md` (Figures 4.3 to 4.10);
+- `Correct_Diagrams/` 1 to 6;
+- `DOCUMENTATION/` Context Level, Data Flow, System Process Flow (both), Use Case (both), Logical and Physical ERD (diagrams and write-ups);
+- the PRD's Architecture, Database Documentation, Overview, System Diagrams and User Technical Documentation;
+- `TestCase.md` and `README.md`.
+
+**Tests:**
+- **Re-run needed:** SBT-005 and IT-005 (Transactions). Their earlier "Passed" covered the removed Refund action.
+- **New, not yet run:** SBT-012 and IT-012 (Pause and Resume), and SBT-013 and IT-013 (Attendance page). The automated backend tests for both features pass.
+
+**Check:** all 57 Mermaid diagrams in the 26 edited files were parsed with Mermaid 11 and none failed.

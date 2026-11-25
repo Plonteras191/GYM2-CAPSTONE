@@ -4,7 +4,7 @@
 **Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)
 **Document Version:** 2.0
 **Date:** November 17, 2026
-**Describes:** the database and the business rules as built on this date (12 tables in use).
+**Describes:** the database and the business rules as built on this date (13 tables in use; updated November 25, 2026 for subscription pauses).
 
 ---
 
@@ -64,7 +64,8 @@ Models live in `app/Models/` (`Auth/Admin`, `Member/Member`, `Member/Membership`
 4. **Package delete guard (`PlanController`):** a package is not deleted while a running subscription uses it.
 5. **Coach eligibility (`Membership::scopeActiveWithCoach`):** a member is tracked by the Gesture Monitor only while they have an active subscription to a With Coach package (or, if the package was deleted, one whose saved package name contains "With Coach").
 6. **Workouts (`WorkoutController`, `AiBridgeController`):** a plan is saved as tasks for the next 7 days. The engine reports the repetitions it counted while a member works (the count never goes down) and verifies the task when the target is reached; a coach can verify by hand. Each task records `verified_by` and `verified_at`.
-7. **Payments (`TransactionController`):** receipts get codes such as TXN-001; a refund adds a negative entry and marks the original Refunded.
+7. **Payments (`TransactionController`):** receipts get codes such as TXN-001. Payments are never edited, deleted or refunded.
+8. **Pausing (`MembershipController`):** instead of a refund, a running subscription can be paused (`POST /api/memberships/{id}/pause`): its status becomes Paused, `paused_at` is set and a `membership_pauses` row is added. Resuming (`POST /api/memberships/{id}/resume`) adds the paused days to `end_date`. While paused, a new sale or a renewal for the member is refused.
 
 ### 2.4. Authentication
 The admin signs in with email and password (no verification code) and receives a **Sanctum** token stored in `personal_access_tokens`; every admin request must send it. The Python engine uses a separate shared secret in the `X-AI-Engine-Token` header (`AI_ENGINE_TOKEN`). The password-reset PIN is stored hashed in `password_reset_pins`.
@@ -154,11 +155,23 @@ erDiagram
         varchar plan_type
         date start_date
         date end_date
-        varchar status
+        varchar status "Active, Paused, Expired or Cancelled"
+        date paused_at "nullable, day the current pause started"
         boolean auto_renew
         varchar payment_method
         varchar color
         text notes "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    membership_pauses {
+        bigint id PK
+        bigint membership_id FK
+        date paused_on
+        date resumed_on "nullable"
+        int days "nullable, added to end_date on resume"
+        bigint paused_by_admin_id "nullable, no FK"
+        bigint resumed_by_admin_id "nullable, no FK"
         timestamp created_at
         timestamp updated_at
     }
@@ -241,12 +254,13 @@ erDiagram
     package_categories |o..o{ plans : "category_detail = name (no FK)"
     members |o--o{ transactions : "member_id"
     memberships |o--o{ transactions : "membership_id"
+    memberships ||--o{ membership_pauses : "membership_id"
     members |o--o{ attendances : "member_id"
     members ||--o{ workout_logs : "member_id"
     coach_event_categories ||--o{ coach_events : "category_id"
 ```
 
-Notes: decimal sizes are `members.height` and `weight` DECIMAL(5,2), `plans.price` DECIMAL(9,2), `transactions.amount` DECIMAL(10,2), `attendances.match_distance` DECIMAL(5,4). On delete: `workout_logs` are deleted with the member; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` become empty; a category with events cannot be deleted. `memberships.plan_id` has no foreign key.
+Notes: decimal sizes are `members.height` and `weight` DECIMAL(5,2), `plans.price` DECIMAL(9,2), `transactions.amount` DECIMAL(10,2), `attendances.match_distance` DECIMAL(5,4). On delete: `workout_logs` are deleted with the member and `membership_pauses` with their subscription; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` become empty; a category with events cannot be deleted. `memberships.plan_id` has no foreign key.
 
 Tables in the database that the application does not use (not drawn): `face_encodings`, `payments`, `exercise_sessions`, `gesture_logs`, `exercises`, `auth_verification_codes`, `users` and Laravel's own tables.
 
@@ -333,7 +347,7 @@ Names and colours of custom package categories (older feature; the screen now of
 | `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
 
 ### Table 6: `plans`
-The packages the gym sells (Monthly, Annual, With Coach, Walk-In...), with their price and length.
+The packages the gym sells (Daily, Monthly, With Coach...), with their price and length.
 
 | Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
@@ -360,7 +374,8 @@ A member's subscription to a package for a period. Keeps the member's name and t
 | `plan_type` | `VARCHAR(255)` | - | No | Package name saved on the subscription (stays after the package is deleted) |
 | `start_date` | `DATE` | - | No | First day |
 | `end_date` | `DATE` | - | No | Last day. A renewal of a running subscription moves this date forward |
-| `status` | `VARCHAR(255) (default Active)` | - | No | Active, Expired or Cancelled (a running subscription past its end date is shown as Expired) |
+| `status` | `VARCHAR(255) (default Active)` | - | No | Active, Paused, Expired or Cancelled (a running subscription past its end date is shown as Expired) |
+| `paused_at` | `DATE` | - | Yes | Day the current pause started; empty when not paused. On resume the paused days are added to `end_date` |
 | `auto_renew` | `TINYINT(1) (default 0)` | - | No | Always 0: the gym does not bill automatically; renewals are made at the desk |
 | `payment_method` | `VARCHAR(255) (default Cash)` | - | No | Cash, Gcash or Maya |
 | `color` | `VARCHAR(255) (default #f59e0b)` | - | No | Colour shown on the calendar (hex) |
@@ -370,7 +385,7 @@ A member's subscription to a package for a period. Keeps the member's name and t
 | `plan_id` | `BIGINT(20) UNSIGNED` | - | Yes | The package. There is no foreign key: the application keeps the link, and refuses to delete a package members are subscribed to |
 
 ### Table 8: `transactions`
-Every payment, upgrade, renewal and refund, with the details needed to print a receipt.
+Every payment, upgrade and renewal, with the details needed to print a receipt. Payments are never edited, deleted or refunded.
 
 | Column | Data type | Key / constraint | Nullable | Meaning |
 |---|---|---|:---:|---|
@@ -382,11 +397,11 @@ Every payment, upgrade, renewal and refund, with the details needed to print a r
 | `member_email_snapshot` | `VARCHAR(255)` | - | Yes | Member email at the time |
 | `member_profile_pic_snapshot` | `VARCHAR(255)` | - | Yes | Member picture at the time |
 | `membership_id` | `BIGINT(20) UNSIGNED` | Foreign key to `memberships` (set to empty on delete) | Yes | The subscription this payment is for |
-| `type` | `VARCHAR(255)` | - | No | Subscription Payment, Subscription Upgrade, Subscription Renewal, Subscription, Walk-In, Walk-in Guest, Packages or Refund |
+| `type` | `VARCHAR(255)` | - | No | Subscription Payment, Subscription Upgrade, Subscription Renewal, Subscription, Walk-In, Walk-in Guest or Packages |
 | `description` | `VARCHAR(255)` | - | Yes | Short description of what was paid |
 | `payment_method` | `VARCHAR(255)` | - | No | Cash, Gcash or Maya |
-| `amount` | `DECIMAL(10,2)` | - | No | Amount in pesos (negative for a refund) |
-| `status` | `VARCHAR(255) (default Complete)` | - | No | Complete or Refunded |
+| `amount` | `DECIMAL(10,2)` | - | No | Amount in pesos |
+| `status` | `VARCHAR(255) (default Complete)` | - | No | Complete |
 | `reference_number` | `VARCHAR(255)` | - | Yes | GCash / Maya reference or receipt number |
 | `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
 | `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
@@ -457,6 +472,21 @@ Classes and events shown on the Packages calendar and the Overview.
 | `start_time` | `TIME` | - | No | Start time |
 | `end_time` | `TIME` | - | No | End time |
 | `location` | `VARCHAR(255)` | - | No | Where it takes place |
+| `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
+| `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
+
+### Table 13: `membership_pauses`
+One row per pause of a subscription (the gym gives no refunds; a subscription is paused instead). Kept as history.
+
+| Column | Data type | Key / constraint | Nullable | Meaning |
+|---|---|---|:---:|---|
+| `id` | `BIGINT(20) UNSIGNED` | Primary key | No | Unique identifier |
+| `membership_id` | `BIGINT(20) UNSIGNED` | Foreign key to `memberships` (deleted with the subscription) | No | The paused subscription |
+| `paused_on` | `DATE` | - | No | Day the pause started |
+| `resumed_on` | `DATE` | - | Yes | Day it was resumed; empty while still paused |
+| `days` | `INT UNSIGNED` | - | Yes | Days spent paused, added to `memberships.end_date` on resume |
+| `paused_by_admin_id` | `BIGINT(20) UNSIGNED` | - | Yes | Admin who paused it (no foreign key) |
+| `resumed_by_admin_id` | `BIGINT(20) UNSIGNED` | - | Yes | Admin who resumed it (no foreign key) |
 | `created_at` | `TIMESTAMP` | - | Yes | When the record was created |
 | `updated_at` | `TIMESTAMP` | - | Yes | When the record was last changed |
 

@@ -52,6 +52,15 @@ A member who is not recognized by the camera for one month is set to **Inactive*
 5. **Force AI Memory Sync** reloads the enrolled faces at once. The engine also does this by itself every minute, so a newly registered member is recognized without pressing it.
 6. **Full Log** opens the Attendance tab of Reports.
 
+### 5.1 Attendance page (every subscriber)
+Open **Attendance** in the sidebar to see every member with a subscription, without opening each profile.
+
+* **Cards:** checked in today, visits this week, **not seen in 7+ days** (Active subscribers to check on; click it to filter), and paused subscriptions.
+* **List:** each subscriber's package and status (Active, Paused, Expired) with days left or days kept; **this week** as Mon to Sun boxes (cyan = came); the **last visit** (red after 7 days away); visits this month; and, for With Coach members, this week's coach tasks done, with missed tasks.
+* **Search, filter and sort:** search by name or member ID; filter All, Active, Not seen 7+ days, Paused or Expired; sort by longest absent, most recent visit, most visits or name.
+* **Click a member** to open a window like the member profile: the summary and **Manual check-in**, **Profile** and **Training plan** buttons on the left, and tabs for the **Attendance Calendar**, the **Check-ins** history and the **Coach plan** (this week, day by day).
+* Walk-in and daily passes are not listed.
+
 ## 6. Packages
 
 The page has three tabs: **Subscriptions**, **Calendar** and **Price list**.
@@ -61,17 +70,18 @@ The page has three tabs: **Subscriptions**, **Calendar** and **Price list**.
   * **Renew** (on every row; highlighted once a subscription has ended or ends within 7 days): a dialog shows the new dates and the amount before saving. A subscription that is **still running** is extended from its current end date, so no paid days are lost. One that **has ended** starts again **today**. A running subscription can only be renewed with the same package.
   * **Edit > choose a higher-priced package** upgrades a running subscription; only the remaining balance is charged.
   * **Training plan ->** appears under With Coach subscriptions and opens the member's training plan.
+  * **Pause** (on a running subscription): the gym gives no refunds, so a member who must stop for a while is paused instead. The days left are kept (for example "25 days kept"). **Resume** sets it back to Active and moves the end date later by the days spent paused; the dialog shows the new end date first. While paused, the member cannot get a new sale or a renewal, the camera gives no workout tasks, and the member is not set to Inactive for staying away.
 * **Calendar tab.** Subscriptions and **classes and events**. Use the **Show** switch (Everything, Subscriptions, Classes & events). **Click an empty day to add a class or event** (title, category, dates, times, location, colour). Click an event to see it.
 * **Price list tab.** Every package with its length, price and how many members are subscribed now. **New package** and **Edit** use the same form (name, category, length in days, price, colour). The categories are Normal, With Coach and Walk-In; **With Coach** unlocks the training plan and camera tracking. **Delete** is refused while members are still subscribed to the package; once those subscriptions have ended, it can be deleted and ended subscriptions keep their record.
 
-Status colours: **Active**, **Expired**, and **Cancelled**.
+Status colours: **Active**, **Paused**, **Expired**, and **Cancelled**.
 
 ## 7. Transactions and Reports
 
-* **Transactions > Record a payment:** package, member (leave empty for a walk-in guest), amount, payment method (Cash, GCash, Maya) and reference number. Payments for subscriptions and renewals are recorded automatically. A transaction can be edited, deleted, **refunded** (a negative refund entry is added) and its **receipt printed**; **Print All** prints the list.
+* **Transactions > Record a payment:** package, member (leave empty for a walk-in guest), amount, payment method (Cash, GCash, Maya) and reference number. Payments for subscriptions and renewals are recorded automatically. A payment cannot be edited, deleted or refunded; its **receipt** can be printed, and **Print All** prints the list. The cards show **total revenue** and the number of payments.
 * **Reports** has four tabs. Choose dates (or Today, Last 7 days, This month), search the table, then **Export CSV** or **Print report**.
-  * **Payments:** total income, refunds, net revenue.
-  * **Memberships:** new signups, active, expired, check-ins.
+  * **Payments:** total income and number of payments.
+  * **Memberships:** new signups, active, paused, expired, check-ins.
   * **Attendance:** total check-ins, unique members, average daily visits, busiest hour; each row shows the plan and subscription status on the day, whether the check-in was by face or manual, and the camera.
   * **Program Monitoring:** assigned tasks, verified by camera, verified by coach, completion rate; each row shows the exercise, target sets and reps, **repetitions counted**, status (Pending, Missed, Verified or Detected) and who verified it.
 
@@ -154,11 +164,11 @@ All admin routes need the login token (`Authorization: Bearer <token>`). Engine 
 | Login | `POST /api/auth/login`; `POST /api/auth/logout`; `POST /api/auth/password-reset/request`, `/verify` and `/api/auth/password-reset` |
 | Account | `GET /api/admin/me`; `POST /api/admin/profile`, `/password`, `/logo` |
 | Members | `GET/POST /api/members`; `PUT/DELETE /api/members/{id}` |
-| Subscriptions | `GET/POST /api/memberships`; `PUT/DELETE /api/memberships/{id}`; `POST /api/memberships/{id}/renew` |
+| Subscriptions | `GET/POST /api/memberships`; `PUT/DELETE /api/memberships/{id}`; `POST /api/memberships/{id}/renew`, `/pause` and `/resume` |
 | Packages | `GET/POST /api/plans`; `PUT/DELETE /api/plans/{id}`; package categories under `/api/package-categories` |
 | Classes and events | `/api/coach-events` and `/api/coach-event-categories` |
-| Payments | `GET/POST /api/transactions`; `PUT/DELETE /api/transactions/{id}`; `POST /api/transactions/{id}/refund` |
-| Attendance | `GET /api/attendance/today`; `POST /api/attendance/manual`; `GET /api/members/{id}/attendance` |
+| Payments | `GET/POST /api/transactions` (payments are never edited, deleted or refunded) |
+| Attendance | `GET /api/attendance/today`; `GET /api/attendance/subscribers` (Attendance page); `POST /api/attendance/manual`; `GET /api/members/{id}/attendance` |
 | Training plans | `GET/POST /api/members/{id}/workout-plan`; `POST /api/members/{id}/assign-task`; `GET /api/members/{id}/workouts`; `PUT /api/workouts/{id}/manual-verify`; `GET /api/workouts/live` |
 | Reports, dashboard | `GET /api/reports?start=&end=`; `GET /api/dashboard`; `GET /api/notifications` |
 | Engine only | `GET /api/ai/members-faces`; `GET /api/ai/workout-plans`; `POST /api/ai/log-attendance`; `POST /api/ai/log-workout` (also carries `counted_reps` and `completed`) |

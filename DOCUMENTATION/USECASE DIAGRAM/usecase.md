@@ -21,7 +21,7 @@ flowchart LR
         UC2(["View Dashboard<br/>and Notifications"])
         UC3(["Manage Members, Face Capture<br/>and Consent"])
         UC4(["Manage Packages, Subscriptions,<br/>Renewals and Events"])
-        UC5(["Record Payments,<br/>Receipts and Refunds"])
+        UC5(["Record Payments<br/>and Receipts"])
         UC6(["Build Training Plans and<br/>Verify Tasks Manually"])
         UC7(["View Attendance and<br/>Gesture Monitors"])
         UC8(["Generate Reports"])
@@ -94,17 +94,20 @@ flowchart LR
         NewSub(["Create Subscription"])
         UpSub(["Upgrade Subscription"])
         RenewSub(["Renew Subscription"])
+        PauseSub(["Pause Subscription<br/>(no refunds; days left are kept)"])
+        ResumeSub(["Resume Subscription"])
         AutoPay(["Create Payment Transaction"])
         Events(["Manage Classes and Events"])
 
         Pay(["Record Payment<br/>(Cash, GCash, Maya)"])
         Receipt(["Print Receipt"])
-        Refund(["Refund Transaction"])
 
         Plan(["Build 7-Day Training Plan"])
         Manual(["Manually Verify Workout Task"])
 
         AttMon(["View Attendance Monitor"])
+        AttPage(["View Every Subscriber's Attendance<br/>(Attendance page)"])
+        AttDetail(["View a Member's Attendance Calendar,<br/>Check-ins and Coach Plan"])
         ManualIn(["Check In Member Manually"])
         GesMon(["View Gesture Monitor"])
         Switch(["Switch Camera Source"])
@@ -131,6 +134,8 @@ flowchart LR
         Pay ~~~ Receipt
         Receipt -.->|"«extend»"| Pay
         ManualIn -.->|"«extend»"| AttMon
+        AttPage ~~~ AttDetail
+        AttDetail -.->|"«extend»"| AttPage
         Report ~~~ Export
         Export -.->|"«extend»"| Report
     end
@@ -148,12 +153,14 @@ flowchart LR
     Admin --> NewSub
     Admin --> UpSub
     Admin --> RenewSub
+    Admin --> PauseSub
+    Admin --> ResumeSub
     Admin --> Events
     Admin --> Pay
-    Admin --> Refund
     Admin --> Plan
     Admin --> Manual
     Admin --> AttMon
+    Admin --> AttPage
     Admin --> ManualIn
     Admin --> GesMon
     Admin --> Switch
@@ -178,6 +185,7 @@ flowchart LR
    * **Delete Package extends Manage Packages and Prices:** it is refused while members are subscribed to the package.
    * **Print Receipt extends Record Payment:** only when a receipt is wanted.
    * **Check In Member Manually extends View Attendance Monitor:** used when the camera cannot recognize a member.
+   * **View a Member's Attendance Calendar, Check-ins and Coach Plan extends View Every Subscriber's Attendance:** when the admin opens one member on the Attendance page.
    * **Export CSV or Print extends Generate Report.**
 3. **System exclusions, features out of scope (per the approved scope):**
    * **No payment gateway:** payments are only recorded (Cash, GCash, Maya); no card processing.
@@ -185,6 +193,7 @@ flowchart LR
    * **No medical diagnosis:** height, weight and body type are reference data for the coach.
    * **No multi-factor authentication:** login is email and password only.
    * **No automatic billing:** renewals are made at the desk.
+   * **No refunds:** a subscription is paused and resumed instead; the paused days are added to its end date.
 
 ---
 
@@ -195,9 +204,9 @@ flowchart LR
 | **UC-01** | Authentication | Signs in with email and password and opens a session; recovers a forgotten password by emailed PIN. |
 | **UC-02** | View Dashboard & Notifications | Shows today's check-ins, expiring subscriptions, payments, income, classes and events, and alerts. |
 | **UC-03** | Member Registration & Face Enrollment | Creates members with body measurements and body type, and enrolls the face with recorded consent. |
-| **UC-04** | Packages, Subscriptions, Renewals & Events | Manages packages and prices, subscribes, upgrades and renews members, and keeps the classes and events calendar. |
-| **UC-05** | Payment Transaction Recording | Records Cash, GCash and Maya payments, refunds and printable receipts. |
-| **UC-06** | Attendance Monitoring | Views the live feed and today's check-ins, makes manual check-ins, and re-syncs faces. |
+| **UC-04** | Packages, Subscriptions, Renewals & Events | Manages packages and prices, subscribes, upgrades, renews, pauses and resumes members, and keeps the classes and events calendar. |
+| **UC-05** | Payment Transaction Recording | Records Cash, GCash and Maya payments and printable receipts. Payments are never edited, deleted or refunded. |
+| **UC-06** | Attendance Monitoring | Views the live feed and today's check-ins, makes manual check-ins, and re-syncs faces. On the Attendance page, views every subscriber's attendance and opens a member's calendar, check-ins and coach plan. |
 | **UC-07** | Training Plan & Task Verification | Builds a 7-day plan per member and verifies tasks the camera cannot check. |
 | **UC-09** | Camera Stream & Hardware Control | Views live feeds and switches the camera source. |
 | **UC-10** | Reports | Filters and exports Payments, Memberships, Attendance and Program Monitoring reports. |
@@ -265,9 +274,12 @@ flowchart LR
 * **Main Flow (renew):** the admin presses **Renew** on a subscription. A dialog shows the new dates and the amount. `POST /api/memberships/{id}/renew` extends a running subscription from its current end date, or starts a new subscription today if it has ended, and records the payment.
 * **Main Flow (upgrade):** the admin edits a running subscription to a higher-priced package; only the remaining balance is charged and the period restarts.
 * **Main Flow (price list):** on **Price list** the admin creates, edits or deletes packages (name, category Normal / With Coach / Walk-In, days, price, colour). `DELETE /api/plans/{id}` is refused while members are subscribed to the package.
+* **Main Flow (pause and resume):** the gym gives no refunds. The admin presses **Pause** on a running subscription (`POST /api/memberships/{id}/pause`): it becomes Paused and the days left are kept. **Resume** (`POST /api/memberships/{id}/resume`) sets it back to Active and moves the end date later by the days spent paused. Every pause is kept in `membership_pauses`.
 * **Main Flow (calendar):** on **Calendar** the admin clicks an empty day to add a class or event, or edits or deletes one.
 * **Alternative Flows:**
   * *1a. Member already has a running subscription:* a new one is refused ("Upgrade the existing subscription instead").
+  * *Member has a paused subscription:* a new sale or a renewal is refused until it is resumed.
+  * *Pause a subscription that is not running today* (ended or not started): refused.
   * *Renew a deleted package:* the admin must choose a package.
   * *Renew a running subscription with another package:* refused; use Edit to upgrade.
 * **Postconditions:** The subscription and its payment are saved.
@@ -282,7 +294,7 @@ flowchart LR
   1. On **Transactions** the admin presses "Record a payment".
   2. The admin chooses the package, the member (or none for a walk-in guest), the amount, the payment method (Cash, GCash, Maya) and a reference number.
   3. `POST /api/transactions` saves it with a receipt code such as TXN-001.
-  4. The admin may print the receipt, edit or delete the transaction, or refund it (`POST /api/transactions/{id}/refund`: a negative entry is added and the original is marked Refunded).
+  4. The admin may print the receipt. Payments are never edited, deleted or refunded; to stop a member's subscription for a while, the admin pauses it instead (UC-04).
 * **Alternative Flows:** *3a. Missing required field:* the form refuses to save. Rapid double clicks do not save twice.
 * **Postconditions:** The payment is in the ledger and in the reports.
 
@@ -297,6 +309,7 @@ flowchart LR
   2. Today's check-ins (`GET /api/attendance/today`) are listed with badges (Active, Expired, No Sub, Returned, Manual).
   3. For a member the camera cannot recognize, the admin presses the manual check-in button, chooses the member and types a reason (`POST /api/attendance/manual`). The same rules apply as for the camera.
   4. "Force AI Memory Sync" reloads the enrolled faces; "Full Log" opens the Attendance report.
+  5. On the **Attendance** page (`GET /api/attendance/subscribers`) the admin sees every subscriber with their subscription, this week's visits (Mon to Sun), last visit, visits this month and, for With Coach members, this week's coach tasks; can filter Active, Not seen 7+ days, Paused or Expired; and opens a member to see the attendance calendar, check-in history and coach plan.
 * **Alternative Flows:** *3a. Outside gym hours:* refused. *3b. Already checked in today:* refused.
 * **Postconditions:** The check-in is saved with its method, camera and subscription status.
 
@@ -481,6 +494,7 @@ flowchart LR
         Consent(["Consent to Face Enrollment"])
         FacePose(["Pose for Face Capture<br/>(front, chin down, left, right)"])
         Pay(["Pay for or Renew a Package<br/>through the Admin"])
+        PauseReq(["Ask to Pause or Resume<br/>a Subscription through the Admin"])
 
         Scan(["Face the Camera<br/>for Attendance"])
         Recog(["Be Recognized by Face"])
@@ -504,6 +518,7 @@ flowchart LR
     Member --> Info
     Member --> FacePose
     Member --> Pay
+    Member --> PauseReq
     Member --> Scan
     Member --> Exercise
 ```

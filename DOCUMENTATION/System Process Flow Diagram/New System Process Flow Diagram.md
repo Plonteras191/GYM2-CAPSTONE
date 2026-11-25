@@ -37,9 +37,11 @@ flowchart TD
     B4 --> B4b["Admin checks the member in manually<br/>(member and reason)"]
     B4b --> B5
     B5 -- No --> B6["No attendance saved"]
-    B5 -- Yes --> B7["Save member, date, time in, method,<br/>camera and subscription status<br/>(an expired subscription is flagged RENEW)"]
+    B5 -- Yes --> B7["Save member, date, time in, method,<br/>camera and subscription status<br/>(expired is flagged RENEW, paused is flagged Paused)"]
     B7 --> B8{"Member profile<br/>Inactive?"}
     B8 -- Yes --> B9["Set member<br/>back to Active"]
+    B1 --> T1["Attendance page: every subscriber's<br/>last visit, visits this week and month,<br/>and coach-plan progress"]
+    T1 --> T2["Open a member: attendance calendar,<br/>check-in history and coach plan"]
 
     Select --> C1["Module 3: Program Monitoring"]
     C1 --> C2["Open the member's Training plan and build<br/>the 7-day plan: exercise, date, sets and reps"]
@@ -69,6 +71,8 @@ flowchart TD
     R2 -- No --> R4["Start a new<br/>subscription today"]
     R3 --> R5["Renewal payment<br/>recorded"]
     R4 --> R5
+    D1 --> Q1["Pause a running subscription<br/>(no refunds; the days left are kept)"]
+    Q1 --> Q2["Resume: the end date moves later<br/>by the days spent paused"]
     D1 --> P1["Price list: create, edit<br/>or delete a package"]
     P1 --> P2{"Deleting a package members<br/>are still subscribed to?"}
     P2 -- Yes --> P3["Delete refused"]
@@ -80,7 +84,7 @@ flowchart TD
     E1 --> E2["Select package and member<br/>(none for a walk-in guest)"]
     E2 --> E3["Enter amount, reference number<br/>and method: Cash, GCash or Maya"]
     E3 --> E4["Save transaction"]
-    E4 --> E5["Print receipt<br/>or refund if needed"]
+    E4 --> E5["Print receipt"]
 
     Select --> F1["Module 6: Reports"]
     F1 --> F2["Choose report type: Payments, Memberships,<br/>Attendance or Program Monitoring"]
@@ -91,9 +95,11 @@ flowchart TD
     B6 --> Out
     B8 -- No --> Out
     B9 --> Out
+    T2 --> Out
     C6 --> Out
     D6 --> Out
     R5 --> Out
+    Q2 --> Out
     P3 --> Out
     P4 --> Out
     V2 --> Out
@@ -119,7 +125,7 @@ From the dashboard the administrator can open six modules:
 2. **Attendance Monitoring.** The camera captures the member's face and the system looks for a match. A recognized member is checked in only inside gym hours (9:00 AM to 9:30 PM) and once per day. The check-in saves the time, how it was made, the camera and the subscription status; an expired subscription is flagged **RENEW** on the live feed, and an Inactive member is set back to Active. A face that is not recognized shows "Unknown", and the administrator can **check the member in manually** by choosing the member and typing a reason.
 3. **Program Monitoring.** In the member's **Training plan** the administrator builds a 7-day plan (exercise, date, sets, reps). Only members with an **active With Coach subscription** are tracked by the camera; for others the coach verifies tasks by hand. When the camera recognizes the assigned exercise, a task is verified. For **squat, push-up, curl and sit-up** the camera first **counts repetitions** and saves the progress until the target sets × reps is reached.
 4. **Packages and Subscriptions.** The administrator subscribes a member to a package, or upgrades a running subscription to a higher-priced package and pays the balance. **Renew** extends a running subscription from its end date, or starts a new one today if it has ended. The **Price list** creates, edits and deletes packages; deleting a package that members are subscribed to is refused. The **Calendar** holds classes and events. Every subscription, renewal or upgrade creates its payment record automatically.
-5. **Payment Transactions.** The administrator records a payment (package, member or walk-in guest, amount, reference number, Cash, GCash or Maya), prints the receipt, or refunds it.
+5. **Payment Transactions.** The administrator records a payment (package, member or walk-in guest, amount, reference number, Cash, GCash or Maya), and prints the receipt. Payments are never refunded.
 6. **Reports.** The administrator chooses Payments, Memberships, Attendance or Program Monitoring, sets the dates, views the report, and exports a CSV file or prints it.
 
 After any activity the administrator may return to the dashboard or log out.

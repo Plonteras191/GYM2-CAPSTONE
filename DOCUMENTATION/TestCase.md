@@ -76,7 +76,7 @@ The cases cover all requested pages and their implemented controls, including su
 | Objective | Verify package/subscription list management, filters, calendar views, subscription forms, pricing catalog, coach events, event categories, active-subscription warnings, upgrade billing, and currency formatting. |
 | Actor | Administrator/coach |
 | Preconditions | Members, packages, subscriptions, events, and event categories are available. |
-| Steps | 1. Open Packages in List view and verify search, clear search, status filter, package filter, pagination, counts, and empty state.<br>2. Add a subscription by selecting a member, package, status, start date, and end date; save and cancel one form with unsaved changes.<br>3. Edit and delete a subscription; confirm or cancel deletion; open the member from the subscription row.<br>4. Open Manage Packages; add a plan with name, price, duration, and category; edit price/name/duration/category; save all changes; delete and cancel deletion.<br>5. Assign Jane Rivera the Annual Normal package, save it, and verify the original subscription transaction/report entry.<br>6. Change the same active subscription to Annual With Coach and save; verify the new package, price difference, and upgrade transaction/report entry.<br>7. Verify package prices, remaining days, upgrade amounts, and warning values use comma-separated formatting such as 31,200 and 25,200.<br>8. Verify the page informs the coach when the selected member still has an active subscription and remaining duration.<br>9. Switch to Calendar view; navigate dates/months, choose a date to create an event, hover/click a calendar item, and use list/calendar display controls.<br>10. Add and edit a coach event with title, date/time, category, color, notes, and recurrence-related fields; save, cancel, and delete it.<br>11. Add/edit/delete an event category, choose recent/custom colors, and cancel unsaved category changes.<br>12. Toggle Client Subscriptions and Coach Events visibility and select/deselect individual category filters on desktop/mobile layouts. |
+| Steps | 1. Open Packages in List view and verify search, clear search, status filter, package filter, pagination, counts, and empty state.<br>2. Add a subscription by selecting a member, package, status, start date, and end date; save and cancel one form with unsaved changes.<br>3. Edit and delete a subscription; confirm or cancel deletion; open the member from the subscription row.<br>4. Open Manage Packages; add a plan with name, price, duration, and category; edit price/name/duration/category; save all changes; delete and cancel deletion.<br>5. Assign Jane Rivera the Monthly package, save it, and verify the original subscription transaction/report entry.<br>6. Change the same active subscription to With Coach and save; verify the new package, price difference, and upgrade transaction/report entry.<br>7. Verify package prices, remaining days, upgrade amounts, and warning values use comma-separated formatting such as 31,200 and 25,200.<br>8. Verify the page informs the coach when the selected member still has an active subscription and remaining duration.<br>9. Switch to Calendar view; navigate dates/months, choose a date to create an event, hover/click a calendar item, and use list/calendar display controls.<br>10. Add and edit a coach event with title, date/time, category, color, notes, and recurrence-related fields; save, cancel, and delete it.<br>11. Add/edit/delete an event category, choose recent/custom colors, and cancel unsaved category changes.<br>12. Toggle Client Subscriptions and Coach Events visibility and select/deselect individual category filters on desktop/mobile layouts. |
 | Input Data | Member, original package, upgraded package, price difference, duration, status, dates, event title/category/color, category filter selections |
 | Expected Result | All list/calendar/catalog/event/category CRUD operations, validation, confirmations, filters, date navigation, visibility toggles, warning states, and empty/loading states work correctly. Subscriptions expiring within seven days show the configured warning. Changing an active package creates a new upgrade transaction for only the price difference, retains the original payment history, updates the current subscription package, and shows both entries in Transactions and Reports. Active members with remaining duration show a coach warning. All monetary values are formatted with thousands separators. |
 | Actual Result | Package list, subscription forms, catalog controls, calendar navigation, event/category dialogs, colors, filters, toggles, confirmations, expiration warnings, upgrade-balance transaction creation, and category deletion confirmation worked correctly. |
@@ -88,15 +88,15 @@ The cases cover all requested pages and their implemented controls, including su
 | Field | Details |
 |---|---|
 | Scenario ID | SBT-005 |
-| Objective | Verify transaction income/refund/net-revenue statistics, search/filter, typeable member/package selection, refund, receipt printing, CSV export, pagination, and empty states. |
+| Objective | Verify total revenue and payment-count statistics, search/filter, typeable member/package selection, receipt printing, CSV export, pagination, empty states, and that payments cannot be refunded, edited or deleted. |
 | Actor | Administrator |
-| Preconditions | Packages, members, completed transactions, and refundable transactions are available. |
-| Steps | 1. Open Transactions and verify income, refund, pending, and total statistics.<br>2. Search by transaction/member/package; clear the search; filter All, Complete, Pending, and Refund; paginate results.<br>3. Add a member transaction by selecting member, package, payment method, amount, date, and status; save and cancel an unsaved form.<br>4. Add a walk-in transaction without a member and verify the association is empty.<br>5. Open a member link from the table and return.<br>6. Refund a completed transaction; confirm and cancel the refund dialog; verify refund loading/disabled state.<br>7. Print an individual receipt, print the filtered report, and export the filtered transactions as CSV.<br>8. Test no matching results and export/print with the current filters. |
+| Preconditions | Packages, members, and completed transactions are available. |
+| Steps | 1. Open Transactions and verify the Total revenue and Payments statistics.<br>2. Search by transaction/member/package; clear the search; filter All, Subscriptions and Walk-ins; paginate results.<br>3. Add a member transaction by selecting member, package, payment method, amount, date, and status; save and cancel an unsaved form.<br>4. Add a walk-in transaction without a member and verify the association is empty.<br>5. Open a member link from the table and return.<br>6. Verify no row offers Refund, Edit or Delete.<br>7. Print an individual receipt, print the filtered report, and export the filtered transactions as CSV.<br>8. Test no matching results and export/print with the current filters. |
 | Input Data | Member and walk-in transactions, packages, payment methods, amounts, statuses, search/filter values |
-| Expected Result | Statistics reflect stored rows, forms validate and save correct values, walk-ins have no incorrect member, refunds update status/amount once, receipts and filtered reports print correctly, CSV is downloaded with correct columns/escaping, and empty states are clear. |
-| Actual Result | Statistics, search/filter, pagination, member/walk-in forms, save/cancel, refund confirmation, receipt/report printing, CSV export, and empty state behaved correctly. |
-| Status | Passed |
-| Postconditions | The transaction history contains the correct original/refund state and remains consistent with Overview and Reports. |
+| Expected Result | Statistics reflect stored rows, forms validate and save correct values, walk-ins have no incorrect member, no payment can be refunded, edited or deleted, receipts and filtered reports print correctly, CSV is downloaded with correct columns/escaping, and empty states are clear. |
+| Actual Result | Not yet run on this version. The previous run (Passed) tested the Refund action, which was removed on November 25, 2026. |
+| Status | Re-run needed |
+| Postconditions | The transaction history is unchanged by viewing or printing and remains consistent with Overview and Reports. |
 
 ### SBT-006 — Reports
 
@@ -188,6 +188,36 @@ The cases cover all requested pages and their implemented controls, including su
 | Status | Passed |
 | Postconditions | Only active non-dismissed notifications remain visible; source records are not deleted by dismissal. |
 
+### SBT-012 — Pause and Resume a Subscription
+
+| Field | Details |
+|---|---|
+| Scenario ID | SBT-012 |
+| Objective | Verify that a running subscription can be paused instead of refunded, keeps its days left, and gets the paused days added to its end date on resume. |
+| Actor | Administrator |
+| Preconditions | A member with a running subscription (started, not ended) is available. |
+| Steps | 1. On Packages > Subscriptions, press Pause on the running subscription; check the dialog shows the days left; confirm.<br>2. Verify the row shows the Paused badge and "N days kept", the Paused filter count increases, and only Resume and Delete are offered.<br>3. Try a New Sale and a Renew for the same member and verify both are refused ("Resume it first").<br>4. On a later day, press Resume; verify the dialog shows the days paused and the new end date; confirm.<br>5. Verify the end date moved later by the days paused and the status is Active again.<br>6. Try to pause an expired or not-yet-started subscription and verify it is refused. |
+| Input Data | Running subscription, expired subscription, member with a paused subscription |
+| Expected Result | Pausing keeps the days left; resuming adds the paused days to the end date; while paused, New Sale and Renew are refused, the member is not set Inactive and gets no camera workout tasks; check-ins show "Paused". |
+| Actual Result | Not yet run on this version. (Automated backend tests `MembershipPauseTest` pass.) |
+| Status | Not yet run |
+| Postconditions | Each pause is kept in `membership_pauses`; the subscription's end date includes the paused days. |
+
+### SBT-013 — Attendance Page
+
+| Field | Details |
+|---|---|
+| Scenario ID | SBT-013 |
+| Objective | Verify the Attendance page lists every subscriber with their attendance and opens a member's calendar, check-ins and coach plan without the profile. |
+| Actor | Administrator |
+| Preconditions | Members with Active, Paused and Expired subscriptions, some check-ins this week, and a With Coach member with training tasks are available. |
+| Steps | 1. Open Attendance from the sidebar; verify the cards (checked in today, visits this week, not seen in 7+ days, paused).<br>2. Verify each row: subscription status and days left/kept, this week's Mon to Sun boxes, last visit (red after 7 days), visits this month, and coach-plan progress for With Coach members.<br>3. Search by name and ID; filter All, Active, Not seen 7+ days, Paused and Expired; change the sort.<br>4. Click the "Not seen in 7+ days" card and verify the list is filtered.<br>5. Open a member; check the Attendance Calendar, Check-ins and Coach plan tabs.<br>6. During gym hours, make a manual check-in from the window and verify the row and the "Checked in today" card update.<br>7. Use Profile and Training plan to open the member's profile. |
+| Input Data | Subscribers, check-ins, training tasks, search and filter values |
+| Expected Result | The page shows the same visits, subscriptions and tasks as the member profiles; walk-in and daily passes are not listed; the window and its tabs match the profile's data. |
+| Actual Result | Not yet run on this version. (Automated backend tests `AttendanceTrackerTest` pass.) |
+| Status | Not yet run |
+| Postconditions | No data is changed except by a manual check-in. |
+
 ## 4. Integration Test Cases
 
 ### IT-001 — Login integration
@@ -238,11 +268,11 @@ The cases cover all requested pages and their implemented controls, including su
 
 | Field | Details |
 |---|---|
-| Components | Transactions page/forms/table/stats ↔ transactions, members, and plans APIs ↔ transaction database ↔ refunds, CSV, receipts, print, Overview, Reports |
-| Inputs and checks | Member/walk-in save, payment method/amount/status/date, search/filter/pagination, refund endpoint, receipt/print/export generation |
-| Expected Result | Stored rows, calculated statistics, refund state, linked member/package, print output, and CSV output match the API/database values. |
-| Actual Result | Transaction save, refund, statistics, linked navigation, receipt, print, and export integrations matched stored data. |
-| Status | Passed |
+| Components | Transactions page/forms/table/stats ↔ transactions, members, and plans APIs ↔ transaction database ↔ CSV, receipts, print, Overview, Reports |
+| Inputs and checks | Member/walk-in save, payment method/amount/status/date, search/filter/pagination, the removed refund endpoint returns 404, receipt/print/export generation |
+| Expected Result | Stored rows, calculated statistics, linked member/package, print output, and CSV output match the API/database values; no refund can be made. |
+| Actual Result | Not yet run on this version. The previous run (Passed) included the refund endpoint, which was removed on November 25, 2026. |
+| Status | Re-run needed |
 | Postconditions | Transaction state is consistent in every consuming page and output format. |
 
 ### IT-006 — Reports integration
@@ -311,11 +341,33 @@ The cases cover all requested pages and their implemented controls, including su
 | Status | Passed |
 | Postconditions | Bell content accurately reflects active non-dismissed alerts and remains recoverable from source APIs. |
 
+### IT-012 — Pause and Resume integration
+
+| Field | Details |
+|---|---|
+| Components | Packages page ↔ `/api/memberships/{id}/pause` and `/resume` ↔ `memberships`, `membership_pauses` ↔ Overview, Attendance page, Attendance Monitor, Reports, Gesture Engine |
+| Inputs and checks | Pause and resume; New Sale and Renew refused while paused; inactivity rule; check-in label; camera workout tasks; Reports "Total Paused" |
+| Expected Result | Status, `paused_at`, the pause history and the end date stay consistent across every page; the dashboard does not count a paused subscription as running. |
+| Actual Result | Not yet run on this version. |
+| Status | Not yet run |
+| Postconditions | The paused days are added to the end date exactly once. |
+
+### IT-013 — Attendance Page integration
+
+| Field | Details |
+|---|---|
+| Components | Attendance page ↔ `/api/attendance/subscribers`, `/api/members/{id}/attendance`, `/api/members/{id}/workouts`, `/api/attendance/manual` ↔ `memberships`, `attendances`, `workout_logs` |
+| Inputs and checks | Counts per member and in total, last visit, week strip, coach tasks done/missed, filters, manual check-in refresh |
+| Expected Result | Every figure matches the database and the member profile; a manual check-in updates the row and the cards. |
+| Actual Result | Not yet run on this version. |
+| Status | Not yet run |
+| Postconditions | Attendance data is unchanged except by manual check-ins. |
+
 ## 5. Execution Record and Traceability
 
 For each case, record tester, date, build/version, browser/device, camera/source where applicable, actual result, status, postcondition, screenshots/logs/API responses, and corrective action for failures.
 
 | Test suite | Case IDs | Coverage |
 |---|---|---|
-| Scenario-based | SBT-001 to SBT-011 | All requested pages and user-facing controls |
-| Integration | IT-001 to IT-011 | All requested page/service/data boundaries |
+| Scenario-based | SBT-001 to SBT-013 | All requested pages and user-facing controls |
+| Integration | IT-001 to IT-013 | All requested page/service/data boundaries |

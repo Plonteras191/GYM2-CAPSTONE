@@ -34,7 +34,8 @@ The logical model has **eleven entities** that support member management, attend
 
 ### B. Packages and Subscriptions
 3. **PLAN:** a package the gym sells (`name`, `price`, `duration_days`, `category`, `color`). A **With Coach** package makes a member eligible for the training plan and camera tracking. A plan has many memberships (**1 : N**). **PACKAGE_CATEGORY** is an optional, older grouping of plans.
-4. **MEMBERSHIP:** a member's subscription to a package for a period (`start_date`, `end_date`, `status`, `payment_method`). It is **N : 1** with **MEMBER** and with **PLAN**, and **1 : N** with **TRANSACTION**.
+4. **MEMBERSHIP:** a member's subscription to a package for a period (`start_date`, `end_date`, `status`, `paused_at`, `payment_method`). It is **N : 1** with **MEMBER** and with **PLAN**, and **1 : N** with **TRANSACTION** and with **MEMBERSHIP_PAUSE**.
+   * **MEMBERSHIP_PAUSE:** one pause of a subscription (`paused_on`, `resumed_on`, `days`, who paused and resumed it). The gym gives no refunds: a subscription is paused instead, and on resume the paused days are added to its end date.
 
 ### C. Attendance and Program Monitoring
 5. **ATTENDANCE:** a check-in, at most one per member per day. It records how it was made (face or manual), the camera, the match distance, and the plan and subscription status on that day. It is **N : 1** with **MEMBER**, and stays when the member is deleted.
@@ -44,7 +45,7 @@ The logical model has **eleven entities** that support member management, attend
 7. **COACH_EVENT_CATEGORY** and 8. **COACH_EVENT:** classes and events on the calendar. A category classifies many events (**1 : N**).
 
 ### E. Financial Audit Entity
-9. **TRANSACTION:** a payment, upgrade, renewal or refund (`transaction_id`, `transaction_date`, `type`, `amount`, `payment_method`, `reference_number`, `status`). It is **N : 1** with **MEMBER** (none for a walk-in guest) and with **MEMBERSHIP**, so each receipt stays tied to the exact subscription period.
+9. **TRANSACTION:** a payment, upgrade or renewal (payments are never refunded) (`transaction_id`, `transaction_date`, `type`, `amount`, `payment_method`, `reference_number`, `status`). It is **N : 1** with **MEMBER** (none for a walk-in guest) and with **MEMBERSHIP**, so each receipt stays tied to the exact subscription period.
 
 ---
 

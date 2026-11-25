@@ -65,8 +65,8 @@ flowchart LR
     S31[("D3 face photo files")]
     P3 -->|"Face photo"| S31
 
-    Admin -->|"Camera selection, manual check-in"| P4
-    P4 -->|"Live feed, today's check-ins"| Admin
+    Admin -->|"Camera selection, manual check-in, attendance page filters"| P4
+    P4 -->|"Live feed, today's check-ins, every subscriber's attendance"| Admin
     S40[("D2 members")]
     P4 ~~~ S40
     S40 -->|"Enrolled members"| P4
@@ -78,7 +78,10 @@ flowchart LR
     P4 <-->|"Member, date, time in, method, camera, subscription status"| S42
     S43[("D7 memberships")]
     P4 ~~~ S43
-    S43 -->|"Subscription on the check-in date"| P4
+    S43 -->|"Subscription on the check-in date, latest subscription per member"| P4
+    S44[("D5 workout_logs")]
+    P4 ~~~ S44
+    S44 -->|"This week's coach tasks"| P4
 
     Admin -->|"7-day training plan, manual verification"| P5
     P5 -->|"Task status, counted repetitions, workout history"| Admin
@@ -88,7 +91,7 @@ flowchart LR
     P5 ~~~ S51
     S51 -->|"Active With Coach subscription"| P5
 
-    Admin -->|"Packages, subscriptions, renewals, upgrades, classes and events"| P6
+    Admin -->|"Packages, subscriptions, renewals, upgrades, pause and resume, classes and events"| P6
     P6 -->|"Package list, subscription status"| Admin
     S60[("D6 plans")]
     P6 <-->|"Packages"| S60
@@ -98,8 +101,10 @@ flowchart LR
     P6 -->|"Automatic payment record"| S62
     S63[("D10 coach_events")]
     P6 <-->|"Classes and events"| S63
+    S64[("D12 membership_pauses")]
+    P6 <-->|"Pause history"| S64
 
-    Admin -->|"Payment details, refund request"| P7
+    Admin -->|"Payment details"| P7
     P7 -->|"Transaction list, receipt"| Admin
     S70[("D8 transactions")]
     P7 <-->|"Transactions"| S70
@@ -144,16 +149,16 @@ Reads **D2** (member count), **D7** (active and expiring subscriptions), **D8** 
 The admin enters member details (with body type), the face capture and the member's consent. The member record, with the consent date and status, is saved in **D2**, and the face photo in **D3**.
 
 ### Process 4.0: Attendance Monitoring
-Live video from the camera is matched with the enrolled faces (**D2, D3**). A recognized member is saved in **D4** with the date, time, method, camera and subscription status read from **D7**; an Inactive member is set back to Active in D2. The admin can also make a manual check-in. The admin receives the live feed and today's check-ins.
+Live video from the camera is matched with the enrolled faces (**D2, D3**). A recognized member is saved in **D4** with the date, time, method, camera and subscription status read from **D7**; an Inactive member is set back to Active in D2. The admin can also make a manual check-in. The admin receives the live feed and today's check-ins. On the **Attendance** page the admin also receives every subscriber's attendance: the latest subscription (**D7**), last visit and visits this week and month (**D4**), and this week's coach tasks (**D5**).
 
 ### Process 5.0: Program Monitoring
 The admin saves a 7-day training plan, stored as tasks in **D5**. Live video is read for members with an active With Coach subscription (**D7**). When the camera recognizes an assigned exercise it verifies the task or, for squat, push-up, curl and sit-up, counts repetitions and saves them in D5 until the target is reached. The admin can verify a task by hand. The admin receives task status, counted repetitions and the workout history.
 
 ### Process 6.0: Packages and Subscriptions
-Packages are kept in **D6**, subscriptions in **D7** (including renewals and upgrades), and classes and events in **D10**. Each subscription, renewal or upgrade creates a payment record in **D8** automatically.
+Packages are kept in **D6**, subscriptions in **D7** (including renewals and upgrades), and classes and events in **D10**. Each subscription, renewal or upgrade creates a payment record in **D8** automatically. The gym gives no refunds: a subscription is paused instead, each pause is kept in **D12**, and on resume the paused days are added to the end date in D7.
 
 ### Process 7.0: Payment Transactions
-The admin records a payment or a refund in **D8**, using package names from **D6**, and receives the transaction list and a printable receipt.
+The admin records a payment in **D8**, using package names from **D6**, and receives the transaction list and a printable receipt.
 
 ### Process 8.0: Reports
 Reads **D8** (Payments), **D7** (Memberships), **D4** (Attendance) and **D5** (Program Monitoring) for a report type and date range, and returns a table, a CSV file or a printout.

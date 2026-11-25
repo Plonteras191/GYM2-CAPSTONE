@@ -2,9 +2,11 @@
 
 [Back to the list of diagrams](../Correct_Diagrams.md)
 
-The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D13) are the same in every figure.
+The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D14) are the same in every figure.
 
 > **Updated November 17, 2026** to match the system as built: no login PIN (the store `auth_verification_codes` was removed, so the later stores moved up by one), and the new flows for body type, consent, manual check-in, renewals and counted repetitions.
+
+> **Updated November 25, 2026:** refunds were replaced by pausing and resuming a subscription (new table `membership_pauses`), and the Attendance page was added.
 
 Processes 6.0 to 10.0 are in [the next file](3B_Data_Flow_Diagram_Processes_6_to_10.md).
 
@@ -80,14 +82,16 @@ flowchart LR
     D3[("D3 face photo files")]
     D4[("D4 attendances")]
     D7[("D7 memberships")]
+    D5[("D5 workout_logs")]
 
-    Admin -->|"Camera selection, face re-sync, manual check-in"| P4
-    P4 -->|"Live feed with names and RENEW flags, today's check-ins"| Admin
+    Admin -->|"Camera selection, face re-sync, manual check-in, attendance page filters"| P4
+    P4 -->|"Live feed with names and RENEW flags, today's check-ins, every subscriber's attendance"| Admin
     Camera -->|"Live video"| P4
     D2 -->|"Enrolled members"| P4
     P4 -->|"Returning member set back to Active"| D2
     D3 -->|"Face photos"| P4
-    D7 -->|"Subscription on the check-in date"| P4
+    D7 -->|"Subscription on the check-in date, latest subscription per member"| P4
+    D5 -->|"This week's coach tasks"| P4
     P4 <-->|"Attendance: member, date, time in, method, camera, subscription status"| D4
 ```
 

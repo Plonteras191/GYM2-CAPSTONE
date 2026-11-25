@@ -2,9 +2,11 @@
 
 [Back to the list of diagrams](../Correct_Diagrams.md)
 
-The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D13) are the same in every figure.
+The Level 1 DFD is drawn as one small figure per process so each one stays readable. Data store numbers (D1 to D14) are the same in every figure.
 
 > **Updated November 17, 2026** to match the system as built: renewals, the Price list, program monitoring in reports, and "Coach events" renamed "Classes and events".
+
+> **Updated November 25, 2026:** refunds were replaced by pausing and resuming a subscription (new table `membership_pauses`), and the Attendance page was added.
 
 Processes 1.0 to 5.0 are in [the previous file](3A_Data_Flow_Diagram_Processes_1_to_5.md).
 
@@ -19,14 +21,16 @@ flowchart LR
     D7[("D7 memberships")]
     D8[("D8 transactions")]
     D9[("D9 package_categories")]
+    D14[("D14 membership_pauses")]
 
-    Admin -->|"Packages, categories, subscriptions, renewals, upgrades"| P6
+    Admin -->|"Packages, categories, subscriptions, renewals, upgrades, pause and resume"| P6
     P6 -->|"Package list, subscription calendar and status"| Admin
     P6 <-->|"Packages"| D6
     P6 <-->|"Package categories"| D9
     P6 <-->|"Subscriptions"| D7
     P6 -->|"Automatic payment record"| D8
     P6 -->|"Member plan and status"| D2
+    P6 <-->|"Pause history"| D14
 ```
 
 ## 3.7 Process 7.0 — Record Payments
@@ -39,7 +43,7 @@ flowchart LR
     D6[("D6 plans")]
     D8[("D8 transactions")]
 
-    Admin -->|"Payment details, refund request"| P7
+    Admin -->|"Payment details"| P7
     P7 -->|"Transaction list, receipt"| Admin
     P7 <-->|"Transactions"| D8
     D6 -->|"Package name and category"| P7

@@ -91,9 +91,11 @@ flowchart TD
     B4 --> B4b["Admin checks the member in manually<br/>(member and reason)"]
     B4b --> B5
     B5 -- No --> B6["No attendance saved"]
-    B5 -- Yes --> B7["Save member, date, time in, method,<br/>camera and subscription status<br/>(an expired subscription is flagged RENEW)"]
+    B5 -- Yes --> B7["Save member, date, time in, method,<br/>camera and subscription status<br/>(expired is flagged RENEW, paused is flagged Paused)"]
     B7 --> B8{"Member profile<br/>Inactive?"}
     B8 -- Yes --> B9["Set member<br/>back to Active"]
+    B1 --> T1["Attendance page: every subscriber's<br/>last visit, visits this week and month,<br/>and coach-plan progress"]
+    T1 --> T2["Open a member: attendance calendar,<br/>check-in history and coach plan"]
 
     Select --> C1["Module 3: Program Monitoring"]
     C1 --> C2["Open the member's Training plan and build<br/>the 7-day plan: exercise, date, sets and reps"]
@@ -123,6 +125,8 @@ flowchart TD
     R2 -- No --> R4["Start a new<br/>subscription today"]
     R3 --> R5["Renewal payment<br/>recorded"]
     R4 --> R5
+    D1 --> Q1["Pause a running subscription<br/>(no refunds; the days left are kept)"]
+    Q1 --> Q2["Resume: the end date moves later<br/>by the days spent paused"]
     D1 --> P1["Price list: create, edit<br/>or delete a package"]
     P1 --> P2{"Deleting a package members<br/>are still subscribed to?"}
     P2 -- Yes --> P3["Delete refused"]
@@ -134,7 +138,7 @@ flowchart TD
     E1 --> E2["Select package and member<br/>(none for a walk-in guest)"]
     E2 --> E3["Enter amount, reference number<br/>and method: Cash, GCash or Maya"]
     E3 --> E4["Save transaction"]
-    E4 --> E5["Print receipt<br/>or refund if needed"]
+    E4 --> E5["Print receipt"]
 
     Select --> F1["Module 6: Reports"]
     F1 --> F2["Choose report type: Payments, Memberships,<br/>Attendance or Program Monitoring"]
@@ -145,9 +149,11 @@ flowchart TD
     B6 --> Out
     B8 -- No --> Out
     B9 --> Out
+    T2 --> Out
     C6 --> Out
     D6 --> Out
     R5 --> Out
+    Q2 --> Out
     P3 --> Out
     P4 --> Out
     V2 --> Out
@@ -171,13 +177,13 @@ flowchart LR
     System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
 
     Admin -->|"F1: Email and password"| System
-    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System
+    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions, renewals, pausing and resuming subscriptions, classes and events, payments"| System
     Admin -->|"F3: Training plans and manual verification"| System
     Admin -->|"F4: Report dates, camera selection, manual check-ins and profile updates"| System
 
     System -->|"F5: Login result, dashboard summary and notifications"| Admin
     System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
-    System -->|"F7: Live camera feeds, today's attendance, workout task status and counted repetitions"| Admin
+    System -->|"F7: Live camera feeds, today's attendance, every subscriber's attendance summary, workout task status and counted repetitions"| Admin
     System -->|"F8: Reports (CSV or print)"| Admin
 
     Camera -->|"F9: Live video of faces and exercise movement"| System
@@ -239,8 +245,8 @@ flowchart LR
     S31[("D3 face photo files")]
     P3 -->|"Face photo"| S31
 
-    Admin -->|"Camera selection, manual check-in"| P4
-    P4 -->|"Live feed, today's check-ins"| Admin
+    Admin -->|"Camera selection, manual check-in, attendance page filters"| P4
+    P4 -->|"Live feed, today's check-ins, every subscriber's attendance"| Admin
     S40[("D2 members")]
     P4 ~~~ S40
     S40 -->|"Enrolled members"| P4
@@ -252,7 +258,10 @@ flowchart LR
     P4 <-->|"Member, date, time in, method, camera, subscription status"| S42
     S43[("D7 memberships")]
     P4 ~~~ S43
-    S43 -->|"Subscription on the check-in date"| P4
+    S43 -->|"Subscription on the check-in date, latest subscription per member"| P4
+    S44[("D5 workout_logs")]
+    P4 ~~~ S44
+    S44 -->|"This week's coach tasks"| P4
 
     Admin -->|"7-day training plan, manual verification"| P5
     P5 -->|"Task status, counted repetitions, workout history"| Admin
@@ -262,7 +271,7 @@ flowchart LR
     P5 ~~~ S51
     S51 -->|"Active With Coach subscription"| P5
 
-    Admin -->|"Packages, subscriptions, renewals, upgrades, classes and events"| P6
+    Admin -->|"Packages, subscriptions, renewals, upgrades, pause and resume, classes and events"| P6
     P6 -->|"Package list, subscription status"| Admin
     S60[("D6 plans")]
     P6 <-->|"Packages"| S60
@@ -272,8 +281,10 @@ flowchart LR
     P6 -->|"Automatic payment record"| S62
     S63[("D10 coach_events")]
     P6 <-->|"Classes and events"| S63
+    S64[("D12 membership_pauses")]
+    P6 <-->|"Pause history"| S64
 
-    Admin -->|"Payment details, refund request"| P7
+    Admin -->|"Payment details"| P7
     P7 -->|"Transaction list, receipt"| Admin
     S70[("D8 transactions")]
     P7 <-->|"Transactions"| S70
@@ -331,17 +342,20 @@ flowchart LR
         NewSub(["Create Subscription"])
         UpSub(["Upgrade Subscription"])
         RenewSub(["Renew Subscription"])
+        PauseSub(["Pause Subscription<br/>(no refunds; days left are kept)"])
+        ResumeSub(["Resume Subscription"])
         AutoPay(["Create Payment Transaction"])
         Events(["Manage Classes and Events"])
 
         Pay(["Record Payment<br/>(Cash, GCash, Maya)"])
         Receipt(["Print Receipt"])
-        Refund(["Refund Transaction"])
 
         Plan(["Build 7-Day Training Plan"])
         Manual(["Manually Verify Workout Task"])
 
         AttMon(["View Attendance Monitor"])
+        AttPage(["View Every Subscriber's Attendance<br/>(Attendance page)"])
+        AttDetail(["View a Member's Attendance Calendar,<br/>Check-ins and Coach Plan"])
         ManualIn(["Check In Member Manually"])
         GesMon(["View Gesture Monitor"])
         Switch(["Switch Camera Source"])
@@ -368,6 +382,8 @@ flowchart LR
         Pay ~~~ Receipt
         Receipt -.->|"«extend»"| Pay
         ManualIn -.->|"«extend»"| AttMon
+        AttPage ~~~ AttDetail
+        AttDetail -.->|"«extend»"| AttPage
         Report ~~~ Export
         Export -.->|"«extend»"| Report
     end
@@ -385,12 +401,14 @@ flowchart LR
     Admin --> NewSub
     Admin --> UpSub
     Admin --> RenewSub
+    Admin --> PauseSub
+    Admin --> ResumeSub
     Admin --> Events
     Admin --> Pay
-    Admin --> Refund
     Admin --> Plan
     Admin --> Manual
     Admin --> AttMon
+    Admin --> AttPage
     Admin --> ManualIn
     Admin --> GesMon
     Admin --> Switch
@@ -414,6 +432,7 @@ flowchart LR
         Consent(["Consent to Face Enrollment"])
         FacePose(["Pose for Face Capture<br/>(front, chin down, left, right)"])
         Pay(["Pay for or Renew a Package<br/>through the Admin"])
+        PauseReq(["Ask to Pause or Resume<br/>a Subscription through the Admin"])
 
         Scan(["Face the Camera<br/>for Attendance"])
         Recog(["Be Recognized by Face"])
@@ -437,6 +456,7 @@ flowchart LR
     Member --> Info
     Member --> FacePose
     Member --> Pay
+    Member --> PauseReq
     Member --> Scan
     Member --> Exercise
 ```
@@ -536,8 +556,16 @@ erDiagram
         date start_date
         date end_date
         text status
+        date paused_at
         text payment_method
         text notes
+    }
+    MEMBERSHIP_PAUSE {
+        date paused_on
+        date resumed_on
+        number days
+        text paused_by
+        text resumed_by
     }
     TRANSACTION {
         text transaction_id
@@ -591,6 +619,7 @@ erDiagram
     PLAN ||--o{ MEMBERSHIP : "is sold as"
     PACKAGE_CATEGORY |o--o{ PLAN : "groups"
     MEMBERSHIP ||--o{ TRANSACTION : "is paid by"
+    MEMBERSHIP ||--o{ MEMBERSHIP_PAUSE : "is paused in"
     MEMBER |o--o{ TRANSACTION : "pays"
     MEMBER |o--o{ ATTENDANCE : "checks in"
     MEMBER ||--o{ WORKOUT_LOG : "is assigned"
@@ -682,11 +711,23 @@ erDiagram
         varchar plan_type
         date start_date
         date end_date
-        varchar status
+        varchar status "Active, Paused, Expired or Cancelled"
+        date paused_at "nullable, day the current pause started"
         boolean auto_renew
         varchar payment_method
         varchar color
         text notes "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    membership_pauses {
+        bigint id PK
+        bigint membership_id FK
+        date paused_on
+        date resumed_on "nullable"
+        int days "nullable, added to end_date on resume"
+        bigint paused_by_admin_id "nullable, no FK"
+        bigint resumed_by_admin_id "nullable, no FK"
         timestamp created_at
         timestamp updated_at
     }
@@ -769,6 +810,7 @@ erDiagram
     package_categories |o..o{ plans : "category_detail = name (no FK)"
     members |o--o{ transactions : "member_id"
     memberships |o--o{ transactions : "membership_id"
+    memberships ||--o{ membership_pauses : "membership_id"
     members |o--o{ attendances : "member_id"
     members ||--o{ workout_logs : "member_id"
     coach_event_categories ||--o{ coach_events : "category_id"
@@ -778,7 +820,9 @@ Decimal sizes: `members.height` and `members.weight` are DECIMAL(5,2), `plans.pr
 
 Unique rule: `attendances` allows one row per (`member_id`, `date`), so a member has at most one check-in per day.
 
-On delete: `workout_logs` cascades; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to null; `coach_events.category_id` is restricted.
+On delete: `workout_logs` and `membership_pauses` cascade; `attendances.member_id`, `memberships.member_id`, `transactions.member_id` and `transactions.membership_id` are set to null; `coach_events.category_id` is restricted.
+
+Refunds are not offered: a subscription is paused instead (`memberships.status` = Paused, `memberships.paused_at`), and each pause is kept in `membership_pauses`; on resume the paused days are added to `end_date`.
 
 `memberships.plan_id` has **no** foreign key in the database (checked on November 17, 2026); only `memberships.member_id` has one. The link to `plans` is kept by the application, which is why a package is not deleted while members are subscribed to it, and why an ended subscription keeps the package name in `plan_type`.
 

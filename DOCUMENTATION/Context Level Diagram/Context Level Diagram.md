@@ -25,13 +25,13 @@ flowchart LR
     System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
 
     Admin -->|"F1: Email and password"| System
-    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System
+    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions, renewals, pausing and resuming subscriptions, classes and events, payments"| System
     Admin -->|"F3: Training plans and manual verification"| System
     Admin -->|"F4: Report dates, camera selection, manual check-ins and profile updates"| System
 
     System -->|"F5: Login result, dashboard summary and notifications"| Admin
     System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
-    System -->|"F7: Live camera feeds, today's attendance, workout task status and counted repetitions"| Admin
+    System -->|"F7: Live camera feeds, today's attendance, every subscriber's attendance summary, workout task status and counted repetitions"| Admin
     System -->|"F8: Reports (CSV or print)"| Admin
 
     Camera -->|"F9: Live video of faces and exercise movement"| System
@@ -51,7 +51,7 @@ The gym owner and the coach share one administrator login and use the web applic
 
 **Sends in:**
 1. **F1: Email and password.** Signing in needs only these two. (If the password is forgotten, the admin asks for a PIN, which is emailed, and sets a new password.)
-2. **F2: Member details, packages, payments.** Contact details, address, date of birth, height, weight and **body type**; the member's **consent** and the four **face captures**; packages and prices; subscriptions, **renewals** and upgrades; **classes and events** for the calendar; payments (Cash, GCash, Maya) and refunds.
+2. **F2: Member details, packages, payments.** Contact details, address, date of birth, height, weight and **body type**; the member's **consent** and the four **face captures**; packages and prices; subscriptions, **renewals** and upgrades; **classes and events** for the calendar; payments (Cash, GCash, Maya); and pausing or resuming a subscription (the gym gives no refunds).
 3. **F3: Training plans and manual verification.** A 7-day plan per member (exercise, date, sets, reps), and confirmation by hand of tasks the camera cannot check.
 4. **F4: Report dates, camera selection, manual check-ins and profile updates.** The date range of a report, the camera to watch, a manual check-in (member and reason), and the admin's own name, email, logo and password.
 

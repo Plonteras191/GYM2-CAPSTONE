@@ -79,8 +79,10 @@ By integrating **Biometric Facial Recognition** and **Real-Time Computer Vision 
 ### 💳 4. Membership & Subscription Lifecycle Management
 - **Price List**: Create, edit and delete packages (name, category, days, price, color). A package that members are subscribed to cannot be deleted.
 - **Renew and Upgrade**: Renew extends a running subscription from its end date (or starts a new one today if it ended). An upgrade charges only the balance. A payment record is created automatically.
+- **Pause and Resume (no refunds)**: A running subscription can be paused; its days left are kept. Resume moves the end date later by the days spent paused. Every pause is kept in `membership_pauses`.
 - **Automated Membership Status**: System continuously monitors subscription end dates and updates statuses:
   - 🟢 **Active**: Valid active membership.
+  - ⏸️ **Paused**: Paused by the admin; the days left are kept until it is resumed.
   - 🟡 **Expiring Soon**: Membership expiring within 7 days.
   - 🔴 **Expired**: Past renewal date.
 
@@ -90,12 +92,14 @@ By integrating **Biometric Facial Recognition** and **Real-Time Computer Vision 
 - **Payment Processing**: Log payment records for memberships, renewals, and day passes.
 - **Transaction History**: Searchable and filterable transaction tables with custom date ranges.
 - **Printable Receipts**: Generates standardized digital receipts suitable for printing or recordkeeping.
+- **No Refunds**: Payments are never edited, deleted or refunded; a subscription is paused instead.
 
 ---
 
 ### 📹 6. Security & Live Camera Feed Monitor
 - **Live Stream View**: The Attendance Monitor and Gesture Monitor show the live camera feed with names, and the camera can be switched (webcam, phone or CCTV).
 - **Today's Check-Ins**: The Attendance Monitor lists the check-ins of the day.
+- **Attendance Page**: Every subscriber in one list, with this week's visits (Mon to Sun), last visit, visits this month and With Coach task progress; clicking a member opens their attendance calendar, check-in history and coach plan.
 
 ---
 

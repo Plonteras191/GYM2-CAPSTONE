@@ -89,7 +89,7 @@ flowchart TB
 ## 3. Tier-by-Tier Architectural Breakdown
 
 ### 3.1. Layer 1: Presentation Layer (Frontend)
-The frontend is the operational portal for the gym owner and the coach, who share one administrator login. Its pages are Overview, Member Registration, Packages (Subscriptions, Calendar, Price list), Transactions, Reports, Attendance Monitor, Gesture Monitor and Admin Profile.
+The frontend is the operational portal for the gym owner and the coach, who share one administrator login. Its pages are Overview, Member Registration, Attendance (every subscriber's visits), Packages (Subscriptions, Calendar, Price list), Transactions, Reports, Attendance Monitor, Gesture Monitor and Admin Profile. The gym gives no refunds: on Packages a subscription is paused and resumed instead.
 
 * **Framework & Build System**: React 19 SPA built with Vite 8 for fast hot-module replacement and optimized bundle sizes.
 * **Routing**: React Router v7 handling client-side routing, protected routes, and page navigation.
@@ -261,11 +261,23 @@ erDiagram
         varchar plan_type
         date start_date
         date end_date
-        varchar status
+        varchar status "Active, Paused, Expired or Cancelled"
+        date paused_at "nullable, day the current pause started"
         boolean auto_renew
         varchar payment_method
         varchar color
         text notes "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    membership_pauses {
+        bigint id PK
+        bigint membership_id FK
+        date paused_on
+        date resumed_on "nullable"
+        int days "nullable, added to end_date on resume"
+        bigint paused_by_admin_id "nullable, no FK"
+        bigint resumed_by_admin_id "nullable, no FK"
         timestamp created_at
         timestamp updated_at
     }
@@ -348,6 +360,7 @@ erDiagram
     package_categories |o..o{ plans : "category_detail = name (no FK)"
     members |o--o{ transactions : "member_id"
     memberships |o--o{ transactions : "membership_id"
+    memberships ||--o{ membership_pauses : "membership_id"
     members |o--o{ attendances : "member_id"
     members ||--o{ workout_logs : "member_id"
     coach_event_categories ||--o{ coach_events : "category_id"

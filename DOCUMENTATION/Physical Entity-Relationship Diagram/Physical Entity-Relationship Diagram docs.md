@@ -16,7 +16,7 @@ Its purpose is **data integrity and referential consistency**: primary keys, for
 
 ## 2. Presentation of the Diagram (PRESENT)
 
-Figure 4.10 illustrates the Physical Entity-Relationship Diagram of the system. It shows the 12 tables the application uses, their columns and types, their keys and their relationships, as created by the Laravel migrations.
+Figure 4.10 illustrates the Physical Entity-Relationship Diagram of the system. It shows the 13 tables the application uses, their columns and types, their keys and their relationships, as created by the Laravel migrations.
 
 [Insert Figure 4.10 Here]
 
@@ -26,7 +26,7 @@ Figure 4.10 illustrates the Physical Entity-Relationship Diagram of the system. 
 
 ## 3. Detailed Discussion of Tables, Fields, and Relationships (EXPLAIN)
 
-The physical database is organized into **twelve tables**.
+The physical database is organized into **thirteen tables**.
 
 ### A. Accounts and Members
 1. **`admins`:** the administrator account (`name`, `email`, `password`, `logo_path`). The email is unique and the password is stored as a bcrypt hash. The gym owner and the coach share this account.
@@ -37,7 +37,7 @@ The physical database is organized into **twelve tables**.
 ### B. Packages and Subscriptions
 5. **`plans`:** the packages the gym sells (`name`, `price` DECIMAL(9,2), `duration_days`, `category`, `color`). The `category` (normal, with_coach, walk_in) decides what a package unlocks: a With Coach package makes the member eligible for the training plan and camera tracking.
 6. **`package_categories`:** names and colours of older custom categories.
-7. **`memberships`:** a member's subscription (`start_date`, `end_date`, `status`, `payment_method`). `member_id` is a foreign key set to empty when the member is deleted. `plan_id` has no foreign key; the subscription also keeps the package name (`plan_type`) and the member's name, email and picture as they were, so history is still readable after a deletion. A renewal of a running subscription moves `end_date` forward.
+7. **`memberships`:** a member's subscription (`start_date`, `end_date`, `status`, `payment_method`). `member_id` is a foreign key set to empty when the member is deleted. `plan_id` has no foreign key; the subscription also keeps the package name (`plan_type`) and the member's name, email and picture as they were, so history is still readable after a deletion. A renewal of a running subscription moves `end_date` forward. `status` can be Paused, with `paused_at` holding the day the pause started.
 
 ### C. Attendance and Program Monitoring
 8. **`attendances`:** one check-in per member per day (unique on `member_id` and `date`). It records how the check-in was made (`source`: face or manual), the camera, the face match distance, and what was true that day (`subscription_status`, `plan_snapshot`), plus whether it set an Inactive member back to Active. A manual check-in also keeps the administrator and the reason. The member is a foreign key set to empty on deletion, so attendance history survives.
@@ -47,7 +47,8 @@ The physical database is organized into **twelve tables**.
 10. **`coach_event_categories`** and 11. **`coach_events`:** classes and events (title, dates, times, location) grouped by a category with a colour. A category cannot be deleted while events use it.
 
 ### E. Financial Audit Trail
-12. **`transactions`:** the payment ledger: a unique receipt code `transaction_id` (for example TXN-001), `transaction_date`, `type` (subscription payment, upgrade, renewal, walk-in, refund), `amount` DECIMAL(10,2) (negative for a refund), `payment_method` (Cash, GCash, Maya) and `reference_number`. It has two optional foreign keys, `member_id` (empty for a walk-in guest) and `membership_id`, plus snapshots of the member and package, so receipts and reports keep their original details.
+12. **`transactions`:** the payment ledger: a unique receipt code `transaction_id` (for example TXN-001), `transaction_date`, `type` (subscription payment, upgrade, renewal, walk-in), `amount` DECIMAL(10,2), `payment_method` (Cash, GCash, Maya) and `reference_number`. It has two optional foreign keys, `member_id` (empty for a walk-in guest) and `membership_id`, plus snapshots of the member and package, so receipts and reports keep their original details.
+13. **`membership_pauses`:** one row per pause of a subscription (`paused_on`, `resumed_on`, `days`, `paused_by_admin_id`, `resumed_by_admin_id`), with `membership_id` as a foreign key deleted together with the subscription. The gym gives no refunds: a subscription is paused instead, and on resume the paused days are added to `memberships.end_date`.
 
 ---
 
@@ -61,4 +62,4 @@ The physical database is organized into **twelve tables**.
 
 ## 5. Connection to Development and Deployment Phases (CONNECT)
 
-This diagram fulfills **Specific Objective (b)** and closes the system-modeling activities of the design phase. The tables, fields and constraints are the foundation for the Laravel models, controllers and migrations built in development, and for the database test cases (unique check-in per day, deletion rules, refund and renewal records) in testing.
+This diagram fulfills **Specific Objective (b)** and closes the system-modeling activities of the design phase. The tables, fields and constraints are the foundation for the Laravel models, controllers and migrations built in development, and for the database test cases (unique check-in per day, deletion rules, pause and renewal records) in testing.

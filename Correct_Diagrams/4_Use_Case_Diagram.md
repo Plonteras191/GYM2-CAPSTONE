@@ -4,6 +4,8 @@
 
 > **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
+> **Updated November 25, 2026:** refunds were replaced by pausing and resuming a subscription (new table `membership_pauses`), and the Attendance page was added.
+
 ## 4.1 Gym Owner / Admin
 
 ```mermaid
@@ -33,17 +35,20 @@ flowchart LR
         NewSub(["Create Subscription"])
         UpSub(["Upgrade Subscription"])
         RenewSub(["Renew Subscription"])
+        PauseSub(["Pause Subscription<br/>(no refunds; days left are kept)"])
+        ResumeSub(["Resume Subscription"])
         AutoPay(["Create Payment Transaction"])
         Events(["Manage Classes and Events"])
 
         Pay(["Record Payment<br/>(Cash, GCash, Maya)"])
         Receipt(["Print Receipt"])
-        Refund(["Refund Transaction"])
 
         Plan(["Build 7-Day Training Plan"])
         Manual(["Manually Verify Workout Task"])
 
         AttMon(["View Attendance Monitor"])
+        AttPage(["View Every Subscriber's Attendance<br/>(Attendance page)"])
+        AttDetail(["View a Member's Attendance Calendar,<br/>Check-ins and Coach Plan"])
         ManualIn(["Check In Member Manually"])
         GesMon(["View Gesture Monitor"])
         Switch(["Switch Camera Source"])
@@ -70,6 +75,8 @@ flowchart LR
         Pay ~~~ Receipt
         Receipt -.->|"«extend»"| Pay
         ManualIn -.->|"«extend»"| AttMon
+        AttPage ~~~ AttDetail
+        AttDetail -.->|"«extend»"| AttPage
         Report ~~~ Export
         Export -.->|"«extend»"| Report
     end
@@ -87,12 +94,14 @@ flowchart LR
     Admin --> NewSub
     Admin --> UpSub
     Admin --> RenewSub
+    Admin --> PauseSub
+    Admin --> ResumeSub
     Admin --> Events
     Admin --> Pay
-    Admin --> Refund
     Admin --> Plan
     Admin --> Manual
     Admin --> AttMon
+    Admin --> AttPage
     Admin --> ManualIn
     Admin --> GesMon
     Admin --> Switch
@@ -156,6 +165,7 @@ flowchart LR
         Consent(["Consent to Face Enrollment"])
         FacePose(["Pose for Face Capture<br/>(front, chin down, left, right)"])
         Pay(["Pay for or Renew a Package<br/>through the Admin"])
+        PauseReq(["Ask to Pause or Resume<br/>a Subscription through the Admin"])
 
         Scan(["Face the Camera<br/>for Attendance"])
         Recog(["Be Recognized by Face"])
@@ -179,6 +189,7 @@ flowchart LR
     Member --> Info
     Member --> FacePose
     Member --> Pay
+    Member --> PauseReq
     Member --> Scan
     Member --> Exercise
 ```

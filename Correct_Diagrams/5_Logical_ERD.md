@@ -4,6 +4,8 @@
 
 > **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
+> **Updated November 25, 2026:** refunds were replaced by pausing and resuming a subscription (new table `membership_pauses`), and the Attendance page was added.
+
 ```mermaid
 erDiagram
     ADMIN {
@@ -51,8 +53,16 @@ erDiagram
         date start_date
         date end_date
         text status
+        date paused_at
         text payment_method
         text notes
+    }
+    MEMBERSHIP_PAUSE {
+        date paused_on
+        date resumed_on
+        number days
+        text paused_by
+        text resumed_by
     }
     TRANSACTION {
         text transaction_id
@@ -106,6 +116,7 @@ erDiagram
     PLAN ||--o{ MEMBERSHIP : "is sold as"
     PACKAGE_CATEGORY |o--o{ PLAN : "groups"
     MEMBERSHIP ||--o{ TRANSACTION : "is paid by"
+    MEMBERSHIP ||--o{ MEMBERSHIP_PAUSE : "is paused in"
     MEMBER |o--o{ TRANSACTION : "pays"
     MEMBER |o--o{ ATTENDANCE : "checks in"
     MEMBER ||--o{ WORKOUT_LOG : "is assigned"
