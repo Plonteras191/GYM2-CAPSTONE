@@ -15,6 +15,7 @@ const getPageTitle = (path) => {
     switch (path.toLowerCase()) {
       case '/overview': return 'Overview';
       case '/members': return 'Member Management';
+      case '/attendance': return 'Attendance';
       case '/subscriptions': return 'Packages';
       case '/transactions': return 'Transactions';
       case '/reports': return 'System Reports';
@@ -279,6 +280,7 @@ export default function Layout() {
       items: [
         { name: 'Overview', path: '/overview', icon: <FiHome /> },
         { name: 'Member Management', path: '/members', icon: <FiUsers /> },
+        { name: 'Attendance', path: '/attendance', icon: <FiCalendar /> },
         { name: 'Packages', path: '/subscriptions', icon: <FiCheckSquare /> },
         { name: 'Transactions', path: '/transactions', icon: <FiCreditCard /> },
         { name: 'Reports', path: '/reports', icon: <FiFileText /> },

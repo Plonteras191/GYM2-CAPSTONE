@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Members = lazy(() => import('./pages/Members'));
+const AttendanceTracker = lazy(() => import('./pages/AttendanceTracker'));
 const Subscriptions = lazy(() => import('./pages/Subscriptions'));
 const Transactions = lazy(() => import('./pages/Transactions'));
 const Reports = lazy(() => import('./pages/Reports'));
@@ -42,6 +43,7 @@ function App() {
         <Route path="overview" element={lazyPage(Dashboard)} />
         <Route path="Overview" element={<Navigate to="/overview" replace />} />
         <Route path="members" element={lazyPage(Members)} />
+        <Route path="attendance" element={lazyPage(AttendanceTracker)} />
         <Route path="subscriptions" element={lazyPage(Subscriptions)} />
         <Route path="transactions" element={lazyPage(Transactions)} />
         <Route path="reports" element={lazyPage(Reports)} />

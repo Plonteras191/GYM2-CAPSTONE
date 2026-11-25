@@ -501,6 +501,7 @@ File: `Chapter4_Diagrams (2).md`.
 - The table `auth_verification_codes` still exists in the database but is unused.
 - 8 subscriptions in the current database point to packages that were deleted before the delete guard existed; they keep their package name.
 - Phase 3 (coach notes saved on the server) is not built yet; until then the training-plan routine is still kept in the browser, and the documents say so.
+
 ---
 
 ### 27. No Refunds: Subscriptions Are Paused and Resumed Instead (November 25)
@@ -514,3 +515,33 @@ File: `Chapter4_Diagrams (2).md`.
 - **Database:** new migration `2026_11_26_000001_add_subscription_pauses` adds `memberships.paused_at` and the `membership_pauses` table. A paused subscription has status "Paused".
 - **Tests:** new `MembershipPauseTest` (6 tests: pause and resume, pausing twice, only running subscriptions, New Sale and Renew blocked, inactivity rule and check-in label, member reactivated on resume). `TransactionRefundTest` was renamed `TransactionRulesTest`, and its refund test now checks that refunding is gone. Backend: 115 pass; the 2 older `SecurityTest` tests still need PHP's GD extension. Pause and resume were also clicked through in the browser, in light and dark mode.
 - **Documents to update later:** the ERDs and the data dictionary (new table and column), the use case and process flow diagrams (Refund becomes Pause / Resume), and `TestCase.md` (any refund steps).
+
+---
+
+### 28. Attendance Page: Every Subscriber's Attendance in One List (November 25)
+- **Why:** to see whether a subscriber is really coming, staff had to open Member Management → the member → Attendance Calendar, one member at a time.
+- **What was added:** a new sidebar page, **Attendance** (under Main, after Member Management). The existing "Attendance Monitor" (the live camera) is unchanged.
+  1. **Cards:**
+     - Checked in today.
+     - Visits this week (Monday to today).
+     - **Not seen in 7+ days**: Active subscribers whose last visit was a week or more ago, or who never came. Clicking it filters the list.
+     - Paused.
+  2. **List of subscribers:**
+     - **Columns:**
+       - subscription status (Active / Paused / Expired) with days left or days kept;
+       - a **Mon–Sun strip** for this week (cyan = came, outline = no visit, today ringed);
+       - **last visit** ("Today, 7:42 AM", "5 days ago", "Never"; in red after 7 days);
+       - visits this month;
+       - for **With Coach** members, this week's training tasks ("3/5 done", with missed tasks).
+     - **Search and sort:** search by name or ID, a filter (All / Active / Not seen 7+ days / Paused / Expired), and sorting by longest absent, most recent, most visits or name.
+  3. **Clicking a member** opens a large window laid out like the Member Profile (no profile needed):
+     - **left:** photo, last visit, subscription, this week's strip, this month, this week's coach plan, and buttons for **Manual check-in**, **Profile** and **Training plan**;
+     - **right, as tabs:**
+       - the **Attendance Calendar**: the same calendar as the profile, with "Time In" on each check-in day;
+       - **Check-ins**: date, time, Face or Manual, and the subscription at that time;
+       - **Coach plan** (With Coach only): this week day by day, with Done / To do / Missed.
+     - The profile's attendance calendar was moved into a shared component (`MemberAttendanceCalendar`) so both places show the same calendar. Today's day in that calendar is now light cyan instead of the calendar library's default yellow.
+  4. Walk-in and daily passes are not listed; each member shows their latest subscription.
+- **Backend:** new endpoint `GET /api/attendance/subscribers` (`Tracking/AttendanceTrackerController`), admin-only. Counts come from grouped database queries; training tasks use the same rules as the reports (a task is pending until verified, and missed once its day has passed). The side panel reuses the existing `/members/{id}/attendance` and `/members/{id}/workouts`.
+- **Tests:** new `AttendanceTrackerTest` (5 tests: week/month/today counts and last visit, absent and never-visited members, walk-ins left out and latest subscription shown, paused days kept, With Coach task counts), plus the access check. Backend: 120 pass; the 2 older `SecurityTest` tests still need PHP's GD extension. The page was checked in the browser in light and dark mode and at phone width.
+- **Documents to update later:** the use case diagram and the system process flow (the new Attendance page), and `TestCase.md` (a test case for it).

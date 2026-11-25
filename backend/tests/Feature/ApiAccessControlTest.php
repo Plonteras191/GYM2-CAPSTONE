@@ -23,6 +23,7 @@ class ApiAccessControlTest extends TestCase
             ['GET', '/api/reports'],
             ['GET', '/api/dashboard'],
             ['GET', '/api/attendance/today'],
+            ['GET', '/api/attendance/subscribers'],
             ['GET', '/api/coach-events'],
             ['POST', '/api/members/1/assign-task'],
             ['PUT', '/api/workouts/1/manual-verify'],

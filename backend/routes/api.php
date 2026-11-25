@@ -13,6 +13,7 @@ use App\Http\Controllers\Member\TransactionController;
 use App\Http\Controllers\AI\AiBridgeController;
 use App\Http\Controllers\AI\AttendanceController;
 use App\Http\Controllers\Tracking\WorkoutController;
+use App\Http\Controllers\Tracking\AttendanceTrackerController;
 
 // =====================================================================
 // PUBLIC ROUTES
@@ -90,6 +91,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- 8. ATTENDANCE ---
     Route::get('/members/{id}/attendance', [AttendanceController::class, 'getMemberAttendance']);
     Route::get('/attendance/today', [AttendanceController::class, 'getTodayAttendance']);
+    // The Attendance page: every subscriber's visits and training plan at a glance.
+    Route::get('/attendance/subscribers', [AttendanceTrackerController::class, 'index']);
     Route::post('/attendance/manual', [AttendanceController::class, 'manualCheckIn']);
 
     // --- 9. WORKOUTS (SUPERVISOR MODE) ---
