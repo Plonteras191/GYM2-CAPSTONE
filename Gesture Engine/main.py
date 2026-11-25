@@ -1,6 +1,6 @@
 """
 AI Vision & Gesture Engine - Entry Point
-Double Alpha Fitness Gym Management System
+Muscle Bros Gym Management System
 """
 
 import sys

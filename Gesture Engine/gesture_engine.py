@@ -133,7 +133,7 @@ def make_placeholder_frame(status_text="Connecting to Camera..."):
     # Generate clean 640x360 dark banner with timestamp
     ph = np.zeros((360, 640, 3), dtype=np.uint8)
     ph[:] = (24, 25, 33) # sleek dark brand slate bg (#211918)
-    cv2.putText(ph, "DOUBLE ALPHA GYM - AI ENGINE", (40, 130), cv2.FONT_HERSHEY_DUPLEX, 0.75, (255, 255, 255), 2)
+    cv2.putText(ph, "MUSCLE BROS GYM - AI ENGINE", (40, 130), cv2.FONT_HERSHEY_DUPLEX, 0.75, (255, 255, 255), 2)
     cv2.putText(ph, f"SOURCE: {camera_mode.upper()}", (40, 170), cv2.FONT_HERSHEY_DUPLEX, 0.6, (0, 200, 255), 1)
     cv2.putText(ph, f"STATUS: {status_text}", (40, 210), cv2.FONT_HERSHEY_DUPLEX, 0.55, (100, 220, 100) if "LIVE" in status_text else (80, 130, 255), 1)
     cv2.putText(ph, time.strftime("%Y-%m-%d %H:%M:%S"), (40, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (160, 160, 160), 1)

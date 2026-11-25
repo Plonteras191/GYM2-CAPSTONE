@@ -85,9 +85,9 @@ class AuthController extends Controller
 
         if (!$this->usesLocalPin()) {
             try {
-                Mail::raw("Your Double Alpha Fitness password reset PIN is {$pin}. It expires in 10 minutes.", function ($message) use ($admin) {
+                Mail::raw("Your Muscle Bros Gym password reset PIN is {$pin}. It expires in 10 minutes.", function ($message) use ($admin) {
                     $message->to($admin->email)
-                        ->subject('Double Alpha Fitness password reset PIN');
+                        ->subject('Muscle Bros Gym password reset PIN');
                 });
             } catch (Throwable $exception) {
                 report($exception);

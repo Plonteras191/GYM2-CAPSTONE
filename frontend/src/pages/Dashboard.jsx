@@ -323,7 +323,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-[13px] font-medium text-white/70">
               <span aria-hidden="true" className="live-dot h-2 w-2 rounded-full bg-brand-gold" />
-              Today at Double Alpha
+              Today at Muscle Bros
             </p>
             <button
               type="button"

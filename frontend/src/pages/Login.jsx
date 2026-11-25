@@ -181,11 +181,11 @@ export default function Login() {
         <div className="pointer-events-none hidden flex-col justify-between p-14 lg:flex lg:w-1/2">
           <div className="rise pointer-events-auto flex items-center gap-4" style={{ '--i': 0 }}>
             <div className="rounded-full bg-white ring-2 ring-brand-gold ring-offset-2 ring-offset-brand-dark">
-              <img src={systemLogo} alt="System logo" className="h-14 w-14 rounded-full object-cover" />
+              <img src={systemLogo} alt="System logo" className="h-20 w-20 rounded-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="bg-linear-to-r from-brand-red-300 to-brand-orange-300 bg-clip-text pr-1 font-brand text-[1.75rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent">Double Alpha</span>
-              <span className="mt-1.5 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Fitness</span>
+              <span className="bg-linear-to-r from-brand-red-300 to-brand-orange-300 bg-clip-text pr-1 font-brand text-[1.75rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent">Muscle Bros</span>
+              <span className="mt-1.5 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Gym</span>
             </div>
           </div>
           <p className="rise text-xs font-medium text-white/40" style={{ '--i': 6 }}>Member records, packages, payments and attendance in one place.</p>
@@ -197,9 +197,9 @@ export default function Login() {
 
             <div className="rise mb-8 flex flex-col items-center sm:mb-10 lg:hidden" style={{ '--i': 0 }}>
               <div className="rounded-full bg-white ring-2 ring-brand-gold ring-offset-2 ring-offset-brand-dark">
-                <img src={systemLogo} alt="System logo" className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20" />
+                <img src={systemLogo} alt="System logo" className="h-20 w-20 rounded-full object-cover sm:h-24 sm:w-24" />
               </div>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-brand-gold">Double Alpha Fitness</p>
+              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-brand-gold">Muscle Bros Gym</p>
             </div>
 
             <div className="rise mb-8 sm:mb-10" style={{ '--i': 1 }}>
@@ -289,7 +289,7 @@ export default function Login() {
 
             <div className="rise mt-8 border-t border-white/10 pt-8 text-center sm:mt-10 sm:pt-10" style={{ '--i': 6 }}>
               <p className="text-xs font-medium leading-relaxed text-white/40">
-                Double Alpha Fitness v1.0
+                Muscle Bros Gym v1.0
               </p>
             </div>
 

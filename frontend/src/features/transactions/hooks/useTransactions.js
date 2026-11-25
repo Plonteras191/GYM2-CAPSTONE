@@ -444,7 +444,7 @@ export function useTransactions() {
         <body>
           <div class="center">
             <img src="${esc(fullLogoUrl)}" style="width: 45px; height: 45px; filter: grayscale(100%); margin-bottom: 5px;" onerror="this.style.display='none'" />
-            <div class="bold" style="font-size: 14px;">DOUBLE ALPHA FITNESS</div>
+            <div class="bold" style="font-size: 14px;">MUSCLE BROS GYM</div>
             <div>Tagoloan, Misamis Oriental</div>
             <div>0991 448 9942</div>
             <div>Open Daily 9:00 AM - 9:00 PM</div>
@@ -473,7 +473,6 @@ export function useTransactions() {
           <br/>
           <div class="center" style="margin-top: 8px;">
             <div class="bold uppercase">"BE THE BEST VERSION OF YOURSELF."</div>
-            <div style="margin-top: 2px;">fb.com/doublealphafitnessgym</div>
           </div>
           <script>setTimeout(function() { window.print(); window.close(); }, 300);</script>
         </body>

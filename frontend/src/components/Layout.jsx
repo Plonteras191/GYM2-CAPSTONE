@@ -346,15 +346,15 @@ export default function Layout() {
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-line bg-raised shadow-2xl transition-transform duration-300 ease-out-quint lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-16 flex-shrink-0 items-center justify-between gap-3 border-b border-line px-5 sm:h-20 lg:h-[76px]">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white ring-2 ring-brand-dark ring-offset-2 ring-offset-raised dark:ring-brand-gold">
+            <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-white ring-2 ring-brand-dark ring-offset-2 ring-offset-raised dark:ring-brand-gold">
               <img src={systemLogo} alt="System logo" className="h-full w-full rounded-full bg-white object-cover p-0.5" />
             </div>
             <div className="flex min-w-0 flex-col justify-center">
               <h1 className="bg-gradient-to-r from-brand-red to-brand-orange-700 bg-clip-text pr-1 font-brand text-[1.65rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent dark:from-brand-red-300 dark:to-brand-orange-300">
-                Double Alpha
+                Muscle Bros
               </h1>
               <span className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-muted">
-                Fitness
+                Gym
               </span>
             </div>
           </div>
