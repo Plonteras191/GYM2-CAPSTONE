@@ -368,7 +368,7 @@ export default function Dashboard() {
 
       {/* ── Key figures, each with a plain-language caption ── */}
       <StatStrip index={1} columns="xl:grid-cols-4">
-        <StatCell label="Net revenue" hint="All time, after refunds" tone="gold" to="/transactions" isLoading={isLoading} value={stats.revenue} format={peso} />
+        <StatCell label="Total revenue" hint="All payments, all time" tone="gold" to="/transactions" isLoading={isLoading} value={stats.revenue} format={peso} />
         <StatCell label="Members" hint="Registered in total" tone="red" to="/members" isLoading={isLoading} value={stats.members} format={(v) => formatNumber(v)} />
         <StatCell label="Active subscriptions" hint="Running right now" tone="orange" to="/subscriptions" isLoading={isLoading} value={stats.activeSubs} format={(v) => formatNumber(v)} />
         <StatCell label="Transactions" hint="Recorded all time" tone="slate" to="/transactions" isLoading={isLoading} value={stats.reports} format={(v) => formatNumber(v)} />
@@ -492,7 +492,7 @@ export default function Dashboard() {
           ) : (
             <ul className="-my-1 space-y-0.5">
               {recentTxns.map((txn, i) => {
-                const isNegative = txn.status === 'Refunded' || Number(txn.amount) < 0;
+                const isNegative = Number(txn.amount) < 0;
                 return (
                   <RowLink
                     key={txn.id || i}

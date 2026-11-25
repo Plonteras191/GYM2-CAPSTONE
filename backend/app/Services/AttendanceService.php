@@ -120,6 +120,10 @@ class AttendanceService
 
         $latest = Membership::where('member_id', $member->id)->orderByDesc('id')->first();
 
+        if ($latest && $latest->status === Membership::PAUSED) {
+            return ['paused', $latest->plan_type];
+        }
+
         return $latest ? ['expired', $latest->plan_type] : ['none', null];
     }
 }

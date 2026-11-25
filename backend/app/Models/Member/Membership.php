@@ -11,6 +11,9 @@ class Membership extends Model
 {
     use HasFactory;
 
+    /** A paused subscription keeps its remaining days until it is resumed. */
+    public const PAUSED = 'Paused';
+
     protected $fillable = [
         'member_id',
         'member_name_snapshot',
@@ -21,6 +24,7 @@ class Membership extends Model
         'start_date',
         'end_date',
         'status',
+        'paused_at',
         'auto_renew',
         'payment_method',
         'color',
@@ -40,6 +44,12 @@ class Membership extends Model
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /** Every pause of this subscription, oldest first. */
+    public function pauses()
+    {
+        return $this->hasMany(MembershipPause::class)->orderBy('paused_on');
     }
 
     /** Subscriptions that are active (not cancelled, within their dates) on a date. */

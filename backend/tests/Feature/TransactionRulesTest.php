@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class TransactionRefundTest extends TestCase
+class TransactionRulesTest extends TestCase
 {
     protected function setUp(): void
     {
@@ -52,8 +52,9 @@ class TransactionRefundTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_refund_creates_a_separate_record_and_cannot_be_applied_twice(): void
+    public function test_payments_cannot_be_refunded(): void
     {
+        // Muscle Bros does not refund; a subscription is paused instead.
         $transaction = Transaction::create([
             'transaction_id' => 'TXN-001',
             'transaction_date' => '2026-10-21',
@@ -64,30 +65,10 @@ class TransactionRefundTest extends TestCase
             'status' => 'Complete',
         ]);
 
-        $this->postJson("/api/transactions/{$transaction->id}/refund")
-            ->assertCreated()
-            ->assertJsonPath('refund.type', 'Refund')
-            ->assertJsonPath('refund.amount', -1250);
+        $this->postJson("/api/transactions/{$transaction->id}/refund")->assertNotFound();
 
-        $this->assertDatabaseHas('transactions', [
-            'id' => $transaction->id,
-            'status' => 'Refunded',
-        ]);
-        $this->assertDatabaseHas('transactions', [
-            'transaction_id' => 'TXN-002',
-            'type' => 'Refund',
-            'description' => 'Refund for TXN-001',
-            'package_name_snapshot' => null,
-            'package_category_snapshot' => null,
-            'amount' => '-1250.00',
-            'status' => 'Complete',
-        ]);
-        $this->assertDatabaseCount('transactions', 2);
-
-        $this->postJson("/api/transactions/{$transaction->id}/refund")
-            ->assertUnprocessable();
-
-        $this->assertDatabaseCount('transactions', 2);
+        $this->assertDatabaseHas('transactions', ['id' => $transaction->id, 'amount' => 1250, 'status' => 'Complete']);
+        $this->assertDatabaseCount('transactions', 1);
     }
 
     public function test_money_records_cannot_be_edited_or_deleted(): void

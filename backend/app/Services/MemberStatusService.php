@@ -21,7 +21,8 @@ class MemberStatusService
     /**
      * Set Active members to Inactive when they have had no attendance for a
      * month. Members who joined, or whose status was set, within the last
-     * month are left alone. Returns how many members were changed.
+     * month are left alone, and so are members with a paused subscription.
+     * Returns how many members were changed.
      */
     public function demoteInactiveMembers(): int
     {
@@ -45,6 +46,13 @@ class MemberStatusService
             ->where(function ($query) use ($oneMonthAgo) {
                 $query->whereNull('status_updated_at')
                     ->orWhere('status_updated_at', '<', $oneMonthAgo);
+            })
+            // Staying away is expected while a subscription is paused.
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('memberships')
+                    ->whereColumn('memberships.member_id', 'members.id')
+                    ->where('memberships.status', 'Paused');
             })
             ->update(['status' => 'Inactive', 'status_updated_at' => Carbon::now()]);
     }

@@ -77,7 +77,6 @@ export function useTransactions() {
   const [formData, setFormData] = useState(defaultForm);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [refundingId, setRefundingId] = useState(null);
 
   // Dialogs
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -164,35 +163,6 @@ export function useTransactions() {
     setIsModalOpen(true);
   };
 
-  const handleRefundTransaction = (transaction) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Refund Transaction',
-      message: `Refund the full amount of ₱${formatNumber(Math.abs(Number(transaction.amount)))} for ${transaction.transaction_id}? This will create a separate refund record.`,
-      onConfirm: async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        setRefundingId(transaction.id);
-        try {
-          await api.post(`/transactions/${transaction.id}/refund`);
-          invalidateCache('transactions_data');
-          invalidateCache('dashboard');
-          await fetchData(false);
-          setAlertDialog({ isOpen: true, title: 'Success', message: 'Transaction refunded successfully.', type: 'success' });
-        } catch (error) {
-          console.error('Failed to refund transaction:', error);
-          setAlertDialog({
-            isOpen: true,
-            title: 'Error',
-            message: error.response?.data?.message || 'Failed to refund transaction. Please try again.',
-            type: 'error'
-          });
-        } finally {
-          setRefundingId(null);
-        }
-      }
-    });
-  };
-
   const handleSaveTransaction = async (e) => {
     e.preventDefault();
     if (!formData.package_id || !formData.package_name || !formData.type) {
@@ -242,8 +212,7 @@ export function useTransactions() {
     const matchesType = filterType === 'All'
       || (filterType === 'Walk-In' ? matchesWalkIn
         : filterType === 'Subscription' ? ['subscription', 'subscription payment', 'subscription upgrade', 'subscription renewal'].includes(type)
-          : filterType === 'Refund' ? type === 'refund'
-            : txn.type === filterType);
+          : txn.type === filterType);
     const day = String(txn.transaction_date || '').slice(0, 10);
     const matchesDate = (!dateRange.start || day >= dateRange.start) && (!dateRange.end || day <= dateRange.end);
     return matchesSearch && matchesType && matchesDate;
@@ -482,8 +451,7 @@ export function useTransactions() {
   };
 
   const totalIncome = transactions.filter(t => Number(t.amount) > 0 && t.status === 'Complete').reduce((sum, t) => sum + Number(t.amount), 0);
-  const totalRefunds = transactions.filter(t => t.type === 'Refund').reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
-  const netRevenue = totalIncome - totalRefunds;
+  const paymentCount = transactions.filter(t => t.status === 'Complete').length;
 
   return {
     transactions,
@@ -500,17 +468,14 @@ export function useTransactions() {
     formData, setFormData,
     isSaving,
     isExporting,
-    refundingId,
     confirmDialog, setConfirmDialog,
     alertDialog, setAlertDialog,
     filteredTxns,
     totalIncome,
-    totalRefunds,
-    netRevenue,
+    paymentCount,
     handlePlanSelection,
     handleAmountChange,
     handleOpenAddModal,
-    handleRefundTransaction,
     handleSaveTransaction,
     handleExportCSV,
     handlePrintReceipt

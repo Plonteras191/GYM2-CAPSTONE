@@ -54,7 +54,7 @@ export default function SubscriptionsCalendarView({
 
   const activeSubsMap = new Map();
   subscriptions.forEach(sub => {
-    if (sub.status !== 'Active' || !sub.member) return;
+    if ((sub.status !== 'Active' && sub.status !== 'Paused') || !sub.member) return;
     const plan = sub.plan || plans.find(item => item.name === sub.plan_type);
     const normalizedPlanName = (sub.plan_type || '').toLowerCase();
     if (plan?.category === 'walk_in' || normalizedPlanName.includes('walk') || normalizedPlanName.includes('daily')) return;
@@ -73,9 +73,11 @@ export default function SubscriptionsCalendarView({
       const plan = sub.plan || plans.find(item => item.name === sub.plan_type);
       if (plan?.category === 'walk_in' || planName.includes('walk') || planName.includes('daily') || planName === 'none') return;
       const color = getPackageColor(plan);
+      // A paused subscription's end date moves later when it is resumed.
+      const pausedNote = sub.status === 'Paused' ? ' (Paused)' : '';
       allCalendarEvents.push({
         id: `start-${sub.id}`,
-        title: `Start of ${sub.member.first_name}'s ${sub.plan_type}`,
+        title: `Start of ${sub.member.first_name}'s ${sub.plan_type}${pausedNote}`,
         date: sub.start_date,
         backgroundColor: color,
         borderColor: color,
@@ -85,7 +87,7 @@ export default function SubscriptionsCalendarView({
       if (sub.end_date && sub.end_date !== sub.start_date) {
         allCalendarEvents.push({
           id: `end-${sub.id}`,
-          title: `End of ${sub.member.first_name}'s ${sub.plan_type}`,
+          title: `End of ${sub.member.first_name}'s ${sub.plan_type}${pausedNote}`,
           date: sub.end_date,
           backgroundColor: color,
           borderColor: color,

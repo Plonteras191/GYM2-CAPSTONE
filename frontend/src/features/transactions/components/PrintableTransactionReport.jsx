@@ -12,10 +12,7 @@ export default function PrintableTransactionReport({
   const totalIncome = filteredTxns
     .filter(transaction => Number(transaction.amount) > 0 && transaction.status === 'Complete')
     .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
-  const totalRefunds = filteredTxns
-    .filter(transaction => transaction.type === 'Refund')
-    .reduce((sum, transaction) => sum + Math.abs(Number(transaction.amount)), 0);
-  const netRevenue = totalIncome - totalRefunds;
+  const paymentCount = filteredTxns.filter(transaction => transaction.status === 'Complete').length;
   const formatCurrency = amount => `\u20B1 ${formatNumber(amount)}`;
 
   return (
@@ -50,16 +47,14 @@ export default function PrintableTransactionReport({
         <table className="mb-5 w-full border-collapse border border-black text-center">
           <thead>
             <tr className="border-b border-black bg-neutral-100">
-              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Total Income</th>
-              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Refunds</th>
-              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Net Revenue</th>
+              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Total Revenue</th>
+              <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Payments</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td className="border-r border-black py-2 text-lg font-black">{formatCurrency(totalIncome)}</td>
-              <td className="border-r border-black py-2 text-lg font-black">{formatCurrency(totalRefunds)}</td>
-              <td className="border-r border-black py-2 text-lg font-black">{formatCurrency(netRevenue)}</td>
+              <td className="border-r border-black py-2 text-lg font-black">{paymentCount.toLocaleString()}</td>
             </tr>
           </tbody>
         </table>
@@ -107,8 +102,8 @@ export default function PrintableTransactionReport({
                   <td className="break-words px-2 py-2 font-medium">{packageDetails.title}</td>
                   <td className="break-words px-2 py-2 font-medium">{packageDetails.category}</td>
                   <td className="break-words px-2 py-2 font-medium">{getPaymentMethodLabel(txn.payment_method) || '-'}</td>
-                  <td className={`whitespace-nowrap px-2 py-2 text-right font-bold ${txn.status === 'Refunded' || amount < 0 ? 'text-neutral-900' : ''}`}>{formattedAmount}</td>
-                  <td className={`break-words px-2 py-2 font-medium ${txn.status === 'Refunded' ? 'text-neutral-900' : ''}`}>
+                  <td className="whitespace-nowrap px-2 py-2 text-right font-bold">{formattedAmount}</td>
+                  <td className="break-words px-2 py-2 font-medium">
                     <div>{txn.status || '-'}</div>
                     {txn.reference_number && <div className="mt-0.5 text-[10px]">{txn.reference_number}</div>}
                   </td>

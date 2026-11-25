@@ -6,8 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Gym\Plan;
 use App\Models\Member\Transaction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class TransactionController extends Controller
 {
@@ -29,14 +27,6 @@ class TransactionController extends Controller
             ->get();
         $plans = Plan::select('name', 'category', 'category_detail')->get();
         $transactions->each(function ($transaction) use ($plans) {
-            if ($transaction->type === 'Refund') {
-                $transaction->package_details = [
-                    'title' => 'Refund Payment',
-                    'category' => $transaction->description ?: 'Refund',
-                ];
-                return;
-            }
-
             $plan = $transaction->membership?->plan;
             $planName = trim((string) ($transaction->package_name_snapshot ?: $plan?->name ?: $transaction->membership?->plan_type));
             if (!$plan && $planName === '') {
@@ -101,49 +91,5 @@ class TransactionController extends Controller
 
         $transaction = Transaction::create($validatedData);
         return response()->json(['message' => 'Transaction saved', 'transaction' => $transaction], 201);
-    }
-
-
-
-    public function refund($id)
-    {
-        return DB::transaction(function () use ($id) {
-            $transaction = Transaction::whereKey($id)->lockForUpdate()->firstOrFail();
-
-            if ($transaction->status !== 'Complete' || $transaction->type === 'Refund' || (float) $transaction->amount <= 0) {
-                throw ValidationException::withMessages([
-                    'transaction' => 'Only positive, completed transactions can be refunded.',
-                ]);
-            }
-
-            $latest = Transaction::latest('id')->first();
-            $nextId = $latest ? $latest->id + 1 : 1;
-
-            $refund = Transaction::create([
-                'transaction_id' => 'TXN-' . str_pad($nextId, 3, '0', STR_PAD_LEFT),
-                'transaction_date' => now()->toDateString(),
-                'member_id' => $transaction->member_id,
-                'member_name_snapshot' => $transaction->member_name_snapshot
-                    ?: ($transaction->member ? trim($transaction->member->first_name . ' ' . $transaction->member->last_name) : null),
-                'member_profile_pic_snapshot' => $transaction->member_profile_pic_snapshot ?: $transaction->member?->profile_pic,
-                'member_email_snapshot' => $transaction->member_email_snapshot ?: $transaction->member?->email,
-                'membership_id' => $transaction->membership_id,
-                'type' => 'Refund',
-                'description' => 'Refund for ' . $transaction->transaction_id,
-                'payment_method' => $transaction->payment_method,
-                'amount' => -abs((float) $transaction->amount),
-                'package_name_snapshot' => $transaction->package_name_snapshot,
-                'package_category_snapshot' => $transaction->package_category_snapshot,
-                'status' => 'Complete',
-                'reference_number' => null,
-            ]);
-
-            $transaction->update(['status' => 'Refunded']);
-
-            return response()->json([
-                'message' => 'Transaction refunded successfully.',
-                'refund' => $refund,
-            ], 201);
-        });
     }
 }

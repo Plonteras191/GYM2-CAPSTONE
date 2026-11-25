@@ -180,14 +180,14 @@ export default function Reports() {
   const statusVariant = (val) => {
     const key = String(val ?? '').toLowerCase();
     if (key === 'active' || key === 'checked in' || key === 'complete' || key === 'cash' || key === 'verified') return 'success';
-    if (key === 'expired' || key === 'failed' || key === 'refunded' || key === 'missed') return 'danger';
+    if (key === 'expired' || key === 'failed' || key === 'missed') return 'danger';
     if (key === 'gcash' || key === 'detected') return 'info';
     if (key === 'pending') return 'warning';
     if (key === 'maya' || key === 'other') return 'default';
     return null;
   };
 
-  const renderCellContent = (cell, column, rowStatus) => {
+  const renderCellContent = (cell, column) => {
     if (cell && typeof cell === 'object' && !Array.isArray(cell)) {
       if ('title' in cell || 'category' in cell) {
         return (
@@ -208,8 +208,7 @@ export default function Reports() {
       );
     }
     if (column?.toLowerCase().includes('amount') && typeof cell === 'number') {
-      const isRefunded = rowStatus === 'Refunded' || cell < 0;
-      return <span className={`font-display text-lg font-semibold tabular-nums ${isRefunded ? 'text-negative' : 'text-ink'}`}>{cell < 0 ? '-' : ''}₱ {formatNumber(Math.abs(cell))}</span>;
+      return <span className={`font-display text-lg font-semibold tabular-nums ${cell < 0 ? 'text-negative' : 'text-ink'}`}>{cell < 0 ? '-' : ''}₱ {formatNumber(Math.abs(cell))}</span>;
     }
     const val = getPaymentMethodLabel(cell);
     const variant = statusVariant(val);
@@ -249,9 +248,9 @@ export default function Reports() {
 
   const kpiTone = (label) => {
     const key = label.toLowerCase();
-    if (key.includes('refund') || key.includes('expire') || key.includes('missed')) return 'crimson';
+    if (key.includes('expire') || key.includes('missed')) return 'crimson';
     if (key.includes('transaction') || key.includes('signup') || key.includes('visits') || key.includes('camera')) return 'orange';
-    if (key.includes('time') || key.includes('pending')) return 'slate';
+    if (key.includes('time') || key.includes('pending') || key.includes('paused')) return 'slate';
     return 'gold';
   };
 
@@ -335,7 +334,7 @@ export default function Reports() {
             {filteredRows.map((row, rowIndex) => (
               <tr key={rowIndex} style={{ borderBottom: '1px solid #e0e0e0', backgroundColor: rowIndex % 2 === 0 ? '#ffffff' : '#fafafa' }}>
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} style={{ padding: '5px 10px', color: row[6] === 'Refunded' && (currentData.columns[cellIndex] === 'Amount' || currentData.columns[cellIndex] === 'Payment Status') ? '#5e5e5e' : '#111111' }}>
+                  <td key={cellIndex} style={{ padding: '5px 10px', color: '#111111' }}>
                     {cell && typeof cell === 'object' && !Array.isArray(cell) && ('title' in cell || 'category' in cell) ? (
                       <>
                         <div style={{ fontWeight: 'bold' }}>{cell.title}</div>
@@ -501,7 +500,7 @@ export default function Reports() {
                                 <div className="mt-0.5 truncate text-xs text-muted">{values[1]}</div>
                               </>
                             ) : (
-                              <div className="min-w-0">{renderCellContent(values[0], reportDisplayColumns[cellIndex], row[6])}</div>
+                              <div className="min-w-0">{renderCellContent(values[0], reportDisplayColumns[cellIndex])}</div>
                             )}
                           </td>
                         );
@@ -530,7 +529,7 @@ export default function Reports() {
                                 <span className="block font-semibold text-ink">{values[0]}</span>
                                 <span className="mt-0.5 block text-xs text-muted">{values[1]}</span>
                               </>
-                            ) : renderCellContent(values[0], column, row[6])}
+                            ) : renderCellContent(values[0], column)}
                           </dd>
                         </div>
                       );

@@ -62,13 +62,14 @@ class ReportController extends Controller
         // 3. New member signups count
         $newSignups = Member::whereBetween('created_at', [$startDateTime, $endDateTime])->count();
 
-        // 4. Active / Expired membership counts
+        // 4. Active / Paused / Expired membership counts
         $statusCounts = Membership::select('status', DB::raw('COUNT(*) as total'))
-            ->whereIn('status', ['Active', 'Expired'])
+            ->whereIn('status', ['Active', Membership::PAUSED, 'Expired'])
             ->groupBy('status')
             ->pluck('total', 'status');
         $activeCount  = $statusCounts['Active']  ?? 0;
         $expiredCount = $statusCounts['Expired'] ?? 0;
+        $pausedCount  = $statusCounts[Membership::PAUSED] ?? 0;
 
         // 5. Attendance records in date range
         $attendances = Attendance::select(
@@ -94,8 +95,6 @@ class ReportController extends Controller
 
         // Build KPIs
         $totalIncome   = $txns->where('status', 'Complete')->where('amount', '>', 0)->sum('amount');
-        $refunds       = $txns->where('type', 'Refund')->sum('amount');
-        $netRevenue    = $totalIncome - abs($refunds);
         $totalCheckIns = $attendances->count();
 
         // Map rows
@@ -108,13 +107,6 @@ class ReportController extends Controller
 
         $plans = \App\Models\Gym\Plan::select('id', 'name', 'category', 'category_detail')->get();
         $paymentDetails = function ($transaction) use ($plans) {
-            if ($transaction->type === 'Refund') {
-                return [
-                    'title' => 'Refund Payment',
-                    'category' => trim((string) $transaction->description) ?: 'Refund',
-                ];
-            }
-
             $package = $transaction->membership?->plan;
             $planName = trim((string) ($transaction->package_name_snapshot ?: $package?->name ?: $transaction->membership?->plan_type));
             if (!$package && $planName === '') {
@@ -173,6 +165,7 @@ class ReportController extends Controller
             $a->plan_snapshot ?: 'No plan',
             match ($a->subscription_status) {
                 'active' => 'Active',
+                'paused' => 'Paused',
                 'expired' => 'Expired',
                 'none' => 'No Subscription',
                 default => 'Not Recorded',
@@ -248,8 +241,7 @@ class ReportController extends Controller
             'Payments' => [
                 'kpis' => [
                     ['label' => 'Total Income',  'value' => '₱ ' . $this->formatAmount($totalIncome),   'trend' => 'Live'],
-                    ['label' => 'Refunds',        'value' => '₱ ' . $this->formatAmount(abs($refunds)),  'trend' => 'Live'],
-                    ['label' => 'Net Revenue',    'value' => '₱ ' . $this->formatAmount($netRevenue),    'trend' => 'Live'],
+                    ['label' => 'Payments',      'value' => (string) $txns->where('status', 'Complete')->count(), 'trend' => 'Live'],
                 ],
                 'columns' => ['Txn ID', 'Date', 'Member Details', 'Details', 'Method', 'Amount', 'Payment Status'],
                 'rows'    => $paymentRows,
@@ -258,6 +250,7 @@ class ReportController extends Controller
                 'kpis' => [
                     ['label' => 'New Signups',   'value' => (string) $newSignups,   'trend' => 'Live'],
                     ['label' => 'Total Active',  'value' => (string) $activeCount,  'trend' => 'Live'],
+                    ['label' => 'Total Paused',  'value' => (string) $pausedCount,  'trend' => 'Live'],
                     ['label' => 'Total Expired', 'value' => (string) $expiredCount, 'trend' => 'Live'],
                     ['label' => 'Total Check-ins', 'value' => (string) $totalCheckIns, 'trend' => 'Live'],
                 ],

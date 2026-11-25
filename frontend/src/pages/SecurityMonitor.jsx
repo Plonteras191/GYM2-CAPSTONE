@@ -40,7 +40,9 @@ function AttendanceBadges({ log }) {
   if (log.reactivated) {
     badges.push(['Returned', 'info', 'Was Inactive; set back to Active by this check-in']);
   }
-  if (log.subscription_status === 'expired') {
+  if (log.subscription_status === 'paused') {
+    badges.push(['Paused', 'default', 'Subscription paused: resume it on the Packages page when the member is back']);
+  } else if (log.subscription_status === 'expired') {
     badges.push(['Expired', 'warning', 'Subscription expired: ask the member to renew']);
   } else if (log.subscription_status === 'none') {
     badges.push(['No Sub', 'default', 'No subscription on record']);

@@ -33,6 +33,11 @@ class MemberController extends Controller
                     $startDate = $membership->start_date ? Carbon::parse($membership->start_date)->toDateString() : null;
                     $endDate = $membership->end_date ? Carbon::parse($membership->end_date)->toDateString() : null;
 
+                    // A paused subscription is still the member's current one (its days are kept).
+                    if (strcasecmp((string) $membership->status, 'Paused') === 0) {
+                        return true;
+                    }
+
                     return strcasecmp((string) $membership->status, 'Active') === 0
                         && (!$startDate || $startDate <= $today)
                         && (!$endDate || $endDate >= $today);
@@ -187,7 +192,7 @@ class MemberController extends Controller
                 $memberName = trim($member->first_name . ' ' . $member->last_name);
                 DB::table('memberships')
                     ->where('member_id', $member->id)
-                    ->where('status', 'Active')
+                    ->whereIn('status', ['Active', 'Paused'])
                     ->update(['status' => 'Cancelled']);
                 DB::table('transactions')
                     ->where('member_id', $member->id)

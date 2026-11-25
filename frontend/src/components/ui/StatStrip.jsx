@@ -27,7 +27,7 @@ export function StatStrip({ children, columns = 'lg:grid-cols-4', index = 0, cla
 }
 
 /**
- * `hint` is a plain-language line under the figure ("All time, after refunds")
+ * `hint` is a plain-language line under the figure ("All payments, all time")
  * so the number reads without a manual.
  */
 export function StatCell({ label, value, format = (v) => v, hint, to, state, tone = 'slate', isLoading = false, className = '', compact = false }) {

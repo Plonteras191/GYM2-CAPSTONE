@@ -501,3 +501,16 @@ File: `Chapter4_Diagrams (2).md`.
 - The table `auth_verification_codes` still exists in the database but is unused.
 - 8 subscriptions in the current database point to packages that were deleted before the delete guard existed; they keep their package name.
 - Phase 3 (coach notes saved on the server) is not built yet; until then the training-plan routine is still kept in the browser, and the documents say so.
+---
+
+### 27. No Refunds: Subscriptions Are Paused and Resumed Instead (November 25)
+- **Why:** the new client, Muscle Bros, does not give refunds. When a member has to stop for a while (injury, travel), the subscription is paused so they do not lose the days they paid for.
+- **How it works:**
+  1. On **Packages → Subscriptions**, a subscription that is running today has a **Pause** button. Pausing starts today and keeps the days left (for example "25 days kept · since Nov 25"). The row shows a **Paused** badge, and the status filter has a **Paused** count.
+  2. A paused row shows **Resume** instead of Renew and Edit. Resuming moves the end date later by the number of days spent paused. Example: ends Dec 20, paused Dec 1, resumed Dec 11, so it now ends Dec 30. The confirm dialog shows the new end date before saving.
+  3. There is **no limit** on how often or how long a subscription is paused. Every pause is kept in the new table `membership_pauses` (paused on, resumed on, days, which admin).
+  4. While paused, the member cannot get a **New Sale** or **Renew** until the subscription is resumed; paused members get no camera workout tasks; they are **not** set to Inactive for staying away; a face check-in is labeled "Paused"; the dashboard does not count them as "Running right now" or warn about "no valid subscription"; a package with paused subscribers cannot be deleted; Reports show a "Total Paused" count. Resuming sets the member back to Active.
+- **Refund removed completely:** the Refund button, the refund API (`POST /transactions/{id}/refund`), the "Refunds" filter and stat cards, and the refund column in the printed report. "Net revenue" is now **Total revenue** (there were 0 refunds in the database, so no history was lost).
+- **Database:** new migration `2026_11_26_000001_add_subscription_pauses` adds `memberships.paused_at` and the `membership_pauses` table. A paused subscription has status "Paused".
+- **Tests:** new `MembershipPauseTest` (6 tests: pause and resume, pausing twice, only running subscriptions, New Sale and Renew blocked, inactivity rule and check-in label, member reactivated on resume). `TransactionRefundTest` was renamed `TransactionRulesTest`, and its refund test now checks that refunding is gone. Backend: 115 pass; the 2 older `SecurityTest` tests still need PHP's GD extension. Pause and resume were also clicked through in the browser, in light and dark mode.
+- **Documents to update later:** the ERDs and the data dictionary (new table and column), the use case and process flow diagrams (Refund becomes Pause / Resume), and `TestCase.md` (any refund steps).

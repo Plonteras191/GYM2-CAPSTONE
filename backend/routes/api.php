@@ -54,6 +54,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/memberships', [MembershipController::class, 'store']);
     Route::put('/memberships/{id}', [MembershipController::class, 'update']);
     Route::post('/memberships/{id}/renew', [MembershipController::class, 'renew']);
+    // No refunds: a subscription is paused instead, and resumed with its days kept.
+    Route::post('/memberships/{id}/pause', [MembershipController::class, 'pause']);
+    Route::post('/memberships/{id}/resume', [MembershipController::class, 'resume']);
     Route::delete('/memberships/{id}', [MembershipController::class, 'destroy']);
 
     // --- 4. PLAN ROUTES ---
@@ -75,8 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- 5. TRANSACTION ROUTES ---
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::post('/transactions', [TransactionController::class, 'store']);
-    // Money records are never edited or deleted; a mistake is corrected with a refund.
-    Route::post('/transactions/{id}/refund', [TransactionController::class, 'refund']);
+    // Money records are never edited or deleted, and Muscle Bros does not refund.
 
     // --- 6. REPORTS ---
     Route::get('/reports', [ReportController::class, 'index']);

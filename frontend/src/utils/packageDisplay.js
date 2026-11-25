@@ -1,8 +1,5 @@
 export const getPackageDetails = (transaction) => {
   if (transaction?.package_details) return transaction.package_details;
-  if (transaction?.type === 'Refund') {
-    return { title: 'Refund Payment', category: transaction.description || 'Refund' };
-  }
 
   const plan = transaction?.membership?.plan;
   const name = transaction?.package_name_snapshot || plan?.name || transaction?.membership?.plan_type || transaction?.description?.replace(/\s+(Plan)?\s*Payment$|\s+Package$/i, '') || 'Unknown';

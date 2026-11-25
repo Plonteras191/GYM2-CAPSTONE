@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiList, FiLoader, FiAlertCircle, FiSearch, FiX, FiCheckSquare, FiRefreshCw, FiArrowRight } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiList, FiLoader, FiAlertCircle, FiSearch, FiX, FiCheckSquare, FiRefreshCw, FiArrowRight, FiPause, FiPlay } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import StyledSelect from '../../../components/ui/StyledSelect';
 import SearchInput from '../../../components/ui/SearchInput';
@@ -12,6 +12,7 @@ import TableShell, { Toolbar, TableLoading, CardListLoading, MobileCard } from '
 import { fieldClass, thClass, tdClass } from '../../../components/ui/field';
 import { getSubscriptionFilterGroup } from '../packageCategories';
 import { getPackageCategoryLabel } from '../packageCategories';
+import { isRunningSubscription, pausedDaysLeft } from '../subscriptionPause';
 import { getMediaUrl } from '../../../utils/mediaUrl';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,13 +33,13 @@ const parseDay = (value) => {
 };
 const formatDay = (value) => parseDay(value)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) || value || '—';
 
-/** Share of the membership already used, 0 to 1. */
-const progressOf = (start, end) => {
+/** Share of the membership already used, 0 to 1 (measured up to `at`, or today). */
+const progressOf = (start, end, at = null) => {
   const a = parseDay(start);
   const b = parseDay(end);
   if (!a || !b || b <= a) return null;
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = parseDay(at) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.min(1, Math.max(0, (today - a) / (b - a)));
 };
 
@@ -61,6 +62,24 @@ function Remaining({ endDate }) {
 
 /** Dates in words plus a thin bar showing how much of the membership is used up. */
 function Duration({ sub }) {
+  if (sub.status === 'Paused') {
+    // The clock is stopped: the bar and the days left stay where they were on the pause day.
+    const progress = progressOf(sub.start_date, sub.end_date, sub.paused_at);
+    const left = pausedDaysLeft(sub);
+    return (
+      <div className="min-w-0">
+        <div className="truncate text-sm text-ink">{formatDay(sub.start_date)} <span className="text-muted">→</span> {formatDay(sub.end_date)}</div>
+        {progress !== null && (
+          <div className="mt-2 h-1.5 w-full max-w-48 overflow-hidden rounded-full bg-hover" role="img" aria-label={`Paused at ${Math.round(progress * 100)}% of the membership`}>
+            <div className="h-full rounded-full bg-line-strong" style={{ width: `${progress * 100}%` }} />
+          </div>
+        )}
+        <div className="mt-1.5 truncate text-[13px] text-muted" title={`Paused on ${formatDay(sub.paused_at)}. Resuming adds the paused days to the end date.`}>
+          {left !== null ? `${left} day${left === 1 ? '' : 's'} kept` : 'Paused'} · since {parseDay(sub.paused_at)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) || '—'}
+        </div>
+      </div>
+    );
+  }
   const progress = progressOf(sub.start_date, sub.end_date);
   const days = getDaysRemaining(sub.end_date);
   const barColor = days !== null && days < 0 ? 'bg-line-strong' : days !== null && days <= 7 ? 'bg-negative' : 'bg-brand-gold';
@@ -113,6 +132,9 @@ export default function SubscriptionsTable({
   onEditSubscription,
   onDeleteSubscription,
   onRenewSubscription,
+  onPauseSubscription,
+  onResumeSubscription,
+  pausingId,
   onOpenTrainingPlan
 }) {
   const navigate = useNavigate();
@@ -140,12 +162,14 @@ export default function SubscriptionsTable({
   const counts = {
     All: subscriptions.length,
     Active: subscriptions.filter(sub => sub.status === 'Active').length,
+    Paused: subscriptions.filter(sub => sub.status === 'Paused').length,
     Expired: subscriptions.filter(sub => sub.status === 'Expired').length,
     Cancelled: subscriptions.filter(sub => sub.status === 'Cancelled').length,
   };
   const statusOptions = [
     { value: 'All', label: 'All', count: counts.All },
     { value: 'Active', label: 'Active', count: counts.Active, dot: 'bg-positive' },
+    { value: 'Paused', label: 'Paused', count: counts.Paused, dot: 'bg-warn' },
     { value: 'Expired', label: 'Expired', count: counts.Expired, dot: 'bg-negative' },
     // Only shown when there is one, so it does not add noise.
     ...(counts.Cancelled > 0 ? [{ value: 'Cancelled', label: 'Cancelled', count: counts.Cancelled, dot: 'bg-line-strong' }] : []),
@@ -159,8 +183,9 @@ export default function SubscriptionsTable({
 
   const getStatusBadge = (status) => (
     status === 'Active' ? <Badge variant="success" dot>Active</Badge>
-      : status === 'Expired' ? <Badge variant="danger" dot>Expired</Badge>
-        : <Badge variant="default" dot>{status || 'Unknown'}</Badge>
+      : status === 'Paused' ? <Badge variant="warning"><FiPause size={11} aria-hidden="true" />Paused</Badge>
+        : status === 'Expired' ? <Badge variant="danger" dot>Expired</Badge>
+          : <Badge variant="default" dot>{status || 'Unknown'}</Badge>
   );
 
   // Renew is the main action once a subscription has ended or is about to.
@@ -169,8 +194,36 @@ export default function SubscriptionsTable({
     return sub.status !== 'Active' || (days !== null && days <= 7);
   };
 
-  const rowActions = (sub, withLabels = false) => (
+  const rowActions = (sub, withLabels = false) => (sub.status === 'Paused' ? (
+    // Paused: the only next step is to resume it (or delete it).
     <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+      {sub.member && (
+        <Button
+          size="sm"
+          icon={pausingId === sub.id ? <FiLoader size={14} className="animate-spin" /> : <FiPlay size={14} />}
+          onClick={() => onResumeSubscription(sub)}
+          disabled={pausingId === sub.id}
+          aria-label={`Resume subscription of ${memberNameOf(sub)}`}
+          title="Resume: the days spent paused are added to the end date"
+        >
+          Resume
+        </Button>
+      )}
+      <IconButton tone="danger" label={`Delete subscription of ${memberNameOf(sub)}`} icon={deletingId === sub.id ? <FiLoader size={15} className="animate-spin" /> : <FiTrash2 size={15} />} onClick={() => onDeleteSubscription(sub.id)} disabled={deletingId === sub.id}>{withLabels && 'Delete'}</IconButton>
+    </div>
+  ) : (
+    <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+      {sub.member && isRunningSubscription(sub) && (
+        <IconButton
+          tone="warn"
+          label={`Pause subscription of ${memberNameOf(sub)}`}
+          icon={pausingId === sub.id ? <FiLoader size={15} className="animate-spin" /> : <FiPause size={15} />}
+          onClick={() => onPauseSubscription(sub)}
+          disabled={pausingId === sub.id}
+        >
+          Pause
+        </IconButton>
+      )}
       {sub.member && (
         <Button
           size="sm"
@@ -186,7 +239,7 @@ export default function SubscriptionsTable({
       <IconButton tone="warn" label={`Edit subscription of ${memberNameOf(sub)}`} icon={<FiEdit2 size={15} />} onClick={() => onEditSubscription(sub)} disabled={deletingId === sub.id}>{withLabels && 'Edit'}</IconButton>
       <IconButton tone="danger" label={`Delete subscription of ${memberNameOf(sub)}`} icon={deletingId === sub.id ? <FiLoader size={15} className="animate-spin" /> : <FiTrash2 size={15} />} onClick={() => onDeleteSubscription(sub.id)} disabled={deletingId === sub.id}>{withLabels && 'Delete'}</IconButton>
     </div>
-  );
+  ));
 
   const memberCell = (sub, size = 'md') => (
     <button type="button" onClick={() => sub.member && navigate('/members', { state: { memberId: sub.member.id } })} className="flex min-w-0 items-center gap-3 rounded-lg text-left">
@@ -262,12 +315,12 @@ export default function SubscriptionsTable({
         <div className="hidden overflow-hidden xl:block">
           <table className="w-full min-w-0 table-fixed border-collapse text-left align-middle">
             <colgroup>
-              <col className="w-[8%]" />
-              <col className="w-[21%]" />
+              <col className="w-[7%]" />
               <col className="w-[19%]" />
+              <col className="w-[16%]" />
               <col className="w-[19%]" />
               <col className="w-[9%]" />
-              <col className="w-[24%]" />
+              <col className="w-[30%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-line">

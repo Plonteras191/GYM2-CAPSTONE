@@ -20,8 +20,6 @@ class DashboardController extends Controller
 
         // 1. Top Stats Cards
         $totalIncome = Transaction::where('status', 'Complete')->where('amount', '>', 0)->sum('amount');
-        $totalRefunds = Transaction::where('type', 'Refund')->sum('amount');
-        $netRevenue = $totalIncome - abs($totalRefunds);
 
         $totalMembers = Member::count();
         // "Running right now": saved as Active, already started and not yet past its
@@ -53,7 +51,6 @@ class DashboardController extends Controller
         // 4. Dynamic Sales Chart (Last 6 Months of Revenue)
         $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
         $txnsForChart = Transaction::where('status', 'Complete')
-            ->where('type', '!=', 'Refund')
             ->where('created_at', '>=', $sixMonthsAgo)
             ->get();
 
@@ -89,7 +86,7 @@ class DashboardController extends Controller
             'todayCheckIns' => $todayTimes->count(),
             'checkInsByHour' => $checkInsByHour,
             'stats' => [
-                'revenue' => $netRevenue,
+                'revenue' => $totalIncome,
                 'members' => $totalMembers,
                 'activeSubs' => $activeSubs,
                 'reports' => Transaction::count() // Example: showing total lifetime transactions as "reports"
@@ -129,15 +126,19 @@ class DashboardController extends Controller
         }
 
         // ── ALERT TYPE 2: Active Members With No Valid Subscription ──────────
+        // A paused subscription counts as valid: the member is expected to come back.
         // The database picks out only the members to flag, instead of
         // loading every active member and checking each one here.
         $oneMonthAgo = Carbon::now()->subMonth();
         $membersWithoutSub = Member::where('status', 'Active')
             ->where('created_at', '<', $oneMonthAgo)
             ->whereNotIn('id', Membership::select('member_id')
-                ->where('status', 'Active')
                 ->whereNotNull('member_id')
-                ->where('end_date', '>=', $today->toDateString()))
+                ->where(fn ($query) => $query
+                    ->where('status', Membership::PAUSED)
+                    ->orWhere(fn ($active) => $active
+                        ->where('status', 'Active')
+                        ->where('end_date', '>=', $today->toDateString()))))
             ->get(['id', 'first_name', 'last_name']);
 
         foreach ($membersWithoutSub as $member) {

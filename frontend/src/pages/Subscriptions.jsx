@@ -84,7 +84,10 @@ export default function Subscriptions() {
     isRenewing,
     handleOpenRenew,
     handleCloseRenew,
-    handleRenew
+    handleRenew,
+    pausingId,
+    handlePauseSubscription,
+    handleResumeSubscription
   } = useSubscriptions();
   const todayStr = getLocalDateString();
 
@@ -211,6 +214,9 @@ export default function Subscriptions() {
           onEditSubscription={handleOpenEditModal}
           onDeleteSubscription={handleDelete}
           onRenewSubscription={handleOpenRenew}
+          onPauseSubscription={handlePauseSubscription}
+          onResumeSubscription={handleResumeSubscription}
+          pausingId={pausingId}
           onOpenTrainingPlan={(member) => navigate('/members', { state: { memberId: member.id, tab: 'plan' } })}
         />
       )}
@@ -356,8 +362,8 @@ export default function Subscriptions() {
         message={confirmDialog.message}
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-        confirmText="Confirm"
-        isDanger={true}
+        confirmText={confirmDialog.confirmText || 'Confirm'}
+        isDanger={confirmDialog.isDanger ?? true}
       />
 
       {/* Alert Dialog */}

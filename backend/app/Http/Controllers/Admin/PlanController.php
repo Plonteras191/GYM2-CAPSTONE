@@ -51,8 +51,9 @@ class PlanController extends Controller
                         $legacy->whereNull('plan_id')->where('plan_type', $plan->name);
                     });
             })
-            ->where('status', 'Active')
-            ->whereDate('end_date', '>=', today())
+            ->where(fn ($query) => $query
+                ->where('status', Membership::PAUSED)
+                ->orWhere(fn ($active) => $active->where('status', 'Active')->whereDate('end_date', '>=', today())))
             ->count();
 
         if ($running > 0) {

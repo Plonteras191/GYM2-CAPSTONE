@@ -80,7 +80,7 @@ const getGestureClass = (exercise) => {
 /** True while the member has a running With Coach package: the only members the camera tracks for workouts. */
 const hasCoachPackage = (member) => {
   const membership = member?.activeMembership || member?.active_membership;
-  if (!membership) return false;
+  if (!membership || membership.status === 'Paused') return false;
   return membership.plan?.category === 'with_coach'
     || (!membership.plan && String(membership.plan_type || '').toLowerCase().includes('with coach'));
 };

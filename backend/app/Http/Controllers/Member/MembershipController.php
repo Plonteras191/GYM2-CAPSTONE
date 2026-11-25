@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Member;
 
 use App\Http\Controllers\Controller;
 use App\Models\Member\Membership;
+use App\Models\Member\MembershipPause;
 use App\Models\Member\Member;
 use App\Models\Member\Transaction;
 use App\Models\Gym\Plan;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class MembershipController extends Controller
 {
@@ -20,7 +22,7 @@ class MembershipController extends Controller
                 // Early renewals pay for a later period, so they are not
                 // upgrade credit for the current one.
                 $query->where('status', 'Complete')
-                    ->whereNotIn('type', ['Refund', 'Subscription Renewal'])
+                    ->where('type', '!=', 'Subscription Renewal')
                     ->where('amount', '>', 0);
             }], 'amount')
             ->withExists(['transactions as has_upgraded' => function ($query) {
@@ -35,6 +37,10 @@ class MembershipController extends Controller
             if ($membership->status === 'Active' && $membership->end_date < today()->toDateString()) {
                 $membership->status = 'Expired';
             }
+            // Days left are frozen while paused: counted from the day it was paused.
+            $membership->paused_days_left = $membership->status === Membership::PAUSED && $membership->paused_at
+                ? max(0, (int) Carbon::parse($membership->paused_at)->diffInDays(Carbon::parse($membership->end_date)))
+                : null;
         });
 
         return response()->json($memberships);
@@ -98,6 +104,7 @@ class MembershipController extends Controller
                 'member_id' => ['This member already has an active subscription. Upgrade the existing subscription instead.'],
             ]);
         }
+        $this->ensureNoPausedSubscription($validatedData['member_id']);
 
         $membership = Membership::create($validatedData);
         Membership::where('member_id', $validatedData['member_id'])
@@ -190,7 +197,7 @@ class MembershipController extends Controller
                 }
 
                 $paid = (float) Transaction::where('membership_id', $membership->id)
-                    ->whereNotIn('type', ['Refund', 'Subscription Renewal'])
+                    ->where('type', '!=', 'Subscription Renewal')
                     ->where('status', 'Complete')
                     ->where('amount', '>', 0)
                     ->sum('amount');
@@ -276,6 +283,9 @@ class MembershipController extends Controller
         return DB::transaction(function () use ($id, $validated) {
             $membership = Membership::whereKey($id)->lockForUpdate()->firstOrFail();
             $member = $membership->member_id ? Member::find($membership->member_id) : null;
+            if ($member) {
+                $this->ensureNoPausedSubscription($member->id);
+            }
             if (!$member) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'member_id' => ['This member no longer exists, so the subscription cannot be renewed.'],
@@ -369,6 +379,106 @@ class MembershipController extends Controller
                 'membership' => $target->fresh()->load('plan'),
             ]);
         });
+    }
+
+    /**
+     * Pause a running subscription (Muscle Bros does not refund).
+     *
+     * The days left are kept: when the subscription is resumed, its end date
+     * moves later by the number of days it was paused. There is no limit on
+     * how often or how long; every pause is kept in membership_pauses.
+     */
+    public function pause(Request $request, $id)
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $membership = Membership::whereKey($id)->lockForUpdate()->firstOrFail();
+            $today = Carbon::today();
+
+            if ($membership->status === Membership::PAUSED) {
+                throw ValidationException::withMessages([
+                    'membership' => ['This subscription is already paused.'],
+                ]);
+            }
+            $isRunning = $membership->status === 'Active'
+                && $membership->start_date && Carbon::parse($membership->start_date)->lte($today)
+                && $membership->end_date && Carbon::parse($membership->end_date)->gte($today);
+            if (!$isRunning) {
+                throw ValidationException::withMessages([
+                    'membership' => ['Only a subscription that is running today can be paused.'],
+                ]);
+            }
+
+            $membership->update(['status' => Membership::PAUSED, 'paused_at' => $today->toDateString()]);
+            MembershipPause::create([
+                'membership_id' => $membership->id,
+                'paused_on' => $today->toDateString(),
+                'paused_by_admin_id' => $request->user()?->getKey(),
+            ]);
+
+            $daysLeft = (int) $today->diffInDays(Carbon::parse($membership->end_date));
+
+            return response()->json([
+                'message' => "Subscription paused. The {$daysLeft} day(s) left are kept until it is resumed.",
+                'days_left' => $daysLeft,
+                'membership' => $membership->fresh()->load('plan'),
+            ]);
+        });
+    }
+
+    /** Resume a paused subscription: its end date moves later by the days it was paused. */
+    public function resume(Request $request, $id)
+    {
+        return DB::transaction(function () use ($request, $id) {
+            $membership = Membership::whereKey($id)->lockForUpdate()->firstOrFail();
+            if ($membership->status !== Membership::PAUSED) {
+                throw ValidationException::withMessages([
+                    'membership' => ['Only a paused subscription can be resumed.'],
+                ]);
+            }
+
+            $today = Carbon::today();
+            $pausedOn = $membership->paused_at ? Carbon::parse($membership->paused_at) : $today->copy();
+            $days = $pausedOn->lt($today) ? (int) $pausedOn->diffInDays($today) : 0;
+            $newEnd = Carbon::parse($membership->end_date)->addDays($days);
+
+            $membership->update([
+                'status' => 'Active',
+                'paused_at' => null,
+                'end_date' => $newEnd->toDateString(),
+            ]);
+            MembershipPause::where('membership_id', $membership->id)
+                ->whereNull('resumed_on')
+                ->update([
+                    'resumed_on' => $today->toDateString(),
+                    'days' => $days,
+                    'resumed_by_admin_id' => $request->user()?->getKey(),
+                ]);
+
+            // The member is back: active again, with a fresh month before the inactivity rule.
+            $member = $membership->member_id ? Member::find($membership->member_id) : null;
+            if ($member) {
+                $member->forceFill(['status' => 'Active', 'status_updated_at' => Carbon::now()])->save();
+            }
+
+            return response()->json([
+                'message' => $days > 0
+                    ? "Subscription resumed. It was paused {$days} day(s), so it now ends " . $newEnd->format('M j, Y') . '.'
+                    : 'Subscription resumed. Its end date is unchanged.',
+                'days_paused' => $days,
+                'end_date' => $newEnd->toDateString(),
+                'membership' => $membership->fresh()->load('plan'),
+            ]);
+        });
+    }
+
+    /** A member with a paused subscription must resume it before buying or renewing another. */
+    private function ensureNoPausedSubscription(int|string $memberId): void
+    {
+        if (Membership::where('member_id', $memberId)->where('status', Membership::PAUSED)->exists()) {
+            throw ValidationException::withMessages([
+                'member_id' => ['This member has a paused subscription. Resume it first.'],
+            ]);
+        }
     }
 
     public function destroy($id)

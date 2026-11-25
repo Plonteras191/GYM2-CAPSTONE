@@ -19,14 +19,11 @@ export default function Transactions() {
     customEnd, setCustomEnd,
     dateRange,
     isExporting,
-    refundingId,
     confirmDialog, setConfirmDialog,
     alertDialog, setAlertDialog,
     filteredTxns,
     totalIncome,
-    totalRefunds,
-    netRevenue,
-    handleRefundTransaction,
+    paymentCount,
     handleExportCSV,
     handlePrintReceipt
   } = useTransactions();
@@ -51,8 +48,7 @@ export default function Transactions() {
         <div className="space-y-5 print:hidden lg:space-y-6">
           <TransactionStats
             totalIncome={totalIncome}
-            totalRefunds={totalRefunds}
-            netRevenue={netRevenue}
+            paymentCount={paymentCount}
           />
 
           <TransactionTable
@@ -71,8 +67,6 @@ export default function Transactions() {
             setCustomEnd={setCustomEnd}
             dateRange={dateRange}
             isExporting={isExporting}
-            refundingId={refundingId}
-            onRefundTransaction={handleRefundTransaction}
             onExportCSV={handleExportCSV}
             onPrintReceipt={handlePrintReceipt}
           />

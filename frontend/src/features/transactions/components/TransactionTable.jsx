@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiDownload, FiRotateCcw, FiList, FiPrinter, FiUser, FiLoader, FiCreditCard, FiSearch, FiX } from 'react-icons/fi';
+import { FiDownload, FiList, FiPrinter, FiUser, FiCreditCard, FiSearch, FiX } from 'react-icons/fi';
 import Pagination from '../../../components/ui/Pagination';
 import { getMediaUrl } from '../../../utils/mediaUrl';
 import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
@@ -21,7 +21,6 @@ const statusVariant = (status) => {
   switch (status) {
     case 'Complete': return 'success';
     case 'Pending': return 'warning';
-    case 'Refunded':
     case 'Failed': return 'danger';
     default: return 'default';
   }
@@ -37,7 +36,7 @@ const methodVariant = (method) => {
 const amountText = (txn) => (Number(txn.amount) > 0
   ? `₱ ${formatNumber(Number(txn.amount))}`
   : `-₱ ${formatNumber(Math.abs(Number(txn.amount)))}`);
-const isNegative = (txn) => txn.status === 'Refunded' || Number(txn.amount) < 0;
+const isNegative = (txn) => Number(txn.amount) < 0;
 
 /* ── Display-only helpers ── */
 const formatTxnDate = (value) => {
@@ -55,7 +54,6 @@ const TYPE_OPTIONS = [
   { value: 'All', label: 'All' },
   { value: 'Subscription', label: 'Subscriptions' },
   { value: 'Walk-In', label: 'Walk-ins' },
-  { value: 'Refund', label: 'Refunds' },
 ];
 
 function NoResults({ isFiltered, searchTerm, onClear }) {
@@ -114,8 +112,6 @@ export default function TransactionTable({
   setCustomEnd = () => {},
   dateRange = { label: 'All dates' },
   isExporting,
-  refundingId,
-  onRefundTransaction,
   onExportCSV,
   onPrintReceipt
 }) {
@@ -146,17 +142,6 @@ export default function TransactionTable({
 
   const rowActions = (txn, withLabels = false) => (
     <div className="inline-flex items-center gap-1.5">
-      {txn.status === 'Complete' && txn.type !== 'Refund' && (
-        <IconButton
-          tone="danger"
-          label="Refund transaction"
-          icon={refundingId === txn.id ? <FiLoader size={15} className="animate-spin" /> : <FiRotateCcw size={15} />}
-          onClick={() => onRefundTransaction(txn)}
-          disabled={refundingId === txn.id}
-        >
-          {refundingId === txn.id ? 'Refunding…' : 'Refund'}
-        </IconButton>
-      )}
       <IconButton label="Print receipt" icon={<FiPrinter size={15} />} onClick={() => onPrintReceipt(txn)}>{withLabels && 'Receipt'}</IconButton>
     </div>
   );

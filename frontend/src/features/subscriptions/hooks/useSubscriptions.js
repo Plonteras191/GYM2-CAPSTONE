@@ -8,6 +8,7 @@ import { getLocalDateString } from '../../../utils/dateFormat';
 import { formatNumber } from '../../../utils/numberFormat';
 import { getLoyaltyPrice, countRunningSubscriptions, isSubscriptionOfPackage } from '../pricing';
 import { CALENDAR_SHADES, toBrandColor } from '../../../utils/brandColor';
+import { daysLeftToday, daysPausedSoFar, endDateIfResumedToday } from '../subscriptionPause';
 
 export function useSubscriptions() {
   const { getCache, setCache, invalidateCache, invalidateCachePrefix } = useDataCache();
@@ -33,6 +34,7 @@ export function useSubscriptions() {
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false); // Sync guard to prevent double-submit race conditions
   const [deletingId, setDeletingId] = useState(null);
+  const [pausingId, setPausingId] = useState(null);
   const [deletingPlanId, setDeletingPlanId] = useState(null);
   const [renewTarget, setRenewTarget] = useState(null);
   const [isRenewing, setIsRenewing] = useState(false);
@@ -439,6 +441,79 @@ export function useSubscriptions() {
     }
   };
 
+  /** After a pause or resume, every page that shows subscriptions must reload. */
+  const refreshAfterPauseChange = async () => {
+    invalidateCache('subscriptions_data');
+    invalidateCache('members');
+    invalidateCache('dashboard');
+    invalidateCachePrefix('reports_v2_');
+    invalidateCachePrefix('reports_v3_');
+    await fetchData(false);
+  };
+
+  const pauseErrorMessage = (error, fallback) => {
+    const errors = error.response?.data?.errors;
+    return errors?.membership?.[0] || errors?.member_id?.[0] || error.response?.data?.message || fallback;
+  };
+
+  /** Pause instead of refund: the days left are kept until the subscription is resumed. */
+  const handlePauseSubscription = (sub) => {
+    const name = sub.member ? `${sub.member.first_name} ${sub.member.last_name}` : sub.member_name_snapshot || 'this member';
+    const left = daysLeftToday(sub);
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Pause subscription',
+      message: `Pause ${name}'s ${sub.plan_type} subscription from today? ${left === null ? 'The days left' : `The ${left} day${left === 1 ? '' : 's'} left`} are kept and added back when you resume it.`,
+      confirmText: 'Pause',
+      isDanger: false,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setPausingId(sub.id);
+        try {
+          const response = await api.post(`/memberships/${sub.id}/pause`);
+          await refreshAfterPauseChange();
+          setAlertDialog({ isOpen: true, title: 'Subscription paused', message: response.data.message, type: 'success' });
+        } catch (error) {
+          setAlertDialog({ isOpen: true, title: 'Could not pause', message: pauseErrorMessage(error, 'The subscription could not be paused. Please try again.'), type: 'error' });
+        } finally {
+          setPausingId(null);
+        }
+      },
+    });
+  };
+
+  /** Resume a paused subscription: the end date moves later by the days it was paused. */
+  const handleResumeSubscription = (sub) => {
+    const name = sub.member ? `${sub.member.first_name} ${sub.member.last_name}` : sub.member_name_snapshot || 'this member';
+    const days = daysPausedSoFar(sub);
+    const newEnd = endDateIfResumedToday(sub);
+    const newEndText = newEnd
+      ? new Date(`${newEnd}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : null;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Resume subscription',
+      message: days > 0
+        ? `Resume ${name}'s subscription now? It was paused ${days} day${days === 1 ? '' : 's'}, so it will end on ${newEndText}.`
+        : `Resume ${name}'s subscription now? It was paused today, so the end date stays the same.`,
+      confirmText: 'Resume',
+      isDanger: false,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setPausingId(sub.id);
+        try {
+          const response = await api.post(`/memberships/${sub.id}/resume`);
+          await refreshAfterPauseChange();
+          setAlertDialog({ isOpen: true, title: 'Subscription resumed', message: response.data.message, type: 'success' });
+        } catch (error) {
+          setAlertDialog({ isOpen: true, title: 'Could not resume', message: pauseErrorMessage(error, 'The subscription could not be resumed. Please try again.'), type: 'error' });
+        } finally {
+          setPausingId(null);
+        }
+      },
+    });
+  };
+
   const handleSaveCoachEvent = async (e) => {
     e.preventDefault();
     if (eventForm.end_date < eventForm.start_date) {
@@ -707,6 +782,9 @@ export function useSubscriptions() {
     isEditing,
     isSaving,
     deletingId,
+    pausingId,
+    handlePauseSubscription,
+    handleResumeSubscription,
     deletingPlanId,
     isEventModalOpen, setIsEventModalOpen,
     isSavingEvent,
