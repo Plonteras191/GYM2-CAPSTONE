@@ -11,46 +11,49 @@
   --font-mono: "DM Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --font-brand: "Barlow Condensed", "Instrument Sans Variable", sans-serif;
 
-  /* ── Brand palette (original hues, unchanged) ─────────────────────── */
-  --color-brand-red: #A60303;
-  --color-brand-crimson: #A61F2B;
-  --color-brand-gold: #F2B705;
-  --color-brand-orange: #D97A07;
+  /* ── Brand palette: Muscle Bros is black and white only ───────────────
+     The old colour names are kept so components did not need renaming;
+     every value is now a neutral grey, matched to the old colour's
+     luminance so all text/background contrast ratios are unchanged.
+     Accents are pushed to true black (light) and near-white (dark). */
+  --color-brand-red: #1A1A1A;
+  --color-brand-crimson: #565656;
+  --color-brand-gold: #C0C0C0;
+  --color-brand-orange: #929292;
   --color-brand-dark: #0D0D0D;
-  --color-brand-navy: #031226;
-  --color-brand-surface: #212226;
-  --color-brand-slate: #3F454D;
+  --color-brand-navy: #121212;
+  --color-brand-surface: #222222;
+  --color-brand-slate: #444444;
   --color-brand-light: #F2F2F2;
   --color-brand-white: #FCFCFC;
 
   /* ── Refined tints and shades of the same hues ──────────────────────
      Each "text" shade is tuned to pass WCAG AA (4.5:1) on its ground. */
-  --color-brand-red-50: #FBECEC;   /* soft ground for red accents (light) */
-  --color-brand-red-100: #F5D3D3;
-  --color-brand-red-300: #F0565B;  /* red text/marks on dark grounds, 5.4:1 */
-  --color-brand-red-800: #6E0202;
-  --color-brand-crimson-50: #F8E6E8;
-  --color-brand-crimson-300: #E25563; /* crimson graphics on dark panels */
-  --color-brand-gold-50: #FEF6DD;
-  --color-brand-gold-100: #FCEAB0;
-  --color-brand-gold-500: #E0A800;  /* gold hover / pressed */
-  --color-brand-gold-700: #7A5800;  /* gold text on light tints, 6:1 */
-  --color-brand-orange-50: #FDF1E3;
-  --color-brand-orange-300: #F59E2B; /* orange on dark grounds, 8.6:1 */
-  --color-brand-orange-700: #A35400; /* orange text on white, 5.5:1 */
-  --color-brand-navy-50: #E6ECF5;
-  --color-brand-navy-200: #A9BCD9;
+  --color-brand-red-50: #EBEBEB;   /* soft ground for accents (light) */
+  --color-brand-red-100: #DBDBDB;
+  --color-brand-red-300: #EDEDED;  /* accent text/marks on dark grounds */
+  --color-brand-red-800: #000000;
+  --color-brand-crimson-50: #EAEAEA;
+  --color-brand-crimson-300: #858585; /* crimson graphics on dark panels */
+  --color-brand-gold-50: #F6F6F6;
+  --color-brand-gold-100: #EAEAEA;
+  --color-brand-gold-500: #B1B1B1;  /* gold hover / pressed */
+  --color-brand-gold-700: #5E5E5E;  /* gold text on light tints, 6:1 */
+  --color-brand-orange-50: #F3F3F3;
+  --color-brand-orange-300: #B1B1B1; /* orange on dark grounds, 8.6:1 */
+  --color-brand-orange-700: #696969; /* orange text on white, 5.5:1 */
+  --color-brand-navy-50: #EBEBEB;
+  --color-brand-navy-200: #BBBBBB;
 
-  /* Dark-mode neutrals: the blue-grey family already used across the app,
-     consolidated. Muted text lifted from #6D758D (3.2:1, fails) to 5:1. */
-  --color-night-canvas: #0B0C0F;
-  --color-night-raised: #131419;
-  --color-night-panel: #22252D;
-  --color-night-field: #191B22;
-  --color-night-hover: #2B2F39;
-  --color-night-line: #353A47;
-  --color-night-line-strong: #646B7F;
-  --color-night-muted: #8B93A7;
+  /* Dark-mode neutrals. Muted text is kept at 5:1 on the canvas. */
+  --color-night-canvas: #0C0C0C;
+  --color-night-raised: #141414;
+  --color-night-panel: #252525;
+  --color-night-field: #1B1B1B;
+  --color-night-hover: #2F2F2F;
+  --color-night-line: #3A3A3A;
+  --color-night-line-strong: #6B6B6B;
+  --color-night-muted: #939393;
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -88,19 +91,19 @@
   --ui-canvas: var(--color-brand-light);
   --ui-raised: var(--color-brand-white);
   --ui-panel: #FFFFFF;
-  --ui-field: #F7F7F8;
-  --ui-hover: #F0F0F2;
-  --ui-line: #D1D5DB;                  /* gray-300: dividers and inner lines */
-  --ui-edge: #9CA3AF;                  /* gray-400: outer border of cards and panels */
-  --ui-line-strong: #8D929D;           /* form-control borders, 3:1 */
+  --ui-field: #F7F7F7;
+  --ui-hover: #F0F0F0;
+  --ui-line: #D5D5D5;                  /* gray-300: dividers and inner lines */
+  --ui-edge: #A2A2A2;                  /* gray-400: outer border of cards and panels */
+  --ui-line-strong: #929292;           /* form-control borders, 3:1 */
   --ui-ink: var(--color-brand-dark);   /* 19:1 */
   --ui-ink-2: var(--color-brand-slate);/* 9.7:1 */
-  --ui-muted: #5B6170;                 /* 5.5:1 on canvas */
+  --ui-muted: #616161;                 /* 5.5:1 on canvas */
   --ui-accent: var(--color-brand-red);
   --ui-accent-soft: var(--color-brand-red-50);
   --ui-focus: var(--color-brand-orange-700);
-  --ui-positive: #047857;
-  --ui-positive-soft: #E7F5EF;
+  --ui-positive: #696969;
+  --ui-positive-soft: #F2F2F2;
   --ui-negative: var(--color-brand-crimson);
   --ui-negative-soft: var(--color-brand-crimson-50);
   --ui-warn: var(--color-brand-gold-700);
@@ -117,18 +120,18 @@
   --ui-line: var(--color-night-line);
   --ui-edge: var(--color-night-line);
   --ui-line-strong: var(--color-night-line-strong);
-  --ui-ink: #E6E7EA;
-  --ui-ink-2: #B8BDC9;
+  --ui-ink: #E7E7E7;
+  --ui-ink-2: #BDBDBD;
   --ui-muted: var(--color-night-muted);
   --ui-accent: var(--color-brand-red-300);
-  --ui-accent-soft: rgb(240 86 91 / 0.12);
+  --ui-accent-soft: rgb(139 139 139 / 0.12);
   --ui-focus: var(--color-brand-gold);
-  --ui-positive: #34D399;
-  --ui-positive-soft: rgb(52 211 153 / 0.12);
-  --ui-negative: #F2A3A8;
-  --ui-negative-soft: rgb(226 85 99 / 0.14);
+  --ui-positive: #BBBBBB;
+  --ui-positive-soft: rgb(187 187 187 / 0.12);
+  --ui-negative: #B8B8B8;
+  --ui-negative-soft: rgb(133 133 133 / 0.14);
   --ui-warn: var(--color-brand-gold);
-  --ui-warn-soft: rgb(242 183 5 / 0.12);
+  --ui-warn-soft: rgb(192 192 192 / 0.12);
 }
 
 ::selection {
@@ -143,11 +146,11 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(156 163 175 / 0.8) transparent;
+  scrollbar-color: rgb(162 162 162 / 0.8) transparent;
 }
 
 .dark * {
-  scrollbar-color: rgb(107 114 128 / 0.85) transparent;
+  scrollbar-color: rgb(114 114 114 / 0.85) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -160,31 +163,31 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: rgb(156 163 175 / 0.8);
+  background-color: rgb(162 162 162 / 0.8);
   background-clip: content-box;
   border: 2px solid transparent;
   border-radius: 9999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #6b7280;
+  background-color: #727272;
 }
 
 .dark *::-webkit-scrollbar-thumb {
-  background-color: rgb(107 114 128 / 0.85);
+  background-color: rgb(114 114 114 / 0.85);
 }
 
 .dark *::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af;
+  background-color: #a2a2a2;
 }
 
 .coach-event-list-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgb(156 163 175 / 0.8) transparent;
+  scrollbar-color: rgb(162 162 162 / 0.8) transparent;
 }
 
 .dark .coach-event-list-scroll {
-  scrollbar-color: rgb(107 114 128 / 0.85) transparent;
+  scrollbar-color: rgb(114 114 114 / 0.85) transparent;
 }
 
 .coach-event-list-scroll::-webkit-scrollbar {
@@ -192,14 +195,14 @@
 }
 
 .coach-event-list-scroll::-webkit-scrollbar-thumb {
-  background-color: rgb(156 163 175 / 0.8);
+  background-color: rgb(162 162 162 / 0.8);
   background-clip: content-box;
   border: 1px solid transparent;
   border-radius: 9999px;
 }
 
 .dark .coach-event-list-scroll::-webkit-scrollbar-thumb {
-  background-color: rgb(107 114 128 / 0.85);
+  background-color: rgb(114 114 114 / 0.85);
 }
 
 select:not(.camera-source-select) {
@@ -217,7 +220,7 @@ select:not(.camera-source-select) {
 }
 
 select:not(.camera-source-select):not(:disabled):hover {
-  border-color: #9ca3af;
+  border-color: #a2a2a2;
 }
 
 select:not(.camera-source-select):focus-visible {
@@ -226,13 +229,13 @@ select:not(.camera-source-select):focus-visible {
 }
 
 select:not(.camera-source-select) option {
-  background-color: #fff;
-  color: #1f2937;
+  background-color: #ffffff;
+  color: #282828;
 }
 
 .dark select:not(.camera-source-select) option {
-  background-color: #191b22;
-  color: #e5e7eb;
+  background-color: #1b1b1b;
+  color: #e7e7e7;
 }
 
 @layer base {
@@ -303,8 +306,8 @@ select:not(.camera-source-select) option {
 }
 
 @keyframes ui-pulse-dot {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(242 183 5 / 0.55); }
-  60% { box-shadow: 0 0 0 6px rgb(242 183 5 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(192 192 192 / 0.55); }
+  60% { box-shadow: 0 0 0 6px rgb(192 192 192 / 0); }
 }
 
 /* Page-load stagger: add .rise and set --i on siblings.

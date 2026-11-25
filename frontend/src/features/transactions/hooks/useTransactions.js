@@ -430,13 +430,13 @@ export function useTransactions() {
               margin: 0 auto; 
               padding: 0; 
               font-size: 11px; 
-              color: #000; 
+              color: #000000; 
               line-height: 1.4;
             }
             .center { text-align: center; }
             .left { text-align: left; }
             .flex-between { display: flex; justify-content: space-between; margin-bottom: 2px; }
-            .dashed-line { border-top: 1px dashed #000; margin: 8px 0; }
+            .dashed-line { border-top: 1px dashed #000000; margin: 8px 0; }
             .bold { font-weight: bold; }
             .uppercase { text-transform: uppercase; }
           </style>

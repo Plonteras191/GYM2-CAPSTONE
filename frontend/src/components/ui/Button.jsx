@@ -22,10 +22,10 @@ export default function Button({
     lg: "min-h-12 px-6 py-3 text-[15px] gap-2.5"
   };
 
-  // Primary is the palette's action colour: gold with near-black ink (10.7:1).
-  // On hover each fill steps toward the ink.
+  // Black and white only: primary is solid ink on the canvas colour, so it is
+  // black with white text in light mode and white with black text in dark mode.
   const variantClasses = {
-    primary: "bg-brand-gold text-brand-dark hover:bg-brand-gold-500 shadow-[inset_0_-1px_0_rgb(13_13_13/0.15)]",
+    primary: "bg-ink text-canvas hover:bg-ink-2",
     secondary: "bg-hover text-ink hover:bg-line",
     danger: "bg-brand-red text-white hover:bg-brand-red-800",
     outline: "border border-line bg-panel text-ink-2 hover:border-line-strong hover:bg-field hover:text-ink",

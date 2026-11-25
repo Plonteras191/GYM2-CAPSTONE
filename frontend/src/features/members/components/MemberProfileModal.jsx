@@ -404,7 +404,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
         events: entries.map(log => ({
           id: log.id,
           title: 'Gym Attendance Confirmed',
-          color: '#10b981',
+          color: '#a3a3a3',
           type: 'attendance',
           time: `Time in: ${formatTime12h(log.time_in)}`,
           detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
@@ -431,7 +431,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     setSelectedAttendanceEntries(entries.map(log => ({
       id: log.id,
       title: 'Gym Attendance Confirmed',
-      color: '#10b981',
+      color: '#a3a3a3',
       type: 'attendance',
       time: `Time in: ${formatTime12h(log.time_in)}`,
       detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
@@ -605,8 +605,8 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       }}
                     />
                     <style>{`
-                      .fc { --fc-border-color: #e2e8f0; --fc-page-bg-color: transparent; color: #4b5563; }
-                      .dark .fc { --fc-border-color: #4b5563; --fc-today-bg-color: rgba(245, 158, 11, 0.1); color: #d1d5db; }
+                      .fc { --fc-border-color: #e7e7e7; --fc-page-bg-color: transparent; color: #545454; }
+                      .dark .fc { --fc-border-color: #545454; --fc-today-bg-color: rgba(177, 177, 177, 0.1); color: #d5d5d5; }
                       
                       .fc-toolbar-title { font-size: 1.3rem !important; font-weight: 500 !important; letter-spacing: -0.02em; text-transform: none; color: var(--ui-ink) !important; }
                       .dark .fc-toolbar-title { color: var(--ui-ink) !important; }
@@ -616,9 +616,9 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .dark .fc .fc-button.fc-button-primary.fc-today-button,
                       .fc .fc-button.fc-button-primary.fc-today-button:disabled,
                       .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
-                        background-color: #0f172a !important;
+                        background-color: #171717 !important;
                         color: #ffffff !important; 
-                        border: 1px solid #f59e0b !important;
+                        border: 1px solid #b1b1b1 !important;
                         border-radius: 0.5rem !important;
                         min-height: 38px !important;
                         font-weight: 700 !important;
@@ -636,35 +636,35 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                         filter: none !important;
                       }
                       .calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { opacity: 1 !important; }
-                      .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #e5e7eb !important; color: #4b5563 !important; opacity: 0.5 !important; }
-                      .dark .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #1e293b !important; color: #9ca3af !important; }
-                      .dark .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { border-color: #f59e0b !important; color: #000 !important; }
-                      .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:disabled { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; border-color: #f59e0b !important; color: #000 !important; }
+                      .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #e7e7e7 !important; color: #545454 !important; opacity: 0.5 !important; }
+                      .dark .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #292929 !important; color: #a2a2a2 !important; }
+                      .dark .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { border-color: #b1b1b1 !important; color: #000000 !important; }
+                      .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:disabled { background-image: linear-gradient(to right, #d1d1d1, #b1b1b1) !important; border-color: #b1b1b1 !important; color: #000000 !important; }
                       .mobile-calendar-grid.calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { opacity: 1 !important; }
-                      .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-image: linear-gradient(to right, #facc15, #f59e0b) !important; border-color: #f59e0b !important; color: #000 !important; opacity: 0.5 !important; }
+                      .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-image: linear-gradient(to right, #d1d1d1, #b1b1b1) !important; border-color: #b1b1b1 !important; color: #000000 !important; opacity: 0.5 !important; }
                       .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button { font-family: ui-sans-serif, system-ui, sans-serif !important; font-size: 15px !important; font-weight: 700 !important; text-transform: none !important; }
                       @media (min-width: 640px) {
                         .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button { min-height: 38px !important; padding: 8px 14px !important; margin: 0 4px !important; }
                       }
                       
-                      .fc .fc-button-primary { background-color: #f1f5f9 !important; border: 1px solid #e2e8f0 !important; color: #000 !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; transition: all 0.2s !important; margin: 0 4px !important; }
-                      .dark .fc .fc-button-primary { background-color: #1e293b !important; border-color: #374151 !important; color: #d1d5db !important; }
-                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #e5e7eb !important; border: 2px solid #D1D5DB !important; border-radius: 0.5rem !important; color: #000 !important; padding: .4em .65em !important; }
-                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #e5e7eb !important; border-color: #D1D5DB !important; color: #000 !important; }
-                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
-                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
-                      .attendance-calendar-nav-button { border: 2px solid #D1D5DB !important; }
-                      .attendance-calendar-nav-button:hover, .attendance-calendar-nav-button:active { border-color: #D1D5DB !important; background-color: #e5e7eb !important; color: #000 !important; }
-                      .dark .attendance-calendar-nav-button { background-color: #4b5563 !important; border-color: #4b5563 !important; color: #d1d5db !important; }
-                      .dark .attendance-calendar-nav-button:hover, .dark .attendance-calendar-nav-button:active { border-color: #4b5563 !important; background-color: #4b5563 !important; color: #d1d5db !important; }
+                      .fc .fc-button-primary { background-color: #f4f4f4 !important; border: 1px solid #e7e7e7 !important; color: #000000 !important; font-weight: 700 !important; border-radius: 8px !important; padding: 6px 16px !important; transition: all 0.2s !important; margin: 0 4px !important; }
+                      .dark .fc .fc-button-primary { background-color: #292929 !important; border-color: #404040 !important; color: #d5d5d5 !important; }
+                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #e7e7e7 !important; border: 2px solid #D5D5D5 !important; border-radius: 0.5rem !important; color: #000000 !important; padding: .4em .65em !important; }
+                      .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #e7e7e7 !important; border-color: #D5D5D5 !important; color: #000000 !important; }
+                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button, .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button { background-color: #545454 !important; border-color: #545454 !important; color: #d5d5d5 !important; }
+                      .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:hover:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-prev-button:active:not(:disabled), .dark .mobile-calendar-grid .fc .fc-button-primary.fc-next-button:active:not(:disabled) { background-color: #545454 !important; border-color: #545454 !important; color: #d5d5d5 !important; }
+                      .attendance-calendar-nav-button { border: 2px solid #D5D5D5 !important; }
+                      .attendance-calendar-nav-button:hover, .attendance-calendar-nav-button:active { border-color: #D5D5D5 !important; background-color: #e7e7e7 !important; color: #000000 !important; }
+                      .dark .attendance-calendar-nav-button { background-color: #545454 !important; border-color: #545454 !important; color: #d5d5d5 !important; }
+                      .dark .attendance-calendar-nav-button:hover, .dark .attendance-calendar-nav-button:active { border-color: #545454 !important; background-color: #545454 !important; color: #d5d5d5 !important; }
                       .attendance-calendar-nav-demo .attendance-calendar-nav-button,
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button,
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button {
-                        border: 2px solid #D1D5DB !important;
+                        border: 2px solid #D5D5D5 !important;
                         border-radius: 0.5rem !important;
-                        background-color: #f8fafc !important;
-                        color: #334155 !important;
-                        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12) !important;
+                        background-color: #fafafa !important;
+                        color: #404040 !important;
+                        box-shadow: 0 1px 2px rgba(23, 23, 23, 0.12) !important;
                         transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease !important;
                       }
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button,
@@ -688,17 +688,17 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
-                        border-color: #d97706 !important;
-                        background-color: #fef3c7 !important;
-                        color: #92400e !important;
-                        box-shadow: 0 2px 5px rgba(217, 119, 6, 0.2) !important;
+                        border-color: #909090 !important;
+                        background-color: #f3f3f3 !important;
+                        color: #585858 !important;
+                        box-shadow: 0 2px 5px rgba(144, 144, 144, 0.2) !important;
                       }
                       .dark .attendance-calendar-nav-demo .attendance-calendar-nav-button,
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button,
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button {
-                        border-color: #4b5563 !important;
-                        background-color: #303643 !important;
-                        color: #e2e8f0 !important;
+                        border-color: #545454 !important;
+                        background-color: #363636 !important;
+                        color: #e7e7e7 !important;
                         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
                       }
                       .dark .attendance-calendar-nav-demo .attendance-calendar-nav-button:hover,
@@ -707,20 +707,20 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
-                        border-color: #f59e0b !important;
-                        background-color: #3c4554 !important;
-                        color: #fbbf24 !important;
-                        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.18) !important;
+                        border-color: #b1b1b1 !important;
+                        background-color: #444444 !important;
+                        color: #c8c8c8 !important;
+                        box-shadow: 0 2px 6px rgba(177, 177, 177, 0.18) !important;
                       }
                       
                       .fc-scrollgrid { border: none !important; }
                       .fc-theme-standard th, .fc-theme-standard td { border: none !important; border-bottom: 1px solid var(--fc-border-color) !important; }
                       .fc-theme-standard td { border-right: 1px solid var(--fc-border-color) !important; }
                       .fc-theme-standard td:last-child { border-right: none !important; }
-                      .fc-col-header-cell-cushion { font-weight: 700 !important; font-size: .73rem !important; letter-spacing: .06em !important; color: #64748b !important; text-transform: uppercase; text-decoration: none !important; }
-                      .dark .fc-col-header-cell-cushion { color: #aab3c2 !important; }
-                      .fc-daygrid-day-number { font-weight: 800; font-size: 0.8rem; padding: 8px !important; text-decoration: none !important; color: #475569 !important; }
-                      .dark .fc-daygrid-day-number { color: #cbd5e1 !important; }
+                      .fc-col-header-cell-cushion { font-weight: 700 !important; font-size: .73rem !important; letter-spacing: .06em !important; color: #737373 !important; text-transform: uppercase; text-decoration: none !important; }
+                      .dark .fc-col-header-cell-cushion { color: #b2b2b2 !important; }
+                      .fc-daygrid-day-number { font-weight: 800; font-size: 0.8rem; padding: 8px !important; text-decoration: none !important; color: #545454 !important; }
+                      .dark .fc-daygrid-day-number { color: #d4d4d4 !important; }
                       
                       .fc-daygrid-event { 
                           border-radius: 4px !important; padding: 2px !important; margin: 1px !important; 
@@ -863,11 +863,11 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             <React.Fragment key={idx}>
                               <tr onClick={() => setExpandedDate(prev => prev === group.date ? null : group.date)} className="hover:bg-hover transition-colors cursor-pointer group">
                                 <td className="px-6 py-4 whitespace-nowrap text-center"><div className="font-medium text-ink dark:text-muted text-sm">{group.date}</div></td>
-                                <td className="px-6 py-4 text-center"><span className="text-sm font-medium text-muted group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">{group.exercises.length} Exercises Recorded</span></td>
+                                <td className="px-6 py-4 text-center"><span className="text-sm font-medium text-muted group-hover:text-neutral-900 dark:group-hover:text-neutral-100 transition-colors">{group.exercises.length} Exercises Recorded</span></td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex items-center justify-center gap-3">
                                     {groupBadge}
-                                    {isExpanded ? <FiChevronUp className="text-muted" size={18} /> : <FiChevronDown className="text-muted group-hover:text-amber-500 transition-colors" size={18} />}
+                                    {isExpanded ? <FiChevronUp className="text-muted" size={18} /> : <FiChevronDown className="text-muted group-hover:text-neutral-900 transition-colors" size={18} />}
                                   </div>
                                 </td>
                               </tr>
@@ -994,7 +994,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             value={selectedBodyPart} 
                             onChange={e => { setSelectedBodyPart(e.target.value); setExercisePage(1); }} 
                             aria-label="Filter exercises by body part"
-                            className="w-full rounded-xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink shadow-sm outline-none transition-colors hover:border-warn/40 focus:ring-2 focus:ring-focus/25 focus:border-focus dark:border-line dark:bg-field dark:text-ink dark:hover:border-amber-500"
+                            className="w-full rounded-xl border border-line bg-panel px-3 py-2.5 text-sm font-semibold text-ink shadow-sm outline-none transition-colors hover:border-warn/40 focus:ring-2 focus:ring-focus/25 focus:border-focus dark:border-line dark:bg-field dark:text-ink dark:hover:border-neutral-100"
                           >
                             <option value="all">All Body Parts</option>
                             {bodyPartOptions.map(bodyPart => <option key={bodyPart} value={bodyPart}>{formatExerciseName(bodyPart)}</option>)}
@@ -1008,7 +1008,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             type="checkbox"
                             checked={cameraOnly}
                             onChange={event => { setCameraOnly(event.target.checked); setExercisePage(1); }}
-                            className="h-4 w-4 accent-[var(--ui-accent,#d4a017)]"
+                            className="h-4 w-4 accent-[var(--ui-accent,#a8a8a8)]"
                           />
                           <FiCamera size={14} aria-hidden="true" /> Only exercises the camera can check
                         </label>

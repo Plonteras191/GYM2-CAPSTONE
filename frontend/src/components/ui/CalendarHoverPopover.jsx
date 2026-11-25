@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { FiArrowRight, FiUser, FiAward, FiCheckCircle } from 'react-icons/fi';
+import { toGray } from '../../utils/grayscale';
 
 const POPOVER_WIDTH = 320;
 const ESTIMATED_HEIGHT = 260;
@@ -110,7 +111,7 @@ export default function CalendarHoverPopover({ data, onClick, onMouseEnter, onMo
             </h4>
             <ul className="space-y-1">
               {group.events.map((ev, idx) => {
-                const color = ev.type === 'attendance' ? 'var(--ui-positive)' : (ev.color || 'var(--ui-line-strong)');
+                const color = ev.type === 'attendance' ? 'var(--ui-positive)' : (toGray(ev.color) || 'var(--ui-line-strong)');
                 const range = ev.type === 'sub' && ev.startDate && ev.endDate ? formatDateRange(ev.startDate, ev.endDate) : '';
                 return (
                   <li key={ev.id || idx} className="flex items-start gap-2.5 rounded-lg px-2 py-1.5" style={{ background: `color-mix(in srgb, ${color} 9%, transparent)` }}>

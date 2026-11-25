@@ -27,11 +27,11 @@ const relativeLuminance = (channels) => {
 
 export const getCalendarEventTextColor = (backgroundColor) => {
   const channels = parseColor(backgroundColor);
-  if (!channels) return '#111827';
+  if (!channels) return '#181818';
 
   const luminance = relativeLuminance(channels);
   const blackContrast = (luminance + 0.05) / 0.05;
   const whiteContrast = 1.05 / (luminance + 0.05);
 
-  return blackContrast >= whiteContrast ? '#111827' : '#ffffff';
+  return blackContrast >= whiteContrast ? '#181818' : '#ffffff';
 };

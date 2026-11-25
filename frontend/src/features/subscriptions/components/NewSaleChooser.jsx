@@ -30,7 +30,7 @@ export default function NewSaleChooser({ isOpen, onClose, onChoose }) {
             onClick={() => onChoose(id)}
             className="press group flex h-full flex-col rounded-2xl border border-edge bg-panel p-5 text-left transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-ink-2 hover:shadow-[0_8px_24px_rgb(13_13_13/0.08)] dark:hover:shadow-none"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-field text-black dark:text-gray-300">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-field text-black dark:text-neutral-300">
               <Icon size={20} aria-hidden="true" />
             </span>
             <span className="mt-4 block text-base font-semibold text-ink">{title}</span>

@@ -7,6 +7,7 @@ import { getPaymentMethodLabel } from '../../../utils/paymentMethod';
 import { getLocalDateString } from '../../../utils/dateFormat';
 import { formatNumber } from '../../../utils/numberFormat';
 import { getLoyaltyPrice, countRunningSubscriptions, isSubscriptionOfPackage } from '../pricing';
+import { GRAY_SHADES, toGray } from '../../../utils/grayscale';
 
 export function useSubscriptions() {
   const { getCache, setCache, invalidateCache, invalidateCachePrefix } = useDataCache();
@@ -61,7 +62,7 @@ export function useSubscriptions() {
     location: 'Main Gym Floor', 
     description: '',
     category: '',
-    color: '#eab308',
+    color: '#ABABAB',
   };
   const [eventForm, setEventForm] = useState(defaultEventForm);
 
@@ -69,7 +70,7 @@ export function useSubscriptions() {
 
   const [recentColors, setRecentColors] = useState(() => {
     const saved = localStorage.getItem('recent_colors');
-    return saved ? JSON.parse(saved) : ['#f59e0b', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'];
+    return saved ? JSON.parse(saved) : GRAY_SHADES;
   });
 
   const saveRecentColor = (hex) => {
@@ -129,7 +130,7 @@ export function useSubscriptions() {
             title: event.title,
             description: event.description || '',
             category: event.category?.name || event.category || 'General',
-            color: event.category?.color || event.color || '#3b82f6',
+            color: event.category?.color || event.color || '#616161',
             start_date: startDate,
             end_date: endDate,
             start_time: (event.start_time || '18:00').slice(0, 5),
@@ -183,7 +184,7 @@ export function useSubscriptions() {
     price: '',
     duration_days: 30,
     category: '',
-    color: '#10b981',
+    color: '#3D3D3D',
   });
 
   const fetchData = useCallback(async (showSpinner = true) => {
@@ -490,7 +491,7 @@ export function useSubscriptions() {
       title: event.title,
       description: event.description || '',
       category: event.category?.name || 'General',
-      color: event.category?.color || '#3b82f6',
+      color: toGray(event.category?.color || '#616161'),
       start_date: String(event.start_date || '').slice(0, 10),
       end_date: String(event.end_date || event.start_date || '').slice(0, 10),
       start_time: (event.start_time || '18:00').slice(0, 5),
@@ -584,7 +585,7 @@ export function useSubscriptions() {
     });
   };
 
-  const emptyPlan = () => ({ name: '', price: '', duration_days: 30, category: '', color: '#10b981' });
+  const emptyPlan = () => ({ name: '', price: '', duration_days: 30, category: '', color: '#3D3D3D' });
 
   const handleOpenNewPlan = () => {
     setNewPlan(emptyPlan());

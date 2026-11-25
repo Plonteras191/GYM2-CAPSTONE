@@ -430,7 +430,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h3 id="member-form-title" className="flex items-center gap-2.5 text-xl font-medium tracking-[-0.01em] text-ink">
-              <span className="flex h-9 w-9 items-center justify-center text-black dark:text-gray-300">
+              <span className="flex h-9 w-9 items-center justify-center text-black dark:text-neutral-300">
                 {isEditing ? <FiEdit2 size={17} /> : <FiUserPlus size={18} />}
               </span>
               {isEditing ? 'Edit member' : 'Register a member'}
@@ -475,7 +475,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                       {formData.profilePicUrl ? (
                         <img src={formData.profilePicUrl} alt="Current profile" className="h-full w-full object-cover" />
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center text-black dark:text-gray-300">
+                        <span className="flex h-full w-full items-center justify-center text-black dark:text-neutral-300">
                           <FiUpload size={26} />
                         </span>
                       )}

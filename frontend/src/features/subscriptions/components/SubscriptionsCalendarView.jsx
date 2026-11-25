@@ -16,6 +16,7 @@ import Button from '../../../components/ui/Button';
 import IconButton from '../../../components/ui/IconButton';
 import SegmentedFilter from '../../../components/ui/SegmentedFilter';
 import { tintStyle } from '../../../components/ui/ColorTile';
+import { toGray } from '../../../utils/grayscale';
 
 export default function SubscriptionsCalendarView({
   subscriptions,
@@ -97,7 +98,7 @@ export default function SubscriptionsCalendarView({
 
   if (showCoachEvents) {
     coachEvents.forEach(event => {
-      const color = event.category?.color || event.color || '#3b82f6';
+      const color = toGray(event.category?.color || event.color || '#616161');
       if (!categoryIsVisible(event.category?.name || 'General', selectedCoachCategories)) return;
       allCalendarEvents.push({
         id: `coach-${event.id}`,
@@ -136,7 +137,7 @@ export default function SubscriptionsCalendarView({
     return {
       id: details.type === 'coach' ? details.id : event.id,
       title: event.title || details.title,
-      color: event.backgroundColor || event.color || details.color,
+      color: toGray(event.backgroundColor || event.color || details.color),
       time: details.time || formatTime(details.start_time),
       location: details.location,
       type: details.type,
@@ -328,7 +329,7 @@ export default function SubscriptionsCalendarView({
                   const eventDetails = {
                     id: event.id,
                     title: event.title,
-                    color: event.category?.color || event.color,
+                    color: toGray(event.category?.color || event.color),
                     time: formatTime(event.start_time),
                     location: event.location,
                     type: 'coach',
@@ -338,7 +339,7 @@ export default function SubscriptionsCalendarView({
                     startDate: event.start_date,
                     endDate: event.end_date,
                   };
-                  const eventColor = event.category?.color || event.color || '#F2B705';
+                  const eventColor = toGray(event.category?.color || event.color || '#ABABAB');
                   const start = new Date(`${String(event.start_date).slice(0, 10)}T00:00:00`);
                   const meta = [start.toLocaleDateString('en-US', { weekday: 'short' }), event.category?.name, event.location].filter(Boolean).join(' · ');
 

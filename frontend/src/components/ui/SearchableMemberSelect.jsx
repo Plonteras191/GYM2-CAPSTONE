@@ -112,7 +112,7 @@ export default function SearchableMemberSelect({
         <div
           id={listboxId}
           role="listbox"
-          className="absolute z-40 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-line bg-hover p-1.5 shadow-xl shadow-slate-900/10 dark:border-line dark:bg-field dark:shadow-black/40"
+          className="absolute z-40 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-line bg-hover p-1.5 shadow-xl shadow-neutral-900/10 dark:border-line dark:bg-field dark:shadow-black/40"
         >
           {matchingMembers.length ? matchingMembers.map((member, index) => {
             const name = `${member.first_name} ${member.last_name}`.trim();

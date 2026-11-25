@@ -36,12 +36,12 @@ export default function PrintableTransactionReport({
         <div className="mb-5 flex items-end justify-between border-b-2 border-black pb-3">
           <div>
             <h1 className="text-xl font-black uppercase tracking-wide">Muscle Bros Gym</h1>
-            <p className="mt-1 text-xs font-medium text-gray-600">
+            <p className="mt-1 text-xs font-medium text-neutral-600">
               Transaction report · {dateLabel} · {filterType === 'All' ? 'All transaction types' : filterType}
               {searchTerm ? ` · Search: ${searchTerm}` : ''}
             </p>
           </div>
-          <div className="text-right text-xs text-gray-600">
+          <div className="text-right text-xs text-neutral-600">
             <p>Records: {filteredTxns.length.toLocaleString()}</p>
             <p>Generated: {new Date().toLocaleString()}</p>
           </div>
@@ -49,7 +49,7 @@ export default function PrintableTransactionReport({
 
         <table className="mb-5 w-full border-collapse border border-black text-center">
           <thead>
-            <tr className="border-b border-black bg-gray-100">
+            <tr className="border-b border-black bg-neutral-100">
               <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Total Income</th>
               <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Refunds</th>
               <th className="border-r border-black py-1.5 text-xs font-bold uppercase">Net Revenue</th>
@@ -75,7 +75,7 @@ export default function PrintableTransactionReport({
             <col className="w-[14%]" />
           </colgroup>
           <thead>
-            <tr className="border-b-2 border-black bg-gray-100">
+            <tr className="border-b-2 border-black bg-neutral-100">
               <th className="px-2 py-2 font-bold uppercase">Transaction / Date</th>
               <th className="px-2 py-2 font-bold uppercase">Member</th>
               <th className="px-2 py-2 font-bold uppercase">Details</th>
@@ -95,20 +95,20 @@ export default function PrintableTransactionReport({
               const packageDetails = getPackageDetails(txn);
               const formattedAmount = `${amount < 0 ? '-' : ''}${formatCurrency(Math.abs(amount))}`;
               return (
-                <tr key={txn.id} className="border-b border-gray-400">
+                <tr key={txn.id} className="border-b border-neutral-400">
                   <td className="break-words px-2 py-2 font-medium">
                     <div className="font-bold">{txn.transaction_id}</div>
                     <div className="mt-0.5 text-[10px]">{txn.transaction_date}</div>
                   </td>
                   <td className="break-words px-2 py-2 font-medium">
                     <div>{memberName}</div>
-                    {memberEmail && <div className="mt-0.5 text-[10px] text-gray-600">{memberEmail}</div>}
+                    {memberEmail && <div className="mt-0.5 text-[10px] text-neutral-600">{memberEmail}</div>}
                   </td>
                   <td className="break-words px-2 py-2 font-medium">{packageDetails.title}</td>
                   <td className="break-words px-2 py-2 font-medium">{packageDetails.category}</td>
                   <td className="break-words px-2 py-2 font-medium">{getPaymentMethodLabel(txn.payment_method) || '-'}</td>
-                  <td className={`whitespace-nowrap px-2 py-2 text-right font-bold ${txn.status === 'Refunded' || amount < 0 ? 'text-red-600' : ''}`}>{formattedAmount}</td>
-                  <td className={`break-words px-2 py-2 font-medium ${txn.status === 'Refunded' ? 'text-red-600' : ''}`}>
+                  <td className={`whitespace-nowrap px-2 py-2 text-right font-bold ${txn.status === 'Refunded' || amount < 0 ? 'text-neutral-900' : ''}`}>{formattedAmount}</td>
+                  <td className={`break-words px-2 py-2 font-medium ${txn.status === 'Refunded' ? 'text-neutral-900' : ''}`}>
                     <div>{txn.status || '-'}</div>
                     {txn.reference_number && <div className="mt-0.5 text-[10px]">{txn.reference_number}</div>}
                   </td>

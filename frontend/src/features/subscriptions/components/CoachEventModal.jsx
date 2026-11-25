@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { fieldClass } from '../../../components/ui/field';
 import { FiX, FiSave, FiCalendar, FiChevronDown, FiEdit2, FiTrash2, FiCheck } from 'react-icons/fi';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
+import GrayShadePicker from '../../../components/ui/GrayShadePicker.jsx';
+import { toGray } from '../../../utils/grayscale';
 
 export default function CoachEventModal({
   isOpen,
   onClose,
   eventForm,
   setEventForm,
-  recentColors = [],
   eventCategories = [],
   isSaving = false,
   isSavingCategory = false,
@@ -20,7 +21,7 @@ export default function CoachEventModal({
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [categoryRequired, setCategoryRequired] = useState(false);
-  const [categoryDraft, setCategoryDraft] = useState({ name: '', color: '#eab308' });
+  const [categoryDraft, setCategoryDraft] = useState({ name: '', color: '#ABABAB' });
   const initialSnapshotRef = React.useRef('');
   const categorySnapshotRef = React.useRef('');
   const currentFormRef = React.useRef({ eventForm, categoryDraft });
@@ -139,7 +140,7 @@ export default function CoachEventModal({
                     Create New Category
                   </button>
                   {eventCategories.map(category => (
-                    <div key={category.id} className="flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-hover dark:hover:bg-white/[.06]">
+                    <div key={category.id} className="flex flex-wrap items-center gap-1 rounded-lg px-2 py-1 hover:bg-hover dark:hover:bg-white/[.06]">
                       {editingCategoryId === category.id ? (
                         <>
                           <input
@@ -150,12 +151,11 @@ export default function CoachEventModal({
                             maxLength={80}
                             className="min-w-0 flex-1 rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink dark:border-line dark:bg-panel dark:text-ink-2"
                           />
-                          <input
-                            type="color"
+                          <GrayShadePicker
+                            size="sm"
+                            label="Category shade"
                             value={categoryDraft.color}
-                            onChange={event => setCategoryDraft({ ...categoryDraft, color: event.target.value })}
-                            aria-label="Category color"
-                            className="h-8 w-8 shrink-0 cursor-pointer rounded border-0 bg-transparent p-1"
+                            onChange={shade => setCategoryDraft({ ...categoryDraft, color: shade })}
                           />
                           <button
                             type="button"
@@ -192,14 +192,14 @@ export default function CoachEventModal({
                             }}
                             className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-sm text-ink"
                           >
-                            <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 dark:border-white/20" style={{ backgroundColor: category.color || '#eab308' }} />
+                            <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 dark:border-white/20" style={{ backgroundColor: toGray(category.color || '#ABABAB') }} />
                             <span className="truncate">{category.name}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => {
                               setEditingCategoryId(category.id);
-                              const draft = { name: category.name, color: category.color || '#eab308' };
+                              const draft = { name: category.name, color: toGray(category.color || '#ABABAB') };
                               setCategoryDraft(draft);
                               categorySnapshotRef.current = JSON.stringify(draft);
                             }}
@@ -318,28 +318,16 @@ export default function CoachEventModal({
               />
             </label>
             
-            <label className="block">
-              <span className={labelClass}>Banner colour</span>
-              <div className="flex gap-2 items-center h-[42px] px-2 bg-field border border-line rounded-xl">
-                <input 
-                  type="color" 
-                  value={eventForm.color} 
-                  onChange={e => setEventForm({ ...eventForm, color: e.target.value })} 
-                  className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0" 
+            <div className="block">
+              <span className={labelClass}>Banner shade</span>
+              <div className="flex h-[42px] items-center rounded-xl border border-line bg-field px-3">
+                <GrayShadePicker
+                  label="Banner shade"
+                  value={eventForm.color}
+                  onChange={shade => setEventForm({ ...eventForm, color: shade })}
                 />
-                <div className="flex flex-wrap gap-1.5 ml-1 border-l border-line pl-2">
-                  {recentColors.map(c => (
-                    <button 
-                      type="button" 
-                      key={c} 
-                      onClick={() => setEventForm({ ...eventForm, color: c })} 
-                      className={`w-5 h-5 rounded-full border transition-transform hover:scale-125 ${eventForm.color === c ? 'ring-2 ring-focus ring-offset-1 ring-offset-slate-900 border-white' : 'border-black/20'}`} 
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
               </div>
-            </label>
+            </div>
           </div>
 
           <label className="block">

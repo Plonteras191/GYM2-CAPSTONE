@@ -263,7 +263,7 @@ export default function Reports() {
           html, body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           body * { visibility: hidden; }
           #printable-report, #printable-report * { visibility: visible; }
-          #printable-report { position: fixed; inset: 0; width: 100%; padding: 0; margin: 0; background: white; color: #000; font-family: 'Arial', sans-serif; }
+          #printable-report { position: fixed; inset: 0; width: 100%; padding: 0; margin: 0; background: white; color: #000000; font-family: 'Arial', sans-serif; }
           #printable-report thead { display: table-header-group; }
           #printable-report tr { break-inside: avoid; }
         `}
@@ -273,21 +273,21 @@ export default function Reports() {
       <div id="printable-report" className="hidden print:block bg-white text-black w-full text-sm">
 
         {/* Header / Letterhead */}
-        <div style={{ borderBottom: '2px solid #000', paddingBottom: '8px', marginBottom: '12px' }}>
+        <div style={{ borderBottom: '2px solid #000000', paddingBottom: '8px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <div>
               <div style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '1px', textTransform: 'uppercase' }}>
                 Muscle Bros Gym
               </div>
-              <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: '#555555', marginTop: '2px' }}>
                 Tagoloan, Misamis Oriental &nbsp;|&nbsp; 0991 448 9942
               </div>
-              <div style={{ fontSize: '10px', color: '#555', marginTop: '3px' }}>
+              <div style={{ fontSize: '10px', color: '#555555', marginTop: '3px' }}>
                 Summary covers the selected date range; rows include all matches for the current search.
               </div>
             </div>
-            <div style={{ textAlign: 'right', fontSize: '11px', color: '#555' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#000', textTransform: 'uppercase' }}>
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#555555' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#000000', textTransform: 'uppercase' }}>
                 {reportTitle} Report
               </div>
               <div>Period: {startDate} &mdash; {endDate}</div>
@@ -299,21 +299,21 @@ export default function Reports() {
         </div>
 
         {/* KPI Summary Row */}
-        <div style={{ display: 'flex', gap: '0', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '14px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: '0', border: '1px solid #cccccc', borderRadius: '4px', marginBottom: '14px', overflow: 'hidden' }}>
           {currentData.kpis.map((kpi, idx) => (
             <div
               key={idx}
               style={{
                 flex: 1,
                 padding: '8px 12px',
-                borderRight: idx !== currentData.kpis.length - 1 ? '1px solid #ccc' : 'none',
-                backgroundColor: idx % 2 === 0 ? '#f9f9f9' : '#fff'
+                borderRight: idx !== currentData.kpis.length - 1 ? '1px solid #cccccc' : 'none',
+                backgroundColor: idx % 2 === 0 ? '#f9f9f9' : '#ffffff'
               }}
             >
-              <div style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666' }}>
+              <div style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#666666' }}>
                 {kpi.label}
               </div>
-              <div style={{ fontSize: '16px', fontWeight: '800', marginTop: '2px', color: '#000' }}>
+              <div style={{ fontSize: '16px', fontWeight: '800', marginTop: '2px', color: '#000000' }}>
                 {kpi.value}
               </div>
             </div>
@@ -323,9 +323,9 @@ export default function Reports() {
         {/* Data Table */}
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed' }}>
           <thead>
-            <tr style={{ borderTop: '2px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f3f3f3', breakInside: 'avoid' }}>
+            <tr style={{ borderTop: '2px solid #000000', borderBottom: '1px solid #000000', backgroundColor: '#f3f3f3', breakInside: 'avoid' }}>
               {currentData.columns.map((col, idx) => (
-                <th key={idx} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '1px', color: '#333' }}>
+                <th key={idx} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '9px', letterSpacing: '1px', color: '#333333' }}>
                   {col}
                 </th>
               ))}
@@ -333,18 +333,18 @@ export default function Reports() {
           </thead>
           <tbody>
             {filteredRows.map((row, rowIndex) => (
-              <tr key={rowIndex} style={{ borderBottom: '1px solid #e0e0e0', backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#fafafa' }}>
+              <tr key={rowIndex} style={{ borderBottom: '1px solid #e0e0e0', backgroundColor: rowIndex % 2 === 0 ? '#ffffff' : '#fafafa' }}>
                 {row.map((cell, cellIndex) => (
-                  <td key={cellIndex} style={{ padding: '5px 10px', color: row[6] === 'Refunded' && (currentData.columns[cellIndex] === 'Amount' || currentData.columns[cellIndex] === 'Payment Status') ? '#b91c1c' : '#111' }}>
+                  <td key={cellIndex} style={{ padding: '5px 10px', color: row[6] === 'Refunded' && (currentData.columns[cellIndex] === 'Amount' || currentData.columns[cellIndex] === 'Payment Status') ? '#5e5e5e' : '#111111' }}>
                     {cell && typeof cell === 'object' && !Array.isArray(cell) && ('title' in cell || 'category' in cell) ? (
                       <>
                         <div style={{ fontWeight: 'bold' }}>{cell.title}</div>
-                        <div style={{ marginTop: '2px', fontWeight: '600', color: '#666' }}>{cell.category || 'No additional details'}</div>
+                        <div style={{ marginTop: '2px', fontWeight: '600', color: '#666666' }}>{cell.category || 'No additional details'}</div>
                       </>
                     ) : cell && typeof cell === 'object' && !Array.isArray(cell) ? (
                       <>
                         <div style={{ fontWeight: '600' }}>{cell.name}</div>
-                        {cell.email && <div style={{ marginTop: '2px', fontSize: '9px', color: '#666' }}>{cell.email}</div>}
+                        {cell.email && <div style={{ marginTop: '2px', fontSize: '9px', color: '#666666' }}>{cell.email}</div>}
                       </>
                     ) : currentData.columns[cellIndex] === 'Amount' && typeof cell === 'number'
                       ? `${cell < 0 ? '-' : ''}₱ ${formatNumber(Math.abs(cell))}`
@@ -355,7 +355,7 @@ export default function Reports() {
             ))}
             {filteredRows.length === 0 && (
               <tr>
-                <td colSpan={currentData.columns.length} style={{ padding: '20px', textAlign: 'center', color: '#888' }}>
+                <td colSpan={currentData.columns.length} style={{ padding: '20px', textAlign: 'center', color: '#888888' }}>
                   No records found for this period.
                 </td>
               </tr>
@@ -363,7 +363,7 @@ export default function Reports() {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={currentData.columns.length} style={{ borderTop: '2px solid #000', paddingTop: '6px', fontSize: '9px', color: '#888', textAlign: 'right' }}>
+              <td colSpan={currentData.columns.length} style={{ borderTop: '2px solid #000000', paddingTop: '6px', fontSize: '9px', color: '#888888', textAlign: 'right' }}>
                 Total records: {filteredRows.length} &nbsp;&nbsp; Generated by Muscle Bros Gym Management System
               </td>
             </tr>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useContext, lazy, Suspense } from 'react';
+import { toGray } from '../utils/grayscale';
 import { Link } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -44,8 +45,8 @@ function CalendarLoading() {
 
 // The busiest hour is the one coloured bar; every other bar is neutral.
 const CHART_THEME = {
-  light: { revenue: '#D97A07', busiest: '#A61F2B', bars: '#9AA0AB', grid: '#E4E5E8', tick: '#5B6170', cursor: 'rgba(13,13,13,0.05)', dotRing: '#FFFFFF' },
-  dark: { revenue: '#F2B705', busiest: '#E25563', bars: '#5E6577', grid: '#30343F', tick: '#8B93A7', cursor: 'rgba(139,147,167,0.12)', dotRing: '#22252D' },
+  light: { revenue: '#1A1A1A', busiest: '#1A1A1A', bars: '#A0A0A0', grid: '#E5E5E5', tick: '#616161', cursor: 'rgba(13,13,13,0.05)', dotRing: '#FFFFFF' },
+  dark: { revenue: '#EDEDED', busiest: '#EDEDED', bars: '#656565', grid: '#343434', tick: '#939393', cursor: 'rgba(147,147,147,0.12)', dotRing: '#252525' },
 };
 
 const peso = (v) => `₱ ${formatNumber(v, Number.isInteger(Number(v)) ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2 })}`;
@@ -121,7 +122,7 @@ function ChartTooltip({ active, payload, label, format = (v) => v, unit }) {
 function EmptyState({ icon: Icon, title, children, action }) {
   return (
     <div className="flex h-full min-h-40 flex-col items-center justify-center gap-3 py-6 text-center">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-black dark:text-gray-300">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hover text-black dark:text-neutral-300">
         <Icon size={19} aria-hidden="true" />
       </span>
       <div>
@@ -317,7 +318,7 @@ export default function Dashboard() {
           className="settle pointer-events-none absolute inset-y-0 right-0 -z-10 hidden h-full w-[62%] object-cover object-[32%_28%] opacity-70 md:block"
         />
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,#0D0D0D_38%,rgb(13_13_13/0.82)_58%,rgb(13_13_13/0.25)_100%)]" />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_120%,rgb(166_3_3/0.42),transparent_55%)]" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_120%,rgb(81_81_81/0.42),transparent_55%)]" />
 
         <div className="flex flex-col gap-6 p-5 sm:p-7 lg:px-9 lg:py-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -379,7 +380,7 @@ export default function Dashboard() {
           index={2}
           className="xl:col-span-2"
           title="Today's check-ins"
-          icon={FiActivity} iconClassName="text-black dark:text-gray-300"
+          icon={FiActivity} iconClassName="text-black dark:text-neutral-300"
         >
           <div className="grid gap-5 md:grid-cols-[minmax(10rem,12rem)_minmax(0,1fr)]">
             <div className="flex items-end justify-between gap-4 md:flex-col md:items-start md:justify-between md:border-r md:border-line md:pr-5">
@@ -436,7 +437,7 @@ export default function Dashboard() {
         <Panel
           index={3}
           title="Ending this week"
-          icon={FiClock} iconClassName="text-black dark:text-gray-300"
+          icon={FiClock} iconClassName="text-black dark:text-neutral-300"
           meta={!isLoading && expiringSoon.length > 0 && (
             <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[13px] font-medium text-warn">{expiringSoon.length}</span>
           )}
@@ -481,7 +482,7 @@ export default function Dashboard() {
           index={4}
           className="xl:col-span-2"
           title="Recent payments"
-          icon={FiCreditCard} iconClassName="text-black dark:text-gray-300"
+          icon={FiCreditCard} iconClassName="text-black dark:text-neutral-300"
           action={<PanelLink as={Link} to="/transactions" icon={FiArrowRight}>All transactions</PanelLink>}
         >
           {isLoading ? (
@@ -522,7 +523,7 @@ export default function Dashboard() {
         <Panel
           index={5}
           title="New members"
-          icon={FiUserPlus} iconClassName="text-black dark:text-gray-300"
+          icon={FiUserPlus} iconClassName="text-black dark:text-neutral-300"
           action={<PanelLink as={Link} to="/members" icon={FiArrowRight}>All members</PanelLink>}
         >
           {isLoading ? (
@@ -561,7 +562,7 @@ export default function Dashboard() {
           index={6}
           className="xl:col-span-2"
           title="Monthly income"
-          icon={FiTrendingUp} iconClassName="text-black dark:text-gray-300"
+          icon={FiTrendingUp} iconClassName="text-black dark:text-neutral-300"
           meta={<span className="text-[13px] font-normal text-muted">Last 6 months</span>}
           action={<PanelLink as={Link} to="/reports" icon={FiArrowRight}>Reports</PanelLink>}
           bodyClassName="flex flex-col gap-4"
@@ -625,7 +626,7 @@ export default function Dashboard() {
         <Panel
           index={7}
           title="Coming up this week"
-          icon={FiCalendar} iconClassName="text-black dark:text-gray-300"
+          icon={FiCalendar} iconClassName="text-black dark:text-neutral-300"
         >
           {eventsThisWeek.length === 0 ? (
             <EmptyState
@@ -638,7 +639,7 @@ export default function Dashboard() {
             <ul className="-my-1 space-y-2">
               {eventsThisWeek.slice(0, 4).map((event, i) => {
                 const start = parseDateKey(event.start_date);
-                const color = event.color || event.category?.color || '#3F454D';
+                const color = toGray(event.color || event.category?.color || '#444444');
                 const category = typeof event.category === 'string' ? event.category : event.category?.name;
                 const time = [formatTime(event.start_time), formatTime(event.end_time)].filter(Boolean).join('–');
                 return (
@@ -666,7 +667,7 @@ export default function Dashboard() {
         </Panel>
       </div>
 
-      <Panel index={8} id="overview-calendar" title="Subscriptions & events calendar" icon={FiCalendar} iconClassName="text-black dark:text-gray-300" className="relative w-full scroll-mt-4">
+      <Panel index={8} id="overview-calendar" title="Subscriptions & events calendar" icon={FiCalendar} iconClassName="text-black dark:text-neutral-300" className="relative w-full scroll-mt-4">
         <Suspense fallback={<CalendarLoading />}>
         <SubscriptionsCalendarView
           subscriptions={subscriptions}

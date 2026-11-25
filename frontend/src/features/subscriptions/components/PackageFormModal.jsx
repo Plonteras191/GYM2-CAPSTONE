@@ -6,6 +6,7 @@ import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuar
 import { sanitizePackagePrice } from '../../../utils/priceInput';
 import { formatNumber } from '../../../utils/numberFormat';
 import { getPackageColor } from '../packageCategories';
+import GrayShadePicker from '../../../components/ui/GrayShadePicker.jsx';
 
 const CATEGORY_HELP = {
   normal: 'A regular gym subscription.',
@@ -23,7 +24,6 @@ export default function PackageFormModal({
   plan,
   setPlan,
   isSaving,
-  recentColors = [],
   onUseColor,
   onSave,
   onClose,
@@ -40,7 +40,7 @@ export default function PackageFormModal({
   if (!isOpen || !plan) return null;
 
   const isEditing = mode === 'edit';
-  const color = plan.color || getPackageColor(plan);
+  const color = getPackageColor(plan);
   const priceText = (() => {
     const raw = String(plan.price ?? '');
     if (priceFocused || raw === '' || raw.endsWith('.')) return raw;
@@ -142,35 +142,14 @@ export default function PackageFormModal({
 
               <div className="rounded-xl border border-line bg-field p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-[13px] font-medium capitalize text-ink-2">Colour shown on the calendar</span>
-                  <span className="font-mono text-xs text-muted">{color}</span>
+                  <span className="text-[13px] font-medium text-ink-2">Shade shown on the calendar</span>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <label className="flex h-11 w-14 cursor-pointer items-center justify-center rounded-lg border border-line bg-panel p-1 shadow-sm" title="Choose a colour">
-                    <input
-                      type="color"
-                      value={color}
-                      onChange={event => { setPlan({ ...plan, color: event.target.value }); onUseColor?.(event.target.value); }}
-                      aria-label="Package colour"
-                      className="h-full w-full cursor-pointer rounded border-0 bg-transparent p-0"
-                    />
-                  </label>
-                  {recentColors.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2" aria-label="Recently used colours">
-                      <span className="text-xs font-medium text-muted">Recent</span>
-                      {recentColors.map(recent => (
-                        <button
-                          key={recent}
-                          type="button"
-                          onClick={() => { setPlan({ ...plan, color: recent }); onUseColor?.(recent); }}
-                          aria-label={`Use recent colour ${recent}`}
-                          title={recent}
-                          className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${color === recent ? 'border-ink ring-2 ring-focus' : 'border-black/20'}`}
-                          style={{ backgroundColor: recent }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <div className="mt-2">
+                  <GrayShadePicker
+                    label="Package shade"
+                    value={color}
+                    onChange={shade => { setPlan({ ...plan, color: shade }); onUseColor?.(shade); }}
+                  />
                 </div>
               </div>
             </div>

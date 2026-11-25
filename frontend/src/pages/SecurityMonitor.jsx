@@ -222,14 +222,14 @@ export default function SecurityMonitor() {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 md:gap-2">
-                  <div className="h-2 w-2 md:h-2.5 md:w-2.5 rounded-full bg-slate-500"></div>
+                  <div className="h-2 w-2 md:h-2.5 md:w-2.5 rounded-full bg-neutral-500"></div>
                   <span className="text-muted font-bold tracking-widest text-[10px] md:text-xs uppercase">DISCONNECTED</span>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center relative bg-[#0a0a0c] overflow-hidden w-full h-full">
+          <div className="flex-1 flex items-center justify-center relative bg-[#0a0a0a] overflow-hidden w-full h-full">
               <img 
                 src={activeStreamUrl} 
                 alt="Live CCTV" 
@@ -251,12 +251,12 @@ export default function SecurityMonitor() {
               {connectionState === 'RECONNECTING' ? (
                <div className="z-10 flex flex-col items-center justify-center text-muted">
                  <FiLoader size={40} md:size={56} className="mb-2 md:mb-4 text-brand-gold animate-spin" />
-                  <p className="text-sm md:text-lg font-bold uppercase tracking-widest text-slate-300">Connecting to camera...</p>
+                  <p className="text-sm md:text-lg font-bold uppercase tracking-widest text-neutral-300">Connecting to camera...</p>
                </div>
               ) : connectionState === 'DISCONNECTED' ? (
                   <div className="z-10 text-center text-muted bg-black/40 p-4 md:p-8 rounded-2xl border border-white/5">
                     <FiWifiOff size={40} md:size={56} className="mx-auto text-ink-2 mb-2 md:mb-4 opacity-90" />
-                     <p className="text-sm md:text-lg font-bold text-slate-200">
+                     <p className="text-sm md:text-lg font-bold text-neutral-200">
                        {engineOnline === false ? 'Python Engine Offline' : 'Camera Not Connected'}
                      </p>
                      <p className="text-xs font-medium mt-1">
@@ -284,7 +284,7 @@ export default function SecurityMonitor() {
                 <FiCamera className="size-4 md:size-5 text-brand-gold" />
                 <select value={cameraSource} onChange={handleCameraChange} className="camera-source-select bg-transparent text-white font-bold uppercase focus:outline-none">
                   {availableCameraSources.map(source => (
-                    <option key={source} value={source} className="bg-slate-900 text-white">{getCameraSourceLabel(source)}</option>
+                    <option key={source} value={source} className="bg-neutral-900 text-white">{getCameraSourceLabel(source)}</option>
                   ))}
                 </select>
               </label>
