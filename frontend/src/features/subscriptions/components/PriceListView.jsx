@@ -171,7 +171,7 @@ export default function PriceListView({ plans, subscriptions, transactions = [],
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-hover text-muted"><FiTag size={20} aria-hidden="true" /></span>
             <div>
               <p className="text-[15px] font-medium text-ink">No packages yet</p>
-              <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">Create the packages you sell, such as Monthly or Annual, with their price and length.</p>
+              <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">Create the packages you sell, such as Monthly or With Coach, with their price and length.</p>
             </div>
             <Button size="sm" icon={<FiPlus size={14} />} onClick={onAdd}>New package</Button>
           </div>
