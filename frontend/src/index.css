@@ -11,15 +11,16 @@
   --font-mono: "DM Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --font-brand: "Barlow Condensed", "Instrument Sans Variable", sans-serif;
 
-  /* ── Brand palette: Muscle Bros is black and white only ───────────────
-     The old colour names are kept so components did not need renaming;
-     every value is now a neutral grey, matched to the old colour's
-     luminance so all text/background contrast ratios are unchanged.
-     Accents are pushed to true black (light) and near-white (dark). */
-  --color-brand-red: #1A1A1A;
+  /* ── Brand palette: Muscle Bros is black, white and cyan ─────────────
+     Surfaces and text are neutral black/white/grey; cyan is the accent.
+     The old colour names are kept so components did not need renaming:
+     "red" = cyan accent (cyan-700 on light, cyan-300 on dark),
+     "gold" = bright cyan fill, always paired with near-black text,
+     "orange" = deep cyan. Crimson (errors) and navy stay neutral. */
+  --color-brand-red: #0E7490;
   --color-brand-crimson: #565656;
-  --color-brand-gold: #C0C0C0;
-  --color-brand-orange: #929292;
+  --color-brand-gold: #22D3EE;
+  --color-brand-orange: #0891B2;
   --color-brand-dark: #0D0D0D;
   --color-brand-navy: #121212;
   --color-brand-surface: #222222;
@@ -29,19 +30,19 @@
 
   /* ── Refined tints and shades of the same hues ──────────────────────
      Each "text" shade is tuned to pass WCAG AA (4.5:1) on its ground. */
-  --color-brand-red-50: #EBEBEB;   /* soft ground for accents (light) */
-  --color-brand-red-100: #DBDBDB;
-  --color-brand-red-300: #EDEDED;  /* accent text/marks on dark grounds */
-  --color-brand-red-800: #000000;
+  --color-brand-red-50: #ECFEFF;   /* soft ground for accents (light) */
+  --color-brand-red-100: #CFFAFE;
+  --color-brand-red-300: #67E8F9;  /* accent text/marks on dark grounds */
+  --color-brand-red-800: #155E75;
   --color-brand-crimson-50: #EAEAEA;
   --color-brand-crimson-300: #858585; /* crimson graphics on dark panels */
-  --color-brand-gold-50: #F6F6F6;
-  --color-brand-gold-100: #EAEAEA;
-  --color-brand-gold-500: #B1B1B1;  /* gold hover / pressed */
-  --color-brand-gold-700: #5E5E5E;  /* gold text on light tints, 6:1 */
-  --color-brand-orange-50: #F3F3F3;
-  --color-brand-orange-300: #B1B1B1; /* orange on dark grounds, 8.6:1 */
-  --color-brand-orange-700: #696969; /* orange text on white, 5.5:1 */
+  --color-brand-gold-50: #ECFEFF;
+  --color-brand-gold-100: #CFFAFE;
+  --color-brand-gold-500: #06B6D4;  /* gold hover / pressed */
+  --color-brand-gold-700: #155E75;  /* gold text on light tints, 6:1 */
+  --color-brand-orange-50: #ECFEFF;
+  --color-brand-orange-300: #A5F3FC; /* orange on dark grounds, 8.6:1 */
+  --color-brand-orange-700: #164E63; /* orange text on white, 5.5:1 */
   --color-brand-navy-50: #EBEBEB;
   --color-brand-navy-200: #BBBBBB;
 
@@ -101,13 +102,13 @@
   --ui-muted: #616161;                 /* 5.5:1 on canvas */
   --ui-accent: var(--color-brand-red);
   --ui-accent-soft: var(--color-brand-red-50);
-  --ui-focus: var(--color-brand-orange-700);
-  --ui-positive: #696969;
-  --ui-positive-soft: #F2F2F2;
+  --ui-focus: #0891B2;
+  --ui-positive: #0E7490;
+  --ui-positive-soft: #ECFEFF;
   --ui-negative: var(--color-brand-crimson);
   --ui-negative-soft: var(--color-brand-crimson-50);
-  --ui-warn: var(--color-brand-gold-700);
-  --ui-warn-soft: var(--color-brand-gold-50);
+  --ui-warn: var(--color-brand-slate);
+  --ui-warn-soft: #F2F2F2;
 }
 
 .dark {
@@ -124,14 +125,14 @@
   --ui-ink-2: #BDBDBD;
   --ui-muted: var(--color-night-muted);
   --ui-accent: var(--color-brand-red-300);
-  --ui-accent-soft: rgb(139 139 139 / 0.12);
+  --ui-accent-soft: rgb(103 232 249 / 0.12);
   --ui-focus: var(--color-brand-gold);
-  --ui-positive: #BBBBBB;
-  --ui-positive-soft: rgb(187 187 187 / 0.12);
+  --ui-positive: #67E8F9;
+  --ui-positive-soft: rgb(34 211 238 / 0.12);
   --ui-negative: #B8B8B8;
   --ui-negative-soft: rgb(133 133 133 / 0.14);
-  --ui-warn: var(--color-brand-gold);
-  --ui-warn-soft: rgb(192 192 192 / 0.12);
+  --ui-warn: #D4D4D4;
+  --ui-warn-soft: rgb(255 255 255 / 0.08);
 }
 
 ::selection {
@@ -306,8 +307,8 @@ select:not(.camera-source-select) option {
 }
 
 @keyframes ui-pulse-dot {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(192 192 192 / 0.55); }
-  60% { box-shadow: 0 0 0 6px rgb(192 192 192 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(34 211 238 / 0.55); }
+  60% { box-shadow: 0 0 0 6px rgb(34 211 238 / 0); }
 }
 
 /* Page-load stagger: add .rise and set --i on siblings.

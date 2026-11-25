@@ -1,6 +1,6 @@
 import React, { useId, useState } from 'react';
 import { FiCheck, FiChevronDown, FiMinus } from 'react-icons/fi';
-import { toGray } from '../../../utils/grayscale';
+import { toBrandColor } from '../../../utils/brandColor';
 
 const countPill = 'shrink-0 rounded-full bg-hover px-2.5 py-0.5 font-display text-sm font-semibold tabular-nums text-ink-2';
 
@@ -97,7 +97,7 @@ export default function CalendarCategoryFilters({
           <label key={category.value} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-sm text-ink-2 transition-colors hover:bg-hover hover:text-ink">
             {renderColorCheckbox(
               selectedValues.includes(category.value),
-              toGray(category.color || '#858585'),
+              toBrandColor(category.color || '#0891B2'),
               { text: `${title}: ${category.label}`, onChange: event => toggleCategory(category.value, event.target.checked) }
             )}
             <span className="min-w-0 flex-1 truncate">{category.label}</span>

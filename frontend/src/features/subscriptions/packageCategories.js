@@ -1,4 +1,4 @@
-import { toGray } from '../../utils/grayscale';
+import { toBrandColor } from '../../utils/brandColor';
 
 export const getPackageCategoryLabel = (plan) => {
   if (plan?.category === 'with_coach') return 'With Coach Subscription';
@@ -7,10 +7,10 @@ export const getPackageCategoryLabel = (plan) => {
 };
 
 export const getPackageColor = (plan) => {
-  if (plan?.color) return toGray(plan.color);
-  if (plan?.category === 'with_coach') return '#858585';
-  if (plan?.category === 'walk_in') return '#D1D1D1';
-  return '#3D3D3D';
+  if (plan?.color) return toBrandColor(plan.color);
+  if (plan?.category === 'with_coach') return '#164E63';
+  if (plan?.category === 'walk_in') return '#A5F3FC';
+  return '#0891B2';
 };
 
 export const getPackageCategoryOptions = (plans) => {
@@ -49,7 +49,7 @@ export const getCoachEventCategoryOptions = (categories, events, today) => (
   categories.map(category => ({
     value: category.name,
     label: category.name,
-    color: toGray(category.color),
+    color: toBrandColor(category.color),
     count: events.filter(event =>
       (event.category?.name || event.category || 'General') === category.name
       && (event.end_date || event.start_date) >= today

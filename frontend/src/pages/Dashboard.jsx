@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useContext, lazy, Suspense } from 'react';
-import { toGray } from '../utils/grayscale';
+import { toBrandColor } from '../utils/brandColor';
 import { Link } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -45,8 +45,8 @@ function CalendarLoading() {
 
 // The busiest hour is the one coloured bar; every other bar is neutral.
 const CHART_THEME = {
-  light: { revenue: '#1A1A1A', busiest: '#1A1A1A', bars: '#A0A0A0', grid: '#E5E5E5', tick: '#616161', cursor: 'rgba(13,13,13,0.05)', dotRing: '#FFFFFF' },
-  dark: { revenue: '#EDEDED', busiest: '#EDEDED', bars: '#656565', grid: '#343434', tick: '#939393', cursor: 'rgba(147,147,147,0.12)', dotRing: '#252525' },
+  light: { revenue: '#0891B2', busiest: '#0891B2', bars: '#C4C4C4', grid: '#E5E5E5', tick: '#616161', cursor: 'rgba(13,13,13,0.05)', dotRing: '#FFFFFF' },
+  dark: { revenue: '#22D3EE', busiest: '#22D3EE', bars: '#4A4A4A', grid: '#343434', tick: '#939393', cursor: 'rgba(147,147,147,0.12)', dotRing: '#252525' },
 };
 
 const peso = (v) => `₱ ${formatNumber(v, Number.isInteger(Number(v)) ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2 })}`;
@@ -318,7 +318,7 @@ export default function Dashboard() {
           className="settle pointer-events-none absolute inset-y-0 right-0 -z-10 hidden h-full w-[62%] object-cover object-[32%_28%] opacity-70 md:block"
         />
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,#0D0D0D_38%,rgb(13_13_13/0.82)_58%,rgb(13_13_13/0.25)_100%)]" />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_120%,rgb(81_81_81/0.42),transparent_55%)]" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_120%,rgb(5_89_104/0.42),transparent_55%)]" />
 
         <div className="flex flex-col gap-6 p-5 sm:p-7 lg:px-9 lg:py-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -639,7 +639,7 @@ export default function Dashboard() {
             <ul className="-my-1 space-y-2">
               {eventsThisWeek.slice(0, 4).map((event, i) => {
                 const start = parseDateKey(event.start_date);
-                const color = toGray(event.color || event.category?.color || '#444444');
+                const color = toBrandColor(event.color || event.category?.color || '#0891B2');
                 const category = typeof event.category === 'string' ? event.category : event.category?.name;
                 const time = [formatTime(event.start_time), formatTime(event.end_time)].filter(Boolean).join('–');
                 return (

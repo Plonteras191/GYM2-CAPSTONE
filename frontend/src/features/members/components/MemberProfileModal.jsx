@@ -404,7 +404,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
         events: entries.map(log => ({
           id: log.id,
           title: 'Gym Attendance Confirmed',
-          color: '#a3a3a3',
+          color: '#0bb2cf',
           type: 'attendance',
           time: `Time in: ${formatTime12h(log.time_in)}`,
           detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
@@ -431,7 +431,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
     setSelectedAttendanceEntries(entries.map(log => ({
       id: log.id,
       title: 'Gym Attendance Confirmed',
-      color: '#a3a3a3',
+      color: '#0bb2cf',
       type: 'attendance',
       time: `Time in: ${formatTime12h(log.time_in)}`,
       detail: `${member.firstName} checked in at ${formatTime12h(log.time_in)}`
@@ -606,7 +606,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                     />
                     <style>{`
                       .fc { --fc-border-color: #e7e7e7; --fc-page-bg-color: transparent; color: #545454; }
-                      .dark .fc { --fc-border-color: #545454; --fc-today-bg-color: rgba(177, 177, 177, 0.1); color: #d5d5d5; }
+                      .dark .fc { --fc-border-color: #545454; --fc-today-bg-color: rgba(12, 193, 226, 0.1); color: #d5d5d5; }
                       
                       .fc-toolbar-title { font-size: 1.3rem !important; font-weight: 500 !important; letter-spacing: -0.02em; text-transform: none; color: var(--ui-ink) !important; }
                       .dark .fc-toolbar-title { color: var(--ui-ink) !important; }
@@ -618,7 +618,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .dark .fc .fc-button.fc-button-primary.fc-today-button:disabled {
                         background-color: #171717 !important;
                         color: #ffffff !important; 
-                        border: 1px solid #b1b1b1 !important;
+                        border: 1px solid #0cc1e2 !important;
                         border-radius: 0.5rem !important;
                         min-height: 38px !important;
                         font-weight: 700 !important;
@@ -638,10 +638,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { opacity: 1 !important; }
                       .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #e7e7e7 !important; color: #545454 !important; opacity: 0.5 !important; }
                       .dark .calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { background-color: #292929 !important; color: #a2a2a2 !important; }
-                      .dark .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { border-color: #b1b1b1 !important; color: #000000 !important; }
-                      .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:disabled { background-image: linear-gradient(to right, #d1d1d1, #b1b1b1) !important; border-color: #b1b1b1 !important; color: #000000 !important; }
+                      .dark .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button { border-color: #0cc1e2 !important; color: #000000 !important; }
+                      .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled), .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button:disabled { background-image: linear-gradient(to right, #66e1f7, #0cc1e2) !important; border-color: #0cc1e2 !important; color: #000000 !important; }
                       .mobile-calendar-grid.calendar-current-month .fc .fc-button.fc-button-primary.fc-today-button { opacity: 1 !important; }
-                      .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-image: linear-gradient(to right, #d1d1d1, #b1b1b1) !important; border-color: #b1b1b1 !important; color: #000000 !important; opacity: 0.5 !important; }
+                      .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button, .mobile-calendar-grid.calendar-other-month .fc .fc-button.fc-button-primary.fc-today-button:hover:not(:disabled) { background-image: linear-gradient(to right, #66e1f7, #0cc1e2) !important; border-color: #0cc1e2 !important; color: #000000 !important; opacity: 0.5 !important; }
                       .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button { font-family: ui-sans-serif, system-ui, sans-serif !important; font-size: 15px !important; font-weight: 700 !important; text-transform: none !important; }
                       @media (min-width: 640px) {
                         .mobile-calendar-grid .fc .fc-button.fc-button-primary.fc-today-button { min-height: 38px !important; padding: 8px 14px !important; margin: 0 4px !important; }
@@ -688,10 +688,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
                       .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
-                        border-color: #909090 !important;
-                        background-color: #f3f3f3 !important;
-                        color: #585858 !important;
-                        box-shadow: 0 2px 5px rgba(144, 144, 144, 0.2) !important;
+                        border-color: #0a9eb8 !important;
+                        background-color: #dbf8fd !important;
+                        color: #066171 !important;
+                        box-shadow: 0 2px 5px rgba(10, 158, 184, 0.2) !important;
                       }
                       .dark .attendance-calendar-nav-demo .attendance-calendar-nav-button,
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button,
@@ -707,10 +707,10 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:hover:not(:disabled),
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-prev-button:active:not(:disabled),
                       .dark .attendance-calendar-nav-demo .fc .fc-button-primary.fc-next-button:active:not(:disabled) {
-                        border-color: #b1b1b1 !important;
+                        border-color: #0cc1e2 !important;
                         background-color: #444444 !important;
-                        color: #c8c8c8 !important;
-                        box-shadow: 0 2px 6px rgba(177, 177, 177, 0.18) !important;
+                        color: #41daf5 !important;
+                        box-shadow: 0 2px 6px rgba(12, 193, 226, 0.18) !important;
                       }
                       
                       .fc-scrollgrid { border: none !important; }
@@ -1008,7 +1008,7 @@ export default function MemberProfileModal({ isOpen, member, onClose, onShowAler
                             type="checkbox"
                             checked={cameraOnly}
                             onChange={event => { setCameraOnly(event.target.checked); setExercisePage(1); }}
-                            className="h-4 w-4 accent-[var(--ui-accent,#a8a8a8)]"
+                            className="h-4 w-4 accent-[var(--ui-accent,#0bb8d6)]"
                           />
                           <FiCamera size={14} aria-hidden="true" /> Only exercises the camera can check
                         </label>

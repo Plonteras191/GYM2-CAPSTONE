@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { fieldClass } from '../../../components/ui/field';
 import { FiX, FiSave, FiCalendar, FiChevronDown, FiEdit2, FiTrash2, FiCheck } from 'react-icons/fi';
 import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuard.jsx';
-import GrayShadePicker from '../../../components/ui/GrayShadePicker.jsx';
-import { toGray } from '../../../utils/grayscale';
+import ShadePicker from '../../../components/ui/ShadePicker.jsx';
+import { toBrandColor } from '../../../utils/brandColor';
 
 export default function CoachEventModal({
   isOpen,
@@ -21,7 +21,7 @@ export default function CoachEventModal({
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [categoryRequired, setCategoryRequired] = useState(false);
-  const [categoryDraft, setCategoryDraft] = useState({ name: '', color: '#ABABAB' });
+  const [categoryDraft, setCategoryDraft] = useState({ name: '', color: '#22D3EE' });
   const initialSnapshotRef = React.useRef('');
   const categorySnapshotRef = React.useRef('');
   const currentFormRef = React.useRef({ eventForm, categoryDraft });
@@ -151,7 +151,7 @@ export default function CoachEventModal({
                             maxLength={80}
                             className="min-w-0 flex-1 rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink dark:border-line dark:bg-panel dark:text-ink-2"
                           />
-                          <GrayShadePicker
+                          <ShadePicker
                             size="sm"
                             label="Category shade"
                             value={categoryDraft.color}
@@ -192,14 +192,14 @@ export default function CoachEventModal({
                             }}
                             className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-sm text-ink"
                           >
-                            <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 dark:border-white/20" style={{ backgroundColor: toGray(category.color || '#ABABAB') }} />
+                            <span className="h-3 w-3 shrink-0 rounded-full border border-black/10 dark:border-white/20" style={{ backgroundColor: toBrandColor(category.color || '#22D3EE') }} />
                             <span className="truncate">{category.name}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => {
                               setEditingCategoryId(category.id);
-                              const draft = { name: category.name, color: toGray(category.color || '#ABABAB') };
+                              const draft = { name: category.name, color: toBrandColor(category.color || '#22D3EE') };
                               setCategoryDraft(draft);
                               categorySnapshotRef.current = JSON.stringify(draft);
                             }}
@@ -321,7 +321,7 @@ export default function CoachEventModal({
             <div className="block">
               <span className={labelClass}>Banner shade</span>
               <div className="flex h-[42px] items-center rounded-xl border border-line bg-field px-3">
-                <GrayShadePicker
+                <ShadePicker
                   label="Banner shade"
                   value={eventForm.color}
                   onChange={shade => setEventForm({ ...eventForm, color: shade })}

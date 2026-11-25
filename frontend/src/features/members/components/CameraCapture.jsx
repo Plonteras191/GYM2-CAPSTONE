@@ -43,7 +43,7 @@ export default function CameraCapture({
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <div className={`relative flex h-40 w-40 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 transition-[border-color,box-shadow] duration-300 ${
           isCameraActive
-            ? 'border-brand-gold shadow-[0_0_0_6px_rgb(192_192_192/0.18)]'
+            ? 'border-brand-gold shadow-[0_0_0_6px_rgb(24_210_243/0.18)]'
             : hasExistingEnrollment || isComplete
               ? 'border-positive/50 bg-positive-soft'
               : 'border-dashed border-line-strong bg-field text-black dark:text-neutral-300'

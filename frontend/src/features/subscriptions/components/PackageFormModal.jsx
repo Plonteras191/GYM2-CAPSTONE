@@ -6,7 +6,7 @@ import useUnsavedChangesGuard from '../../../components/ui/useUnsavedChangesGuar
 import { sanitizePackagePrice } from '../../../utils/priceInput';
 import { formatNumber } from '../../../utils/numberFormat';
 import { getPackageColor } from '../packageCategories';
-import GrayShadePicker from '../../../components/ui/GrayShadePicker.jsx';
+import ShadePicker from '../../../components/ui/ShadePicker.jsx';
 
 const CATEGORY_HELP = {
   normal: 'A regular gym subscription.',
@@ -145,7 +145,7 @@ export default function PackageFormModal({
                   <span className="text-[13px] font-medium text-ink-2">Shade shown on the calendar</span>
                 </div>
                 <div className="mt-2">
-                  <GrayShadePicker
+                  <ShadePicker
                     label="Package shade"
                     value={color}
                     onChange={shade => { setPlan({ ...plan, color: shade }); onUseColor?.(shade); }}

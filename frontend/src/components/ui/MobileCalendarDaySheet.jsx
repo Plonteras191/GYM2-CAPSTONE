@@ -4,7 +4,7 @@ import Button from './Button';
 import Badge from './Badge';
 import IconButton from './IconButton';
 import ColorTile from './ColorTile';
-import { toGray } from '../../utils/grayscale';
+import { toBrandColor } from '../../utils/brandColor';
 
 const GROUPS = [
   { type: 'coach', label: 'Classes & events', icon: FiAward },
@@ -103,7 +103,7 @@ export default function MobileCalendarDaySheet({
               </h3>
               <div className="space-y-2.5">
                 {group.events.map((event, index) => {
-                  const color = group.type === 'attendance' ? 'var(--ui-positive)' : (toGray(event.color) || 'var(--ui-line-strong)');
+                  const color = group.type === 'attendance' ? 'var(--ui-positive)' : (toBrandColor(event.color) || 'var(--ui-line-strong)');
                   // Memberships show whether this day is the start or the end.
                   const icon = group.type === 'coach' ? FiAward
                     : group.type === 'attendance' ? FiCheckCircle

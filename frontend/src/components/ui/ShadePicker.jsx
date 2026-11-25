@@ -1,15 +1,13 @@
-import { GRAY_SHADES, toGray } from '../../utils/grayscale';
+import { CALENDAR_SHADES, CALENDAR_SHADE_NAMES, toBrandColor } from '../../utils/brandColor';
 
-const SHADE_NAMES = ['Black', 'Charcoal', 'Dark grey', 'Grey', 'Light grey', 'Silver'];
-
-/** Row of grey swatches used instead of a colour picker (the system is black and white only). */
-export default function GrayShadePicker({ value, onChange, size = 'md', label = 'Shade' }) {
-  const current = toGray(value)?.toLowerCase();
+/** Row of black, cyan and silver swatches used instead of a free colour picker. */
+export default function ShadePicker({ value, onChange, size = 'md', label = 'Shade' }) {
+  const current = toBrandColor(value)?.toLowerCase();
   const swatch = size === 'sm' ? 'h-5 w-5' : 'h-7 w-7';
 
   return (
     <div role="radiogroup" aria-label={label} className="flex flex-wrap items-center gap-1.5">
-      {GRAY_SHADES.map((shade, index) => {
+      {CALENDAR_SHADES.map((shade, index) => {
         const selected = current === shade.toLowerCase();
         return (
           <button
@@ -17,8 +15,8 @@ export default function GrayShadePicker({ value, onChange, size = 'md', label = 
             type="button"
             role="radio"
             aria-checked={selected}
-            aria-label={SHADE_NAMES[index]}
-            title={SHADE_NAMES[index]}
+            aria-label={CALENDAR_SHADE_NAMES[index]}
+            title={CALENDAR_SHADE_NAMES[index]}
             onClick={() => onChange(shade)}
             className={`${swatch} shrink-0 rounded-full border border-black/20 transition-transform hover:scale-110 dark:border-white/25 ${selected ? 'ring-2 ring-focus ring-offset-2 ring-offset-panel' : ''}`}
             style={{ backgroundColor: shade }}

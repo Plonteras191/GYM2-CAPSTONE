@@ -156,13 +156,13 @@ export default function Login() {
   // Dark-ground field styles for the login screen only.
   const inputClass = "w-full rounded-xl border border-white/15 bg-white/[0.06] py-3.5 pl-12 pr-10 font-medium text-white placeholder:text-white/40 transition-[border-color,box-shadow,background-color] duration-200 hover:bg-white/[0.09] focus:border-brand-gold focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-brand-gold/25";
   const labelClass = "mb-2 block text-xs font-semibold uppercase tracking-[0.08em] text-white/60";
-  const goldButton = "press flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 font-semibold text-brand-dark hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-60";
+  const goldButton = "press flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 font-semibold text-brand-dark hover:bg-brand-gold-500 disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <>
     <div className="relative min-h-dvh w-full overflow-x-hidden bg-brand-dark font-sans text-white">
 
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_24%_55%,rgb(81_81_81/0.18),transparent_44%),radial-gradient(ellipse_at_78%_18%,rgb(192_192_192/0.08),transparent_36%)]"></div>
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_24%_55%,rgb(5_89_104/0.18),transparent_44%),radial-gradient(ellipse_at_78%_18%,rgb(24_210_243/0.08),transparent_36%)]"></div>
 
       <div className="absolute left-0 top-0 z-0 hidden h-full w-[68%] lg:block">
         <div
