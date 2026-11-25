@@ -249,7 +249,7 @@
 
 | # | What Changed | Why |
 |---|---|---|
-| 1 | **Removed `auto_renew` from `memberships` entity and Data Dictionary** in both Physical and Logical ERDs | Double Alpha Fitness Gym does not support automated recurring credit card billing; renewals are purely manual at the desk via Cash/GCash/Maya. Removing prevents defense panel questions on unimplemented payment gateways. |
+| 1 | **Removed `auto_renew` from `memberships` entity and Data Dictionary** in both Physical and Logical ERDs | Muscle Bros Gym does not support automated recurring credit card billing; renewals are purely manual at the desk via Cash/GCash/Maya. Removing prevents defense panel questions on unimplemented payment gateways. |
 
 ---
 
@@ -428,7 +428,7 @@ File: `Chapter4_Diagrams (2).md`.
 ---
 
 ### 25. Login: the Email Verification Step Was Removed
-- **What changed:** logging in is now **email and password only**. After a correct password the admin goes straight to the dashboard; no 6-digit code is emailed or asked for. The login screen no longer shows the code box, its label, placeholder or hint, and the footer line "Tagoloan Community College Capstone" was removed (the footer now reads "Double Alpha Fitness v1.0").
+- **What changed:** logging in is now **email and password only**. After a correct password the admin goes straight to the dashboard; no 6-digit code is emailed or asked for. The login screen no longer shows the code box, its label, placeholder or hint, and the footer line "Tagoloan Community College Capstone" was removed (the footer now reads "Muscle Bros Gym v1.0").
 - **Kept:** the **password-reset PIN** ("Forgot password?") works exactly as before, including the 5-attempt limit and the local "show the PIN on screen" mode for development. Wrong-password protection also stays: the login is limited to 10 tries per minute per computer.
 - **Backend:** `POST /api/auth/login` now returns the session token directly. `POST /api/auth/login/verify` no longer exists. `AuthController` lost `verifyLogin`, `sendVerificationCode` and `maskEmail`.
 - **Why it matters for the paper:** Chapter 3 lists multi-factor authentication as not included, so this also brings the system back in line with the approved scope. The owner and adviser had asked for the PIN earlier, so confirm they agree it is removed.

@@ -1,7 +1,7 @@
 # System Architecture Document
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Double Alpha Fitness Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
 **Document Version:** 2.0  
 **Date:** November 17, 2026  
 **Describes:** the system as built on this date.  
@@ -10,7 +10,7 @@
 
 ## 1. Architectural Overview & Design Philosophy
 
-The **Camera-Based Gym Management System** for Double Alpha Fitness Gym is engineered using a decoupled, 4-tier client-server architecture. It seamlessly integrates a high-performance **React 19 Single Page Application (SPA)** frontend, a robust **Laravel 12 RESTful API** business logic layer, a specialized **Python 3.10+ AI Vision & Gesture Engine**, and a centralized **MySQL database**.
+The **Camera-Based Gym Management System** for Muscle Bros Gym is engineered using a decoupled, 4-tier client-server architecture. It seamlessly integrates a high-performance **React 19 Single Page Application (SPA)** frontend, a robust **Laravel 12 RESTful API** business logic layer, a specialized **Python 3.10+ AI Vision & Gesture Engine**, and a centralized **MySQL database**.
 
 ### Core Design Principles
 1. **Decoupled Service Architecture**: The heavy computer vision processing (face recognition and MediaPipe pose estimation) is decoupled into an independent Python microservice engine, preventing CPU-intensive vision calculations from blocking backend web server HTTP requests.

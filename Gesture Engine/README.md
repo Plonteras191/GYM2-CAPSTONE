@@ -1,7 +1,7 @@
 # 🤖 AI Vision & Gesture Engine Component
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Double Alpha Fitness Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
 **Component:** AI Vision & Gesture Processing Engine  
 
 ---

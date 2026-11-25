@@ -1,7 +1,7 @@
 # System Diagrams & Visual Models Document
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Double Alpha Fitness Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
 **Document Version:** 2.0  
 **Date:** November 17, 2026  
 **Describes:** the system as built on this date.  
@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-This document provides a comprehensive visual and structural modeling specification for the **Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring** at Double Alpha Fitness Gym. 
+This document provides a comprehensive visual and structural modeling specification for the **Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring** at Muscle Bros Gym. 
 
 It encompasses all standard software engineering diagrams required for technical analysis, system design, capstone defense, and architecture validation:
 1. **Input-Process-Output (IPO) Conceptual Model**
@@ -74,7 +74,7 @@ flowchart LR
     Camera["Camera<br/>(CCTV, phone camera or webcam)"]
     Member["Gym Member"]
     Mail["Email Server"]
-    System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
+    System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
 
     Admin -->|"F1: Email and password"| System
     Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System

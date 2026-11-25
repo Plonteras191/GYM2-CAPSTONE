@@ -1,4 +1,4 @@
-# Chapter 4 Diagrams — Double Alpha Fitness Gym Management System
+# Chapter 4 Diagrams — Muscle Bros Gym Management System
 
 One diagram for each figure in Chapter 4. Figure 4.1 shows the gym's manual process before the system. Figures 4.3 to 4.10 are drawn from what the system actually does. Diagrams only.
 
@@ -168,7 +168,7 @@ flowchart LR
     Camera["Camera<br/>(CCTV, phone camera or webcam)"]
     Member["Gym Member"]
     Mail["Email Server"]
-    System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
+    System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
 
     Admin -->|"F1: Email and password"| System
     Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System

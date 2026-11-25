@@ -17,7 +17,6 @@
 11. UI of MObile and Tablet
     - Havent yet applied where its similar to a tiktok buttons
 
-
 3. Member Registration/Management
     - Rename into Register Member
 

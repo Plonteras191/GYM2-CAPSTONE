@@ -1,6 +1,6 @@
 # 4.2-F Physical Entity-Relationship / Database Diagram
 
-This section presents the **Physical Entity-Relationship Diagram (Database Diagram)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
+This section presents the **Physical Entity-Relationship Diagram (Database Diagram)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym**.
 
 > **Updated November 17, 2026** to match the database and the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
@@ -181,7 +181,7 @@ erDiagram
     coach_event_categories ||--o{ coach_events : "category_id"
 ```
 
-**Figure 4.10.** Physical Entity-Relationship Diagram for Double Alpha Fitness Gym.
+**Figure 4.10.** Physical Entity-Relationship Diagram for Muscle Bros Gym.
 
 Decimal sizes: `members.height` and `members.weight` are DECIMAL(5,2); `plans.price` is DECIMAL(9,2); `transactions.amount` is DECIMAL(10,2); `attendances.match_distance` is DECIMAL(5,4).
 

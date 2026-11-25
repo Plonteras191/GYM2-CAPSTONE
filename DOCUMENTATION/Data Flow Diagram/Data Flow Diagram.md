@@ -1,6 +1,6 @@
 # 4.2-C Data Flow Diagram (DFD Level 1)
 
-This section presents the **Level 1 Data Flow Diagram** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
+This section presents the **Level 1 Data Flow Diagram** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym**.
 
 > **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
@@ -126,7 +126,7 @@ flowchart LR
     Camera -->|"Live video"| P5
 ```
 
-**Figure 4.5.** Data Flow Diagram (Level 1) for Double Alpha Fitness Gym.
+**Figure 4.5.** Data Flow Diagram (Level 1) for Muscle Bros Gym.
 
 Data stores: D1 `admins`, D2 `members`, D3 face photo files (private storage), D4 `attendances`, D5 `workout_logs`, D6 `plans`, D7 `memberships`, D8 `transactions`, D9 `personal_access_tokens`, D10 `coach_events`, D11 `password_reset_pins`.
 

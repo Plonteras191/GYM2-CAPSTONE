@@ -1,6 +1,6 @@
 # 4.1-A Updated Manual Process Flow Diagram
 
-This document presents the corrected and verified **Manual Process Flow Diagram** for Double Alpha Fitness Gym prior to the implementation of the proposed Camera-Based Gym Management System. It captures the existing paper-based and observational workflow conducted by the Gym Owner / Administrator and Gym Members.
+This document presents the corrected and verified **Manual Process Flow Diagram** for Muscle Bros Gym prior to the implementation of the proposed Camera-Based Gym Management System. It captures the existing paper-based and observational workflow conducted by the Gym Owner / Administrator and Gym Members.
 
 ---
 
@@ -51,7 +51,7 @@ flowchart LR
 > **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
 
 
-**Figure 4.1.** Corrected Manual Process Flow Diagram for Double Alpha Fitness Gym.
+**Figure 4.1.** Corrected Manual Process Flow Diagram for Muscle Bros Gym.
 
 ---
 

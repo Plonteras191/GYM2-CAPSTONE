@@ -1,7 +1,7 @@
 # Backend Installation & Environment Setup Guide
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Double Alpha Fitness Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
 **Target Component:** Backend API Layer (Laravel 12 / PHP 8.2+ / MySQL)  
 **Document Version:** 1.0  
 **Date:** September 2026  

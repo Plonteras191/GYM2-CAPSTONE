@@ -1,6 +1,6 @@
 # 4.2-A System Process Flow Diagram
 
-This section presents the System Process Flow Diagram for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**. The diagram was developed from the requirements gathering phase (interview with the gym owner, observation of the gym and its paper records) and updated to match the system as built.
+This section presents the System Process Flow Diagram for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym**. The diagram was developed from the requirements gathering phase (interview with the gym owner, observation of the gym and its paper records) and updated to match the system as built.
 
 It shows the flow the Administrator (Gym Owner / Coach) follows from login to logout, the six modules, and the decisions the system makes.
 

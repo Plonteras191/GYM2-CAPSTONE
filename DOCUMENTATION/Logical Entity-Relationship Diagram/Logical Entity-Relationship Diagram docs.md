@@ -1,6 +1,6 @@
 # 4.2-E Logical Entity-Relationship Diagram
 
-This section presents the **Logical Entity-Relationship Diagram (ERD)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Double Alpha Fitness Gym**.
+This section presents the **Logical Entity-Relationship Diagram (ERD)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym**.
 
 > **Updated November 17, 2026** to match the database and the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
@@ -10,17 +10,17 @@ This section presents the **Logical Entity-Relationship Diagram (ERD)** for the 
 
 A **Logical ERD** is a blueprint of the data an organization needs, independent of how a database stores it. It names the business entities, their attributes and how they are connected.
 
-This section shows that the information architecture satisfies the needs of Double Alpha Fitness Gym identified in Chapter 1. By modeling members, subscriptions, payments, attendance and workout logs, it makes sure every module has the data it needs.
+This section shows that the information architecture satisfies the needs of Muscle Bros Gym identified in Chapter 1. By modeling members, subscriptions, payments, attendance and workout logs, it makes sure every module has the data it needs.
 
 ---
 
 ## 2. Presentation of the Diagram (PRESENT)
 
-Figure 4.9 illustrates the Logical Entity-Relationship Diagram for Double Alpha Fitness Gym.
+Figure 4.9 illustrates the Logical Entity-Relationship Diagram for Muscle Bros Gym.
 
 *(Refer to Figure 4.9 in [Logical Entity-Relationship Diagram.md](./Logical%20Entity-Relationship%20Diagram.md))*
 
-**Figure 4.9.** Logical Entity-Relationship Diagram for Double Alpha Fitness Gym.
+**Figure 4.9.** Logical Entity-Relationship Diagram for Muscle Bros Gym.
 
 ---
 

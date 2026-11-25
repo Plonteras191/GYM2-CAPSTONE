@@ -10,7 +10,7 @@ flowchart LR
     Camera["Camera<br/>(CCTV, phone camera or webcam)"]
     Member["Gym Member"]
     Mail["Email Server"]
-    System(["0<br/>Gym Management System<br/>for Double Alpha Fitness Gym"])
+    System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
 
     Admin -->|"F1: Email and password"| System
     Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions and renewals, classes and events, payments and refunds"| System
