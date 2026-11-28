@@ -1,5 +1,5 @@
 /**
- * Pausing a subscription (Muscle Bros does not refund).
+ * Pausing a subscription (Muscle Bros.ph does not refund).
  * While paused the days left are frozen; on resume the end date moves later
  * by the days spent paused. The server does the real work; these helpers only
  * decide what to show and which button to offer.

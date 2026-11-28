@@ -1,7 +1,7 @@
 # Master System Installation & Deployment Guide
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros.ph Fitness Gym (Zone 2a Baluarte, Tagoloan, Misamis Oriental)  
 **Document Version:** 1.0  
 **Date:** September 2026  
 
@@ -83,7 +83,7 @@ To streamline daily operations for the Gym Owner or System Administrator, a sing
 ### Windows PowerShell Startup Script (`start_system.ps1`)
 ```powershell
 # Create script in project root
-Write-Host "🚀 Launching Muscle Bros Gym Management System..." -ForegroundColor Green
+Write-Host "🚀 Launching Muscle Bros.ph Fitness Gym Management System..." -ForegroundColor Green
 
 # Start Backend Server
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'c:\CLIENT\GYM\GYM2-CAPSTONE\backend'; php artisan serve --port=8000"

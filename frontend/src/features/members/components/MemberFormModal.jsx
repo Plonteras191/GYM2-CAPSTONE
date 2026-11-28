@@ -26,6 +26,24 @@ const CAMERA_SETTLE_MS = 1200;
 const OPPOSITE_VIEW = { Left: 'Right', Right: 'Left' };
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+/** The real reason the camera did not open, so the fix is clear. */
+const cameraErrorMessage = (error) => {
+  switch (error?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Camera access is blocked for this site. Click the camera icon at the right of the address bar, choose "Always allow", then try again. If Windows blocks it too: Settings › Privacy & security › Camera › allow desktop apps.';
+    case 'NotReadableError':
+    case 'AbortError':
+    case 'TrackStartError':
+      return 'Another program is using the camera (for example the Gesture Engine, Zoom, Messenger or the Camera app). Close it, then try again.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No camera was found. Check that the camera is plugged in, then try again.';
+    default:
+      return `The camera could not be opened${error?.name ? ` (${error.name})` : ''}. Try again, or restart the browser.`;
+  }
+};
+
 const getBmiInfo = (height, weight) => {
   if (!height || !weight) return { value: 'N/A', label: 'Need Data', color: 'bg-hover text-ink-2 border-line-strong' };
   const bmi = formatNumber(weight / Math.pow(height / 100, 2), { maximumFractionDigits: 1 });
@@ -82,7 +100,6 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
   // Existing members whose face looks like the new photos: { status: 'idle' |
   // 'checking' | 'done' | 'offline', matches: [], confirmed: bool }.
   const [lookAlikes, setLookAlikes] = useState({ status: 'idle', matches: [], confirmed: false });
-  const [biometricConsent, setBiometricConsent] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editorScale, setEditorScale] = useState(1.2);
@@ -127,7 +144,6 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       setCapturedFaceTurns([]);
       setFaceCheck({ status: 'idle', messages: [] });
       setLookAlikes({ status: 'idle', matches: [], confirmed: false });
-      setBiometricConsent(false);
       initialSnapshotRef.current = JSON.stringify({ form: initial, faceImage: initialFaceImage, capturedFaceViews: [] });
       setIsCameraActive(false);
     }
@@ -148,14 +164,23 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       setCapturedFaceTurns([]);
     }
     setFaceCheck({ status: 'idle', messages: [] });
+
+    // Browsers only offer the camera on a secure address (https or localhost).
+    // Opened by the computer's network address (http://192.168…) it is simply
+    // missing, whatever the permission says.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      onShowAlert('Camera Unavailable', `The browser turns the camera off on this address (${window.location.host}). Open the system as http://localhost:${window.location.port || '80'} on the computer the camera is plugged into, or serve it over https.`, 'error');
+      return;
+    }
+
     setIsCameraActive(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
       if (videoRef.current) videoRef.current.srcObject = stream;
       cameraStartedAtRef.current = Date.now();
-    } catch {
-      onShowAlert('Camera Error', 'Could not access camera. Please ensure permissions are granted.', 'error');
+    } catch (error) {
       setIsCameraActive(false);
+      onShowAlert('Camera Error', cameraErrorMessage(error), 'error');
     }
   };
 
@@ -271,11 +296,6 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
       return;
     }
 
-    if (hasNewEnrollment && !biometricConsent) {
-      onShowAlert('Consent Required', 'Tick the consent box to confirm the member agrees to face enrollment before saving.', 'error');
-      return;
-    }
-
     // Same full name as an existing member: usually the same person entered
     // twice (a face check alone misses this when the old photo is poor).
     if (!isEditing) {
@@ -340,7 +360,6 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
 
       if (hasNewEnrollment) {
         fd.append('enrolled_face_id', await combineFaceViews());
-        fd.append('biometric_consent', '1');
       }
       if (isEditing) {
         fd.append('_method', 'PUT');
@@ -427,10 +446,10 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
         `}</style>
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+        <div className="flex items-center justify-between gap-4 border-b border-line py-3.5 pl-6 pr-4">
           <div className="min-w-0">
-            <h3 id="member-form-title" className="flex items-center gap-2.5 text-xl font-medium tracking-[-0.01em] text-ink">
-              <span className="flex h-9 w-9 items-center justify-center text-black dark:text-neutral-300">
+            <h3 id="member-form-title" className="flex items-center gap-2.5 text-[18px] font-semibold tracking-[-0.01em] text-ink">
+              <span className="flex shrink-0 items-center text-black dark:text-neutral-300">
                 {isEditing ? <FiEdit2 size={17} /> : <FiUserPlus size={18} />}
               </span>
               {isEditing ? 'Edit member' : 'Register a member'}
@@ -441,9 +460,9 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
             onClick={requestClose}
             disabled={isSaving}
             aria-label="Close member form"
-            className="press flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:border-negative/40 hover:bg-negative-soft hover:text-negative disabled:opacity-50"
+            className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-hover text-muted hover:bg-negative-soft hover:text-negative disabled:opacity-50"
           >
-            <FiX size={20} />
+            <FiX size={18} />
           </button>
         </div>
 
@@ -452,7 +471,7 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
           <FormSection step={1} title="Photos" hint="A profile photo and the face photos used for camera check-in.">
             <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
               {/* Profile photo */}
-              <div className="flex min-h-72 flex-col gap-4 rounded-xl border border-line bg-panel p-4 sm:p-5">
+              <div className="flex flex-col gap-3 rounded-xl border border-line bg-panel p-4">
                 <div>
                   <h4 className="text-[15px] font-medium text-ink">Profile photo</h4>
                   <p className="mt-0.5 text-[13px] text-muted">Optional. The front face photo is used if you skip this.</p>
@@ -471,17 +490,18 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                   </div>
                 ) : (
                   <label className="group flex flex-1 cursor-pointer flex-col items-center justify-center gap-3">
-                    <span className="h-40 w-40 overflow-hidden rounded-full border-2 border-dashed border-line-strong bg-field transition-[border-color,transform] duration-200 group-hover:-translate-y-0.5 group-hover:border-focus">
+                    <span className="h-28 w-28 overflow-hidden rounded-full border-2 border-dashed border-line-strong bg-field transition-[border-color,transform] duration-200 group-hover:-translate-y-0.5 group-hover:border-focus">
                       {formData.profilePicUrl ? (
                         <img src={formData.profilePicUrl} alt="Current profile" className="h-full w-full object-cover" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-black dark:text-neutral-300">
-                          <FiUpload size={26} />
+                          <FiUpload size={22} />
                         </span>
                       )}
                     </span>
-                    <span className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium text-ink-2 transition-colors group-hover:bg-hover group-hover:text-ink">
-                      <FiUpload size={14} aria-hidden="true" /> {formData.profilePicUrl ? 'Upload a new photo' : 'Upload a photo'}
+                    {/* Looks like the camera card's outline button; the whole label opens the file picker. */}
+                    <span className="btn-step inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-panel px-5 py-2.5 text-sm font-semibold text-ink-2 group-hover:border-line-strong group-hover:bg-field group-hover:text-ink">
+                      <FiUpload size={16} aria-hidden="true" /> {formData.profilePicUrl ? 'Upload a new photo' : 'Upload a photo'}
                     </span>
                     <input type="file" accept="image/*" className="sr-only" onChange={e => { setProfilePic(e.target.files[0]); setEditorScale(1.2); }} />
                   </label>
@@ -505,20 +525,6 @@ export default function MemberFormModal({ isOpen, isEditing, initialData, onClos
                 lookAlikes={lookAlikes}
                 onConfirmDifferentPerson={confirmed => setLookAlikes(current => ({ ...current, confirmed }))}
               />
-              {faceImage !== 'existing_data' && (
-                <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-left transition-colors md:col-span-2 ${biometricConsent ? 'border-positive/40 bg-positive-soft' : 'border-line bg-panel hover:bg-field'}`}>
-                  <input
-                    type="checkbox"
-                    checked={biometricConsent}
-                    onChange={e => setBiometricConsent(e.target.checked)}
-                    className="mt-0.5 h-4.5 w-4.5 shrink-0 cursor-pointer accent-brand-gold"
-                  />
-                  <span className="text-[13px] leading-snug text-ink-2">
-                    <span className="font-medium text-ink">The member agrees to face photos.<Required /></span>{' '}
-                    The gym stores them only for attendance and workout monitoring (Data Privacy Act of 2012, RA 10173).
-                  </span>
-                </label>
-              )}
             </div>
           </FormSection>
 

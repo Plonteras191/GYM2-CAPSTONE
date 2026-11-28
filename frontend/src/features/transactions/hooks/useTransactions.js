@@ -413,8 +413,8 @@ export function useTransactions() {
         <body>
           <div class="center">
             <img src="${esc(fullLogoUrl)}" style="width: 45px; height: 45px; filter: grayscale(100%); margin-bottom: 5px;" onerror="this.style.display='none'" />
-            <div class="bold" style="font-size: 14px;">MUSCLE BROS GYM</div>
-            <div>Tagoloan, Misamis Oriental</div>
+            <div class="bold" style="font-size: 14px;">MUSCLE BROS.PH FITNESS GYM</div>
+            <div>Zone 2a Baluarte, Tagoloan, Misamis Oriental</div>
             <div>0991 448 9942</div>
             <div>Open Daily 9:00 AM - 9:00 PM</div>
           </div>

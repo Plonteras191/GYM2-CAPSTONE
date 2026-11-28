@@ -1,6 +1,6 @@
 """
 AI Vision & Gesture Engine - Entry Point
-Muscle Bros Gym Management System
+Muscle Bros.ph Fitness Gym Management System
 """
 
 import sys

@@ -10,7 +10,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class MemberController extends Controller
 {
@@ -71,14 +70,6 @@ class MemberController extends Controller
             'address' => 'required|string|max:255'
         ]);
 
-        // Face photos are biometric data: they are only stored with the
-        // member's recorded consent (Data Privacy Act, RA 10173).
-        if ($request->filled('enrolled_face_id') && !$request->boolean('biometric_consent')) {
-            throw ValidationException::withMessages([
-                'biometric_consent' => ['The member must consent to face enrollment before their face is saved.'],
-            ]);
-        }
-
         // Only server-generated paths are ever saved for photos.
         unset($validatedData['profile_pic'], $validatedData['enrolled_face_id']);
 
@@ -91,9 +82,6 @@ class MemberController extends Controller
         }
 
         $member = new Member($validatedData);
-        if ($request->filled('enrolled_face_id')) {
-            $member->biometric_consent_at = Carbon::now();
-        }
         $member->save();
 
         return response()->json(['message' => 'Member created successfully', 'member' => $member], 201);
@@ -139,15 +127,9 @@ class MemberController extends Controller
         }
 
         if ($request->filled('enrolled_face_id')) {
-            if (!$request->boolean('biometric_consent')) {
-                throw ValidationException::withMessages([
-                    'biometric_consent' => ['The member must consent to face enrollment before their face is saved.'],
-                ]);
-            }
             $newFacePath = $this->media->storeFace($request->input('enrolled_face_id'));
             $this->media->deleteFace($member->enrolled_face_id);
             $validatedData['enrolled_face_id'] = $newFacePath;
-            $member->biometric_consent_at = Carbon::now();
         }
 
         $statusChanged = isset($validatedData['status']) && $validatedData['status'] !== $member->status;

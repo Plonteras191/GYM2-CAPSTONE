@@ -166,8 +166,8 @@ export default function Login() {
 
       <div className="absolute left-0 top-0 z-0 hidden h-full w-[68%] lg:block">
         <div
-          className="absolute inset-0 bg-cover opacity-55 mix-blend-screen"
-          style={{ backgroundImage: `url(${loginBg})`, backgroundPosition: 'calc(-40% + 5px) center' }}
+          className="absolute inset-0 bg-cover bg-center opacity-60"
+          style={{ backgroundImage: `url(${loginBg})` }}
         ></div>
         <div className="absolute inset-0 bg-linear-to-r from-transparent via-brand-dark/30 via-55% to-brand-dark to-100%"></div>
       </div>
@@ -184,11 +184,10 @@ export default function Login() {
               <img src={systemLogo} alt="System logo" className="h-20 w-20 rounded-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="bg-linear-to-r from-brand-red-300 to-brand-orange-300 bg-clip-text pr-1 font-brand text-[1.75rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent">Muscle Bros</span>
-              <span className="mt-1.5 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Gym</span>
+              <span className="bg-linear-to-r from-brand-red-300 to-brand-orange-300 bg-clip-text pr-1 font-brand text-[1.75rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent">Muscle Bros<span className="normal-case">.ph</span></span>
+              <span className="mt-1.5 text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Fitness Gym</span>
             </div>
           </div>
-          <p className="rise text-xs font-medium text-white/40" style={{ '--i': 6 }}>Member records, packages, payments and attendance in one place.</p>
         </div>
 
         <div className="relative z-10 flex w-full flex-col items-center justify-center px-5 py-8 sm:px-10 sm:py-12 lg:w-1/2 lg:p-12">
@@ -199,7 +198,7 @@ export default function Login() {
               <div className="rounded-full bg-white ring-2 ring-brand-gold ring-offset-2 ring-offset-brand-dark">
                 <img src={systemLogo} alt="System logo" className="h-20 w-20 rounded-full object-cover sm:h-24 sm:w-24" />
               </div>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-brand-gold">Muscle Bros Gym</p>
+              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.3em] text-brand-gold">Muscle Bros.ph Fitness Gym</p>
             </div>
 
             <div className="rise mb-8 sm:mb-10" style={{ '--i': 1 }}>
@@ -207,7 +206,7 @@ export default function Login() {
                 System <span className="text-brand-gold">Login</span>
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-white/60">
-                Enter your administrator credentials to secure access to the hub.
+                Enter your account to login.
               </p>
             </div>
 
@@ -289,7 +288,7 @@ export default function Login() {
 
             <div className="rise mt-8 border-t border-white/10 pt-8 text-center sm:mt-10 sm:pt-10" style={{ '--i': 6 }}>
               <p className="text-xs font-medium leading-relaxed text-white/40">
-                Muscle Bros Gym v1.0
+                Muscle Bros.ph Fitness Gym v1.0
               </p>
             </div>
 
@@ -301,8 +300,8 @@ export default function Login() {
       <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/70 p-4 backdrop-blur-sm">
         <div role="dialog" aria-modal="true" aria-labelledby="recovery-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 w-full max-w-md rounded-2xl border border-night-line bg-night-panel p-6 shadow-2xl">
           <div className="mb-5 flex items-center justify-between">
-            <h2 id="recovery-title" className="font-display text-2xl font-semibold text-white">Forgot Password</h2>
-            <button type="button" onClick={() => setRecoveryOpen(false)} className="press rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white" aria-label="Close recovery"><FiX size={20} /></button>
+            <h2 id="recovery-title" className="text-[18px] font-semibold tracking-[-0.01em] text-white">Forgot Password</h2>
+            <button type="button" onClick={() => setRecoveryOpen(false)} className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/10 text-white/70 hover:bg-white/15 hover:text-white" aria-label="Close recovery"><FiX size={18} /></button>
           </div>
           {recoveryStep === 'request' ? (
             <div className="space-y-4">

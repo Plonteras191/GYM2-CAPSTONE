@@ -126,58 +126,29 @@ class AttendanceSafeguardsTest extends TestCase
         $this->assertSame(1, Attendance::count());
     }
 
-    // ---- Biometric consent -------------------------------------------------
+    // ---- Face enrollment ---------------------------------------------------
 
-    public function test_face_is_not_saved_without_the_members_consent(): void
+    public function test_face_is_saved_on_registration(): void
     {
         $this->actingAsAdmin();
 
-        $this->postJson('/api/members', $this->memberPayload(['enrolled_face_id' => self::PNG_DATA_URI]))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('biometric_consent');
-
-        $this->assertSame(0, Member::count());
-    }
-
-    public function test_consent_time_is_recorded_when_a_face_is_enrolled(): void
-    {
-        $this->actingAsAdmin();
-
-        $response = $this->postJson('/api/members', $this->memberPayload([
-            'enrolled_face_id' => self::PNG_DATA_URI,
-            'biometric_consent' => true,
-        ]))->assertCreated();
+        $response = $this->postJson('/api/members', $this->memberPayload(['enrolled_face_id' => self::PNG_DATA_URI]))
+            ->assertCreated();
         $this->createdFiles[] = storage_path('app/private/' . ltrim($response->json('member.enrolled_face_id'), '/'));
 
-        $this->assertSame('2026-11-13 10:00:00', (string) Member::sole()->biometric_consent_at);
+        $this->assertNotNull(Member::sole()->enrolled_face_id);
     }
 
-    public function test_member_without_a_face_needs_no_consent(): void
-    {
-        $this->actingAsAdmin();
-
-        $this->postJson('/api/members', $this->memberPayload())->assertCreated();
-
-        $this->assertNull(Member::sole()->biometric_consent_at);
-    }
-
-    public function test_replacing_a_face_needs_consent_again(): void
+    public function test_face_can_be_replaced(): void
     {
         $this->actingAsAdmin();
         $member = $this->member();
 
-        $this->putJson("/api/members/{$member->id}", ['enrolled_face_id' => self::PNG_DATA_URI])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('biometric_consent');
-        $this->assertNull($member->fresh()->enrolled_face_id);
-
-        $response = $this->putJson("/api/members/{$member->id}", [
-            'enrolled_face_id' => self::PNG_DATA_URI,
-            'biometric_consent' => true,
-        ])->assertOk();
+        $response = $this->putJson("/api/members/{$member->id}", ['enrolled_face_id' => self::PNG_DATA_URI])
+            ->assertOk();
         $this->createdFiles[] = storage_path('app/private/' . ltrim($response->json('member.enrolled_face_id'), '/'));
 
-        $this->assertNotNull($member->fresh()->biometric_consent_at);
+        $this->assertNotNull($member->fresh()->enrolled_face_id);
     }
 
     // ---- Face photo privacy --------------------------------------------------

@@ -331,10 +331,10 @@ export default function AdminProfile() {
         <div className="animate-fade-in fixed inset-0 z-[100] flex items-center justify-center bg-brand-dark/70 p-4 backdrop-blur-sm">
           <div role="dialog" aria-modal="true" aria-labelledby="logo-crop-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
 
-            <div className="flex items-center justify-between border-b border-line px-5 py-4">
-              <h3 id="logo-crop-title" className="font-display text-2xl font-semibold text-ink">Preview system logo</h3>
-              <button onClick={handleCloseImageModal} aria-label="Close" className="press rounded-lg p-2 text-muted hover:bg-hover hover:text-ink">
-                <FiX size={20} />
+            <div className="flex items-center justify-between gap-4 border-b border-line py-3.5 pl-6 pr-4">
+              <h3 id="logo-crop-title" className="text-[18px] font-semibold tracking-[-0.01em] text-ink">Preview system logo</h3>
+              <button onClick={handleCloseImageModal} aria-label="Close" className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-hover text-muted hover:bg-negative-soft hover:text-negative">
+                <FiX size={18} />
               </button>
             </div>
 

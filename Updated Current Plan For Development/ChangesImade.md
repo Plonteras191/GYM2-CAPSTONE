@@ -1,5 +1,5 @@
 # System Changes Log
-### Muscle Bros Gym – Capstone Project
+### Muscle Bros.ph Fitness Gym – Capstone Project
 
 ---
 
@@ -59,7 +59,7 @@
 - **The Problem:** When generating and printing or downloading system reports to PDF, the document had excessively huge margins, misaligned numbers, and looked disorganized.
 - **The Solution:** Redesigned the entire print stylesheet:
   - Tightened margins to standard, professional document borders.
-  - Added a formal gym header with the official Muscle Bros logo, title, generated timestamp, and filtered date range.
+  - Added a formal gym header with the official Muscle Bros.ph logo, title, generated timestamp, and filtered date range.
   - Organized financial and attendance numbers into clean, easy-to-read tables with bold totals.
   - Added formal sign-off lines at the bottom ("Prepared By" and "Approved By / Coach") for official gym paperwork.
 - **Why It Matters:** Reports look executive, clean, and ready to present to coaches, gym owners, or school thesis panelists.

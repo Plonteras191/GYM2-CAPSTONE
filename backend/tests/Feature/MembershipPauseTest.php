@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
-/** Muscle Bros does not refund: a subscription is paused and later resumed with its days kept. */
+/** Muscle Bros.ph does not refund: a subscription is paused and later resumed with its days kept. */
 class MembershipPauseTest extends TestCase
 {
     use RefreshDatabase;

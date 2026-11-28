@@ -1,6 +1,6 @@
 4.2-D Use Case Diagrams
 
-The use case diagrams show what each actor can do with the IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym. They were updated on November 17, 2026 to match the system as built. The full specification, with every diagram, is in `usecase.md`; the diagrams are the same as Figures 4.6, 4.7 and 4.8 in `Chapter4_Diagrams (2).md`.
+The use case diagrams show what each actor can do with the IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros.ph Fitness Gym. They were updated on November 17, 2026 to match the system as built. The full specification, with every diagram, is in `usecase.md`; the diagrams are the same as Figures 4.6, 4.7 and 4.8 in `Chapter4_Diagrams (2).md`.
 
 There are three actors. The **Gym Owner / Coach (Admin)** is the only person who logs in; the owner and the coach share one login (email and password). The admin logs in, views the dashboard and notifications, registers members with body type and face capture (with recorded consent), manages packages and prices, subscribes, upgrades, renews, pauses and resumes members (there are no refunds), keeps a calendar of classes and events, records payments, builds 7-day training plans, verifies tasks by hand, views the attendance and gesture monitors and every subscriber's attendance on the Attendance page, makes manual check-ins, switches the camera, generates four kinds of report, and manages the account.
 

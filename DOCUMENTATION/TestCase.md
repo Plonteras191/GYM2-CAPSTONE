@@ -2,7 +2,7 @@
 
 ## 1. Purpose and Scope
 
-This document defines functional test cases for the Camera-Based Gym Management System used by Muscle Bros Gym. Each requested page has:
+This document defines functional test cases for the Camera-Based Gym Management System used by Muscle Bros.ph Fitness Gym. Each requested page has:
 
 - one **Scenario-Based Test Case** covering the complete administrator workflow and every page action; and
 - one **Integration Test Case** covering the page, API, database, browser storage, camera, or AI boundary it uses.

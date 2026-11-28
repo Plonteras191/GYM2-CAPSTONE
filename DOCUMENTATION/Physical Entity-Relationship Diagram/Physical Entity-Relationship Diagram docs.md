@@ -1,6 +1,6 @@
 # 4.2-F Physical Entity-Relationship / Database Diagram
 
-This section presents the **Physical Entity-Relationship Diagram (Database Diagram)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym**.
+This section presents the **Physical Entity-Relationship Diagram (Database Diagram)** for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros.ph Fitness Gym**.
 
 > **Updated November 17, 2026** to match the database and the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
@@ -20,7 +20,7 @@ Figure 4.10 illustrates the Physical Entity-Relationship Diagram of the system. 
 
 [Insert Figure 4.10 Here]
 
-**Figure 4.10.** Physical Entity-Relationship Diagram for Muscle Bros Gym.
+**Figure 4.10.** Physical Entity-Relationship Diagram for Muscle Bros.ph Fitness Gym.
 
 ---
 

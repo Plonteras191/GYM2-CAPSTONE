@@ -69,9 +69,9 @@ export default function SubscriptionFormModal({
     <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-sm animate-fade-in">
       <div className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl dark:border-line dark:bg-panel">
-        <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
-          <h3 className="flex items-center gap-2 text-xl font-medium text-ink">
-            {isEditing ? <FiEdit2 size={19} /> : <FiPlus size={20} />}
+        <div className="flex items-center justify-between gap-4 border-b border-line bg-field py-3.5 pl-6 pr-4 dark:border-line dark:bg-hover">
+          <h3 className="flex items-center gap-2.5 text-[18px] font-semibold tracking-[-0.01em] text-ink">
+            <span className="flex shrink-0 items-center">{isEditing ? <FiEdit2 size={17} /> : <FiPlus size={18} />}</span>
             {isEditing ? 'Edit subscription' : 'Subscribe a member'}
           </h3>
           <button
@@ -79,9 +79,9 @@ export default function SubscriptionFormModal({
             onClick={requestClose}
             disabled={isSaving}
             aria-label="Close subscription form"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative disabled:opacity-50 dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
+            className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-panel text-muted hover:bg-negative-soft hover:text-negative disabled:opacity-50"
           >
-            <FiX size={24} />
+            <FiX size={18} />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto bg-hover p-4 dark:bg-field sm:p-5">

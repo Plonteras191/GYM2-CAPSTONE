@@ -49,22 +49,22 @@ export default function TransactionFormModal({
     <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm">
       <div role="dialog" aria-modal="true" aria-labelledby="txn-form-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
 
-        <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-4 border-b border-line py-3.5 pl-6 pr-4">
           <div className="min-w-0">
-            <h3 id="txn-form-title" className="flex items-center gap-2.5 text-xl font-medium tracking-[-0.01em] text-ink">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-warn-soft text-warn"><FiCreditCard size={17} /></span>
+            <h3 id="txn-form-title" className="flex items-center gap-2.5 text-[18px] font-semibold tracking-[-0.01em] text-ink">
+              <span className="flex shrink-0 items-center text-warn"><FiCreditCard size={18} /></span>
               {title}
             </h3>
-            <p className="mt-1.5 text-[13px] text-muted">{intro}</p>
+            <p className="mt-1 text-[13px] text-muted">{intro}</p>
           </div>
           <button
             type="button"
             onClick={requestClose}
             disabled={isSaving}
             aria-label="Close transaction form"
-            className="press flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:border-negative/40 hover:bg-negative-soft hover:text-negative disabled:opacity-50"
+            className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-hover text-muted hover:bg-negative-soft hover:text-negative disabled:opacity-50"
           >
-            <FiX size={20} />
+            <FiX size={18} />
           </button>
         </div>
 

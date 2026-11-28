@@ -1,7 +1,7 @@
 # User & Technical Documentation Manual
 
 **Product Name:** IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros.ph Fitness Gym (Zone 2a Baluarte, Tagoloan, Misamis Oriental)  
 **Document Version:** 2.0  
 **Date:** November 17, 2026  
 **Describes:** the system as built on this date. Earlier versions of this manual (September 2026) described features that were never built; they were removed.

@@ -54,7 +54,7 @@ class TransactionRulesTest extends TestCase
 
     public function test_payments_cannot_be_refunded(): void
     {
-        // Muscle Bros does not refund; a subscription is paused instead.
+        // Muscle Bros.ph does not refund; a subscription is paused instead.
         $transaction = Transaction::create([
             'transaction_id' => 'TXN-001',
             'transaction_date' => '2026-10-21',

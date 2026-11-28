@@ -1,6 +1,6 @@
 # 4.2-B Context Level Diagram
 
-A Context Level Diagram shows the system as a single process (Process 0) and the information exchanged with the people and devices outside it. It sets the boundary of the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym**.
+A Context Level Diagram shows the system as a single process (Process 0) and the information exchanged with the people and devices outside it. It sets the boundary of the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros.ph Fitness Gym**.
 
 > **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 

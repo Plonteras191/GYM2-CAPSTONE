@@ -1,4 +1,4 @@
-# Chapter 4 Diagrams — Muscle Bros Gym Management System
+# Chapter 4 Diagrams — Muscle Bros.ph Fitness Gym Management System
 
 One diagram for each figure in Chapter 4. Figure 4.1 shows the gym's manual process before the system. Figures 4.3 to 4.10 are drawn from what the system actually does. Diagrams only.
 
@@ -79,8 +79,7 @@ flowchart TD
     Select --> A1["Module 1: Member Registration"]
     A1 --> A2["Enter name, contact details, address,<br/>date of birth, height, weight<br/>and body type"]
     A2 --> A2b["Add a profile photo<br/>(optional)"]
-    A2b --> A2c["Member agrees to face enrollment<br/>(consent date is recorded)"]
-    A2c --> A3["Capture face: front,<br/>chin down, left and right"]
+    A2b --> A3["Capture face: front,<br/>chin down, left and right"]
     A3 --> A4["Save member record<br/>and face photo"]
 
     Select --> B1["Module 2: Attendance Monitoring"]
@@ -94,8 +93,6 @@ flowchart TD
     B5 -- Yes --> B7["Save member, date, time in, method,<br/>camera and subscription status<br/>(expired is flagged RENEW, paused is flagged Paused)"]
     B7 --> B8{"Member profile<br/>Inactive?"}
     B8 -- Yes --> B9["Set member<br/>back to Active"]
-    B1 --> T1["Attendance page: every subscriber's<br/>last visit, visits this week and month,<br/>and coach-plan progress"]
-    T1 --> T2["Open a member: attendance calendar,<br/>check-in history and coach plan"]
 
     Select --> C1["Module 3: Program Monitoring"]
     C1 --> C2["Open the member's Training plan and build<br/>the 7-day plan: exercise, date, sets and reps"]
@@ -149,7 +146,6 @@ flowchart TD
     B6 --> Out
     B8 -- No --> Out
     B9 --> Out
-    T2 --> Out
     C6 --> Out
     D6 --> Out
     R5 --> Out
@@ -174,16 +170,16 @@ flowchart LR
     Camera["Camera<br/>(CCTV, phone camera or webcam)"]
     Member["Gym Member"]
     Mail["Email Server"]
-    System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
+    System(["0<br/>Gym Management System<br/>for Muscle Bros.ph Fitness Gym"])
 
     Admin -->|"F1: Email and password"| System
-    Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions, renewals, pausing and resuming subscriptions, classes and events, payments"| System
+    Admin -->|"F2: Member details (with body type), face capture, packages, subscriptions, renewals, pausing and resuming subscriptions, classes and events, payments"| System
     Admin -->|"F3: Training plans and manual verification"| System
     Admin -->|"F4: Report dates, camera selection, manual check-ins and profile updates"| System
 
     System -->|"F5: Login result, dashboard summary and notifications"| Admin
     System -->|"F6: Member, subscription and transaction records, printable receipt"| Admin
-    System -->|"F7: Live camera feeds, today's attendance, every subscriber's attendance summary, workout task status and counted repetitions"| Admin
+    System -->|"F7: Live camera feeds, today's attendance, workout task status and counted repetitions"| Admin
     System -->|"F8: Reports (CSV or print)"| Admin
 
     Camera -->|"F9: Live video of faces and exercise movement"| System
@@ -238,15 +234,15 @@ flowchart LR
     P2 ~~~ S24
     S24 -->|"Classes and events this week"| P2
 
-    Admin -->|"Member details, body type, face capture, consent, member status"| P3
+    Admin -->|"Member details, body type, face capture, member status"| P3
     P3 -->|"Member list and profiles"| Admin
     S30[("D2 members")]
     P3 <-->|"Member records"| S30
     S31[("D3 face photo files")]
     P3 -->|"Face photo"| S31
 
-    Admin -->|"Camera selection, manual check-in, attendance page filters"| P4
-    P4 -->|"Live feed, today's check-ins, every subscriber's attendance"| Admin
+    Admin -->|"Camera selection, manual check-in"| P4
+    P4 -->|"Live feed, today's check-ins"| Admin
     S40[("D2 members")]
     P4 ~~~ S40
     S40 -->|"Enrolled members"| P4
@@ -258,10 +254,7 @@ flowchart LR
     P4 <-->|"Member, date, time in, method, camera, subscription status"| S42
     S43[("D7 memberships")]
     P4 ~~~ S43
-    S43 -->|"Subscription on the check-in date, latest subscription per member"| P4
-    S44[("D5 workout_logs")]
-    P4 ~~~ S44
-    S44 -->|"This week's coach tasks"| P4
+    S43 -->|"Subscription on the check-in date"| P4
 
     Admin -->|"7-day training plan, manual verification"| P5
     P5 -->|"Task status, counted repetitions, workout history"| Admin
@@ -330,7 +323,6 @@ flowchart LR
 
         AddMem(["Add Member"])
         Face(["Capture Face<br/>(front, chin down, left, right)"])
-        Consent(["Record Face Consent"])
         ViewMem(["View Member Profile,<br/>Attendance and Workouts"])
         UpdMem(["Update Member"])
         SetStatus(["Set Member Status<br/>(Active / Inactive)"])
@@ -354,8 +346,6 @@ flowchart LR
         Manual(["Manually Verify Workout Task"])
 
         AttMon(["View Attendance Monitor"])
-        AttPage(["View Every Subscriber's Attendance<br/>(Attendance page)"])
-        AttDetail(["View a Member's Attendance Calendar,<br/>Check-ins and Coach Plan"])
         ManualIn(["Check In Member Manually"])
         GesMon(["View Gesture Monitor"])
         Switch(["Switch Camera Source"])
@@ -372,7 +362,6 @@ flowchart LR
         Login ~~~ Reset
         Reset -.->|"«extend»"| Login
         AddMem -.->|"«include»"| Face
-        Face -.->|"«include»"| Consent
         UpdMem ~~~ SetStatus
         SetStatus -.->|"«extend»"| UpdMem
         DelPack -.->|"«extend»"| Pack
@@ -382,8 +371,6 @@ flowchart LR
         Pay ~~~ Receipt
         Receipt -.->|"«extend»"| Pay
         ManualIn -.->|"«extend»"| AttMon
-        AttPage ~~~ AttDetail
-        AttDetail -.->|"«extend»"| AttPage
         Report ~~~ Export
         Export -.->|"«extend»"| Report
     end
@@ -408,7 +395,6 @@ flowchart LR
     Admin --> Plan
     Admin --> Manual
     Admin --> AttMon
-    Admin --> AttPage
     Admin --> ManualIn
     Admin --> GesMon
     Admin --> Switch
@@ -429,7 +415,6 @@ flowchart LR
 
     subgraph Boundary ["Gym Management System"]
         Info(["Provide Personal Details<br/>to the Admin"])
-        Consent(["Consent to Face Enrollment"])
         FacePose(["Pose for Face Capture<br/>(front, chin down, left, right)"])
         Pay(["Pay for or Renew a Package<br/>through the Admin"])
         PauseReq(["Ask to Pause or Resume<br/>a Subscription through the Admin"])
@@ -444,7 +429,6 @@ flowchart LR
         Counted(["Repetitions Counted"])
         Verified(["Task Marked as Verified"])
 
-        FacePose -.->|"«include»"| Consent
         Scan -.->|"«include»"| Recog
         Logged -.->|"«extend» face matched"| Recog
         Reactivated -.->|"«extend» member was Inactive"| Logged
@@ -538,7 +522,6 @@ erDiagram
         text current_plan
         image profile_photo
         image face_photo
-        datetime biometric_consent_at
     }
     PACKAGE_CATEGORY {
         text name
@@ -673,7 +656,6 @@ erDiagram
         varchar status
         timestamp status_updated_at "nullable"
         longtext enrolled_face_id "nullable, face photo path"
-        timestamp biometric_consent_at "nullable"
         varchar profile_pic "nullable"
         date dob "nullable"
         decimal height "nullable"
@@ -826,4 +808,4 @@ Refunds are not offered: a subscription is paused instead (`memberships.status` 
 
 `memberships.plan_id` has **no** foreign key in the database (checked on November 17, 2026); only `memberships.member_id` has one. The link to `plans` is kept by the application, which is why a package is not deleted while members are subscribed to it, and why an ended subscription keeps the package name in `plan_type`.
 
-Not drawn because the application does not use them: `face_encodings`, `payments`, `exercise_sessions`, `gesture_logs`, `exercises`, `auth_verification_codes` (the old login PIN, removed), `users`, and Laravel's own tables (`sessions`, `cache`, `jobs` and similar).
+Not drawn because the application does not use them: `face_encodings`, `payments`, `exercise_sessions`, `gesture_logs`, `exercises`, `auth_verification_codes` (the old login PIN, removed), `users`, and Laravel's own tables (`sessions`, `cache`, `jobs` and similar). The column `members.biometric_consent_at` is also left out: it is still in the database, but face enrollment no longer asks for or records consent, so it is always empty.

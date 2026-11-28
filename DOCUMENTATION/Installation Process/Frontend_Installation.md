@@ -1,7 +1,7 @@
 # Frontend Installation & Setup Guide
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros.ph Fitness Gym (Zone 2a Baluarte, Tagoloan, Misamis Oriental)  
 **Target Component:** Frontend Single Page Application (React 19 / Vite 8 / Tailwind CSS v4)  
 **Document Version:** 1.0  
 **Date:** September 2026  
@@ -68,7 +68,7 @@ Open your web browser and navigate to:
 ```
 http://localhost:5173
 ```
-You will be greeted by the **Muscle Bros Gym Management Portal Login Screen**.
+You will be greeted by the **Muscle Bros.ph Fitness Gym Management Portal Login Screen**.
 
 ---
 

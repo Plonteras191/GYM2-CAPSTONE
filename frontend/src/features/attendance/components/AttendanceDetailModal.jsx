@@ -120,8 +120,8 @@ export default function AttendanceDetailModal({ row, weekStart, onClose, onCheck
           className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 relative flex h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-line bg-panel shadow-2xl"
         >
           <div className="absolute right-4 top-4 z-20">
-            <button onClick={onClose} aria-label="Close attendance" className="press flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-panel/90 text-muted backdrop-blur-md hover:border-negative/40 hover:bg-negative-soft hover:text-negative">
-              <FiX size={20} />
+            <button onClick={onClose} aria-label="Close attendance" className="press flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-panel/90 text-muted backdrop-blur-md hover:border-negative/40 hover:bg-negative-soft hover:text-negative">
+              <FiX size={16} />
             </button>
           </div>
 

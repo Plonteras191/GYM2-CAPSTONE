@@ -90,17 +90,18 @@ export default function ManualCheckInModal({ isOpen, member = null, onClose, onD
         aria-labelledby={titleId}
         tabIndex={-1}
         onSubmit={handleSave}
-        className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl"
+        className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 w-full max-w-md overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl"
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 id={titleId} className="flex items-center gap-2.5 font-display text-2xl font-semibold text-ink">
-            <FiUserCheck size={20} className="text-muted" /> Manual Check-in
+        <div className="flex items-center justify-between gap-4 border-b border-line py-3.5 pl-6 pr-4">
+          <h3 id={titleId} className="flex items-center gap-2.5 text-[18px] font-medium tracking-[-0.01em] text-ink">
+            <FiUserCheck size={18} aria-hidden="true" className="shrink-0 text-ink" /> Manual Check-in
           </h3>
-          <button type="button" onClick={onClose} aria-label="Close manual check-in" className="press rounded-lg p-2 text-muted hover:bg-hover hover:text-ink">
+          <button type="button" onClick={onClose} aria-label="Close manual check-in" className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-hover text-muted hover:bg-negative-soft hover:text-negative">
             <FiX size={18} />
           </button>
         </div>
 
+        <div className="p-6 [&>:last-child]:mb-0">
         <p className="mb-5 text-sm text-muted">
           Use this only when the camera cannot recognize the member. The check-in is saved as "Manual" with your account and the reason.
         </p>
@@ -157,9 +158,10 @@ export default function ManualCheckInModal({ isOpen, member = null, onClose, onD
           </label>
         )}
 
-        {error && <p role="alert" className="mb-4 rounded-lg bg-negative-soft px-3 py-2 text-sm font-medium text-negative">{error}</p>}
+        {error && <p role="alert" className="rounded-lg bg-negative-soft px-3 py-2 text-sm font-medium text-negative">{error}</p>}
+        </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t border-line px-6 py-4">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={!canSave} icon={isSaving ? <FiLoader className="animate-spin" size={14} /> : null}>
             {isSaving ? 'Saving...' : 'Check In'}

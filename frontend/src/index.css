@@ -4,14 +4,14 @@
   /* ── Type ───────────────────────────────────────────────────────────
      Dealt by the taste skill for software: Instrument Sans for text and
      headings (one family, display at weight 500) + DM Mono for times and IDs.
-     Barlow Condensed is kept only for the "Muscle Bros" wordmark (logo).
+     Barlow Condensed is kept only for the "Muscle Bros.ph" wordmark (logo).
      Self-hosted via @fontsource (imported in main.jsx), works offline. */
   --font-sans: "Instrument Sans Variable", "Instrument Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --font-display: "Instrument Sans Variable", "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --font-brand: "Barlow Condensed", "Instrument Sans Variable", sans-serif;
 
-  /* ── Brand palette: Muscle Bros is black, white and cyan ─────────────
+  /* ── Brand palette: Muscle Bros.ph is black, white and cyan ─────────────
      Surfaces and text are neutral black/white/grey; cyan is the accent.
      The old colour names are kept so components did not need renaming:
      "red" = cyan accent (cyan-700 on light, cyan-300 on dark),

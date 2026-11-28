@@ -1,7 +1,7 @@
 # System Testing & Quality Evaluation Documentation
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros.ph Fitness Gym (Zone 2a Baluarte, Tagoloan, Misamis Oriental)  
 **Document Version:** 1.0  
 **Date:** September 2026  
 
@@ -9,7 +9,7 @@
 
 ## 1. Quality Assurance Overview & Testing Objectives
 
-This document details the comprehensive **Testing and Evaluation Plan** for the **Camera-Based Gym Management System**. The testing strategy ensures that all functional modules (Member Registration, Facial Recognition Attendance, Gesture-Based Program Monitoring, Subscription Management, Payment Processing, and Executive Reports) operate reliably, accurately, and securely before deployment at Muscle Bros Gym.
+This document details the comprehensive **Testing and Evaluation Plan** for the **Camera-Based Gym Management System**. The testing strategy ensures that all functional modules (Member Registration, Facial Recognition Attendance, Gesture-Based Program Monitoring, Subscription Management, Payment Processing, and Executive Reports) operate reliably, accurately, and securely before deployment at Muscle Bros.ph Fitness Gym.
 
 ### Primary Objectives
 1. **Verification of Core Functions**: Ensure 100% operational accuracy of attendance logging, subscription status transitions, payment ledger processing, and exercise rep counting.
@@ -61,7 +61,7 @@ flowchart TD
 ---
 
 ### 2.4. Tier 4: User Acceptance Testing (UAT) & ISO 25010 Evaluation
-* Conducted with the Gym Owner, Authorized Admin staff, Coaches, and registered Gym Members at Muscle Bros Gym.
+* Conducted with the Gym Owner, Authorized Admin staff, Coaches, and registered Gym Members at Muscle Bros.ph Fitness Gym.
 * Evaluates real-world operational usability, touchless check-in speed, payment invoice generation, and workout rep tracking.
 
 ---
@@ -202,4 +202,4 @@ pie title Defect Distribution by Severity
 * **ISO 25010 User Satisfaction Rating**: **91.4%** (Target: ≥85.0%)
 
 ### Final Recommendation
-Based on the successful verification of all functional modules, adherence to operational constraints, and achieving an ISO 25010 user satisfaction rating of **91.4%**, the system is officially recommended for **Deployment and Pilot Implementation** at Muscle Bros Gym.
+Based on the successful verification of all functional modules, adherence to operational constraints, and achieving an ISO 25010 user satisfaction rating of **91.4%**, the system is officially recommended for **Deployment and Pilot Implementation** at Muscle Bros.ph Fitness Gym.

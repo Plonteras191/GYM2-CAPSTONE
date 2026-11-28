@@ -1,12 +1,12 @@
 # 4.1 Requirements Gathering and Analysis Phase
 
-This section presents the results of the requirements gathering and analysis phase conducted at Muscle Bros Gym in Natumolan, Tagoloan, Misamis Oriental. The findings were obtained through structured interviews with the gym owner, direct observation of daily gym activities, and the review of existing paper records, including membership forms, logbooks, and payment receipts.
+This section presents the results of the requirements gathering and analysis phase conducted at Muscle Bros.ph Fitness Gym in Zone 2a Baluarte, Tagoloan, Misamis Oriental. The findings were obtained through structured interviews with the gym owner, direct observation of daily gym activities, and the review of existing paper records, including membership forms, logbooks, and payment receipts.
 
 ---
 
 ## 4.1-A Process Definition
 
-Prior to the conceptualization and development of the proposed Camera-Based Gym Management System, Muscle Bros Gym relied entirely on manual, paper-based, and observational procedures. The overall manual workflow is structured into four sequential operational stages: Member Registration & Payment, Attendance & Membership Verification, Fitness Program Monitoring, and Record Maintenance & Reporting.
+Prior to the conceptualization and development of the proposed Camera-Based Gym Management System, Muscle Bros.ph Fitness Gym relied entirely on manual, paper-based, and observational procedures. The overall manual workflow is structured into four sequential operational stages: Member Registration & Payment, Attendance & Membership Verification, Fitness Program Monitoring, and Record Maintenance & Reporting.
 
 Figure 4.1 presents the manual process flow diagram representing the existing operations performed by the Gym Owner / Administrator and Gym Members.
 
@@ -55,7 +55,7 @@ flowchart LR
 > **Note:** This diagram was updated on 2026-11-11 to match the current system. The written explanation in this file may still describe the earlier version of the diagram.
 
 
-**Figure 4.1.** Manual Process Flow for Admin at Muscle Bros Gym.
+**Figure 4.1.** Manual Process Flow for Admin at Muscle Bros.ph Fitness Gym.
 
 ---
 
@@ -114,6 +114,6 @@ The proposed Camera-Based Gym Management System identifies the specific human ac
 ### User Role Discussion and Operational Boundary
 
 As shown in Table 4.1, the system establishes a clear operational distinction:
-1. **The Administrator is the Sole Direct User of the Web Interface:** There is only one user role with administrative credentials to access the ReactJS web dashboard. This design decision directly reflects the organizational scale of Muscle Bros Gym, where the gym owner manages administrative tasks and gym coaching simultaneously.
+1. **The Administrator is the Sole Direct User of the Web Interface:** There is only one user role with administrative credentials to access the ReactJS web dashboard. This design decision directly reflects the organizational scale of Muscle Bros.ph Fitness Gym, where the gym owner manages administrative tasks and gym coaching simultaneously.
 2. **Gym Members Participate Without Direct Software Accounts:** Unlike enterprise systems that require members to install mobile apps or manage login passwords, this system is deliberately designed to minimize member friction. Gym members interact entirely through natural physical presence—walking past the entrance camera to log attendance, and performing exercises in front of the gesture camera to log workouts.
 3. **The AI Vision Engine Operates as an Autonomous Device Actor:** The camera hardware (RTSP IP CCTV and USB webcams) paired with the Python MediaPipe/Facenet microservice acts as an automated actor that executes high-frequency tasks without requiring constant manual clicking by the administrator.

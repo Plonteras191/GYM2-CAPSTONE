@@ -14,14 +14,14 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
         className={`animate-in fade-in zoom-in-95 slide-in-from-bottom-2 relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl ${maxWidth}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-line px-6 py-4">
-          <h3 id={titleId} className="font-display text-2xl font-semibold text-ink">{title}</h3>
+        <div className="flex items-center justify-between gap-4 border-b border-line py-3.5 pl-6 pr-4">
+          <h3 id={titleId} className="text-[18px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="press rounded-lg p-2 text-muted hover:bg-hover hover:text-ink"
+            className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-hover text-muted hover:bg-negative-soft hover:text-negative"
           >
-            <FiX className="h-5 w-5" />
+            <FiX size={18} />
           </button>
         </div>
 

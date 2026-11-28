@@ -2,11 +2,11 @@ Product Requirements Document (Overview)
 
 Product Name: Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring
 
-Client: Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)
+Client: Muscle Bros.ph Fitness Gym (Zone 2a Baluarte, Tagoloan, Misamis Oriental)
 
 Problem Statement
 
-Muscle Bros Gym currently relies on manual, non-integrated processes for daily operations. Attendance is recorded through logbooks, membership data is kept in manual forms, program bookings are handled via phone or social media, and payments are recorded by hand. These disconnected processes result in missing entries, delayed membership renewals, inconsistent records, and increased administrative workload for the owner.
+Muscle Bros.ph Fitness Gym currently relies on manual, non-integrated processes for daily operations. Attendance is recorded through logbooks, membership data is kept in manual forms, program bookings are handled via phone or social media, and payments are recorded by hand. These disconnected processes result in missing entries, delayed membership renewals, inconsistent records, and increased administrative workload for the owner.
 
 Proposed Solution
 

@@ -1,5 +1,5 @@
 /**
- * Muscle Bros uses black, white and cyan. Calendar colours saved before the
+ * Muscle Bros.ph uses black, white and cyan. Calendar colours saved before the
  * switch (packages, coach-event categories) are still stored as any colour,
  * so they are shown as the cyan of the same brightness: dark colours become
  * deep cyan, light colours become pale cyan, and text contrast is unchanged.

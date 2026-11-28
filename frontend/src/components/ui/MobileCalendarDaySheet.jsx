@@ -79,9 +79,9 @@ export default function MobileCalendarDaySheet({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="press flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line text-muted hover:bg-hover hover:text-ink"
+            className="press flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:bg-hover hover:text-ink"
           >
-            <FiX size={18} />
+            <FiX size={16} />
           </button>
         </div>
 

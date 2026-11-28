@@ -1,7 +1,7 @@
 # 🤖 AI Vision & Gesture Engine Component
 
 **Product Name:** Camera-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring  
-**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)  
+**Client:** Muscle Bros.ph Fitness Gym (Zone 2a Baluarte, Tagoloan, Misamis Oriental)  
 **Component:** AI Vision & Gesture Processing Engine  
 
 ---

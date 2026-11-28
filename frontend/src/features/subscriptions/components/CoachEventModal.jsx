@@ -78,10 +78,10 @@ export default function CoachEventModal({
       />
 
       <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel text-ink shadow-2xl dark:border-line dark:bg-panel dark:text-ink animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3 dark:border-line dark:bg-hover">
-          <div className="flex items-center gap-3">
-            {eventForm.id ? <FiEdit2 size={19} /> : <FiCalendar size={20} />}
-            <h3 className="text-lg font-medium tracking-tight text-ink">
+        <div className="flex items-center justify-between gap-4 border-b border-line bg-field py-3.5 pl-6 pr-4 dark:border-line dark:bg-hover">
+          <div className="flex items-center gap-2.5">
+            {eventForm.id ? <FiEdit2 size={17} /> : <FiCalendar size={18} />}
+            <h3 className="text-[18px] font-semibold tracking-[-0.01em] text-ink">
               {eventForm.id ? 'Edit class or event' : 'Add a class or event'}
             </h3>
           </div>
@@ -89,7 +89,7 @@ export default function CoachEventModal({
             type="button"
             onClick={requestClose}
             aria-label="Close event form"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative dark:border-line dark:bg-panel dark:text-ink-2 dark:hover:bg-negative-soft"
+            className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-panel text-muted hover:bg-negative-soft hover:text-negative"
           >
             <FiX size={18} />
           </button>

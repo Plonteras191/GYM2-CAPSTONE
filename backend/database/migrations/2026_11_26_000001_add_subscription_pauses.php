@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Muscle Bros does not refund. Instead an admin can pause a subscription and
+ * Muscle Bros.ph does not refund. Instead an admin can pause a subscription and
  * resume it later; the days spent paused are added to its end date.
  *
  * - memberships.paused_at: the day the current pause started (null when not paused).

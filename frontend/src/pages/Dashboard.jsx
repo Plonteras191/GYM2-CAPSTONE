@@ -315,7 +315,7 @@ export default function Dashboard() {
           src={bandPhoto}
           alt=""
           aria-hidden="true"
-          className="settle pointer-events-none absolute inset-y-0 right-0 -z-10 hidden h-full w-[62%] object-cover object-[32%_28%] opacity-70 md:block"
+          className="settle pointer-events-none absolute inset-y-0 right-0 -z-10 hidden h-full w-[62%] object-cover object-center opacity-70 md:block"
         />
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,#0D0D0D_38%,rgb(13_13_13/0.82)_58%,rgb(13_13_13/0.25)_100%)]" />
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_120%,rgb(5_89_104/0.42),transparent_55%)]" />
@@ -324,7 +324,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 text-[13px] font-medium text-white/70">
               <span aria-hidden="true" className="live-dot h-2 w-2 rounded-full bg-brand-gold" />
-              Today at Muscle Bros
+              Today at Muscle Bros.ph
             </p>
             <button
               type="button"
@@ -357,7 +357,7 @@ export default function Dashboard() {
               Check In Member
             </Button>
             <BandLink to="/members" state={{ openRegister: true }} icon={FiUserPlus} hint="Opens the registration form">Register Member</BandLink>
-            <BandLink to="/subscriptions" state={{ openNewSale: true }} icon={FiCreditCard} hint="Opens New Sale in Packages">Record Payment</BandLink>
+            <BandLink to="/subscriptions" state={{ openNewSale: true }} icon={FiCreditCard} hint="Opens a new subscription in Packages">Record Payment</BandLink>
             {/* normal-case keeps the small word "or" lowercase, as written. */}
             <Button size="lg" variant="onDark" className="normal-case" icon={<FiCalendar size={18} className="text-brand-gold" />} onClick={() => handleOpenNewCoachEvent()}>
               Add Class or Event

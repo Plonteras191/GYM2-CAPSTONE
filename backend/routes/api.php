@@ -79,7 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- 5. TRANSACTION ROUTES ---
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::post('/transactions', [TransactionController::class, 'store']);
-    // Money records are never edited or deleted, and Muscle Bros does not refund.
+    // Money records are never edited or deleted, and Muscle Bros.ph does not refund.
 
     // --- 6. REPORTS ---
     Route::get('/reports', [ReportController::class, 'index']);

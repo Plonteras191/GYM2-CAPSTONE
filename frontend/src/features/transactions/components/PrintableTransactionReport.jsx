@@ -32,7 +32,7 @@ export default function PrintableTransactionReport({
       <div id="printable-report" className="hidden w-full bg-white font-sans text-black print:block">
         <div className="mb-5 flex items-end justify-between border-b-2 border-black pb-3">
           <div>
-            <h1 className="text-xl font-black uppercase tracking-wide">Muscle Bros Gym</h1>
+            <h1 className="text-xl font-black uppercase tracking-wide">Muscle Bros.ph Fitness Gym</h1>
             <p className="mt-1 text-xs font-medium text-neutral-600">
               Transaction report · {dateLabel} · {filterType === 'All' ? 'All transaction types' : filterType}
               {searchTerm ? ` · Search: ${searchTerm}` : ''}

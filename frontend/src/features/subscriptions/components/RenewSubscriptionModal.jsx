@@ -63,18 +63,18 @@ export default function RenewSubscriptionModal({ subscription, subscriptions, pl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/60 p-4 backdrop-blur-sm animate-fade-in">
       <div role="dialog" aria-modal="true" aria-labelledby="renew-title" className="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
-        <div className="flex items-center justify-between border-b border-line bg-field px-4 py-3">
-          <h3 id="renew-title" className="flex items-center gap-2 text-xl font-medium text-ink">
-            <FiRefreshCw size={19} /> Renew subscription
+        <div className="flex items-center justify-between gap-4 border-b border-line bg-field py-3.5 pl-6 pr-4">
+          <h3 id="renew-title" className="flex items-center gap-2.5 text-[18px] font-semibold tracking-[-0.01em] text-ink">
+            <span className="flex shrink-0 items-center"><FiRefreshCw size={18} /></span> Renew subscription
           </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
             aria-label="Close renew subscription"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-panel text-muted shadow-sm transition-colors hover:border-negative/40 hover:bg-negative-soft hover:text-negative disabled:opacity-50"
+            className="press flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-panel text-muted hover:bg-negative-soft hover:text-negative disabled:opacity-50"
           >
-            <FiX size={24} />
+            <FiX size={18} />
           </button>
         </div>
 

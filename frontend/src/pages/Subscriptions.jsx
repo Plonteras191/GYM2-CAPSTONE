@@ -5,7 +5,6 @@ import { useSubscriptions } from '../features/subscriptions/hooks/useSubscriptio
 import { useTransactions } from '../features/transactions/hooks/useTransactions';
 import TransactionFormModal from '../features/transactions/components/TransactionFormModal';
 import WalkInsView from '../features/subscriptions/components/WalkInsView';
-import NewSaleChooser from '../features/subscriptions/components/NewSaleChooser';
 import SubscriptionsTable from '../features/subscriptions/components/SubscriptionsTable';
 import SubscriptionsCalendarView from '../features/subscriptions/components/SubscriptionsCalendarView';
 import { getActivePackageCategoryOptions, getCoachEventCategoryOptions } from '../features/subscriptions/packageCategories';
@@ -91,27 +90,22 @@ export default function Subscriptions() {
   } = useSubscriptions();
   const todayStr = getLocalDateString();
 
-  // Walk-ins and one-time purchases are sold from this page too.
+  // Walk-ins are recorded from the Walk-ins tab.
   const sales = useTransactions();
-  const [isChooserOpen, setIsChooserOpen] = React.useState(false);
   // Only walk-in packages are sold from the walk-in form.
   const isOneTimePackage = (plan) => plan.category === 'walk_in'
     || /walk|daily/i.test(plan.name || '');
   const walkInPlans = sales.plansList.filter(isOneTimePackage);
-  const handleChooseSale = (kind) => {
-    setIsChooserOpen(false);
-    if (kind === 'walk-in') sales.handleOpenAddModal();
-    else handleOpenAddModal();
-  };
 
-  // Shortcuts from the Overview: "Record a payment" opens New Sale, and a row in
+  // Shortcuts from the Overview: "Record a payment" opens the subscription form, and a row in
   // "Ending this week" opens the Renew dialog for that membership. The request is
   // cleared afterwards so Back or a refresh does not open it again.
   const location = useLocation();
   React.useEffect(() => {
     const { openNewSale, renewMembershipId } = location.state || {};
     if (openNewSale) {
-      setIsChooserOpen(true);
+      setActiveView('list');
+      handleOpenAddModal();
     } else if (renewMembershipId) {
       if (isLoading) return;
       const target = subscriptions.find(sub => String(sub.id) === String(renewMembershipId));
@@ -123,7 +117,7 @@ export default function Subscriptions() {
       return;
     }
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, isLoading, subscriptions, navigate, handleOpenRenew, setActiveView]);
+  }, [location.state, location.pathname, isLoading, subscriptions, navigate, handleOpenRenew, handleOpenAddModal, setActiveView]);
 
   /* ── Display-only summary ── */
   const daysUntil = (value) => {
@@ -210,7 +204,7 @@ export default function Subscriptions() {
           filterPlan={filterPlan}
           setFilterPlan={setFilterPlan}
           deletingId={deletingId}
-          onAddSubscription={() => setIsChooserOpen(true)}
+          onAddSubscription={handleOpenAddModal}
           onEditSubscription={handleOpenEditModal}
           onDeleteSubscription={handleDelete}
           onRenewSubscription={handleOpenRenew}
@@ -283,9 +277,6 @@ export default function Subscriptions() {
         onDeleteCategory={handleDeleteCoachEventCategory}
         onSave={handleSaveCoachEvent}
       />
-
-      {/* New sale: pick subscription or walk-in */}
-      <NewSaleChooser isOpen={isChooserOpen} onClose={() => setIsChooserOpen(false)} onChoose={handleChooseSale} />
 
       {/* Walk-in / one-time sale */}
       <TransactionFormModal

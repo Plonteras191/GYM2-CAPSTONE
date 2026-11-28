@@ -1,6 +1,6 @@
 # 4.2-B Context Level Diagram
 
-This section presents the **Context Level Diagram** (Data Flow Diagram Level 0) for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym**.
+This section presents the **Context Level Diagram** (Data Flow Diagram Level 0) for the **IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros.ph Fitness Gym**.
 
 > **Updated November 17, 2026** to match the system as built. The diagram is the same one as in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.
 
@@ -22,7 +22,7 @@ flowchart LR
     Camera["Camera<br/>(CCTV, phone camera or webcam)"]
     Member["Gym Member"]
     Mail["Email Server"]
-    System(["0<br/>Gym Management System<br/>for Muscle Bros Gym"])
+    System(["0<br/>Gym Management System<br/>for Muscle Bros.ph Fitness Gym"])
 
     Admin -->|"F1: Email and password"| System
     Admin -->|"F2: Member details (with body type and face consent), face capture, packages, subscriptions, renewals, pausing and resuming subscriptions, classes and events, payments"| System
@@ -40,7 +40,7 @@ flowchart LR
     System -->|"F12: Password-reset PIN"| Mail
 ```
 
-**Figure 4.4.** Context Level Diagram for Muscle Bros Gym.
+**Figure 4.4.** Context Level Diagram for Muscle Bros.ph Fitness Gym.
 
 ---
 

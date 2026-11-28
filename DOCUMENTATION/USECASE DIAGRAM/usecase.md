@@ -1,5 +1,5 @@
 # System Use Case Specification
-**Project Title:** Design and Development of an IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros Gym
+**Project Title:** Design and Development of an IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring for Muscle Bros.ph Fitness Gym
 **Document Version:** 3.0 (updated November 17, 2026 to match the system as built)
 
 The diagrams in sections 3, 4 and 5 are the same as Figures 4.6, 4.8 and 4.7 in `Updated Current Plan For Development/Chapter4_Diagrams (2).md`.

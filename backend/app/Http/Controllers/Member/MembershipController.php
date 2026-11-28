@@ -382,7 +382,7 @@ class MembershipController extends Controller
     }
 
     /**
-     * Pause a running subscription (Muscle Bros does not refund).
+     * Pause a running subscription (Muscle Bros.ph does not refund).
      *
      * The days left are kept: when the subscription is resumed, its end date
      * moves later by the number of days it was paused. There is no limit on

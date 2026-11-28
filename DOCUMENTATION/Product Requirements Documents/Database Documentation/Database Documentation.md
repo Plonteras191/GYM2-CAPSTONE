@@ -1,7 +1,7 @@
 # Database Documentation & Laravel ORM Implementation
 
 **Product Name:** IoT-Based Gym Management System with Facial Recognition Attendance and Gesture-Based Program Monitoring
-**Client:** Muscle Bros Gym (Natumolan, Tagoloan, Misamis Oriental)
+**Client:** Muscle Bros.ph Fitness Gym (Zone 2a Baluarte, Tagoloan, Misamis Oriental)
 **Document Version:** 2.0
 **Date:** November 17, 2026
 **Describes:** the database and the business rules as built on this date (13 tables in use; updated November 25, 2026 for subscription pauses).

@@ -280,7 +280,6 @@ export default function Layout() {
       items: [
         { name: 'Overview', path: '/overview', icon: <FiHome /> },
         { name: 'Member Management', path: '/members', icon: <FiUsers /> },
-        { name: 'Attendance', path: '/attendance', icon: <FiCalendar /> },
         { name: 'Packages', path: '/subscriptions', icon: <FiCheckSquare /> },
         { name: 'Transactions', path: '/transactions', icon: <FiCreditCard /> },
         { name: 'Reports', path: '/reports', icon: <FiFileText /> },
@@ -352,11 +351,11 @@ export default function Layout() {
               <img src={systemLogo} alt="System logo" className="h-full w-full rounded-full bg-white object-cover p-0.5" />
             </div>
             <div className="flex min-w-0 flex-col justify-center">
-              <h1 className="bg-gradient-to-r from-brand-red to-brand-orange-700 bg-clip-text pr-1 font-brand text-[1.65rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent dark:from-brand-red-300 dark:to-brand-orange-300">
-                Muscle Bros
+              <h1 className="bg-gradient-to-r from-brand-red to-brand-orange-700 bg-clip-text pr-1 font-brand text-[1.4rem] font-extrabold uppercase italic leading-none tracking-tight text-transparent dark:from-brand-red-300 dark:to-brand-orange-300">
+                Muscle Bros<span className="normal-case">.ph</span>
               </h1>
               <span className="mt-1 text-[0.7rem] font-semibold uppercase tracking-[0.32em] text-muted">
-                Gym
+                Fitness Gym
               </span>
             </div>
           </div>
